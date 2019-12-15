@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 
-contract InteractiveTaker {
+interface InteractiveTaker {
     function interact(
         IERC20 makerAsset,
         IERC20 takerAsset,
@@ -41,13 +41,41 @@ library LimitOrder {
 }
 
 
-contract OneDex {
+contract Depositor {
+
     using SafeMath for uint256;
+
+    mapping(address => uint256) private _balances;
+
+    function balanceOf(address user) public view returns(uint256) {
+        return _balances[user];
+    }
+
+    function deposit() public payable {
+        _mint(msg.sender, msg.value);
+    }
+
+    function withdraw(uint256 amount) public payable {
+        _burn(msg.sender, amount);
+        msg.sender.transfer(amount);
+    }
+
+    function _mint(address user, uint256 amount) internal {
+        _balances[user] = _balances[user].add(amount);
+    }
+
+    function _burn(address user, uint256 amount) internal {
+        _balances[user] = _balances[user].sub(amount);
+    }
+}
+
+
+contract LimitSwap is Depositor {
+
     using SafeERC20 for IERC20;
     using LimitOrder for LimitOrder.Data;
 
     mapping(bytes32 => uint256) public remainings;
-    mapping(bytes32 => bool) public invalidated;
 
     event LimitOrderUpdated(
         address indexed makerAddress,
@@ -111,13 +139,17 @@ contract OneDex {
         });
 
         bytes32 orderHash = order.hash();
-        require(remainings[orderHash] == 0, "OneDex: existing order");
+        require(remainings[orderHash] == 0, "LimitSwap: existing order");
 
         if (makerAsset == IERC20(0)) {
-            require(makerAmount == msg.value, "OneDex: for ETH makerAmount should be equal to msg.value");
+            require(makerAmount == msg.value, "LimitSwap: for ETH makerAmount should be equal to msg.value");
+            deposit();
+        } else {
+            require(msg.value == 0, "LimitSwap: msg.value should be 0 when makerAsset in not ETH");
         }
 
-        _updateOrder(order, orderHash, makerAmount);
+        remainings[orderHash] = makerAmount;
+        _updateOrder(order, orderHash);
     }
 
     function cancelOrder(
@@ -139,13 +171,14 @@ contract OneDex {
         });
 
         bytes32 orderHash = order.hash();
-        require(remainings[orderHash] != 0, "OneDex: not existing or already filled order");
+        require(remainings[orderHash] != 0, "LimitSwap: not existing or already filled order");
 
         if (makerAsset == IERC20(0)) {
-            require(msg.sender.send(remainings[orderHash]), "OneDex: maker should receive ETH when cancel ETH order");
+            withdraw(remainings[orderHash]);
         }
 
-        _updateOrder(order, orderHash, 0);
+        remainings[orderHash] = 0;
+        _updateOrder(order, orderHash);
     }
 
     function takeOrderAvailable(
@@ -195,8 +228,8 @@ contract OneDex {
         uint256 takingAmount,
         bool interactive
     ) public payable {
-        require(block.timestamp <= expiration, "OneDex: order already expired");
-        require(takerAddress == address(0) || takerAddress == msg.sender, "OneDex: access denied to this order");
+        require(block.timestamp <= expiration, "LimitSwap: order already expired");
+        require(takerAddress == address(0) || takerAddress == msg.sender, "LimitSwap: access denied to this order");
 
         LimitOrder.Data memory order = LimitOrder.Data({
             makerAddress: makerAddress,
@@ -209,10 +242,12 @@ contract OneDex {
         });
 
         bytes32 orderHash = order.hash();
-        _updateOrder(order, orderHash, remainings[orderHash].sub(takingAmount, "OneDex: remaining amount is less than taking amount"));
+        remainings[orderHash] = remainings[orderHash].sub(takingAmount, "LimitSwap: remaining amount is less than taking amount");
+        _updateOrder(order, orderHash);
 
         // Maker => Taker
         if (makerAsset == IERC20(0)) {
+            _burn(makerAddress, takingAmount);
             msg.sender.transfer(takingAmount);
         } else {
             makerAsset.safeTransferFrom(makerAddress, msg.sender, takingAmount);
@@ -226,22 +261,18 @@ contract OneDex {
 
         // Taker => Maker
         if (takerAsset == IERC20(0)) {
-            require(takingAmount == msg.value, "OneDex: for ETH takingAmount should be equal to msg.value");
-            makerAddress.transfer(takingAmount);
+            if (msg.value > 0) {
+                deposit();
+            }
+            _burn(msg.sender, expectedAmount);
+            makerAddress.transfer(expectedAmount);
         } else {
+            require(msg.value == 0, "LimitSwap: msg.value should be 0 when takerAsset in not ETH");
             takerAsset.safeTransferFrom(msg.sender, makerAddress, expectedAmount);
         }
     }
 
-    function _updateOrder(LimitOrder.Data memory order, bytes32 orderHash, uint256 remainingAmount) internal {
-        if (remainings[orderHash] != remainingAmount) {
-            if (remainings[orderHash] == 0 && remainingAmount > 0) {
-                require(!invalidated[orderHash], "OneDex: order was already used");
-                invalidated[orderHash] = true;
-            }
-            remainings[orderHash] = remainingAmount;
-        }
-
+    function _updateOrder(LimitOrder.Data memory order, bytes32 orderHash) internal {
         emit LimitOrderUpdated(
             order.makerAddress,
             order.takerAddress,
@@ -250,7 +281,7 @@ contract OneDex {
             order.makerAmount,
             order.takerAmount,
             order.expiration,
-            remainingAmount
+            remainings[orderHash]
         );
     }
 }

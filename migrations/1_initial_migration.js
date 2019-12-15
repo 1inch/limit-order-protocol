@@ -1,7 +1,7 @@
 const Migrations = artifacts.require('./Migrations.sol');
-const OneDex = artifacts.require('./OneDex.sol');
+const LimitSwap = artifacts.require('./LimitSwap.sol');
 
 module.exports = function (deployer) {
     deployer.deploy(Migrations);
-    deployer.deploy(OneDex);
+    deployer.deploy(LimitSwap);
 };

@@ -1,10 +1,10 @@
 {
-  "name": "OneDex",
+  "name": "LimitSwap",
   "version": "0.0.1",
   "description": "",
   "repository": {
     "type": "git",
-    "url": "git@github.com:CryptoManiacsZone/1dex.git"
+    "url": "git@github.com:CryptoManiacsZone/LimitSwap.git"
   },
   "license": "MIT",
   "dependencies": {
@@ -37,6 +37,6 @@
     "lint:sol:fix": "solium -d . --fix",
     "lint": "npm run lint:js && npm run lint:sol",
     "lint:fix": "npm run lint:js:fix && npm run lint:sol:fix",
-    "dist": "truffle-flattener ./contracts/OneDex.sol > OneDex.full.sol && solcjs --bin --abi --optimize OneDex.full.sol && mv OneDex_full_sol_OneDex.bin OneDex.full.bin && mv OneDex_full_sol_OneDex.abi OneDex.full.abi && rm *_sol_*"
+    "dist": "truffle-flattener ./contracts/LimitSwap.sol > LimitSwap.full.sol && solcjs --bin --abi --optimize LimitSwap.full.sol && mv LimitSwap_full_sol_LimitSwap.bin LimitSwap.full.bin && mv LimitSwap_full_sol_LimitSwap.abi LimitSwap.full.abi && rm *_sol_*"
   }
 }
