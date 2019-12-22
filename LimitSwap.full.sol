@@ -467,6 +467,13 @@ contract Depositor {
 
     mapping(address => uint256) private _balances;
 
+    modifier depositIfExtCall(bytes4 sig) {
+        if (msg.value > 0 && sig == msg.sig) {
+            deposit();
+        }
+        _;
+    }
+
     function balanceOf(address user) public view returns(uint256) {
         return _balances[user];
     }
@@ -499,14 +506,14 @@ contract LimitSwap is Depositor {
 
     event LimitOrderUpdated(
         address indexed makerAddress,
-        address indexed takerAddress,
+        address takerAddress,
         IERC20 indexed makerAsset,
         IERC20 indexed takerAsset,
         uint256 makerAmount,
         uint256 takerAmount,
         uint256 expiration,
         uint256 remaining
-    ) anonymous;
+    );
 
     function available(
         address makerAddress,
@@ -516,7 +523,11 @@ contract LimitSwap is Depositor {
         uint256 makerAmount,
         uint256 takerAmount,
         uint256 expiration
-    ) public view returns(uint256) {
+    )
+        public
+        view
+        returns(uint256)
+    {
         if (expiration < now) {
             return 0;
         }
@@ -531,13 +542,20 @@ contract LimitSwap is Depositor {
             expiration: expiration
         });
 
-        return Math.min(
-            remainings[order.hash()],
-            Math.min(
-                makerAsset.balanceOf(makerAddress),
-                makerAsset.allowance(makerAddress, address(this))
-            )
-        );
+        if (makerAsset == IERC20(0)) {
+            return Math.min(
+                remainings[order.hash()],
+                balanceOf(makerAddress)
+            );
+        } else {
+            return Math.min(
+                remainings[order.hash()],
+                Math.min(
+                    makerAsset.balanceOf(makerAddress),
+                    makerAsset.allowance(makerAddress, address(this))
+                )
+            );
+        }
     }
 
     function makeOrder(
@@ -547,7 +565,11 @@ contract LimitSwap is Depositor {
         uint256 makerAmount,
         uint256 takerAmount,
         uint256 expiration
-    ) public payable {
+    )
+        public
+        payable
+        depositIfExtCall(this.makeOrder.selector)
+    {
         LimitOrder.Data memory order = LimitOrder.Data({
             makerAddress: msg.sender,
             takerAddress: takerAddress,
@@ -563,7 +585,6 @@ contract LimitSwap is Depositor {
 
         if (makerAsset == IERC20(0)) {
             require(makerAmount == msg.value, "LimitSwap: for ETH makerAmount should be equal to msg.value");
-            deposit();
         } else {
             require(msg.value == 0, "LimitSwap: msg.value should be 0 when makerAsset in not ETH");
         }
@@ -579,7 +600,9 @@ contract LimitSwap is Depositor {
         uint256 makerAmount,
         uint256 takerAmount,
         uint256 expiration
-    ) public {
+    )
+        public
+    {
         LimitOrder.Data memory order = LimitOrder.Data({
             makerAddress: msg.sender,
             takerAddress: takerAddress,
@@ -601,6 +624,38 @@ contract LimitSwap is Depositor {
         _updateOrder(order, orderHash);
     }
 
+    function takeOrdersAvailable(
+        address payable[] memory makerAddresses,
+        address[] memory takerAddresses,
+        IERC20 makerAsset,
+        IERC20 takerAsset,
+        uint256[] memory makerAmounts,
+        uint256[] memory takerAmounts,
+        uint256[] memory expirations,
+        uint256 takingAmount
+    )
+        public
+        payable
+        depositIfExtCall(this.takeOrdersAvailable.selector)
+        returns(uint256 takerVolume)
+    {
+        for (uint i = 0; takingAmount > 0 && i < makerAddresses.length; i++) {
+            takerVolume = takerVolume.sub(
+                takeOrderAvailable(
+                    makerAddresses[i],
+                    takerAddresses[i],
+                    makerAsset,
+                    takerAsset,
+                    makerAmounts[i],
+                    takerAmounts[i],
+                    expirations[i],
+                    takingAmount.sub(takerVolume),
+                    false
+                )
+            );
+        }
+    }
+
     function takeOrderAvailable(
         address payable makerAddress,
         address takerAddress,
@@ -611,8 +666,13 @@ contract LimitSwap is Depositor {
         uint256 expiration,
         uint256 takingAmount,
         bool interactive
-    ) public payable {
-        uint256 volume = Math.min(
+    )
+        public
+        payable
+        depositIfExtCall(this.takeOrderAvailable.selector)
+        returns(uint256 takerVolume)
+    {
+        takerVolume = Math.min(
             takingAmount,
             available(
                 makerAddress,
@@ -632,7 +692,7 @@ contract LimitSwap is Depositor {
             makerAmount,
             takerAmount,
             expiration,
-            volume,
+            takerVolume,
             interactive
         );
     }
@@ -647,7 +707,11 @@ contract LimitSwap is Depositor {
         uint256 expiration,
         uint256 takingAmount,
         bool interactive
-    ) public payable {
+    )
+        public
+        payable
+        depositIfExtCall(this.takeOrder.selector)
+    {
         require(block.timestamp <= expiration, "LimitSwap: order already expired");
         require(takerAddress == address(0) || takerAddress == msg.sender, "LimitSwap: access denied to this order");
 
@@ -681,9 +745,6 @@ contract LimitSwap is Depositor {
 
         // Taker => Maker
         if (takerAsset == IERC20(0)) {
-            if (msg.value > 0) {
-                deposit();
-            }
             _burn(msg.sender, expectedAmount);
             makerAddress.transfer(expectedAmount);
         } else {
@@ -692,7 +753,12 @@ contract LimitSwap is Depositor {
         }
     }
 
-    function _updateOrder(LimitOrder.Data memory order, bytes32 orderHash) internal {
+    function _updateOrder(
+        LimitOrder.Data memory order,
+        bytes32 orderHash
+    )
+        internal
+    {
         emit LimitOrderUpdated(
             order.makerAddress,
             order.takerAddress,
