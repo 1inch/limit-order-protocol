@@ -447,8 +447,9 @@ library LimitOrder {
         uint256 expiration;
     }
 
-    function hash(Data memory order) internal pure returns(bytes32) {
+    function hash(Data memory order, address contractAddress) internal pure returns(bytes32) {
         return keccak256(abi.encodePacked(
+            contractAddress,
             order.makerAddress,
             order.takerAddress,
             order.makerAsset,
@@ -457,6 +458,18 @@ library LimitOrder {
             order.takerAmount,
             order.expiration
         ));
+    }
+}
+
+library ArrayHelper {
+    function one(uint256 elem) internal pure returns(uint256[] memory arr) {
+        arr = new uint256[](1);
+        arr[0] = elem;
+    }
+
+    function one(address elem) internal pure returns(address[] memory arr) {
+        arr = new address[](1);
+        arr[0] = elem;
     }
 }
 
@@ -527,42 +540,67 @@ contract LimitSwap is Depositor {
     );
 
     function available(
-        address makerAddress,
-        address takerAddress,
+        address[] memory makerAddresses,
+        address[] memory takerAddresses,
         IERC20 makerAsset,
         IERC20 takerAsset,
-        uint256 makerAmount,
-        uint256 takerAmount,
-        uint256 expiration
+        uint256[] memory makerAmounts,
+        uint256[] memory takerAmounts,
+        uint256[] memory expirations
     )
         public
         view
-        returns(uint256)
+        returns(uint256 makerFilledAmount)
     {
-        if (expiration < now) {
-            return 0;
-        }
+        uint256[] memory userAvailable = new uint256[](makerAddresses.length);
 
-        LimitOrder.Data memory order = LimitOrder.Data({
-            makerAddress: makerAddress,
-            takerAddress: takerAddress,
-            makerAsset: makerAsset,
-            takerAsset: takerAsset,
-            makerAmount: makerAmount,
-            takerAmount: takerAmount,
-            expiration: expiration
-        });
+        for (uint i = 0; i < makerAddresses.length; i++) {
+            if (expirations[i] < now) {
+                continue;
+            }
 
-        if (makerAsset == IERC20(0)) {
-            return remainings[order.hash()];
-        } else {
-            return Math.min(
-                remainings[order.hash()],
-                Math.min(
-                    makerAsset.balanceOf(makerAddress),
-                    makerAsset.allowance(makerAddress, address(this))
-                )
-            );
+            if (makerAsset == IERC20(0)) {
+                makerFilledAmount = makerFilledAmount.add(makerAmounts[i]);
+                continue;
+            }
+
+            LimitOrder.Data memory order = LimitOrder.Data({
+                makerAddress: makerAddresses[i],
+                takerAddress: takerAddresses[i],
+                makerAsset: makerAsset,
+                takerAsset: takerAsset,
+                makerAmount: makerAmounts[i],
+                takerAmount: takerAmounts[i],
+                expiration: expirations[i]
+            });
+
+            bool found = false;
+            for (uint j = 0; j < i; j++) {
+                if (makerAddresses[j] == makerAddresses[i]) {
+                    found = true;
+                    if (userAvailable[j] > makerAmounts[i]) {
+                        userAvailable[j] = userAvailable[j].sub(makerAmounts[i]);
+                        makerFilledAmount = makerFilledAmount.add(makerAmounts[i]);
+                    } else {
+                        makerFilledAmount = makerFilledAmount.add(userAvailable[j]);
+                        userAvailable[j] = 0;
+                    }
+                    break;
+                }
+            }
+
+            if (!found) {
+                userAvailable[i] = Math.min(
+                    makerAsset.balanceOf(makerAddresses[i]),
+                    makerAsset.allowance(makerAddresses[i], address(this))
+                );
+                uint256 maxOrderSize = Math.min(
+                    remainings[order.hash(address(this))],
+                    userAvailable[i]
+                );
+                userAvailable[i] = userAvailable[i].sub(maxOrderSize);
+                makerFilledAmount = makerFilledAmount.add(maxOrderSize);
+            }
         }
     }
 
@@ -588,7 +626,7 @@ contract LimitSwap is Depositor {
             expiration: expiration
         });
 
-        bytes32 orderHash = order.hash();
+        bytes32 orderHash = order.hash(address(this));
         require(remainings[orderHash] == 0, "LimitSwap: existing order");
 
         if (makerAsset == IERC20(0)) {
@@ -621,7 +659,7 @@ contract LimitSwap is Depositor {
             expiration: expiration
         });
 
-        bytes32 orderHash = order.hash();
+        bytes32 orderHash = order.hash(address(this));
         require(remainings[orderHash] != 0, "LimitSwap: not existing or already filled order");
 
         if (makerAsset == IERC20(0)) {
@@ -683,13 +721,13 @@ contract LimitSwap is Depositor {
         takerVolume = Math.min(
             takingAmount,
             available(
-                makerAddress,
-                takerAddress,
+                ArrayHelper.one(makerAddress),
+                ArrayHelper.one(takerAddress),
                 makerAsset,
                 takerAsset,
-                makerAmount,
-                takerAmount,
-                expiration
+                ArrayHelper.one(makerAmount),
+                ArrayHelper.one(takerAmount),
+                ArrayHelper.one(expiration)
             )
         );
         takeOrder(
@@ -733,7 +771,7 @@ contract LimitSwap is Depositor {
             expiration: expiration
         });
 
-        bytes32 orderHash = order.hash();
+        bytes32 orderHash = order.hash(address(this));
         remainings[orderHash] = remainings[orderHash].sub(takingAmount, "LimitSwap: remaining amount is less than taking amount");
         _updateOrder(order, orderHash);
 
