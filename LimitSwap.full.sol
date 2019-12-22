@@ -647,7 +647,7 @@ contract LimitSwap is Depositor {
         depositAndWithdraw(this.takeOrdersAvailable.selector)
         returns(uint256 takerVolume)
     {
-        for (uint i = 0; takingAmount > 0 && i < makerAddresses.length; i++) {
+        for (uint i = 0; takingAmount > takerVolume && i < makerAddresses.length; i++) {
             takerVolume = takerVolume.sub(
                 takeOrderAvailable(
                     makerAddresses[i],
