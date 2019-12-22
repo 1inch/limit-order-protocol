@@ -47,22 +47,33 @@ contract Depositor {
 
     mapping(address => uint256) private _balances;
 
-    modifier depositIfExtCall(bytes4 sig) {
+    modifier deposit(bytes4 sig) {
         if (msg.value > 0 && sig == msg.sig) {
-            deposit();
+            _deposit();
         }
         _;
+    }
+
+    modifier depositAndWithdraw(bytes4 sig) {
+        uint256 prevBalance = balanceOf(msg.sender);
+        if (msg.value > 0 && sig == msg.sig) {
+            _deposit();
+        }
+        _;
+        if (balanceOf(msg.sender) > prevBalance) {
+            _withdraw(balanceOf(msg.sender).sub(prevBalance));
+        }
     }
 
     function balanceOf(address user) public view returns(uint256) {
         return _balances[user];
     }
 
-    function deposit() public payable {
+    function _deposit() internal {
         _mint(msg.sender, msg.value);
     }
 
-    function withdraw(uint256 amount) public payable {
+    function _withdraw(uint256 amount) internal {
         _burn(msg.sender, amount);
         msg.sender.transfer(amount);
     }
@@ -123,10 +134,7 @@ contract LimitSwap is Depositor {
         });
 
         if (makerAsset == IERC20(0)) {
-            return Math.min(
-                remainings[order.hash()],
-                balanceOf(makerAddress)
-            );
+            return remainings[order.hash()];
         } else {
             return Math.min(
                 remainings[order.hash()],
@@ -148,7 +156,7 @@ contract LimitSwap is Depositor {
     )
         public
         payable
-        depositIfExtCall(this.makeOrder.selector)
+        deposit(this.makeOrder.selector)
     {
         LimitOrder.Data memory order = LimitOrder.Data({
             makerAddress: msg.sender,
@@ -197,7 +205,7 @@ contract LimitSwap is Depositor {
         require(remainings[orderHash] != 0, "LimitSwap: not existing or already filled order");
 
         if (makerAsset == IERC20(0)) {
-            withdraw(remainings[orderHash]);
+            _withdraw(remainings[orderHash]);
         }
 
         remainings[orderHash] = 0;
@@ -216,7 +224,7 @@ contract LimitSwap is Depositor {
     )
         public
         payable
-        depositIfExtCall(this.takeOrdersAvailable.selector)
+        depositAndWithdraw(this.takeOrdersAvailable.selector)
         returns(uint256 takerVolume)
     {
         for (uint i = 0; takingAmount > 0 && i < makerAddresses.length; i++) {
@@ -249,7 +257,7 @@ contract LimitSwap is Depositor {
     )
         public
         payable
-        depositIfExtCall(this.takeOrderAvailable.selector)
+        depositAndWithdraw(this.takeOrderAvailable.selector)
         returns(uint256 takerVolume)
     {
         takerVolume = Math.min(
@@ -290,7 +298,7 @@ contract LimitSwap is Depositor {
     )
         public
         payable
-        depositIfExtCall(this.takeOrder.selector)
+        depositAndWithdraw(this.takeOrder.selector)
     {
         require(block.timestamp <= expiration, "LimitSwap: order already expired");
         require(takerAddress == address(0) || takerAddress == msg.sender, "LimitSwap: access denied to this order");
