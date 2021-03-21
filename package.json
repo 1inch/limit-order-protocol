@@ -11,6 +11,7 @@
     "@openzeppelin/contracts": "^4.0.0-rc.0"
   },
   "devDependencies": {
+    "@openzeppelin/test-helpers": "^0.5.10",
     "chai": "^4.3.4",
     "coveralls": "^3.1.0",
     "eslint": "^7.22.0",
@@ -20,8 +21,10 @@
     "eslint-plugin-promise": "^4.3.1",
     "eslint-plugin-standard": "^5.0.0",
     "eth-gas-reporter": "^0.2.22",
+    "eth-sig-util": "^3.0.1",
+    "ethereumjs-util": "^7.0.9",
+    "ethereumjs-wallet": "^1.0.1",
     "ganache-cli": "^6.12.2",
-    "@openzeppelin/test-helpers": "^0.5.10",
     "solc": "^0.8.2",
     "solidity-coverage": "^0.7.16",
     "solium": "^1.2.5",
