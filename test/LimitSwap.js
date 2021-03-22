@@ -53,6 +53,11 @@ contract('LimitSwap', async function ([_, wallet]) {
 
     beforeEach(async function () {
         this.swap = await LimitSwap.new();
+
+        await this.dai.approve(this.swap.address, '1000000');
+        await this.weth.approve(this.swap.address, '1000000');
+        await this.dai.approve(this.swap.address, '1000000', { from: wallet });
+        await this.weth.approve(this.swap.address, '1000000', { from: wallet });
     });
 
     it('domain separator', async function () {
@@ -68,32 +73,39 @@ contract('LimitSwap', async function ([_, wallet]) {
             const data = buildData(
                 this.chainId,
                 this.swap.address,
-                this.dai,
-                this.weth,
+                this.dai.address,
+                this.weth.address,
                 this.dai.contract.methods.transferFrom(wallet, zeroAddress, 1).encodeABI(),
                 this.weth.contract.methods.transferFrom(zeroAddress, wallet, 1).encodeABI(),
-                this.swap.address + this.swap.contract.methods.getMakerAmount(1, 1, 0).encodeABI().substr(2, 68),
-                this.swap.address + this.swap.contract.methods.getTakerAmount(1, 1, 0).encodeABI().substr(2, 68),
+                '0x000000000000000000000000' + this.swap.address.substr(2) + this.swap.contract.methods.getMakerAmount(1, 1, 0).encodeABI().substr(2, 68),
+                '0x000000000000000000000000' + this.swap.address.substr(2) + this.swap.contract.methods.getTakerAmount(1, 1, 0).encodeABI().substr(2, 68),
                 "0x",
                 "0x"
             );
 
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
             console.log('signature', signature);
-            const { v, r, s } = fromRpcSig(signature);
 
             const receipt = await this.swap.fillOrder(
                 {
-                    makerAsset: this.dai,
-                    takerAsset: this.weth,
+                    makerAsset: this.dai.address,
+                    takerAsset: this.weth.address,
                     makerAssetData: this.dai.contract.methods.transferFrom(wallet, zeroAddress, 1).encodeABI(),
                     takerAssetData: this.weth.contract.methods.transferFrom(zeroAddress, wallet, 1).encodeABI(),
-                    getMakerAmount: this.swap.address + this.swap.contract.methods.getMakerAmount(1, 1, 0).encodeABI().substr(2, 68),
-                    getTakerAmount: this.swap.address + this.swap.contract.methods.getTakerAmount(1, 1, 0).encodeABI().substr(2, 68),
+                    getMakerAmount:
+                        '0x000000000000000000000000' + this.swap.address.substr(2) +
+                        '0000000000000000000000000000000000000000000000000000000000000040' +
+                        '0000000000000000000000000000000000000000000000000000000000000084' +
+                        this.swap.contract.methods.getMakerAmount(1, 1, 0).encodeABI().substr(2, 68),
+                    getTakerAmount:
+                        '0x000000000000000000000000' + this.swap.address.substr(2) +
+                        '0000000000000000000000000000000000000000000000000000000000000040' +
+                        '0000000000000000000000000000000000000000000000000000000000000084' +
+                        this.swap.contract.methods.getTakerAmount(1, 1, 0).encodeABI().substr(2, 68),
                     predicate: "0x",
-                    permitData: "0x",
-                    signature: v + r.substr(2) + s.substr(2)
+                    permitData: "0x"
                 },
+                signature,
                 1,
                 1,
                 false,

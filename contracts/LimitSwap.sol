@@ -164,25 +164,24 @@ contract LimitSwap is
         bytes getTakerAmount; // (address, abi.encodePacked(bytes, swapMakerAmount)) => (swapTakerAmount)
         bytes predicate;      // (adress, bytes) => (bool)
         bytes permitData;     // On first fill: permitData.1.call(abi.encodePacked(permit.selector, permitData.2))
-        bytes signature;
     }
 
     bytes32 constant public LIMIT_SWAP_ORDER_TYPEHASH = keccak256(
-        "Order(address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData,bytes getMakerAmount,bytes getTakerAmount,bytes predicate,bytes permitData,bytes signature)"
+        "Order(address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData,bytes getMakerAmount,bytes getTakerAmount,bytes predicate,bytes permitData)"
     );
 
     mapping(bytes32 => uint256) private _remaining;
 
     // solhint-disable-next-line func-name-mixedcase
-    function DOMAIN_SEPARATOR() external view returns (bytes32) {
+    function DOMAIN_SEPARATOR() external view returns(bytes32) {
         return _domainSeparatorV4();
     }
 
-    function remaining(bytes32 orderHash) public view returns(uint256) {
+    function remaining(bytes32 orderHash) external view returns(uint256) {
         return _remaining[orderHash].sub(1, "LimitSwap: Unknown order");
     }
 
-    function remainingRaw(bytes32 orderHash) public view returns(uint256) {
+    function remainingRaw(bytes32 orderHash) external view returns(uint256) {
         return _remaining[orderHash];
     }
 
@@ -217,16 +216,17 @@ contract LimitSwap is
 
     function fillOrder(
         Order calldata order,
+        bytes memory signature,
         uint256 takingAmount,
         uint256 makingAmount,
         bool interactive,
         bytes memory permitTakerAsset
-    ) public {
+    ) external {
         bytes32 orderHash = _hash(order);
         (bool orderExists, uint256 remainingMakerAmount) = _remaining[orderHash].trySub(1);
         if (!orderExists) {
             // First fill: validate order and permit maker asset
-            _validate(order, orderHash);
+            _validate(order, signature, orderHash);
             remainingMakerAmount = order.makerAssetData.getArgumentAmount();
             if (order.permitData.length > 0) {
                 (address token, bytes memory permitData) = abi.decode(order.permitData, (address, bytes));
@@ -283,24 +283,23 @@ contract LimitSwap is
                     keccak256(order.getMakerAmount),
                     keccak256(order.getTakerAmount),
                     keccak256(order.predicate),
-                    keccak256(order.permitData),
-                    keccak256(order.signature)
+                    keccak256(order.permitData)
                 )
             )
         );
     }
 
-    function _validate(Order memory order, bytes32 orderHash) internal view {
+    function _validate(Order memory order, bytes memory signature, bytes32 orderHash) internal view {
+        address maker = address(order.makerAssetData.getArgumentFrom());
         bytes4 selector = order.makerAssetData.getArgumentSelector();
         require(selector >= IERC20.transferFrom.selector && selector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LimitSwap: Invalid makerAssetData.selector");
-        require(address(order.makerAssetData.getArgumentFrom()) == order.makerAsset, "LimitSwap: Invalid makerAssetData.from");
 
-        bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(orderHash);
-        if (Address.isContract(order.makerAsset)) {
-            require(IEIP1271(order.makerAsset).isValidSignature(ethSignedMessageHash, order.signature) == EIP1271Constants.MAGIC_VALUE, "LimitSwap: Invalid signature");
+        // bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(orderHash);
+        if (Address.isContract(maker)) {
+            require(IEIP1271(maker).isValidSignature(orderHash, signature) == EIP1271Constants.MAGIC_VALUE, "LimitSwap: Invalid SC signature");
         }
-        else if (order.signature.length > 0) {
-            require(ECDSA.recover(ethSignedMessageHash, order.signature) == order.makerAsset, "LimitSwap: Invalid signature");
+        else {
+            require(ECDSA.recover(orderHash, signature) == maker, "LimitSwap: Invalid EOA signature");
         }
     }
 
