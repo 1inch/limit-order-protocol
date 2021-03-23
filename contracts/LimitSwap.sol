@@ -237,7 +237,7 @@ contract LimitSwap is
     }
 
     function fillOrder(
-        Order calldata order,
+        Order memory order,
         bytes memory signature,
         uint256 takingAmount,
         uint256 makingAmount,
@@ -257,7 +257,9 @@ contract LimitSwap is
         }
 
         // Check is order is valid
-        require(checkPredicate(order), "LimitSwap: prediate returned false");
+        if (order.predicate.length > 0) {
+            require(checkPredicate(order), "LimitSwap: prediate returned false");
+        }
 
         // Compute maker and taket assets amount
         if (makingAmount >> 255 == 1) {
@@ -285,7 +287,7 @@ contract LimitSwap is
         _updateOrder(orderHash, msg.sender, remainingMakerAmount);
 
         // Maker => Taker
-        _callMakerAssetTransferFrom(order, msg.sender, takingAmount);
+        _callMakerAssetTransferFrom(order, msg.sender, makingAmount);
 
         // Taker can handle funds interactively
         if (interactive) {
@@ -299,7 +301,7 @@ contract LimitSwap is
     function _hash(Order memory order) internal view returns(bytes32) {
         return _hashTypedDataV4(
             keccak256(
-                abi.encodePacked(
+                abi.encode(
                     LIMIT_SWAP_ORDER_TYPEHASH,
                     order.makerAsset,
                     order.takerAsset,
@@ -330,7 +332,7 @@ contract LimitSwap is
         }
     }
 
-    function _callMakerAssetTransferFrom(Order memory order, address taker, uint256 takerAmount) internal {
+    function _callMakerAssetTransferFrom(Order memory order, address taker, uint256 makingAmount) internal {
         // Patch receiver or validate private order
         address takerAddress = order.makerAssetData.getArgumentTo();
         if (takerAddress == address(0)) {
@@ -340,7 +342,6 @@ contract LimitSwap is
         }
 
         // Patch amount
-        uint256 makingAmount = _callGetMakerAmount(order, takerAmount);
         order.makerAssetData.patchBytes32(4 + 32 + 32, bytes32(makingAmount));
 
         // Transfer asset from maker to taker
