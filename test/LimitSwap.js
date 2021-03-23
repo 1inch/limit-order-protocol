@@ -16,11 +16,14 @@ const Order = [
     { name: 'makerAssetData', type: 'bytes' },
     { name: 'takerAssetData', type: 'bytes' },
     { name: 'getMakerAmount', type: 'bytes' },
-    { name: 'takerAssetData', type: 'bytes' },
     { name: 'getTakerAmount', type: 'bytes' },
     { name: 'predicate', type: 'bytes' },
     { name: 'permitData', type: 'bytes' },
 ];
+
+function hexToBuffer (hex) {
+    return hex; //Buffer.from(hex.substr(hex.startsWith('0x') ? 2 : 0), 'hex');
+}
 
 contract('LimitSwap', async function ([_, wallet]) {
     const privatekey = '2bdd21761a483f71054e14f5b827213567971c676928d9a1808cbfa4b7501201';
@@ -75,12 +78,22 @@ contract('LimitSwap', async function ([_, wallet]) {
                 this.swap.address,
                 this.dai.address,
                 this.weth.address,
-                this.dai.contract.methods.transferFrom(wallet, zeroAddress, 1).encodeABI(),
-                this.weth.contract.methods.transferFrom(zeroAddress, wallet, 1).encodeABI(),
-                '0x000000000000000000000000' + this.swap.address.substr(2) + this.swap.contract.methods.getMakerAmount(1, 1, 0).encodeABI().substr(2, 68),
-                '0x000000000000000000000000' + this.swap.address.substr(2) + this.swap.contract.methods.getTakerAmount(1, 1, 0).encodeABI().substr(2, 68),
-                "0x",
-                "0x"
+                hexToBuffer(this.dai.contract.methods.transferFrom(wallet, zeroAddress, 1).encodeABI()),
+                hexToBuffer(this.weth.contract.methods.transferFrom(zeroAddress, wallet, 1).encodeABI()),
+                hexToBuffer(
+                    '0x000000000000000000000000' + this.swap.address.substr(2) +
+                    '0000000000000000000000000000000000000000000000000000000000000040' +
+                    '0000000000000000000000000000000000000000000000000000000000000084' +
+                    this.swap.contract.methods.getMakerAmount(1, 1, 0).encodeABI().substr(2, 68)
+                ),
+                hexToBuffer(
+                    '0x000000000000000000000000' + this.swap.address.substr(2) +
+                    '0000000000000000000000000000000000000000000000000000000000000040' +
+                    '0000000000000000000000000000000000000000000000000000000000000084' +
+                    this.swap.contract.methods.getTakerAmount(1, 1, 0).encodeABI().substr(2, 68)
+                ),
+                hexToBuffer("0x"),
+                hexToBuffer("0x")
             );
 
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
@@ -90,30 +103,32 @@ contract('LimitSwap', async function ([_, wallet]) {
                 {
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
-                    makerAssetData: this.dai.contract.methods.transferFrom(wallet, zeroAddress, 1).encodeABI(),
-                    takerAssetData: this.weth.contract.methods.transferFrom(zeroAddress, wallet, 1).encodeABI(),
-                    getMakerAmount:
+                    makerAssetData: hexToBuffer(this.dai.contract.methods.transferFrom(wallet, zeroAddress, 1).encodeABI()),
+                    takerAssetData: hexToBuffer(this.weth.contract.methods.transferFrom(zeroAddress, wallet, 1).encodeABI()),
+                    getMakerAmount: hexToBuffer(
                         '0x000000000000000000000000' + this.swap.address.substr(2) +
                         '0000000000000000000000000000000000000000000000000000000000000040' +
                         '0000000000000000000000000000000000000000000000000000000000000084' +
-                        this.swap.contract.methods.getMakerAmount(1, 1, 0).encodeABI().substr(2, 68),
-                    getTakerAmount:
+                        this.swap.contract.methods.getMakerAmount(1, 1, 0).encodeABI().substr(2, 68)
+                    ),
+                    getTakerAmount: hexToBuffer(
                         '0x000000000000000000000000' + this.swap.address.substr(2) +
                         '0000000000000000000000000000000000000000000000000000000000000040' +
                         '0000000000000000000000000000000000000000000000000000000000000084' +
-                        this.swap.contract.methods.getTakerAmount(1, 1, 0).encodeABI().substr(2, 68),
-                    predicate: "0x",
-                    permitData: "0x"
+                        this.swap.contract.methods.getTakerAmount(1, 1, 0).encodeABI().substr(2, 68)
+                    ),
+                    predicate: hexToBuffer("0x"),
+                    permitData: hexToBuffer("0x")
                 },
                 signature,
                 1,
-                1,
+                0,
                 false,
                 "0x"
             );
 
             // expect(await this.token.nonces(owner)).to.be.bignumber.equal('1');
             // expect(await this.token.allowance(owner, spender)).to.be.bignumber.equal(value);
-          });
+        });
     });
 });

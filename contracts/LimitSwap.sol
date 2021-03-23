@@ -94,32 +94,46 @@ contract NonceManager {
 }
 
 
-contract ERC20Proxy {
+contract ImmutableOwner {
+    address private immutable immutableOwner;
+
+    modifier onlyImmutableOwner {
+        require(msg.sender == immutableOwner, "ImmutableOwner: Access denied");
+        _;
+    }
+
+    constructor(address _immutableOwner) {
+        immutableOwner = _immutableOwner;
+    }
+}
+
+
+abstract contract ERC20Proxy is ImmutableOwner {
     using SafeERC20 for IERC20;
 
     // func_0000jYAHF(address,address,uint256,address) = transferFrom + 1 = 0x8d076e86
-    function func_0000jYAHF(address from, address to, uint256 amount, IERC20 token) external {
+    function func_0000jYAHF(address from, address to, uint256 amount, IERC20 token) external onlyImmutableOwner {
         token.safeTransferFrom(from, to, amount);
     }
 }
 
 
-contract ERC721Proxy {
+abstract contract ERC721Proxy is ImmutableOwner {
     // func_4002L9TKH(address,address,uint256,address) = transferFrom + 2 = 0x8d076e87
-    function func_4002L9TKH(address from, address to, uint256 tokenId, IERC721 token) external {
+    function func_4002L9TKH(address from, address to, uint256 tokenId, IERC721 token) external onlyImmutableOwner {
         token.transferFrom(from, to, tokenId);
     }
 
     // func_2000nVqcj(address,address,uint256,address) == transferFrom + 3 = 0x8d076e88
-    function func_2000nVqcj(address from, address to, uint256 tokenId, IERC721 token) external {
+    function func_2000nVqcj(address from, address to, uint256 tokenId, IERC721 token) external onlyImmutableOwner {
         token.safeTransferFrom(from, to, tokenId);
     }
 }
 
 
-contract ERC1155Proxy {
+abstract contract ERC1155Proxy is ImmutableOwner {
     // func_7000ksXmS(address,address,uint256,address,uint256) == transferFrom + 4 = 0x8d076e89
-    function func_7000ksXmS(address from, address to, uint256 amount, IERC1155 token, uint256 tokenId) external {
+    function func_7000ksXmS(address from, address to, uint256 amount, IERC1155 token, uint256 tokenId) external onlyImmutableOwner {
         token.safeTransferFrom(from, to, tokenId, amount, "");
     }
 }
@@ -130,6 +144,7 @@ contract LimitSwap is
     PredicateHelper,
     AmountCalculator,
     NonceManager,
+    ImmutableOwner(address(this)),
     ERC20Proxy,
     ERC721Proxy,
     ERC1155Proxy
@@ -192,6 +207,13 @@ contract LimitSwap is
         }
     }
 
+    function checkPredicate(Order memory order) public view returns(bool) {
+        (address target, bytes memory data) = abi.decode(order.predicate, (address,bytes));
+        bytes memory result = target.functionStaticCall(data);
+        require(result.length == 32, "LimitSwap: invalid predicate return");
+        return abi.decode(result, (bool));
+    }
+
     function simulateTransferFroms(IERC20[] calldata tokens, bytes[] calldata data) external {
         bytes memory reason = new bytes(tokens.length);
         for (uint i = 0; i < tokens.length; i++) {
@@ -233,6 +255,9 @@ contract LimitSwap is
                 token.functionCall(abi.encodePacked(IERC20Permit.permit.selector, permitData), "LimitSwap: permit failed");
             }
         }
+
+        // Check is order is valid
+        require(checkPredicate(order), "LimitSwap: prediate returned false");
 
         // Compute maker and taket assets amount
         if (makingAmount >> 255 == 1) {
@@ -291,8 +316,10 @@ contract LimitSwap is
 
     function _validate(Order memory order, bytes memory signature, bytes32 orderHash) internal view {
         address maker = address(order.makerAssetData.getArgumentFrom());
-        bytes4 selector = order.makerAssetData.getArgumentSelector();
-        require(selector >= IERC20.transferFrom.selector && selector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LimitSwap: Invalid makerAssetData.selector");
+        bytes4 makerSelector = order.makerAssetData.getArgumentSelector();
+        bytes4 takerSelector = order.takerAssetData.getArgumentSelector();
+        require(makerSelector >= IERC20.transferFrom.selector && makerSelector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LimitSwap: Invalid makerAssetData.selector");
+        require(takerSelector >= IERC20.transferFrom.selector && takerSelector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LimitSwap: Invalid takerAssetData.selector");
 
         // bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(orderHash);
         if (Address.isContract(maker)) {
