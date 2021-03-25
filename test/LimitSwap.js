@@ -1,4 +1,5 @@
-// const { expectRevert } = require('openzeppelin-test-helpers');
+const { BN, expectRevert } = require('@openzeppelin/test-helpers');
+const { expect } = require('chai');
 
 const ethSigUtil = require('eth-sig-util');
 const Wallet = require('ethereumjs-wallet').default;
@@ -7,7 +8,7 @@ const TokenMock = artifacts.require('TokenMock');
 const LimitSwap = artifacts.require('LimitSwap');
 
 const { EIP712Domain, domainSeparator } = require('./helpers/eip712');
-const { profileEVM } = require('./helpers/profileEVM')
+const { profileEVM } = require('./helpers/profileEVM');
 
 const Order = [
     { name: 'makerAsset', type: 'address' },
@@ -67,7 +68,7 @@ contract('LimitSwap', async function ([_, wallet]) {
     });
 
     describe('LimitSwap', async function () {
-        it('accepts owner signature', async function () {
+        it('should swap fully based on signature', async function () {
             const data = buildData(
                 this.chainId,
                 this.swap.address,
@@ -78,20 +79,25 @@ contract('LimitSwap', async function ([_, wallet]) {
                 (
                     '0x000000000000000000000000' + this.swap.address.substr(2) +
                     '0000000000000000000000000000000000000000000000000000000000000040' +
-                    '0000000000000000000000000000000000000000000000000000000000000084' +
-                    this.swap.contract.methods.getMakerAmount(1, 1, 0).encodeABI().substr(2, 68)
+                    '0000000000000000000000000000000000000000000000000000000000000044' +
+                    this.swap.contract.methods.getMakerAmount(1, 1, 0).encodeABI().substr(2, 68*2)
                 ),
                 (
                     '0x000000000000000000000000' + this.swap.address.substr(2) +
                     '0000000000000000000000000000000000000000000000000000000000000040' +
-                    '0000000000000000000000000000000000000000000000000000000000000084' +
-                    this.swap.contract.methods.getTakerAmount(1, 1, 0).encodeABI().substr(2, 68)
+                    '0000000000000000000000000000000000000000000000000000000000000044' +
+                    this.swap.contract.methods.getTakerAmount(1, 1, 0).encodeABI().substr(2, 68*2)
                 ),
                 "0x",
                 "0x"
             );
 
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            const makerDai = await this.dai.balanceOf(wallet);
+            const takerDai = await this.dai.balanceOf(_);
+            const makerWeth = await this.weth.balanceOf(wallet);
+            const takerWeth = await this.weth.balanceOf(_);
 
             const receipt = await this.swap.fillOrder(
                 {
@@ -102,14 +108,14 @@ contract('LimitSwap', async function ([_, wallet]) {
                     getMakerAmount: (
                         '0x000000000000000000000000' + this.swap.address.substr(2) +
                         '0000000000000000000000000000000000000000000000000000000000000040' +
-                        '0000000000000000000000000000000000000000000000000000000000000084' +
-                        this.swap.contract.methods.getMakerAmount(1, 1, 0).encodeABI().substr(2, 68)
+                        '0000000000000000000000000000000000000000000000000000000000000044' +
+                        this.swap.contract.methods.getMakerAmount(1, 1, 0).encodeABI().substr(2, 68*2)
                     ),
                     getTakerAmount: (
                         '0x000000000000000000000000' + this.swap.address.substr(2) +
                         '0000000000000000000000000000000000000000000000000000000000000040' +
-                        '0000000000000000000000000000000000000000000000000000000000000084' +
-                        this.swap.contract.methods.getTakerAmount(1, 1, 0).encodeABI().substr(2, 68)
+                        '0000000000000000000000000000000000000000000000000000000000000044' +
+                        this.swap.contract.methods.getTakerAmount(1, 1, 0).encodeABI().substr(2, 68*2)
                     ),
                     predicate: "0x",
                     permitData: "0x"
@@ -122,11 +128,89 @@ contract('LimitSwap', async function ([_, wallet]) {
             );
 
             expect(
-                await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD'])
-            ).to.be.deep.equal([2, 1, 7, 7]);
+                await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE'])
+            ).to.be.deep.equal([2, 1, 7, 7, 0]);
 
-            // expect(await this.token.nonces(owner)).to.be.bignumber.equal('1');
-            // expect(await this.token.allowance(owner, spender)).to.be.bignumber.equal(value);
+            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+        });
+
+        it('should swap half based on signature', async function () {
+            const data = buildData(
+                this.chainId,
+                this.swap.address,
+                this.dai.address,
+                this.weth.address,
+                this.dai.contract.methods.transferFrom(wallet, zeroAddress, 2).encodeABI(),
+                this.weth.contract.methods.transferFrom(zeroAddress, wallet, 2).encodeABI(),
+                (
+                    '0x000000000000000000000000' + this.swap.address.substr(2) +
+                    '0000000000000000000000000000000000000000000000000000000000000040' +
+                    '0000000000000000000000000000000000000000000000000000000000000044' +
+                    this.swap.contract.methods.getMakerAmount(2, 2, 0).encodeABI().substr(2, 68*2)
+                ),
+                (
+                    '0x000000000000000000000000' + this.swap.address.substr(2) +
+                    '0000000000000000000000000000000000000000000000000000000000000040' +
+                    '0000000000000000000000000000000000000000000000000000000000000044' +
+                    this.swap.contract.methods.getTakerAmount(2, 2, 0).encodeABI().substr(2, 68*2)
+                ),
+                "0x",
+                "0x"
+            );
+
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            const makerDai = await this.dai.balanceOf(wallet);
+            const takerDai = await this.dai.balanceOf(_);
+            const makerWeth = await this.weth.balanceOf(wallet);
+            const takerWeth = await this.weth.balanceOf(_);
+
+            console.log((
+                '0x000000000000000000000000' + this.swap.address.substr(2) +
+                '0000000000000000000000000000000000000000000000000000000000000040' +
+                '0000000000000000000000000000000000000000000000000000000000000044' +
+                this.swap.contract.methods.getMakerAmount(2, 2, 0).encodeABI().substr(2, 68*2)
+            ));
+
+            const receipt = await this.swap.fillOrder(
+                {
+                    makerAsset: this.dai.address,
+                    takerAsset: this.weth.address,
+                    makerAssetData: this.dai.contract.methods.transferFrom(wallet, zeroAddress, 2).encodeABI(),
+                    takerAssetData: this.weth.contract.methods.transferFrom(zeroAddress, wallet, 2).encodeABI(),
+                    getMakerAmount: (
+                        '0x000000000000000000000000' + this.swap.address.substr(2) +
+                        '0000000000000000000000000000000000000000000000000000000000000040' +
+                        '0000000000000000000000000000000000000000000000000000000000000044' +
+                        this.swap.contract.methods.getMakerAmount(2, 2, 0).encodeABI().substr(2, 68*2)
+                    ),
+                    getTakerAmount: (
+                        '0x000000000000000000000000' + this.swap.address.substr(2) +
+                        '0000000000000000000000000000000000000000000000000000000000000040' +
+                        '0000000000000000000000000000000000000000000000000000000000000044' +
+                        this.swap.contract.methods.getTakerAmount(2, 2, 0).encodeABI().substr(2, 68*2)
+                    ),
+                    predicate: "0x",
+                    permitData: "0x"
+                },
+                signature,
+                1,
+                0,
+                false,
+                "0x"
+            );
+
+            expect(
+                await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE'])
+            ).to.be.deep.equal([2, 2, 7, 7, 0]);
+
+            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
         });
     });
 });

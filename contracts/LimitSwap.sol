@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -13,6 +12,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 import "./utils/BytesParser.sol";
+import "./utils/UnsafeAddress.sol";
 import "./EIP1271.sol";
 import "./SelectorFromToAmountParser.sol";
 
@@ -28,11 +28,11 @@ interface InteractiveTaker {
 
 
 contract PredicateHelper {
-    using Address for address;
+    using UnsafeAddress for address;
 
     function or(address[] calldata targets, bytes[] calldata data) external view returns(bool) {
         for (uint i = 0; i < targets.length; i++) {
-            bytes memory result = targets[i].functionStaticCall(data[i]);
+            bytes memory result = targets[i].unsafeFunctionStaticCall(data[i], "PredicateHelper: 'or' subcall failed");
             require(result.length != 32, "PredicateHelper: invalid call result");
             if (abi.decode(result, (bool))) {
                 return true;
@@ -43,7 +43,7 @@ contract PredicateHelper {
 
     function and(address[] calldata targets, bytes[] calldata data) external view returns(bool) {
         for (uint i = 0; i < targets.length; i++) {
-            bytes memory result = targets[i].functionStaticCall(data[i]);
+            bytes memory result = targets[i].unsafeFunctionStaticCall(data[i], "PredicateHelper: 'and' subcall failed");
             require(result.length != 32, "PredicateHelper: invalid call result");
             if (!abi.decode(result, (bool))) {
                 return false;
@@ -149,10 +149,10 @@ contract LimitSwap is
     ERC721Proxy,
     ERC1155Proxy
 {
-    using Address for address;
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using BytesParser for bytes;
+    using UnsafeAddress for address;
     using SelectorFromToAmountParser for bytes;
 
     // Partial Fill:
@@ -209,7 +209,7 @@ contract LimitSwap is
 
     function checkPredicate(Order memory order) public view returns(bool) {
         (address target, bytes memory data) = abi.decode(order.predicate, (address,bytes));
-        bytes memory result = target.functionStaticCall(data);
+        bytes memory result = target.unsafeFunctionStaticCall(data, "LimitSwap: predicate call failed");
         require(result.length == 32, "LimitSwap: invalid predicate return");
         return abi.decode(result, (bool));
     }
@@ -252,7 +252,7 @@ contract LimitSwap is
             remainingMakerAmount = order.makerAssetData.getArgumentAmount();
             if (order.permitData.length > 0) {
                 (address token, bytes memory permitData) = abi.decode(order.permitData, (address, bytes));
-                token.functionCall(abi.encodePacked(IERC20Permit.permit.selector, permitData), "LimitSwap: permit failed");
+                token.unsafeFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permitData), "LimitSwap: permit failed");
             }
         }
 
@@ -323,12 +323,8 @@ contract LimitSwap is
         require(makerSelector >= IERC20.transferFrom.selector && makerSelector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LimitSwap: Invalid makerAssetData.selector");
         require(takerSelector >= IERC20.transferFrom.selector && takerSelector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LimitSwap: Invalid takerAssetData.selector");
 
-        // bytes32 ethSignedMessageHash = ECDSA.toEthSignedMessageHash(orderHash);
-        if (Address.isContract(maker)) {
-            require(IEIP1271(maker).isValidSignature(orderHash, signature) == EIP1271Constants.MAGIC_VALUE, "LimitSwap: Invalid SC signature");
-        }
-        else {
-            require(ECDSA.recover(orderHash, signature) == maker, "LimitSwap: Invalid EOA signature");
+        if (signature.length != 65 || ECDSA.recover(orderHash, signature) != maker) {
+            require(IEIP1271(maker).isValidSignature(orderHash, signature) == EIP1271Constants.MAGIC_VALUE, "LimitSwap: Invalid signature");
         }
     }
 
@@ -345,7 +341,7 @@ contract LimitSwap is
         order.makerAssetData.patchBytes32(4 + 32 + 32, bytes32(makingAmount));
 
         // Transfer asset from maker to taker
-        bytes memory result = address(order.makerAsset).functionCall(order.makerAssetData, "LimitSwap: makerAsset.call() failed");
+        bytes memory result = address(order.makerAsset).unsafeFunctionCall(order.makerAssetData, "LimitSwap: makerAsset.call() failed");
         if (result.length > 0) {
             require(abi.decode(result, (bool)), "LimitSwap: makerAsset.call() wrong result");
         }
@@ -360,11 +356,11 @@ contract LimitSwap is
 
         // Taker asset permit
         if (permitTakerAsset.length > 0) {
-            order.takerAsset.functionCall(abi.encodePacked(IERC20Permit.permit.selector, permitTakerAsset), "LimitSwap: permit failed");
+            order.takerAsset.unsafeFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permitTakerAsset), "LimitSwap: permit failed");
         }
 
         // Transfer asset from taker to maker
-        bytes memory result = address(order.takerAsset).functionCall(order.takerAssetData, "LimitSwap: takerAsset.call() failed");
+        bytes memory result = address(order.takerAsset).unsafeFunctionCall(order.takerAssetData, "LimitSwap: takerAsset.call() failed");
         if (result.length > 0) {
             require(abi.decode(result, (bool)), "LimitSwap: takerAsset.call() wrong result");
         }
@@ -372,13 +368,13 @@ contract LimitSwap is
 
     function _callGetMakerAmount(Order memory order, uint256 takerAmount) internal view returns(uint256 makerAmount) {
         (address target, bytes memory data) = abi.decode(order.getMakerAmount, (address, bytes));
-        bytes memory result = target.functionStaticCall(abi.encodePacked(data, takerAmount), "LimitSwap: getMakerAmount call failed");
+        bytes memory result = target.unsafeFunctionStaticCall(abi.encodePacked(data, takerAmount), "LimitSwap: getMakerAmount call failed");
         return abi.decode(result, (uint256));
     }
 
     function _callGetTakerAmount(Order memory order, uint256 makerAmount) internal view returns(uint256 takerAmount) {
         (address target, bytes memory data) = abi.decode(order.getTakerAmount, (address, bytes));
-        bytes memory result = target.functionStaticCall(abi.encodePacked(data, makerAmount), "LimitSwap: getTakerAmount call failed");
+        bytes memory result = target.unsafeFunctionStaticCall(abi.encodePacked(data, makerAmount), "LimitSwap: getTakerAmount call failed");
         return abi.decode(result, (uint256));
     }
 
