@@ -142,6 +142,41 @@ contract('LimitSwap', async function ([_, wallet]) {
             expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
+        it('should floor maker amount', async function () {
+            // Order: 2 DAI => 10 WETH
+            // Swap:  9 WETH <= 1 DAI
+
+            const order = buildOrder(this.swap, this.dai, this.weth, 2, 10, "0x", "0x");
+            const data = buildData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            const makerDai = await this.dai.balanceOf(wallet);
+            const takerDai = await this.dai.balanceOf(_);
+            const makerWeth = await this.weth.balanceOf(wallet);
+            const takerWeth = await this.weth.balanceOf(_);
+
+            await this.swap.fillOrder(order, signature, 0, 9, false, "0x");
+
+            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(9));
+            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(9));
+        });
+
+        it('should fail on floor maker amount = 0', async function () {
+            // Order: 2 DAI => 10 WETH
+            // Swap:  4 WETH <= 0 DAI
+
+            const order = buildOrder(this.swap, this.dai, this.weth, 2, 10, "0x", "0x");
+            const data = buildData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            await expectRevert(
+                this.swap.fillOrder(order, signature, 0, 4, false, "0x"),
+                "LimitSwap: can't swap 0 amount"
+            );
+        });
+
         it('should ceil taker amount', async function () {
             // Order: 10 DAI => 2 WETH
             // Swap:  4 DAI => 1 WETH
