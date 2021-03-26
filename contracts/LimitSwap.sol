@@ -66,7 +66,7 @@ contract AmountCalculator {
 
     // Ceil taker amount
     function getTakerAmount(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapMakerAmount) external pure returns(uint256) {
-        return (swapMakerAmount * orderMakerAmount + orderTakerAmount - 1) / orderTakerAmount;
+        return (swapMakerAmount * orderTakerAmount + orderMakerAmount - 1) / orderMakerAmount;
     }
 
     function getMakerAmountNoPartialFill(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapTakerAmount) external pure returns(uint256) {
@@ -239,11 +239,11 @@ contract LimitSwap is
     function fillOrder(
         Order memory order,
         bytes memory signature,
-        uint256 takingAmount,
         uint256 makingAmount,
+        uint256 takingAmount,
         bool interactive,
         bytes memory permitTakerAsset
-    ) external {
+    ) external returns(uint256, uint256) {
         bytes32 orderHash = _hash(order);
         (bool orderExists, uint256 remainingMakerAmount) = _remaining[orderHash].trySub(1);
         if (!orderExists) {
@@ -258,7 +258,7 @@ contract LimitSwap is
 
         // Check is order is valid
         if (order.predicate.length > 0) {
-            require(checkPredicate(order), "LimitSwap: prediate returned false");
+            require(checkPredicate(order), "LimitSwap: predicate returned false");
         }
 
         // Compute maker and taket assets amount
@@ -279,7 +279,7 @@ contract LimitSwap is
             revert("LimitSwap: takingAmount or makingAmount should be 0");
         }
 
-        require(makingAmount > 0 || takingAmount > 0, "LimitSwap: can't swap 0 amount");
+        require(makingAmount > 0 && takingAmount > 0, "LimitSwap: can't swap 0 amount");
 
         // Update remaining amount in storage
         remainingMakerAmount = remainingMakerAmount.sub(makingAmount, "LimitSwap: taking > remaining");
@@ -296,6 +296,8 @@ contract LimitSwap is
 
         // Taker => Maker
         _callTakerAssetTransferFrom(order, msg.sender, takingAmount, permitTakerAsset);
+
+        return (makingAmount, takingAmount);
     }
 
     function _hash(Order memory order) internal view returns(bytes32) {
@@ -317,12 +319,14 @@ contract LimitSwap is
     }
 
     function _validate(Order memory order, bytes memory signature, bytes32 orderHash) internal view {
-        address maker = address(order.makerAssetData.getArgumentFrom());
+        require(order.makerAssetData.length >= 68, "LimitSwap: Invalid makerAssetData.length");
+        require(order.takerAssetData.length >= 68, "LimitSwap: Invalid takerAssetData.length");
         bytes4 makerSelector = order.makerAssetData.getArgumentSelector();
         bytes4 takerSelector = order.takerAssetData.getArgumentSelector();
         require(makerSelector >= IERC20.transferFrom.selector && makerSelector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LimitSwap: Invalid makerAssetData.selector");
         require(takerSelector >= IERC20.transferFrom.selector && takerSelector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LimitSwap: Invalid takerAssetData.selector");
 
+        address maker = address(order.makerAssetData.getArgumentFrom());
         if (signature.length != 65 || ECDSA.recover(orderHash, signature) != maker) {
             require(IEIP1271(maker).isValidSignature(orderHash, signature) == EIP1271Constants.MAGIC_VALUE, "LimitSwap: Invalid signature");
         }
