@@ -55,6 +55,16 @@ contract PredicateHelper {
     function timestampBelow(uint256 time) external view returns(bool) {
         return block.timestamp < time;
     }
+
+    function lt(uint256 value, address target, bytes memory data) external view returns(bool) {
+        bytes memory result = target.unsafeFunctionStaticCall(data, "PredicateHelper: less");
+        return abi.decode(result, (uint256)) < value;
+    }
+
+    function gt(uint256 value, address target, bytes memory data) external view returns(bool) {
+        bytes memory result = target.unsafeFunctionStaticCall(data, "PredicateHelper: greater");
+        return abi.decode(result, (uint256)) > value;
+    }
 }
 
 
