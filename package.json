@@ -14,7 +14,7 @@
     "@openzeppelin/test-helpers": "^0.5.10",
     "chai": "^4.3.4",
     "coveralls": "^3.1.0",
-    "eslint": "^7.22.0",
+    "eslint": "^7.23.0",
     "eslint-config-standard": "^16.0.2",
     "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-node": "^11.1.0",
@@ -25,10 +25,10 @@
     "ethereumjs-util": "^7.0.9",
     "ethereumjs-wallet": "^1.0.1",
     "ganache-cli": "^6.12.2",
-    "solc": "^0.8.2",
+    "solc": "^0.8.3",
     "solidity-coverage": "^0.7.16",
     "solium": "^1.2.5",
-    "truffle": "^5.2.5",
+    "truffle": "^5.2.6",
     "truffle-flattener": "^1.5.0"
   },
   "scripts": {
