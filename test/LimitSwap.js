@@ -29,12 +29,14 @@ contract('LimitSwap', async function ([_, wallet]) {
     const name = '1inch Limit Order Protocol';
     const version = '1';
 
-    const buildData = (chainId, verifyingContract, order) => ({
-        primaryType: 'Order',
-        types: { EIP712Domain, Order },
-        domain: { name, version, chainId, verifyingContract },
-        message: order,
-    });
+    function buildData (chainId, verifyingContract, order) {
+        return {
+            primaryType: 'Order',
+            types: { EIP712Domain, Order },
+            domain: { name, version, chainId, verifyingContract },
+            message: order,
+        }
+    }
 
     function buildOrder(exchange, makerAsset, takerAsset, makerAmount, takerAmount, predicate, permit) {
         return {
@@ -42,18 +44,8 @@ contract('LimitSwap', async function ([_, wallet]) {
             takerAsset: takerAsset.address,
             makerAssetData: makerAsset.contract.methods.transferFrom(wallet, zeroAddress, makerAmount).encodeABI(),
             takerAssetData: takerAsset.contract.methods.transferFrom(zeroAddress, wallet, takerAmount).encodeABI(),
-            getMakerAmount: (
-                '0x000000000000000000000000' + exchange.address.substr(2) +
-                '0000000000000000000000000000000000000000000000000000000000000040' +
-                '0000000000000000000000000000000000000000000000000000000000000044' +
-                exchange.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(2, 68*2)
-            ),
-            getTakerAmount: (
-                '0x000000000000000000000000' + exchange.address.substr(2) +
-                '0000000000000000000000000000000000000000000000000000000000000040' +
-                '0000000000000000000000000000000000000000000000000000000000000044' +
-                exchange.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(2, 68*2)
-            ),
+            getMakerAmount: exchange.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68*2),
+            getTakerAmount: exchange.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68*2),
             predicate: predicate,
             permitData: permit
         };

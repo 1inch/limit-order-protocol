@@ -56,6 +56,11 @@ contract PredicateHelper {
         return block.timestamp < time;
     }
 
+    function arbitraryStaticCall(address target, bytes memory data) external view returns(uint256) {
+        (bytes memory result) = target.unsafeFunctionStaticCall(data, "PredicateHelper: arbitraryStaticCall");
+        return abi.decode(result, (uint256));
+    }
+
     function lt(uint256 value, address target, bytes memory data) external view returns(bool) {
         bytes memory result = target.unsafeFunctionStaticCall(data, "PredicateHelper: less");
         return abi.decode(result, (uint256)) < value;
@@ -92,14 +97,18 @@ contract AmountCalculator {
 contract NonceManager {
     using Counters for Counters.Counter;
 
-    mapping(address => Counters.Counter) public nonces;
+    mapping(address => Counters.Counter) private _nonces;
+
+    function nonces(address makerAddress) external view returns(uint256) {
+        return _nonces[makerAddress].current();
+    }
 
     function advanceNonce() external {
-        nonces[msg.sender].increment();
+        _nonces[msg.sender].increment();
     }
 
     function nonceEquals(address makerAddress, uint256 makerNonce) external view returns(bool) {
-        return nonces[makerAddress].current() == makerNonce;
+        return _nonces[makerAddress].current() == makerNonce;
     }
 }
 
@@ -185,9 +194,9 @@ contract LimitSwap is
         address takerAsset;
         bytes makerAssetData; // (transferFrom.selector, signer, ______, makerAmount, ...)
         bytes takerAssetData; // (transferFrom.selector, sender, signer, takerAmount, ...)
-        bytes getMakerAmount; // (address, abi.encodePacked(bytes, swapTakerAmount)) => (swapMakerAmount)
-        bytes getTakerAmount; // (address, abi.encodePacked(bytes, swapMakerAmount)) => (swapTakerAmount)
-        bytes predicate;      // (adress, bytes) => (bool)
+        bytes getMakerAmount; // this.staticcall(abi.encodePacked(bytes, swapTakerAmount)) => (swapMakerAmount)
+        bytes getTakerAmount; // this.staticcall(abi.encodePacked(bytes, swapMakerAmount)) => (swapTakerAmount)
+        bytes predicate;      // this.staticcall(bytes) => (bool)
         bytes permitData;     // On first fill: permitData.1.call(abi.encodePacked(permit.selector, permitData.2))
     }
 
@@ -218,8 +227,7 @@ contract LimitSwap is
     }
 
     function checkPredicate(Order memory order) public view returns(bool) {
-        (address target, bytes memory data) = abi.decode(order.predicate, (address,bytes));
-        bytes memory result = target.unsafeFunctionStaticCall(data, "LimitSwap: predicate call failed");
+        bytes memory result = address(this).unsafeFunctionStaticCall(order.predicate, "LimitSwap: predicate call failed");
         require(result.length == 32, "LimitSwap: invalid predicate return");
         return abi.decode(result, (bool));
     }
@@ -370,7 +378,8 @@ contract LimitSwap is
 
         // Taker asset permit
         if (permitTakerAsset.length > 0) {
-            order.takerAsset.unsafeFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permitTakerAsset), "LimitSwap: permit failed");
+            (address token, bytes memory permitData) = abi.decode(permitTakerAsset, (address,bytes));
+            token.unsafeFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permitData), "LimitSwap: permit failed");
         }
 
         // Transfer asset from taker to maker
@@ -381,14 +390,12 @@ contract LimitSwap is
     }
 
     function _callGetMakerAmount(Order memory order, uint256 takerAmount) internal view returns(uint256 makerAmount) {
-        (address target, bytes memory data) = abi.decode(order.getMakerAmount, (address, bytes));
-        bytes memory result = target.unsafeFunctionStaticCall(abi.encodePacked(data, takerAmount), "LimitSwap: getMakerAmount call failed");
+        bytes memory result = address(this).unsafeFunctionStaticCall(abi.encodePacked(order.getMakerAmount, takerAmount), "LimitSwap: getMakerAmount call failed");
         return abi.decode(result, (uint256));
     }
 
     function _callGetTakerAmount(Order memory order, uint256 makerAmount) internal view returns(uint256 takerAmount) {
-        (address target, bytes memory data) = abi.decode(order.getTakerAmount, (address, bytes));
-        bytes memory result = target.unsafeFunctionStaticCall(abi.encodePacked(data, makerAmount), "LimitSwap: getTakerAmount call failed");
+        bytes memory result = address(this).unsafeFunctionStaticCall(abi.encodePacked(order.getTakerAmount, makerAmount), "LimitSwap: getTakerAmount call failed");
         return abi.decode(result, (uint256));
     }
 
