@@ -10,7 +10,10 @@ library SelectorFromToAmountParser {
 
     function getArgumentSelector(bytes memory data) internal pure returns(bytes4) {
         return bytes4(
-            (uint32(uint8(data[0])) << 24) | (uint32(uint8(data[1])) << 16) | (uint32(uint8(data[2])) << 8) | uint32(uint8(data[3]))
+            (uint32(uint8(data[0])) << 24) |
+            (uint32(uint8(data[1])) << 16) |
+            (uint32(uint8(data[2])) << 8) |
+            uint32(uint8(data[3]))
         );
     }
 

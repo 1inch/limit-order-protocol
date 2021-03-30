@@ -52,8 +52,19 @@ contract PredicateHelper {
         return true;
     }
 
-    function timestampBelow(uint256 time) external view returns(bool) {
-        return block.timestamp < time;
+    function eq(uint256 value, address target, bytes memory data) external view returns(bool) {
+        bytes memory result = target.unsafeFunctionStaticCall(data, "PredicateHelper: eq");
+        return abi.decode(result, (uint256)) == value;
+    }
+
+    function lt(uint256 value, address target, bytes memory data) external view returns(bool) {
+        bytes memory result = target.unsafeFunctionStaticCall(data, "PredicateHelper: lt");
+        return abi.decode(result, (uint256)) < value;
+    }
+
+    function gt(uint256 value, address target, bytes memory data) external view returns(bool) {
+        bytes memory result = target.unsafeFunctionStaticCall(data, "PredicateHelper: gt");
+        return abi.decode(result, (uint256)) > value;
     }
 
     function arbitraryStaticCall(address target, bytes memory data) external view returns(uint256) {
@@ -61,14 +72,8 @@ contract PredicateHelper {
         return abi.decode(result, (uint256));
     }
 
-    function lt(uint256 value, address target, bytes memory data) external view returns(bool) {
-        bytes memory result = target.unsafeFunctionStaticCall(data, "PredicateHelper: less");
-        return abi.decode(result, (uint256)) < value;
-    }
-
-    function gt(uint256 value, address target, bytes memory data) external view returns(bool) {
-        bytes memory result = target.unsafeFunctionStaticCall(data, "PredicateHelper: greater");
-        return abi.decode(result, (uint256)) > value;
+    function timestampBelow(uint256 time) external view returns(bool) {
+        return block.timestamp < time;
     }
 }
 

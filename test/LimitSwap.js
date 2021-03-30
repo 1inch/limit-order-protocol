@@ -8,7 +8,7 @@ const TokenMock = artifacts.require('TokenMock');
 const LimitSwap = artifacts.require('LimitSwap');
 
 const { EIP712Domain, domainSeparator } = require('./helpers/eip712');
-const { profileEVM } = require('./helpers/profileEVM');
+const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
 
 const Order = [
     { name: 'makerAsset', type: 'address' },
@@ -84,6 +84,11 @@ contract('LimitSwap', async function ([_, wallet]) {
     });
 
     describe('LimitSwap', async function () {
+        it('transferFrom', async function () {
+            await this.dai.approve(_, '2', { from: wallet });
+            await this.dai.transferFrom(wallet, _, '1', { from: _ });
+        });
+
         it('should swap fully based on signature', async function () {
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
@@ -127,6 +132,8 @@ contract('LimitSwap', async function ([_, wallet]) {
             expect(
                 await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE'])
             ).to.be.deep.equal([2, 2, 7, 7, 0]);
+
+            // await gasspectEVM(receipt.tx);
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
             expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
