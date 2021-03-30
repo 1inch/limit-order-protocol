@@ -11,6 +11,7 @@ const { EIP712Domain, domainSeparator } = require('./helpers/eip712');
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
 
 const Order = [
+    { name: 'salt', type: 'uint256' },
     { name: 'makerAsset', type: 'address' },
     { name: 'takerAsset', type: 'address' },
     { name: 'makerAssetData', type: 'bytes' },
@@ -39,7 +40,12 @@ contract('LimitSwap', async function ([_, wallet]) {
     }
 
     function buildOrder(exchange, makerAsset, takerAsset, makerAmount, takerAmount, predicate, permit) {
+        return buildOrderWithSalt(exchange, '1', makerAsset, takerAsset, makerAmount, takerAmount, predicate, permit);
+    }
+
+    function buildOrderWithSalt(exchange, salt, makerAsset, takerAsset, makerAmount, takerAmount, predicate, permit) {
         return {
+            salt: salt,
             makerAsset: makerAsset.address,
             takerAsset: takerAsset.address,
             makerAssetData: makerAsset.contract.methods.transferFrom(wallet, zeroAddress, makerAmount).encodeABI(),
@@ -112,6 +118,34 @@ contract('LimitSwap', async function ([_, wallet]) {
             expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
             expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
             expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+        });
+
+        it('should swap fully based on MM signature', async function () {
+            // Order: 1 DAI => 1 WETH
+            // Swap:  1 DAI => 1 WETH
+
+            for (let saltSuffix of ['000000000000000000000001', '000000000000000000000002']) {
+                const salt = wallet + saltSuffix;
+                const order = buildOrderWithSalt(this.swap, salt, this.dai, this.weth, 1, 1, "0x", "0x");
+                const data = buildData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                const makerDai = await this.dai.balanceOf(wallet);
+                const takerDai = await this.dai.balanceOf(_);
+                const makerWeth = await this.weth.balanceOf(wallet);
+                const takerWeth = await this.weth.balanceOf(_);
+
+                const receipt = await this.swap.fillOrder(order, signature, 1, 0, false, "0x");
+
+                expect(
+                    await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE'])
+                ).to.be.deep.equal([2, 1, 7, 7, 0]);
+
+                expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+                expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+                expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+                expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+            }
         });
 
         it('should swap half based on signature', async function () {

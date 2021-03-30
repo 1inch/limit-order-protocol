@@ -195,6 +195,7 @@ contract LimitSwap is
     );
 
     struct Order {
+        uint256 salt;
         address makerAsset;
         address takerAsset;
         bytes makerAssetData; // (transferFrom.selector, signer, ______, makerAmount, ...)
@@ -206,10 +207,11 @@ contract LimitSwap is
     }
 
     bytes32 constant public LIMIT_SWAP_ORDER_TYPEHASH = keccak256(
-        "Order(address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData,bytes getMakerAmount,bytes getTakerAmount,bytes predicate,bytes permitData)"
+        "Order(uint256 salt,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData,bytes getMakerAmount,bytes getTakerAmount,bytes predicate,bytes permitData)"
     );
 
     mapping(bytes32 => uint256) private _remaining;
+    mapping(address => mapping(uint256 => uint256)) private _invalidator;
 
     // solhint-disable-next-line func-name-mixedcase
     function DOMAIN_SEPARATOR() external view returns(bytes32) {
@@ -268,14 +270,31 @@ contract LimitSwap is
         bytes memory permitTakerAsset
     ) external returns(uint256, uint256) {
         bytes32 orderHash = _hash(order);
-        (bool orderExists, uint256 remainingMakerAmount) = _remaining[orderHash].trySub(1);
-        if (!orderExists) {
-            // First fill: validate order and permit maker asset
-            _validate(order, signature, orderHash);
-            remainingMakerAmount = order.makerAssetData.getArgumentAmount();
-            if (order.permitData.length > 0) {
-                (address token, bytes memory permitData) = abi.decode(order.permitData, (address, bytes));
-                token.unsafeFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permitData), "LimitSwap: permit failed");
+        address maker = order.makerAssetData.getArgumentFrom();
+        uint256 invalidator = 0;
+        uint256 remainingMakerAmount;
+
+        // Stack too deep
+        {
+            bool orderExists = false;
+            if (address(uint160(order.salt >> 96)) == maker) {
+                invalidator = _invalidator[maker][uint48(order.salt) / 256];
+                uint256 expiration = uint96(order.salt) >> 48;
+                require(expiration == 0 || block.timestamp <= expiration, "LimitSwap: order expired");
+                require(invalidator & (1 << (order.salt % 256)) == 0, "LimitSwap: already filled");
+            }
+            else {
+                (orderExists, remainingMakerAmount) = _remaining[orderHash].trySub(1);
+            }
+
+            if (!orderExists) {
+                // First fill: validate order and permit maker asset
+                _validate(order, signature, orderHash);
+                remainingMakerAmount = order.makerAssetData.getArgumentAmount();
+                if (order.permitData.length > 0) {
+                    (address token, bytes memory permitData) = abi.decode(order.permitData, (address, bytes));
+                    token.unsafeFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permitData), "LimitSwap: permit failed");
+                }
             }
         }
 
@@ -305,9 +324,15 @@ contract LimitSwap is
         require(makingAmount > 0 && takingAmount > 0, "LimitSwap: can't swap 0 amount");
 
         // Update remaining amount in storage
-        remainingMakerAmount = remainingMakerAmount.sub(makingAmount, "LimitSwap: taking > remaining");
-        _remaining[orderHash] = remainingMakerAmount + 1;
-        _updateOrder(orderHash, msg.sender, remainingMakerAmount);
+        if (address(uint160(order.salt >> 96)) == maker) {
+            require(makingAmount <= remainingMakerAmount, "LimitSwap: not fit in order");
+            _invalidator[maker][uint48(order.salt) / 256] = invalidator | (1 << (order.salt % 256));
+        }
+        else {
+            remainingMakerAmount = remainingMakerAmount.sub(makingAmount, "LimitSwap: taking > remaining");
+            _remaining[orderHash] = remainingMakerAmount + 1;
+            _updateOrder(orderHash, msg.sender, remainingMakerAmount);
+        }
 
         // Maker => Taker
         _callMakerAssetTransferFrom(order, msg.sender, makingAmount);
@@ -328,6 +353,7 @@ contract LimitSwap is
             keccak256(
                 abi.encode(
                     LIMIT_SWAP_ORDER_TYPEHASH,
+                    order.salt,
                     order.makerAsset,
                     order.takerAsset,
                     keccak256(order.makerAssetData),
