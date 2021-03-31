@@ -259,7 +259,7 @@ contract LimitSwap is
             if (success && result.length > 0) {
                 success = abi.decode(result, (bool));
             }
-            reason[i] = bytes(success ? "1" : "0")[0];
+            reason[i] = success ? bytes1("1") : bytes1("0");
         }
 
         // Always revert and provide per call results
