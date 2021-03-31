@@ -189,8 +189,8 @@ contract LimitSwap is
     //   predicate := this.nonceEquals(makerAddress, makerNonce)
 
     event OrderFilled(
-        bytes32 indexed orderHash,
-        address indexed makerAddress,
+        address indexed maker,
+        bytes32 orderHash,
         uint256 remaining
     );
 
@@ -431,6 +431,6 @@ contract LimitSwap is
     }
 
     function _updateOrder(bytes32 orderHash, address maker, uint256 remainingAmount) internal {
-        emit OrderFilled(orderHash, maker, remainingAmount);
+        emit OrderFilled(maker, orderHash, remainingAmount);
     }
 }

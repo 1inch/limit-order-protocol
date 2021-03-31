@@ -141,6 +141,8 @@ contract('LimitSwap', async function ([_, wallet]) {
                     await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE'])
                 ).to.be.deep.equal([2, 1, 7, 7, 0]);
 
+                // await gasspectEVM(receipt.tx);
+
                 expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
                 expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
                 expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));

@@ -69,18 +69,19 @@ async function gasspectEVM (txHash) {
         }
     }
 
+    console.log(ops.filter(op => op.gasCost > 300).map(op => op.trace_address.join('-') + '-' + op.op + ' = ' + op.gasCost));
+
     // await fs.writeFile("./trace-3.json", JSON.stringify(ops));
 
-    const res = ops.reduce((dict, op) => {
-        const key = op.trace_address.join('-') + '-' + op.op;
-        dict[key] = (dict[key] || 0) + op.gasCost;
-        return dict;
-    }, {});
+    // const res = ops.reduce((dict, op) => {
+    //     const key = op.trace_address.join('-') + '-' + op.op;
+    //     dict[key] = (dict[key] || 0) + op.gasCost;
+    //     return dict;
+    // }, {});
 
-    const entries = Object.keys(res).map(k => [k, res[k]]);
-    // entries.sort((a,b) => b[1] - a[1]);
-
-    console.log(ops.filter(op => op.gasCost > 500).map(op => op.trace_address.join('-') + '-' + op.op + ' = ' + op.gasCost));
+    // const entries = Object.keys(res).map(k => [k, res[k]]);
+    // entries.sort((a,b) => b[1].gasCost - a[1].gasCost);
+    // console.log(entries.map(([k, op]) => k + ' = ' + op.gasCost));
 }
 
 module.exports = {
