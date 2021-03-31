@@ -68,5 +68,5 @@ if [ "$SOLIDITY_COVERAGE" = true ]; then
         cat coverage/lcov.info | coveralls
     fi
 else
-    truffle test --stacktrace "$@"
+    truffle test --stacktrace-extra "$@"
 fi

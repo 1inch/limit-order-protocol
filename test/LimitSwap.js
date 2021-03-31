@@ -10,12 +10,16 @@ const LimitSwap = artifacts.require('LimitSwap');
 const { EIP712Domain, domainSeparator } = require('./helpers/eip712');
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
 
-const Order = [
+const OrderMM = [
     { name: 'salt', type: 'uint256' },
     { name: 'makerAsset', type: 'address' },
     { name: 'takerAsset', type: 'address' },
     { name: 'makerAssetData', type: 'bytes' },
     { name: 'takerAssetData', type: 'bytes' },
+];
+
+const Order = [
+    ...OrderMM,
     { name: 'getMakerAmount', type: 'bytes' },
     { name: 'getTakerAmount', type: 'bytes' },
     { name: 'predicate', type: 'bytes' },
@@ -30,12 +34,21 @@ contract('LimitSwap', async function ([_, wallet]) {
     const name = '1inch Limit Order Protocol';
     const version = '1';
 
-    function buildData (chainId, verifyingContract, order) {
+    function buildOrderData (chainId, verifyingContract, order) {
         return {
             primaryType: 'Order',
             types: { EIP712Domain, Order },
             domain: { name, version, chainId, verifyingContract },
             message: order,
+        }
+    }
+
+    function buildOrderMMData (chainId, verifyingContract, orderMM) {
+        return {
+            primaryType: 'OrderMM',
+            types: { EIP712Domain, OrderMM },
+            domain: { name, version, chainId, verifyingContract },
+            message: orderMM,
         }
     }
 
@@ -45,15 +58,21 @@ contract('LimitSwap', async function ([_, wallet]) {
 
     function buildOrderWithSalt(exchange, salt, makerAsset, takerAsset, makerAmount, takerAmount, predicate, permit) {
         return {
+            ...buildOrderMM(salt, makerAsset, takerAsset, makerAmount, takerAmount),
+            getMakerAmount: exchange.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68*2),
+            getTakerAmount: exchange.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68*2),
+            predicate: predicate,
+            permitData: permit,
+        };
+    }
+
+    function buildOrderMM(salt, makerAsset, takerAsset, makerAmount, takerAmount) {
+        return {
             salt: salt,
             makerAsset: makerAsset.address,
             takerAsset: takerAsset.address,
             makerAssetData: makerAsset.contract.methods.transferFrom(wallet, zeroAddress, makerAmount).encodeABI(),
             takerAssetData: takerAsset.contract.methods.transferFrom(zeroAddress, wallet, takerAmount).encodeABI(),
-            getMakerAmount: exchange.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68*2),
-            getTakerAmount: exchange.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68*2),
-            predicate: predicate,
-            permitData: permit
         };
     }
 
@@ -100,7 +119,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Swap:  1 DAI => 1 WETH
 
             const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, "0x", "0x");
-            const data = buildData(this.chainId, this.swap.address, order);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
             const makerDai = await this.dai.balanceOf(wallet);
@@ -126,8 +145,8 @@ contract('LimitSwap', async function ([_, wallet]) {
 
             for (let saltSuffix of ['000000000000000000000001', '000000000000000000000002']) {
                 const salt = wallet + saltSuffix;
-                const order = buildOrderWithSalt(this.swap, salt, this.dai, this.weth, 1, 1, "0x", "0x");
-                const data = buildData(this.chainId, this.swap.address, order);
+                const order = buildOrderMM(salt, this.dai, this.weth, 1, 1);
+                const data = buildOrderMMData(this.chainId, this.swap.address, order);
                 const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
                 const makerDai = await this.dai.balanceOf(wallet);
@@ -135,7 +154,15 @@ contract('LimitSwap', async function ([_, wallet]) {
                 const makerWeth = await this.weth.balanceOf(wallet);
                 const takerWeth = await this.weth.balanceOf(_);
 
-                const receipt = await this.swap.fillOrder(order, signature, 1, 0, false, "0x");
+                console.log('order', order);
+                console.log('signature', signature);
+                const receipt = await this.swap.fillOrder({
+                    ...order,
+                    getMakerAmount: "0x",
+                    getTakerAmount: "0x",
+                    predicate: "0x",
+                    permitData: "0x",
+                }, signature, 1, 0, false, "0x");
 
                 expect(
                     await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE'])
@@ -155,7 +182,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Swap:  1 DAI => 1 WETH
 
             const order = buildOrder(this.swap, this.dai, this.weth, 2, 2, "0x", "0x");
-            const data = buildData(this.chainId, this.swap.address, order);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
             const makerDai = await this.dai.balanceOf(wallet);
@@ -182,7 +209,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Swap:  9 WETH <= 1 DAI
 
             const order = buildOrder(this.swap, this.dai, this.weth, 2, 10, "0x", "0x");
-            const data = buildData(this.chainId, this.swap.address, order);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
             const makerDai = await this.dai.balanceOf(wallet);
@@ -203,7 +230,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Swap:  4 WETH <= 0 DAI
 
             const order = buildOrder(this.swap, this.dai, this.weth, 2, 10, "0x", "0x");
-            const data = buildData(this.chainId, this.swap.address, order);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
             await expectRevert(
@@ -217,7 +244,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Swap:  4 DAI => 1 WETH
 
             const order = buildOrder(this.swap, this.dai, this.weth, 10, 2, "0x", "0x");
-            const data = buildData(this.chainId, this.swap.address, order);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
             const makerDai = await this.dai.balanceOf(wallet);

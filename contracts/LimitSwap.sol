@@ -194,6 +194,14 @@ contract LimitSwap is
         uint256 remaining
     );
 
+    struct OrderMM {
+        uint256 salt;
+        address makerAsset;
+        address takerAsset;
+        bytes makerAssetData; // (transferFrom.selector, signer, ______, makerAmount, ...)
+        bytes takerAssetData; // (transferFrom.selector, sender, signer, takerAmount, ...)
+    }
+
     struct Order {
         uint256 salt;
         address makerAsset;
@@ -208,6 +216,10 @@ contract LimitSwap is
 
     bytes32 constant public LIMIT_SWAP_ORDER_TYPEHASH = keccak256(
         "Order(uint256 salt,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData,bytes getMakerAmount,bytes getTakerAmount,bytes predicate,bytes permitData)"
+    );
+
+    bytes32 constant public LIMIT_SWAP_MM_ORDER_TYPEHASH = keccak256(
+        "OrderMM(uint256 salt,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData)"
     );
 
     mapping(bytes32 => uint256) private _remaining;
@@ -256,9 +268,14 @@ contract LimitSwap is
     function cancelOrder(Order memory order) external {
         require(order.makerAssetData.getArgumentFrom() == msg.sender, "LimitSwap: Access denied");
 
-        bytes32 orderHash = _hash(order);
-        _remaining[orderHash] = 1;
-        _updateOrder(orderHash, msg.sender, 0);
+        if (address(uint160(order.salt >> 96)) == msg.sender) {
+            _invalidator[msg.sender][uint48(order.salt) / 256] |= (1 << (order.salt % 256));
+        }
+        else {
+            bytes32 orderHash = _hash(order);
+            _remaining[orderHash] = 1;
+            _updateOrder(orderHash, msg.sender, 0);
+        }
     }
 
     function fillOrder(
@@ -349,22 +366,38 @@ contract LimitSwap is
     }
 
     function _hash(Order memory order) internal view returns(bytes32) {
-        return _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    LIMIT_SWAP_ORDER_TYPEHASH,
-                    order.salt,
-                    order.makerAsset,
-                    order.takerAsset,
-                    keccak256(order.makerAssetData),
-                    keccak256(order.takerAssetData),
-                    keccak256(order.getMakerAmount),
-                    keccak256(order.getTakerAmount),
-                    keccak256(order.predicate),
-                    keccak256(order.permitData)
+        if (address(uint160(order.salt >> 96)) != order.makerAssetData.getArgumentFrom()) {
+            return _hashTypedDataV4(
+                keccak256(
+                    abi.encode(
+                        LIMIT_SWAP_ORDER_TYPEHASH,
+                        order.salt,
+                        order.makerAsset,
+                        order.takerAsset,
+                        keccak256(order.makerAssetData),
+                        keccak256(order.takerAssetData),
+                        keccak256(order.getMakerAmount),
+                        keccak256(order.getTakerAmount),
+                        keccak256(order.predicate),
+                        keccak256(order.permitData)
+                    )
                 )
-            )
-        );
+            );
+        }
+        else {
+            return _hashTypedDataV4(
+                keccak256(
+                    abi.encode(
+                        LIMIT_SWAP_MM_ORDER_TYPEHASH,
+                        order.salt,
+                        order.makerAsset,
+                        order.takerAsset,
+                        keccak256(order.makerAssetData),
+                        keccak256(order.takerAssetData)
+                    )
+                )
+            );
+        }
     }
 
     function _validate(Order memory order, bytes memory signature, bytes32 orderHash) internal view {
