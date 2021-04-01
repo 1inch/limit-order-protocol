@@ -1,4 +1,4 @@
-const { BN, expectRevert } = require('@openzeppelin/test-helpers');
+const { expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 
 const { bufferToHex } = require('ethereumjs-util');
@@ -45,7 +45,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             types: { EIP712Domain, Order },
             domain: { name, version, chainId, verifyingContract },
             message: order,
-        }
+        };
     }
 
     function buildOrderRFQData (chainId, verifyingContract, order) {
@@ -54,28 +54,28 @@ contract('LimitSwap', async function ([_, wallet]) {
             types: { EIP712Domain, OrderRFQ },
             domain: { name, version, chainId, verifyingContract },
             message: order,
-        }
+        };
     }
 
-    function buildOrder(exchange, makerAsset, takerAsset, makerAmount, takerAmount, taker=zeroAddress, predicate='0x', permit='0x') {
+    function buildOrder (exchange, makerAsset, takerAsset, makerAmount, takerAmount, taker = zeroAddress, predicate = '0x', permit = '0x') {
         return buildOrderWithSalt(exchange, '1', makerAsset, takerAsset, makerAmount, takerAmount, taker, predicate, permit);
     }
 
-    function buildOrderWithSalt(exchange, salt, makerAsset, takerAsset, makerAmount, takerAmount, taker=zeroAddress, predicate='0x', permit='0x') {
+    function buildOrderWithSalt (exchange, salt, makerAsset, takerAsset, makerAmount, takerAmount, taker = zeroAddress, predicate = '0x', permit = '0x') {
         return {
             salt: salt,
             makerAsset: makerAsset.address,
             takerAsset: takerAsset.address,
             makerAssetData: makerAsset.contract.methods.transferFrom(wallet, taker, makerAmount).encodeABI(),
             takerAssetData: takerAsset.contract.methods.transferFrom(taker, wallet, takerAmount).encodeABI(),
-            getMakerAmount: exchange.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68*2),
-            getTakerAmount: exchange.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68*2),
+            getMakerAmount: exchange.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68 * 2),
+            getTakerAmount: exchange.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68 * 2),
             predicate: predicate,
             permitData: permit,
         };
     }
 
-    function buildOrderRFQ(info, makerAsset, takerAsset, makerAmount, takerAmount, taker=zeroAddress) {
+    function buildOrderRFQ (info, makerAsset, takerAsset, makerAmount, takerAmount, taker = zeroAddress) {
         return {
             info: info,
             makerAsset: makerAsset.address,
@@ -86,8 +86,8 @@ contract('LimitSwap', async function ([_, wallet]) {
     }
 
     before(async function () {
-        this.dai = await TokenMock.new("DAI", "DAI");
-        this.weth = await TokenMock.new("WETH", "WETH");
+        this.dai = await TokenMock.new('DAI', 'DAI');
+        this.weth = await TokenMock.new('WETH', 'WETH');
 
         // We get the chain id from the contract because Ganache (used for coverage) does not return the same chain id
         // from within the EVM as from the JSON RPC interface.
@@ -136,10 +136,10 @@ contract('LimitSwap', async function ([_, wallet]) {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(_);
 
-            const receipt = await this.swap.fillOrder(order, signature, 1, 0, "0x");
+            const receipt = await this.swap.fillOrder(order, signature, 1, 0, '0x');
 
             expect(
-                await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE'])
+                await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
             ).to.be.deep.equal([2, 1, 7, 7, 0]);
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
@@ -152,7 +152,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
 
-            for (let salt of ['000000000000000000000001', '000000000000000000000002']) {
+            for (const salt of ['000000000000000000000001', '000000000000000000000002']) {
                 const order = buildOrderRFQ(salt, this.dai, this.weth, 1, 1);
                 const data = buildOrderRFQData(this.chainId, this.swap.address, order);
                 const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
@@ -165,7 +165,7 @@ contract('LimitSwap', async function ([_, wallet]) {
                 const receipt = await this.swap.fillOrderRFQ(order, signature);
 
                 expect(
-                    await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE'])
+                    await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
                 ).to.be.deep.equal([2, 1, 7, 7, 0]);
 
                 await gasspectEVM(receipt.tx);
@@ -190,10 +190,10 @@ contract('LimitSwap', async function ([_, wallet]) {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(_);
 
-            const receipt = await this.swap.fillOrder(order, signature, 1, 0, "0x");
+            const receipt = await this.swap.fillOrder(order, signature, 1, 0, '0x');
 
             expect(
-                await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE'])
+                await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
             ).to.be.deep.equal([2, 2, 7, 7, 0]);
 
             // await gasspectEVM(receipt.tx);
@@ -217,7 +217,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(_);
 
-            await this.swap.fillOrder(order, signature, 0, 9, "0x");
+            await this.swap.fillOrder(order, signature, 0, 9, '0x');
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
             expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
@@ -234,8 +234,8 @@ contract('LimitSwap', async function ([_, wallet]) {
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
             await expectRevert(
-                this.swap.fillOrder(order, signature, 0, 4, "0x"),
-                "LimitSwap: can't swap 0 amount"
+                this.swap.fillOrder(order, signature, 0, 4, '0x'),
+                'LimitSwap: can\'t swap 0 amount',
             );
         });
 
@@ -252,7 +252,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(_);
 
-            await this.swap.fillOrder(order, signature, 4, 0, "0x");
+            await this.swap.fillOrder(order, signature, 4, 0, '0x');
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(4));
             expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(4));
@@ -260,7 +260,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        describe('Order Cancelation', async function() {
+        describe('Order Cancelation', async function () {
             beforeEach(async function () {
                 this.order = buildOrder(this.swap, this.dai, this.weth, 1, 1);
             });
@@ -275,7 +275,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             it('should not cancel foreign order', async function () {
                 await expectRevert(
                     this.swap.cancelOrder(this.order),
-                    "LimitSwap: Access denied"
+                    'LimitSwap: Access denied',
                 );
             });
 
@@ -286,13 +286,13 @@ contract('LimitSwap', async function ([_, wallet]) {
                 await this.swap.cancelOrder(this.order, { from: wallet });
 
                 await expectRevert(
-                    this.swap.fillOrder(this.order, signature, 1, 0, "0x"),
-                    "LimitSwap: taking > remaining"
+                    this.swap.fillOrder(this.order, signature, 1, 0, '0x'),
+                    'LimitSwap: taking > remaining',
                 );
             });
         });
 
-        describe('OrderRFQ Cancelation', async function() {
+        describe('OrderRFQ Cancelation', async function () {
             it('should cancel own order', async function () {
                 await this.swap.cancelOrderRFQ('1');
                 expect(await this.swap.validNonce(_, '1')).to.be.false;
@@ -307,14 +307,14 @@ contract('LimitSwap', async function ([_, wallet]) {
 
                 await expectRevert(
                     this.swap.fillOrderRFQ(order, signature),
-                    "LimitSwap: already filled"
+                    'LimitSwap: already filled',
                 );
             });
         });
 
-        describe('Private Orders', async function() {
+        describe('Private Orders', async function () {
             it('should fill with correct taker', async function () {
-                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, taker=_);
+                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _);
                 const data = buildOrderData(this.chainId, this.swap.address, order);
                 const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
@@ -331,14 +331,14 @@ contract('LimitSwap', async function ([_, wallet]) {
                 expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
             });
 
-            it('should not fill with incorrect taker', async function() {
-                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, taker=wallet);
+            it('should not fill with incorrect taker', async function () {
+                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, wallet);
                 const data = buildOrderData(this.chainId, this.swap.address, order);
                 const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
                 await expectRevert(
                     this.swap.fillOrder(order, signature, 1, 0, '0x'),
-                    "LimitSwap: private order"
+                    'LimitSwap: private order',
                 );
             });
         });
