@@ -235,7 +235,7 @@ contract('LimitSwap', async function ([_, wallet]) {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, 0, 4, '0x'),
-                'LimitSwap: can\'t swap 0 amount',
+                'LS: can\'t swap 0 amount',
             );
         });
 
@@ -275,7 +275,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             it('should not cancel foreign order', async function () {
                 await expectRevert(
                     this.swap.cancelOrder(this.order),
-                    'LimitSwap: Access denied',
+                    'LS: Access denied',
                 );
             });
 
@@ -287,7 +287,7 @@ contract('LimitSwap', async function ([_, wallet]) {
 
                 await expectRevert(
                     this.swap.fillOrder(this.order, signature, 1, 0, '0x'),
-                    'LimitSwap: taking > remaining',
+                    'LS: taking > remaining',
                 );
             });
         });
@@ -307,7 +307,7 @@ contract('LimitSwap', async function ([_, wallet]) {
 
                 await expectRevert(
                     this.swap.fillOrderRFQ(order, signature),
-                    'LimitSwap: already filled',
+                    'LS: already filled',
                 );
             });
         });
@@ -338,7 +338,7 @@ contract('LimitSwap', async function ([_, wallet]) {
 
                 await expectRevert(
                     this.swap.fillOrder(order, signature, 1, 0, '0x'),
-                    'LimitSwap: private order',
+                    'LS: private order',
                 );
             });
         });
