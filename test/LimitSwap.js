@@ -1,6 +1,7 @@
 const { BN, expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 
+const { bufferToHex } = require('ethereumjs-util');
 const ethSigUtil = require('eth-sig-util');
 const Wallet = require('ethereumjs-wallet').default;
 
@@ -257,6 +258,58 @@ contract('LimitSwap', async function ([_, wallet]) {
             expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(4));
             expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
             expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+        });
+
+        describe('Order Cancelation', async function() {
+            beforeEach(async function () {
+                this.order = buildOrder(this.swap, this.dai, this.weth, 1, 1, "0x", "0x");
+            });
+
+            it('should cancel own order', async function () {
+                await this.swap.cancelOrder(this.order, { from: wallet });
+                const data = buildOrderData(this.chainId, this.swap.address, this.order);
+                const orderHash = bufferToHex(ethSigUtil.TypedDataUtils.sign(data));
+                expect(await this.swap.remaining(orderHash)).to.be.bignumber.equal('0');
+            });
+
+            it('should not cancel foreign order', async function () {
+                await expectRevert(
+                    this.swap.cancelOrder(this.order),
+                    "LimitSwap: Access denied"
+                );
+            });
+
+            it('should not fill cancelled order', async function () {
+                const data = buildOrderData(this.chainId, this.swap.address, this.order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                await this.swap.cancelOrder(this.order, { from: wallet });
+
+                await expectRevert(
+                    this.swap.fillOrder(this.order, signature, 1, 0, "0x"),
+                    "LimitSwap: taking > remaining"
+                );
+            });
+        });
+
+        describe('OrderRFQ Cancelation', async function() {
+            it('should cancel own order', async function () {
+                await this.swap.cancelOrderRFQ('1');
+                expect(await this.swap.validNonce(_, '1')).to.be.false;
+            });
+
+            it('should not fill cancelled order', async function () {
+                const order = buildOrderRFQ('1', this.dai, this.weth, 1, 1);
+                const data = buildOrderRFQData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                await this.swap.cancelOrderRFQ('1', { from: wallet });
+
+                await expectRevert(
+                    this.swap.fillOrderRFQ(order, signature),
+                    "LimitSwap: already filled"
+                );
+            });
         });
     });
 });
