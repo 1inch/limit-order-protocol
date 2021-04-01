@@ -239,6 +239,10 @@ contract LimitSwap is
         return _remaining[orderHash];
     }
 
+    function validNonce(address maker, uint256 nonce) external view returns(bool) {
+        return _invalidator[maker][uint64(nonce) / 256] & (1 << (nonce % 256)) == 0;
+    }
+
     function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory results) {
         results = new uint256[](orderHashes.length);
         for (uint i = 0; i < orderHashes.length; i++) {
