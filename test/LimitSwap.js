@@ -295,7 +295,9 @@ contract('LimitSwap', async function ([_, wallet]) {
         describe('OrderRFQ Cancelation', async function () {
             it('should cancel own order', async function () {
                 await this.swap.cancelOrderRFQ('1');
-                expect(await this.swap.validNonce(_, '1')).to.be.false;
+                const { validTimestamp, validIndex} = await this.swap.validOrderRFQ(_, '1');
+                expect(validTimestamp).to.be.equal(true);
+                expect(validIndex).to.be.equal(false);
             });
 
             it('should not fill cancelled order', async function () {
