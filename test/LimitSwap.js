@@ -353,5 +353,65 @@ contract('LimitSwap', async function ([_, wallet]) {
                 );
             });
         });
+
+        describe('Expiration', async function () {
+            it('should fill when not expired', async function () {
+                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _, this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI());
+                const data = buildOrderData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                const makerDai = await this.dai.balanceOf(wallet);
+                const takerDai = await this.dai.balanceOf(_);
+                const makerWeth = await this.weth.balanceOf(wallet);
+                const takerWeth = await this.weth.balanceOf(_);
+
+                await this.swap.fillOrder(order, signature, 1, 0, '0x');
+
+                expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+                expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+                expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+                expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+            });
+
+            it('should not fill when expired', async function () {
+                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _, this.swap.contract.methods.timestampBelow(0xff0000).encodeABI());
+                const data = buildOrderData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                await expectRevert(
+                    this.swap.fillOrder(order, signature, 1, 0, '0x'),
+                    'LS: predicate returned false',
+                );
+            });
+
+            it('should fill RFQ order when not expired', async function () {
+                const order = buildOrderRFQ('20203181441137406086353707335681', this.dai, this.weth, 1, 1);
+                const data = buildOrderRFQData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                const makerDai = await this.dai.balanceOf(wallet);
+                const takerDai = await this.dai.balanceOf(_);
+                const makerWeth = await this.weth.balanceOf(wallet);
+                const takerWeth = await this.weth.balanceOf(_);
+
+                await this.swap.fillOrderRFQ(order, signature);
+
+                expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+                expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+                expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+                expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+            });
+
+            it('should not fill RFQ order when expired', async function () {
+                const order = buildOrderRFQ('308276084001730439550074881', this.dai, this.weth, 1, 1);
+                const data = buildOrderRFQData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                await expectRevert(
+                    this.swap.fillOrderRFQ(order, signature),
+                    'LS: order expired',
+                );
+            });
+        });
     });
 });
