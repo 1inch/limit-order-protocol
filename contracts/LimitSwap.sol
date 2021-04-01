@@ -241,8 +241,8 @@ contract LimitSwap is
         return _remaining[orderHash];
     }
 
-    function invalidatorForOrderRFQ(address maker, uint256 orderInfo) external view returns(uint256 slot) {
-        return _invalidator[maker][uint64(orderInfo) / 256];
+    function invalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256) {
+        return _invalidator[maker][slot];
     }
 
     function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory results) {

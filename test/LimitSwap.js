@@ -303,7 +303,7 @@ contract('LimitSwap', async function ([_, wallet]) {
                 expect(invalidator).to.be.bignumber.equal(toBN('2'));
             });
 
-            it.only('should cancel own order with huge number', async function () {
+            it('should cancel own order with huge number', async function () {
                 await this.swap.cancelOrderRFQ('1023');
                 const invalidator = await this.swap.invalidatorForOrderRFQ(_, '3');
                 expect(invalidator).to.be.bignumber.equal(toBN('1').shln(255));
