@@ -127,6 +127,47 @@ contract('LimitSwap', async function ([_, wallet]) {
             await this.dai.transferFrom(wallet, _, '1', { from: _ });
         });
 
+        it('should not swap with bad signature', async function () {
+            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+            const sentOrder = buildOrder(this.swap, this.dai, this.weth, 1, 2);
+
+            await expectRevert(
+                this.swap.fillOrder(sentOrder, signature, 1, 0, '0x'),
+                'Target contract does not contain code',
+            );
+        });
+
+        it('should not fill (1,1)', async function () {
+            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            await expectRevert(
+                this.swap.fillOrder(order, signature, 1, 1, '0x'),
+                'LS: one of amounts should be 0',
+            );
+        });
+
+        it('should take all the remaining makerAssetAmount', async function() {
+            const order = buildOrder(this.swap, this.dai, this.weth, 100, 1);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            const makerDai = await this.dai.balanceOf(wallet);
+            const takerDai = await this.dai.balanceOf(_);
+            const makerWeth = await this.weth.balanceOf(wallet);
+            const takerWeth = await this.weth.balanceOf(_);
+
+            this.swap.fillOrder(order, signature, toBN('1').shln(255).toString(), 0, '0x');
+
+            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(100));
+            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(100));
+            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+        });
+
         it('should swap fully based on signature', async function () {
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
