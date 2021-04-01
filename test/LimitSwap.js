@@ -151,8 +151,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
 
-            for (let saltSuffix of ['000000000000000000000001', '000000000000000000000002']) {
-                const salt = wallet + saltSuffix;
+            for (let salt of ['000000000000000000000001', '000000000000000000000002']) {
                 const order = buildOrderRFQ(salt, this.dai, this.weth, 1, 1);
                 const data = buildOrderRFQData(this.chainId, this.swap.address, order);
                 const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
