@@ -57,17 +57,17 @@ contract('LimitSwap', async function ([_, wallet]) {
         }
     }
 
-    function buildOrder(exchange, makerAsset, takerAsset, makerAmount, takerAmount, predicate, permit) {
-        return buildOrderWithSalt(exchange, '1', makerAsset, takerAsset, makerAmount, takerAmount, predicate, permit);
+    function buildOrder(exchange, makerAsset, takerAsset, makerAmount, takerAmount, taker=zeroAddress, predicate='0x', permit='0x') {
+        return buildOrderWithSalt(exchange, '1', makerAsset, takerAsset, makerAmount, takerAmount, taker, predicate, permit);
     }
 
-    function buildOrderWithSalt(exchange, salt, makerAsset, takerAsset, makerAmount, takerAmount, predicate, permit) {
+    function buildOrderWithSalt(exchange, salt, makerAsset, takerAsset, makerAmount, takerAmount, taker=zeroAddress, predicate='0x', permit='0x') {
         return {
             salt: salt,
             makerAsset: makerAsset.address,
             takerAsset: takerAsset.address,
-            makerAssetData: makerAsset.contract.methods.transferFrom(wallet, zeroAddress, makerAmount).encodeABI(),
-            takerAssetData: takerAsset.contract.methods.transferFrom(zeroAddress, wallet, takerAmount).encodeABI(),
+            makerAssetData: makerAsset.contract.methods.transferFrom(wallet, taker, makerAmount).encodeABI(),
+            takerAssetData: takerAsset.contract.methods.transferFrom(taker, wallet, takerAmount).encodeABI(),
             getMakerAmount: exchange.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68*2),
             getTakerAmount: exchange.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68*2),
             predicate: predicate,
@@ -75,13 +75,13 @@ contract('LimitSwap', async function ([_, wallet]) {
         };
     }
 
-    function buildOrderRFQ(info, makerAsset, takerAsset, makerAmount, takerAmount) {
+    function buildOrderRFQ(info, makerAsset, takerAsset, makerAmount, takerAmount, taker=zeroAddress) {
         return {
             info: info,
             makerAsset: makerAsset.address,
             takerAsset: takerAsset.address,
-            makerAssetData: makerAsset.contract.methods.transferFrom(wallet, zeroAddress, makerAmount).encodeABI(),
-            takerAssetData: takerAsset.contract.methods.transferFrom(zeroAddress, wallet, takerAmount).encodeABI(),
+            makerAssetData: makerAsset.contract.methods.transferFrom(wallet, taker, makerAmount).encodeABI(),
+            takerAssetData: takerAsset.contract.methods.transferFrom(taker, wallet, takerAmount).encodeABI(),
         };
     }
 
@@ -117,7 +117,7 @@ contract('LimitSwap', async function ([_, wallet]) {
         );
     });
 
-    describe('LimitSwap', async function () {
+    describe('wip', async function () {
         it('transferFrom', async function () {
             await this.dai.approve(_, '2', { from: wallet });
             await this.dai.transferFrom(wallet, _, '1', { from: _ });
@@ -127,7 +127,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
 
-            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, "0x", "0x");
+            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1);
             const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
@@ -181,7 +181,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Order: 2 DAI => 2 WETH
             // Swap:  1 DAI => 1 WETH
 
-            const order = buildOrder(this.swap, this.dai, this.weth, 2, 2, "0x", "0x");
+            const order = buildOrder(this.swap, this.dai, this.weth, 2, 2);
             const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
@@ -208,7 +208,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Order: 2 DAI => 10 WETH
             // Swap:  9 WETH <= 1 DAI
 
-            const order = buildOrder(this.swap, this.dai, this.weth, 2, 10, "0x", "0x");
+            const order = buildOrder(this.swap, this.dai, this.weth, 2, 10);
             const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
@@ -229,7 +229,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Order: 2 DAI => 10 WETH
             // Swap:  4 WETH <= 0 DAI
 
-            const order = buildOrder(this.swap, this.dai, this.weth, 2, 10, "0x", "0x");
+            const order = buildOrder(this.swap, this.dai, this.weth, 2, 10);
             const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
@@ -243,7 +243,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Order: 10 DAI => 2 WETH
             // Swap:  4 DAI => 1 WETH
 
-            const order = buildOrder(this.swap, this.dai, this.weth, 10, 2, "0x", "0x");
+            const order = buildOrder(this.swap, this.dai, this.weth, 10, 2);
             const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
@@ -262,7 +262,7 @@ contract('LimitSwap', async function ([_, wallet]) {
 
         describe('Order Cancelation', async function() {
             beforeEach(async function () {
-                this.order = buildOrder(this.swap, this.dai, this.weth, 1, 1, "0x", "0x");
+                this.order = buildOrder(this.swap, this.dai, this.weth, 1, 1);
             });
 
             it('should cancel own order', async function () {
@@ -308,6 +308,37 @@ contract('LimitSwap', async function ([_, wallet]) {
                 await expectRevert(
                     this.swap.fillOrderRFQ(order, signature),
                     "LimitSwap: already filled"
+                );
+            });
+        });
+
+        describe('Private Orders', async function() {
+            it('should fill with correct taker', async function () {
+                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, taker=_);
+                const data = buildOrderData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                const makerDai = await this.dai.balanceOf(wallet);
+                const takerDai = await this.dai.balanceOf(_);
+                const makerWeth = await this.weth.balanceOf(wallet);
+                const takerWeth = await this.weth.balanceOf(_);
+
+                await this.swap.fillOrder(order, signature, 1, 0, '0x');
+
+                expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+                expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+                expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+                expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+            });
+
+            it('should not fill with incorrect taker', async function() {
+                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, taker=wallet);
+                const data = buildOrderData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                await expectRevert(
+                    this.swap.fillOrder(order, signature, 1, 0, '0x'),
+                    "LimitSwap: private order"
                 );
             });
         });
