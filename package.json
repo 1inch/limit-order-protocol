@@ -33,7 +33,7 @@
   },
   "scripts": {
     "test": "scripts/test.sh",
-    "coverage": "scripts/coverage.sh && cat coverage/lcov.info | coveralls",
+    "coverage": "truffle run coverage",
     "lint:js": "eslint .",
     "lint:js:fix": "eslint . --fix",
     "lint:sol": "solium -d .",

@@ -8,13 +8,6 @@ module.exports = {
             network_id: '*',
             gas: 8000000,
             gasPrice: 1000000000, // web3.eth.gasPrice
-        },
-        coverage: {
-            host: 'localhost',
-            port: 8555,
-            network_id: '*',
-            gas: 8000000,
-            gasPrice: 1000000000, // web3.eth.gasPrice
         }
     },
     compilers: {
@@ -37,5 +30,6 @@ module.exports = {
             showTimeSpent: true,
             excludeContracts: ['Migrations']
         }
-    }
+    },
+    plugins: ["solidity-coverage"]
 };
