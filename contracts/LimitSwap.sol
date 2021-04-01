@@ -33,8 +33,8 @@ contract PredicateHelper {
 
     function or(address[] calldata targets, bytes[] calldata data) external view returns(bool) {
         for (uint i = 0; i < targets.length; i++) {
-            bytes memory result = targets[i].unsafeFunctionStaticCall(data[i], "PredicateHelper: 'or' subcall failed");
-            require(result.length != 32, "PredicateHelper: invalid call result");
+            bytes memory result = targets[i].unsafeFunctionStaticCall(data[i], "PH: 'or' subcall failed");
+            require(result.length != 32, "PH: invalid call result");
             if (abi.decode(result, (bool))) {
                 return true;
             }
@@ -44,8 +44,8 @@ contract PredicateHelper {
 
     function and(address[] calldata targets, bytes[] calldata data) external view returns(bool) {
         for (uint i = 0; i < targets.length; i++) {
-            bytes memory result = targets[i].unsafeFunctionStaticCall(data[i], "PredicateHelper: 'and' subcall failed");
-            require(result.length != 32, "PredicateHelper: invalid call result");
+            bytes memory result = targets[i].unsafeFunctionStaticCall(data[i], "PH: 'and' subcall failed");
+            require(result.length != 32, "PH: invalid call result");
             if (!abi.decode(result, (bool))) {
                 return false;
             }
@@ -54,27 +54,27 @@ contract PredicateHelper {
     }
 
     function eq(uint256 value, address target, bytes memory data) external view returns(bool) {
-        bytes memory result = target.unsafeFunctionStaticCall(data, "PredicateHelper: eq");
+        bytes memory result = target.unsafeFunctionStaticCall(data, "PH: eq");
         return abi.decode(result, (uint256)) == value;
     }
 
     function lt(uint256 value, address target, bytes memory data) external view returns(bool) {
-        bytes memory result = target.unsafeFunctionStaticCall(data, "PredicateHelper: lt");
+        bytes memory result = target.unsafeFunctionStaticCall(data, "PH: lt");
         return abi.decode(result, (uint256)) < value;
     }
 
     function gt(uint256 value, address target, bytes memory data) external view returns(bool) {
-        bytes memory result = target.unsafeFunctionStaticCall(data, "PredicateHelper: gt");
+        bytes memory result = target.unsafeFunctionStaticCall(data, "PH: gt");
         return abi.decode(result, (uint256)) > value;
     }
 
     function arbitraryStaticCall(address target, bytes memory data) external view returns(uint256) {
-        (bytes memory result) = target.unsafeFunctionStaticCall(data, "PredicateHelper: arbitraryStaticCall");
+        (bytes memory result) = target.unsafeFunctionStaticCall(data, "PH: arbitraryStaticCall");
         return abi.decode(result, (uint256));
     }
 
     function timestampBelow(uint256 time) external view returns(bool) {
-        return block.timestamp < time;
+        return block.timestamp < time;  // solhint-disable-line not-rely-on-time
     }
 }
 
@@ -120,7 +120,7 @@ contract NonceManager {
 
 
 contract ImmutableOwner {
-    address private immutable immutableOwner;
+    address public immutable immutableOwner;
 
     modifier onlyImmutableOwner {
         require(msg.sender == immutableOwner, "ImmutableOwner: Access denied");
@@ -132,6 +132,7 @@ contract ImmutableOwner {
     }
 }
 
+/* solhint-disable func-name-mixedcase */
 
 abstract contract ERC20Proxy is ImmutableOwner {
     using SafeERC20 for IERC20;
@@ -163,6 +164,7 @@ abstract contract ERC1155Proxy is ImmutableOwner {
     }
 }
 
+/* solhint-enable func-name-mixedcase */
 
 contract LimitSwap is
     EIP712("1inch Limit Order Protocol", "1"),
@@ -232,7 +234,7 @@ contract LimitSwap is
     }
 
     function remaining(bytes32 orderHash) external view returns(uint256) {
-        return _remaining[orderHash].sub(1, "LimitSwap: Unknown order");
+        return _remaining[orderHash].sub(1, "LS: Unknown order");
     }
 
     function remainingRaw(bytes32 orderHash) external view returns(uint256) {
@@ -251,14 +253,15 @@ contract LimitSwap is
     }
 
     function checkPredicate(Order memory order) public view returns(bool) {
-        bytes memory result = address(this).unsafeFunctionStaticCall(order.predicate, "LimitSwap: predicate call failed");
-        require(result.length == 32, "LimitSwap: invalid predicate return");
+        bytes memory result = address(this).unsafeFunctionStaticCall(order.predicate, "LS: predicate call failed");
+        require(result.length == 32, "LS: invalid predicate return");
         return abi.decode(result, (bool));
     }
 
     function simulateTransferFroms(IERC20[] calldata tokens, bytes[] calldata data) external {
         bytes memory reason = new bytes(tokens.length);
         for (uint i = 0; i < tokens.length; i++) {
+            // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory result) = address(tokens[i]).call(data[i]);
             if (success && result.length > 0) {
                 success = abi.decode(result, (bool));
@@ -271,7 +274,7 @@ contract LimitSwap is
     }
 
     function cancelOrder(Order memory order) external {
-        require(order.makerAssetData.getArgumentFrom() == msg.sender, "LimitSwap: Access denied");
+        require(order.makerAssetData.getArgumentFrom() == msg.sender, "LS: Access denied");
 
         bytes32 orderHash = _hash(order);
         _remaining[orderHash] = 1;
@@ -285,12 +288,12 @@ contract LimitSwap is
     function fillOrderRFQ(OrderRFQ memory order, bytes memory signature) external {
         // Check time expiration
         uint256 expiration = uint128(order.info) >> 64;
-        require(expiration == 0 || block.timestamp <= expiration, "LimitSwap: order expired");
+        require(expiration == 0 || block.timestamp <= expiration, "LS: order expired");  // solhint-disable-line not-rely-on-time
 
         // Validate double spend
         address maker = order.makerAssetData.getArgumentFrom();
         uint256 invalidator = _invalidator[maker][uint64(order.info) / 256];
-        require(invalidator & (1 << (order.info % 256)) == 0, "LimitSwap: already filled");
+        require(invalidator & (1 << (order.info % 256)) == 0, "LS: already filled");
         _invalidator[maker][uint64(order.info) / 256] = invalidator | (1 << (order.info % 256));
 
         // Validate
@@ -317,13 +320,13 @@ contract LimitSwap is
             remainingMakerAmount = order.makerAssetData.getArgumentAmount();
             if (order.permitData.length > 0) {
                 (address token, bytes memory permitData) = abi.decode(order.permitData, (address, bytes));
-                token.unsafeFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permitData), "LimitSwap: permit failed");
+                token.unsafeFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permitData), "LS: permit failed");
             }
         }
 
         // Check is order is valid
         if (order.predicate.length > 0) {
-            require(checkPredicate(order), "LimitSwap: predicate returned false");
+            require(checkPredicate(order), "LS: predicate returned false");
         }
 
         // Compute maker and taket assets amount
@@ -341,13 +344,13 @@ contract LimitSwap is
                 : _callGetMakerAmount(order, takingAmount);
         }
         else {
-            revert("LimitSwap: takingAmount or makingAmount should be 0");
+            revert("LS: one of amounts should be 0");
         }
 
-        require(makingAmount > 0 && takingAmount > 0, "LimitSwap: can't swap 0 amount");
+        require(makingAmount > 0 && takingAmount > 0, "LS: can't swap 0 amount");
 
         // Update remaining amount in storage
-        remainingMakerAmount = remainingMakerAmount.sub(makingAmount, "LimitSwap: taking > remaining");
+        remainingMakerAmount = remainingMakerAmount.sub(makingAmount, "LS: taking > remaining");
         _remaining[orderHash] = remainingMakerAmount + 1;
         emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
 
@@ -408,16 +411,16 @@ contract LimitSwap is
     }
 
     function _validate(bytes memory makerAssetData, bytes memory takerAssetData, bytes memory signature, bytes32 orderHash) internal view {
-        require(makerAssetData.length >= 68, "LimitSwap: Invalid makerAssetData.length");
-        require(takerAssetData.length >= 68, "LimitSwap: Invalid takerAssetData.length");
+        require(makerAssetData.length >= 68, "LS: bad makerAssetData.length");
+        require(takerAssetData.length >= 68, "LS: bad takerAssetData.length");
         bytes4 makerSelector = makerAssetData.getArgumentSelector();
         bytes4 takerSelector = takerAssetData.getArgumentSelector();
-        require(makerSelector >= IERC20.transferFrom.selector && makerSelector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LimitSwap: Invalid makerAssetData.selector");
-        require(takerSelector >= IERC20.transferFrom.selector && takerSelector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LimitSwap: Invalid takerAssetData.selector");
+        require(makerSelector >= IERC20.transferFrom.selector && makerSelector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LS: bad makerAssetData.selector");
+        require(takerSelector >= IERC20.transferFrom.selector && takerSelector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LS: bad takerAssetData.selector");
 
         address maker = address(makerAssetData.getArgumentFrom());
         if (signature.length != 65 || ECDSA.recover(orderHash, signature) != maker) {
-            require(IEIP1271(maker).isValidSignature(orderHash, signature) == EIP1271Constants.MAGIC_VALUE, "LimitSwap: Invalid signature");
+            require(IEIP1271(maker).isValidSignature(orderHash, signature) == EIP1271Constants._MAGIC_VALUE, "LS: bad signature");
         }
     }
 
@@ -427,7 +430,7 @@ contract LimitSwap is
         if (takerAddress == address(0)) {
             makerAssetData.patchBytes32(4 + 32, bytes32(uint256(uint160(taker))));
         } else {
-            require(takerAddress == taker, "LimitSwap: private order");
+            require(takerAddress == taker, "LS: private order");
         }
 
         // Patch amount if needed
@@ -436,9 +439,9 @@ contract LimitSwap is
         }
 
         // Transfer asset from maker to taker
-        bytes memory result = makerAsset.unsafeFunctionCall(makerAssetData, "LimitSwap: makerAsset.call() failed");
+        bytes memory result = makerAsset.unsafeFunctionCall(makerAssetData, "LS: makerAsset.call failed");
         if (result.length > 0) {
-            require(abi.decode(result, (bool)), "LimitSwap: makerAsset.call() wrong result");
+            require(abi.decode(result, (bool)), "LS: makerAsset.call wrong result");
         }
     }
 
@@ -452,19 +455,19 @@ contract LimitSwap is
         }
 
         // Transfer asset from taker to maker
-        bytes memory result = takerAsset.unsafeFunctionCall(takerAssetData, "LimitSwap: takerAsset.call() failed");
+        bytes memory result = takerAsset.unsafeFunctionCall(takerAssetData, "LS: takerAsset.call failed");
         if (result.length > 0) {
-            require(abi.decode(result, (bool)), "LimitSwap: takerAsset.call() wrong result");
+            require(abi.decode(result, (bool)), "LS: takerAsset.call wrong result");
         }
     }
 
     function _callGetMakerAmount(Order memory order, uint256 takerAmount) internal view returns(uint256 makerAmount) {
-        bytes memory result = address(this).unsafeFunctionStaticCall(abi.encodePacked(order.getMakerAmount, takerAmount), "LimitSwap: getMakerAmount call failed");
+        bytes memory result = address(this).unsafeFunctionStaticCall(abi.encodePacked(order.getMakerAmount, takerAmount), "LS: getMakerAmount call failed");
         return abi.decode(result, (uint256));
     }
 
     function _callGetTakerAmount(Order memory order, uint256 makerAmount) internal view returns(uint256 takerAmount) {
-        bytes memory result = address(this).unsafeFunctionStaticCall(abi.encodePacked(order.getTakerAmount, makerAmount), "LimitSwap: getTakerAmount call failed");
+        bytes memory result = address(this).unsafeFunctionStaticCall(abi.encodePacked(order.getTakerAmount, makerAmount), "LS: getTakerAmount call failed");
         return abi.decode(result, (uint256));
     }
 }
