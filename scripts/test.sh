@@ -13,11 +13,7 @@ cleanup() {
     fi
 }
 
-if [ "$SOLIDITY_COVERAGE" = true ]; then
-    ganache_port=8555
-else
-    ganache_port=9545
-fi
+ganache_port=9545
 
 ganache_running() {
     nc -z localhost "$ganache_port"
@@ -38,11 +34,7 @@ start_ganache() {
         --account="0x2bdd21761a483f71054e14f5b827213567971c676928d9a1808cbfa4b7501209,1000000000000000000000000"
     )
 
-    if [ "$SOLIDITY_COVERAGE" = true ]; then
-        testrpc-sc --gasLimit 0xfffffffffff --port "$ganache_port" "${accounts[@]}" > /dev/null &
-    else
-        ganache-cli --gasLimit 0xfffffffffff --port "$ganache_port" "${accounts[@]}" > /dev/null &
-    fi
+    ganache-cli --gasLimit 0xfffffffffff --port "$ganache_port" "${accounts[@]}" > /dev/null &
 
     ganache_pid=$!
 }
@@ -54,19 +46,6 @@ else
     start_ganache
 fi
 
-if [ "$SOLC_NIGHTLY" = true ]; then
-    echo "Downloading solc nightly"
-    wget -q https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/bin/soljson-nightly.js -O /tmp/soljson.js && find . -name soljson.js -exec cp /tmp/soljson.js {} \;
-fi
-
 truffle version
 
-if [ "$SOLIDITY_COVERAGE" = true ]; then
-    solidity-coverage
-
-    if [ "$CONTINUOUS_INTEGRATION" = true ]; then
-        cat coverage/lcov.info | coveralls
-    fi
-else
-    truffle test --stacktrace-extra "$@"
-fi
+truffle test --stacktrace-extra "$@"
