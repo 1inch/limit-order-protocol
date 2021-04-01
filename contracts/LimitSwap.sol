@@ -241,10 +241,8 @@ contract LimitSwap is
         return _remaining[orderHash];
     }
 
-    function validOrderRFQ(address maker, uint256 orderInfo) external view returns(bool validTimestamp, bool validIndex) {
-        uint256 expiration = uint128(orderInfo) >> 64;
-        validTimestamp = expiration == 0 || block.timestamp <= expiration;
-        validIndex = _invalidator[maker][uint64(orderInfo) / 256] & (1 << (orderInfo % 256)) == 0;
+    function invalidatorForOrderRFQ(address maker, uint256 orderInfo) external view returns(uint256 slot) {
+        return _invalidator[maker][uint64(orderInfo) / 256];
     }
 
     function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory results) {

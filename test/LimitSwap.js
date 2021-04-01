@@ -1,4 +1,4 @@
-const { expectRevert } = require('@openzeppelin/test-helpers');
+const { BN, expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 
 const { bufferToHex } = require('ethereumjs-util');
@@ -10,6 +10,10 @@ const LimitSwap = artifacts.require('LimitSwap');
 
 const { EIP712Domain, domainSeparator } = require('./helpers/eip712');
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
+
+function toBN (num) {
+    return new BN(num);
+}
 
 const OrderRFQ = [
     { name: 'info', type: 'uint256' },
@@ -295,9 +299,14 @@ contract('LimitSwap', async function ([_, wallet]) {
         describe('OrderRFQ Cancelation', async function () {
             it('should cancel own order', async function () {
                 await this.swap.cancelOrderRFQ('1');
-                const { validTimestamp, validIndex} = await this.swap.validOrderRFQ(_, '1');
-                expect(validTimestamp).to.be.equal(true);
-                expect(validIndex).to.be.equal(false);
+                const invalidator = await this.swap.invalidatorForOrderRFQ(_, '0');
+                expect(invalidator).to.be.bignumber.equal(toBN('2'));
+            });
+
+            it.only('should cancel own order with huge number', async function () {
+                await this.swap.cancelOrderRFQ('1023');
+                const invalidator = await this.swap.invalidatorForOrderRFQ(_, '3');
+                expect(invalidator).to.be.bignumber.equal(toBN('1').shln(255));
             });
 
             it('should not fill cancelled order', async function () {
