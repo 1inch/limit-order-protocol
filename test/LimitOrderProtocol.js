@@ -301,6 +301,70 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
         });
     });
 
+    describe('Amount Calculator', async function () {
+        it('getTakerAmountNoPartialFill should work on full fill', async function () {
+            const order = buildOrder(this.swap, this.dai, this.weth, 10, 10);
+            order.getTakerAmount = this.swap.contract.methods.getTakerAmountNoPartialFill(10, 10, 0).encodeABI().substr(0, 2 + 68 * 2);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            const makerDai = await this.dai.balanceOf(wallet);
+            const takerDai = await this.dai.balanceOf(_);
+            const makerWeth = await this.weth.balanceOf(wallet);
+            const takerWeth = await this.weth.balanceOf(_);
+
+            await this.swap.fillOrder(order, signature, 10, 0, '0x');
+
+            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(10));
+            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(10));
+            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(10));
+            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(10));
+        });
+
+        it('getTakerAmountNoPartialFill should not work on partial fill', async function () {
+            const order = buildOrder(this.swap, this.dai, this.weth, 10, 10);
+            order.getTakerAmount = this.swap.contract.methods.getTakerAmountNoPartialFill(10, 10, 0).encodeABI().substr(0, 2 + 68 * 2);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            await expectRevert(
+                this.swap.fillOrder(order, signature, 5, 0, '0x'),
+                'LOP: can\'t swap 0 amount',
+            );
+        });
+
+        it('getMakerAmountNoPartialFill should work on full fill', async function () {
+            const order = buildOrder(this.swap, this.dai, this.weth, 10, 10);
+            order.getMakerAmount = this.swap.contract.methods.getMakerAmountNoPartialFill(10, 10, 0).encodeABI().substr(0, 2 + 68 * 2);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            const makerDai = await this.dai.balanceOf(wallet);
+            const takerDai = await this.dai.balanceOf(_);
+            const makerWeth = await this.weth.balanceOf(wallet);
+            const takerWeth = await this.weth.balanceOf(_);
+
+            await this.swap.fillOrder(order, signature, 0, 10, '0x');
+
+            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(10));
+            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(10));
+            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(10));
+            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(10));
+        });
+
+        it('getMakerAmountNoPartialFill should not work on partial fill', async function () {
+            const order = buildOrder(this.swap, this.dai, this.weth, 10, 10);
+            order.getMakerAmount = this.swap.contract.methods.getMakerAmountNoPartialFill(10, 10, 0).encodeABI().substr(0, 2 + 68 * 2);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            await expectRevert(
+                this.swap.fillOrder(order, signature, 0, 5, '0x'),
+                'LOP: can\'t swap 0 amount',
+            );
+        });
+    });
+
     describe('Order Cancelation', async function () {
         beforeEach(async function () {
             this.order = buildOrder(this.swap, this.dai, this.weth, 1, 1);
