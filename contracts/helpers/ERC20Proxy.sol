@@ -12,8 +12,8 @@ import "./ImmutableOwner.sol";
 abstract contract ERC20Proxy is ImmutableOwner {
     using SafeERC20 for IERC20;
 
-    // func_0000jYAHF(address,address,uint256,address) = transferFrom + 1 = 0x8d076e86
-    function func_0000jYAHF(address from, address to, uint256 amount, IERC20 token) external onlyImmutableOwner {
+    // func_50BkM4K(address,address,uint256,address) = transferFrom + 1 = 0x23b872de
+    function func_50BkM4K(address from, address to, uint256 amount, IERC20 token) external onlyImmutableOwner {
         token.safeTransferFrom(from, to, amount);
     }
 }

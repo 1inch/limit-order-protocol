@@ -301,6 +301,34 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
         });
     });
 
+    it('ERC20Proxy should work', async function () {
+        const order = {
+            salt: '1',
+            makerAsset: this.swap.address,
+            takerAsset: this.swap.address,
+            makerAssetData: this.swap.contract.methods.func_50BkM4K(wallet, zeroAddress, 10, this.dai.address).encodeABI(),
+            takerAssetData: this.swap.contract.methods.func_50BkM4K(zeroAddress, wallet, 10, this.weth.address).encodeABI(),
+            getMakerAmount: this.swap.contract.methods.getMakerAmount(10, 10, 0).encodeABI().substr(0, 2 + 68 * 2),
+            getTakerAmount: this.swap.contract.methods.getTakerAmount(10, 10, 0).encodeABI().substr(0, 2 + 68 * 2),
+            predicate: '0x',
+            permitData: '0x',
+        };
+        const data = buildOrderData(this.chainId, this.swap.address, order);
+        const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+        const makerDai = await this.dai.balanceOf(wallet);
+        const takerDai = await this.dai.balanceOf(_);
+        const makerWeth = await this.weth.balanceOf(wallet);
+        const takerWeth = await this.weth.balanceOf(_);
+
+        await this.swap.fillOrder(order, signature, 10, 0, '0x');
+
+        expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(10));
+        expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(10));
+        expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(10));
+        expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(10));
+    });
+
     describe('Amount Calculator', async function () {
         it('getTakerAmountNoPartialFill should work on full fill', async function () {
             const order = buildOrder(this.swap, this.dai, this.weth, 10, 10);
