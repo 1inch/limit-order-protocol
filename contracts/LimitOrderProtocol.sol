@@ -12,7 +12,7 @@ import "./helpers/ERC20Proxy.sol";
 import "./helpers/ERC721Proxy.sol";
 import "./helpers/ERC1155Proxy.sol";
 import "./interfaces/IEIP1271.sol";
-import "./interfaces/InteractiveTaker.sol";
+import "./interfaces/InteractiveMaker.sol";
 import "./libraries/EIP1271Constants.sol";
 import "./libraries/UnsafeAddress.sol";
 import "./libraries/ArgumentsDecoder.sol";
@@ -65,11 +65,12 @@ contract LimitOrderProtocol is
         bytes getMakerAmount; // this.staticcall(abi.encodePacked(bytes, swapTakerAmount)) => (swapMakerAmount)
         bytes getTakerAmount; // this.staticcall(abi.encodePacked(bytes, swapMakerAmount)) => (swapTakerAmount)
         bytes predicate;      // this.staticcall(bytes) => (bool)
-        bytes permitData;     // On first fill: permitData.1.call(abi.encodePacked(permit.selector, permitData.2))
+        bytes permit;         // On first fill: permit.1.call(abi.encodePacked(permit.selector, permit.2))
+        bytes interaction;
     }
 
     bytes32 constant public LIMIT_ORDER_TYPEHASH = keccak256(
-        "Order(uint256 salt,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData,bytes getMakerAmount,bytes getTakerAmount,bytes predicate,bytes permitData)"
+        "Order(uint256 salt,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData,bytes getMakerAmount,bytes getTakerAmount,bytes predicate,bytes permit,bytes interaction)"
     );
 
     bytes32 constant public LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
@@ -155,13 +156,7 @@ contract LimitOrderProtocol is
         _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, msg.sender, type(uint256).max);
     }
 
-    function fillOrder(
-        Order memory order,
-        bytes calldata signature,
-        uint256 makingAmount,
-        uint256 takingAmount,
-        bytes calldata interactiveData
-    ) external returns(uint256, uint256) {
+    function fillOrder(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount) external returns(uint256, uint256) {
         bytes32 orderHash = _hash(order);
 
         (bool orderExists, uint256 remainingMakerAmount) = _remaining[orderHash].trySub(1);
@@ -169,9 +164,10 @@ contract LimitOrderProtocol is
             // First fill: validate order and permit maker asset
             _validate(order, signature, orderHash);
             remainingMakerAmount = order.makerAssetData.decodeUint256(2);
-            if (order.permitData.length > 0) {
-                (address token, bytes memory permitData) = abi.decode(order.permitData, (address, bytes));
-                token.unsafeFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permitData), "LOP: permit failed");
+            if (order.permit.length > 0) {
+                (address token, bytes memory permit) = abi.decode(order.permit, (address, bytes));
+                token.unsafeFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
+                require(_remaining[orderHash] == 0, "LOP: reentrancy detected");
             }
         }
 
@@ -205,16 +201,17 @@ contract LimitOrderProtocol is
         _remaining[orderHash] = remainingMakerAmount + 1;
         emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
 
-        // Maker => Taker
-        _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, msg.sender, makingAmount);
-
-        // Taker can handle funds interactively
-        if (interactiveData.length > 0) {
-            InteractiveTaker(msg.sender).interact(order.makerAsset, order.takerAsset, makingAmount, takingAmount, interactiveData);
-        }
-
         // Taker => Maker
         _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, msg.sender, takingAmount);
+
+        // Maker can handle funds interactively
+        if (order.interaction.length > 0) {
+            InteractiveMaker(order.makerAssetData.decodeAddress(0))
+                .notifyFillOrder(order.makerAsset, order.takerAsset, makingAmount, takingAmount, order.interaction);
+        }
+
+        // Maker => Taker
+        _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, msg.sender, makingAmount);
 
         return (makingAmount, takingAmount);
     }
@@ -232,7 +229,8 @@ contract LimitOrderProtocol is
                     keccak256(order.getMakerAmount),
                     keccak256(order.getTakerAmount),
                     keccak256(order.predicate),
-                    keccak256(order.permitData)
+                    keccak256(order.permit),
+                    keccak256(order.interaction)
                 )
             )
         );

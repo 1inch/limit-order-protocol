@@ -3,12 +3,12 @@
 pragma solidity ^0.8.0;
 
 
-interface InteractiveTaker {
-    function interact(
+interface InteractiveMaker {
+    function notifyFillOrder(
         address makerAsset,
         address takerAsset,
         uint256 makingAmount,
-        uint256 expectedTakingAmount,
+        uint256 takingAmount,
         bytes memory interactiveData
     ) external;
 }
