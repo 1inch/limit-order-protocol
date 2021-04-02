@@ -1,16 +1,30 @@
 const { BN, expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 
+const { bufferToHex } = require('ethereumjs-util');
 const ethSigUtil = require('eth-sig-util');
 const Wallet = require('ethereumjs-wallet').default;
 
 const TokenMock = artifacts.require('TokenMock');
-const LimitSwap = artifacts.require('LimitSwap');
+const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
 const { EIP712Domain, domainSeparator } = require('./helpers/eip712');
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
 
+function toBN (num) {
+    return new BN(num);
+}
+
+const OrderRFQ = [
+    { name: 'info', type: 'uint256' },
+    { name: 'makerAsset', type: 'address' },
+    { name: 'takerAsset', type: 'address' },
+    { name: 'makerAssetData', type: 'bytes' },
+    { name: 'takerAssetData', type: 'bytes' },
+];
+
 const Order = [
+    { name: 'salt', type: 'uint256' },
     { name: 'makerAsset', type: 'address' },
     { name: 'takerAsset', type: 'address' },
     { name: 'makerAssetData', type: 'bytes' },
@@ -21,7 +35,7 @@ const Order = [
     { name: 'permitData', type: 'bytes' },
 ];
 
-contract('LimitSwap', async function ([_, wallet]) {
+contract('LimitOrderProtocol', async function ([_, wallet]) {
     const privatekey = '2bdd21761a483f71054e14f5b827213567971c676928d9a1808cbfa4b7501201';
     const account = Wallet.fromPrivateKey(Buffer.from(privatekey, 'hex'));
 
@@ -29,31 +43,57 @@ contract('LimitSwap', async function ([_, wallet]) {
     const name = '1inch Limit Order Protocol';
     const version = '1';
 
-    function buildData (chainId, verifyingContract, order) {
+    function buildOrderData (chainId, verifyingContract, order) {
         return {
             primaryType: 'Order',
             types: { EIP712Domain, Order },
             domain: { name, version, chainId, verifyingContract },
             message: order,
-        }
-    }
-
-    function buildOrder(exchange, makerAsset, takerAsset, makerAmount, takerAmount, predicate, permit) {
-        return {
-            makerAsset: makerAsset.address,
-            takerAsset: takerAsset.address,
-            makerAssetData: makerAsset.contract.methods.transferFrom(wallet, zeroAddress, makerAmount).encodeABI(),
-            takerAssetData: takerAsset.contract.methods.transferFrom(zeroAddress, wallet, takerAmount).encodeABI(),
-            getMakerAmount: exchange.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68*2),
-            getTakerAmount: exchange.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68*2),
-            predicate: predicate,
-            permitData: permit
         };
     }
 
-    before(async function () {
-        this.dai = await TokenMock.new("DAI", "DAI");
-        this.weth = await TokenMock.new("WETH", "WETH");
+    function buildOrderRFQData (chainId, verifyingContract, order) {
+        return {
+            primaryType: 'OrderRFQ',
+            types: { EIP712Domain, OrderRFQ },
+            domain: { name, version, chainId, verifyingContract },
+            message: order,
+        };
+    }
+
+    function buildOrder (exchange, makerAsset, takerAsset, makerAmount, takerAmount, taker = zeroAddress, predicate = '0x', permit = '0x') {
+        return buildOrderWithSalt(exchange, '1', makerAsset, takerAsset, makerAmount, takerAmount, taker, predicate, permit);
+    }
+
+    function buildOrderWithSalt (exchange, salt, makerAsset, takerAsset, makerAmount, takerAmount, taker = zeroAddress, predicate = '0x', permit = '0x') {
+        return {
+            salt: salt,
+            makerAsset: makerAsset.address,
+            takerAsset: takerAsset.address,
+            makerAssetData: makerAsset.contract.methods.transferFrom(wallet, taker, makerAmount).encodeABI(),
+            takerAssetData: takerAsset.contract.methods.transferFrom(taker, wallet, takerAmount).encodeABI(),
+            getMakerAmount: exchange.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68 * 2),
+            getTakerAmount: exchange.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68 * 2),
+            predicate: predicate,
+            permitData: permit,
+        };
+    }
+
+    function buildOrderRFQ (info, makerAsset, takerAsset, makerAmount, takerAmount, taker = zeroAddress) {
+        return {
+            info: info,
+            makerAsset: makerAsset.address,
+            takerAsset: takerAsset.address,
+            makerAssetData: makerAsset.contract.methods.transferFrom(wallet, taker, makerAmount).encodeABI(),
+            takerAssetData: takerAsset.contract.methods.transferFrom(taker, wallet, takerAmount).encodeABI(),
+        };
+    }
+
+    beforeEach(async function () {
+        this.dai = await TokenMock.new('DAI', 'DAI');
+        this.weth = await TokenMock.new('WETH', 'WETH');
+
+        this.swap = await LimitOrderProtocol.new();
 
         // We get the chain id from the contract because Ganache (used for coverage) does not return the same chain id
         // from within the EVM as from the JSON RPC interface.
@@ -64,10 +104,6 @@ contract('LimitSwap', async function ([_, wallet]) {
         await this.weth.mint(wallet, '1000000');
         await this.dai.mint(_, '1000000');
         await this.weth.mint(_, '1000000');
-    });
-
-    beforeEach(async function () {
-        this.swap = await LimitSwap.new();
 
         await this.dai.approve(this.swap.address, '1000000');
         await this.weth.approve(this.swap.address, '1000000');
@@ -83,18 +119,35 @@ contract('LimitSwap', async function ([_, wallet]) {
         );
     });
 
-    describe('LimitSwap', async function () {
+    describe('wip', async function () {
         it('transferFrom', async function () {
             await this.dai.approve(_, '2', { from: wallet });
             await this.dai.transferFrom(wallet, _, '1', { from: _ });
         });
 
-        it('should swap fully based on signature', async function () {
-            // Order: 1 DAI => 1 WETH
-            // Swap:  1 DAI => 1 WETH
+        it('should not swap with bad signature', async function () {
+            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+            const sentOrder = buildOrder(this.swap, this.dai, this.weth, 1, 2);
 
-            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, "0x", "0x");
-            const data = buildData(this.chainId, this.swap.address, order);
+            await expectRevert.unspecified(this.swap.fillOrder(sentOrder, signature, 1, 0, '0x'));
+        });
+
+        it('should not fill (1,1)', async function () {
+            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            await expectRevert(
+                this.swap.fillOrder(order, signature, 1, 1, '0x'),
+                'LOP: one of amounts should be 0',
+            );
+        });
+
+        it('should take all the remaining makerAssetAmount', async function () {
+            const order = buildOrder(this.swap, this.dai, this.weth, 100, 1);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
             const makerDai = await this.dai.balanceOf(wallet);
@@ -102,10 +155,31 @@ contract('LimitSwap', async function ([_, wallet]) {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(_);
 
-            const receipt = await this.swap.fillOrder(order, signature, 1, 0, false, "0x");
+            this.swap.fillOrder(order, signature, toBN('1').shln(255).toString(), 0, '0x');
+
+            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(100));
+            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(100));
+            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+        });
+
+        it('should swap fully based on signature', async function () {
+            // Order: 1 DAI => 1 WETH
+            // Swap:  1 DAI => 1 WETH
+
+            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            const makerDai = await this.dai.balanceOf(wallet);
+            const takerDai = await this.dai.balanceOf(_);
+            const makerWeth = await this.weth.balanceOf(wallet);
+            const takerWeth = await this.weth.balanceOf(_);
+
+            const receipt = await this.swap.fillOrder(order, signature, 1, 0, '0x');
 
             expect(
-                await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE'])
+                await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
             ).to.be.deep.equal([2, 1, 7, 7, 0]);
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
@@ -114,12 +188,41 @@ contract('LimitSwap', async function ([_, wallet]) {
             expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
+        it('should swap fully based on RFQ signature', async function () {
+            // Order: 1 DAI => 1 WETH
+            // Swap:  1 DAI => 1 WETH
+
+            for (const salt of ['000000000000000000000001', '000000000000000000000002']) {
+                const order = buildOrderRFQ(salt, this.dai, this.weth, 1, 1);
+                const data = buildOrderRFQData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                const makerDai = await this.dai.balanceOf(wallet);
+                const takerDai = await this.dai.balanceOf(_);
+                const makerWeth = await this.weth.balanceOf(wallet);
+                const takerWeth = await this.weth.balanceOf(_);
+
+                const receipt = await this.swap.fillOrderRFQ(order, signature);
+
+                expect(
+                    await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
+                ).to.be.deep.equal([2, 1, 7, 7, 0]);
+
+                await gasspectEVM(receipt.tx);
+
+                expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+                expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+                expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+                expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+            }
+        });
+
         it('should swap half based on signature', async function () {
             // Order: 2 DAI => 2 WETH
             // Swap:  1 DAI => 1 WETH
 
-            const order = buildOrder(this.swap, this.dai, this.weth, 2, 2, "0x", "0x");
-            const data = buildData(this.chainId, this.swap.address, order);
+            const order = buildOrder(this.swap, this.dai, this.weth, 2, 2);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
             const makerDai = await this.dai.balanceOf(wallet);
@@ -127,10 +230,10 @@ contract('LimitSwap', async function ([_, wallet]) {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(_);
 
-            const receipt = await this.swap.fillOrder(order, signature, 1, 0, false, "0x");
+            const receipt = await this.swap.fillOrder(order, signature, 1, 0, '0x');
 
             expect(
-                await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE'])
+                await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
             ).to.be.deep.equal([2, 2, 7, 7, 0]);
 
             // await gasspectEVM(receipt.tx);
@@ -145,8 +248,8 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Order: 2 DAI => 10 WETH
             // Swap:  9 WETH <= 1 DAI
 
-            const order = buildOrder(this.swap, this.dai, this.weth, 2, 10, "0x", "0x");
-            const data = buildData(this.chainId, this.swap.address, order);
+            const order = buildOrder(this.swap, this.dai, this.weth, 2, 10);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
             const makerDai = await this.dai.balanceOf(wallet);
@@ -154,7 +257,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(_);
 
-            await this.swap.fillOrder(order, signature, 0, 9, false, "0x");
+            await this.swap.fillOrder(order, signature, 0, 9, '0x');
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
             expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
@@ -166,13 +269,13 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Order: 2 DAI => 10 WETH
             // Swap:  4 WETH <= 0 DAI
 
-            const order = buildOrder(this.swap, this.dai, this.weth, 2, 10, "0x", "0x");
-            const data = buildData(this.chainId, this.swap.address, order);
+            const order = buildOrder(this.swap, this.dai, this.weth, 2, 10);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
             await expectRevert(
-                this.swap.fillOrder(order, signature, 0, 4, false, "0x"),
-                "LimitSwap: can't swap 0 amount"
+                this.swap.fillOrder(order, signature, 0, 4, '0x'),
+                'LOP: can\'t swap 0 amount',
             );
         });
 
@@ -180,8 +283,8 @@ contract('LimitSwap', async function ([_, wallet]) {
             // Order: 10 DAI => 2 WETH
             // Swap:  4 DAI => 1 WETH
 
-            const order = buildOrder(this.swap, this.dai, this.weth, 10, 2, "0x", "0x");
-            const data = buildData(this.chainId, this.swap.address, order);
+            const order = buildOrder(this.swap, this.dai, this.weth, 10, 2);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
             const makerDai = await this.dai.balanceOf(wallet);
@@ -189,12 +292,250 @@ contract('LimitSwap', async function ([_, wallet]) {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(_);
 
-            await this.swap.fillOrder(order, signature, 4, 0, false, "0x");
+            await this.swap.fillOrder(order, signature, 4, 0, '0x');
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(4));
             expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(4));
             expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
             expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+        });
+
+        describe('Order Cancelation', async function () {
+            beforeEach(async function () {
+                this.order = buildOrder(this.swap, this.dai, this.weth, 1, 1);
+            });
+
+            it('should cancel own order', async function () {
+                await this.swap.cancelOrder(this.order, { from: wallet });
+                const data = buildOrderData(this.chainId, this.swap.address, this.order);
+                const orderHash = bufferToHex(ethSigUtil.TypedDataUtils.sign(data));
+                expect(await this.swap.remaining(orderHash)).to.be.bignumber.equal('0');
+            });
+
+            it('should not cancel foreign order', async function () {
+                await expectRevert(
+                    this.swap.cancelOrder(this.order),
+                    'LOP: Access denied',
+                );
+            });
+
+            it('should not fill cancelled order', async function () {
+                const data = buildOrderData(this.chainId, this.swap.address, this.order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                await this.swap.cancelOrder(this.order, { from: wallet });
+
+                await expectRevert(
+                    this.swap.fillOrder(this.order, signature, 1, 0, '0x'),
+                    'LOP: taking > remaining',
+                );
+            });
+        });
+
+        describe('OrderRFQ Cancelation', async function () {
+            it('should cancel own order', async function () {
+                await this.swap.cancelOrderRFQ('1');
+                const invalidator = await this.swap.invalidatorForOrderRFQ(_, '0');
+                expect(invalidator).to.be.bignumber.equal(toBN('2'));
+            });
+
+            it('should cancel own order with huge number', async function () {
+                await this.swap.cancelOrderRFQ('1023');
+                const invalidator = await this.swap.invalidatorForOrderRFQ(_, '3');
+                expect(invalidator).to.be.bignumber.equal(toBN('1').shln(255));
+            });
+
+            it('should not fill cancelled order', async function () {
+                const order = buildOrderRFQ('1', this.dai, this.weth, 1, 1);
+                const data = buildOrderRFQData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                await this.swap.cancelOrderRFQ('1', { from: wallet });
+
+                await expectRevert(
+                    this.swap.fillOrderRFQ(order, signature),
+                    'LOP: already filled',
+                );
+            });
+        });
+
+        describe('Private Orders', async function () {
+            it('should fill with correct taker', async function () {
+                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _);
+                const data = buildOrderData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                const makerDai = await this.dai.balanceOf(wallet);
+                const takerDai = await this.dai.balanceOf(_);
+                const makerWeth = await this.weth.balanceOf(wallet);
+                const takerWeth = await this.weth.balanceOf(_);
+
+                await this.swap.fillOrder(order, signature, 1, 0, '0x');
+
+                expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+                expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+                expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+                expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+            });
+
+            it('should not fill with incorrect taker', async function () {
+                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, wallet);
+                const data = buildOrderData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                await expectRevert(
+                    this.swap.fillOrder(order, signature, 1, 0, '0x'),
+                    'LOP: private order',
+                );
+            });
+        });
+
+        describe('Predicate', async function () {
+            it('`or` should pass', async function () {
+                const ts1 = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
+                const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
+                const gtCall = this.swap.contract.methods.gt('100000', this.dai.address, balanceCall).encodeABI();
+                const predicate = this.swap.contract.methods.or(
+                    [this.swap.address, this.swap.address],
+                    [ts1, gtCall],
+                ).encodeABI();
+                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _, predicate);
+                const data = buildOrderData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                const makerDai = await this.dai.balanceOf(wallet);
+                const takerDai = await this.dai.balanceOf(_);
+                const makerWeth = await this.weth.balanceOf(wallet);
+                const takerWeth = await this.weth.balanceOf(_);
+
+                await this.swap.fillOrder(order, signature, 1, 0, '0x');
+
+                expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+                expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+                expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+                expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+            });
+
+            it('`or` should fail', async function () {
+                const ts1 = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
+                const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
+                const gtCall = this.swap.contract.methods.lt('100000', this.dai.address, balanceCall).encodeABI();
+                const predicate = this.swap.contract.methods.or(
+                    [this.swap.address, this.swap.address],
+                    [ts1, gtCall],
+                ).encodeABI();
+                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _, predicate);
+                const data = buildOrderData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                await expectRevert(
+                    this.swap.fillOrder(order, signature, 1, 0, '0x'),
+                    'LOP: predicate returned false',
+                );
+            });
+
+            it('`and` should pass', async function () {
+                const ts1 = this.swap.contract.methods.timestampBelow(0xff000000).encodeABI();
+                const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
+                const gtCall = this.swap.contract.methods.eq('1000000', this.dai.address, balanceCall).encodeABI();
+                const predicate = this.swap.contract.methods.and(
+                    [this.swap.address, this.swap.address],
+                    [ts1, gtCall],
+                ).encodeABI();
+                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _, predicate);
+                const data = buildOrderData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                const makerDai = await this.dai.balanceOf(wallet);
+                const takerDai = await this.dai.balanceOf(_);
+                const makerWeth = await this.weth.balanceOf(wallet);
+                const takerWeth = await this.weth.balanceOf(_);
+
+                await this.swap.fillOrder(order, signature, 1, 0, '0x');
+
+                expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+                expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+                expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+                expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+            });
+
+            it('`and` should fail', async function () {
+                const ts1 = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
+                const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
+                const gtCall = this.swap.contract.methods.gt('100000', this.dai.address, balanceCall).encodeABI();
+                const predicate = this.swap.contract.methods.and(
+                    [this.swap.address, this.swap.address],
+                    [ts1, gtCall],
+                ).encodeABI();
+                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _, predicate);
+                const data = buildOrderData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                await expectRevert(
+                    this.swap.fillOrder(order, signature, 1, 0, '0x'),
+                    'LOP: predicate returned false',
+                );
+            });
+        });
+
+        describe('Expiration', async function () {
+            it('should fill when not expired', async function () {
+                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _, this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI());
+                const data = buildOrderData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                const makerDai = await this.dai.balanceOf(wallet);
+                const takerDai = await this.dai.balanceOf(_);
+                const makerWeth = await this.weth.balanceOf(wallet);
+                const takerWeth = await this.weth.balanceOf(_);
+
+                await this.swap.fillOrder(order, signature, 1, 0, '0x');
+
+                expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+                expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+                expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+                expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+            });
+
+            it('should not fill when expired', async function () {
+                const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _, this.swap.contract.methods.timestampBelow(0xff0000).encodeABI());
+                const data = buildOrderData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                await expectRevert(
+                    this.swap.fillOrder(order, signature, 1, 0, '0x'),
+                    'LOP: predicate returned false',
+                );
+            });
+
+            it('should fill RFQ order when not expired', async function () {
+                const order = buildOrderRFQ('20203181441137406086353707335681', this.dai, this.weth, 1, 1);
+                const data = buildOrderRFQData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                const makerDai = await this.dai.balanceOf(wallet);
+                const takerDai = await this.dai.balanceOf(_);
+                const makerWeth = await this.weth.balanceOf(wallet);
+                const takerWeth = await this.weth.balanceOf(_);
+
+                await this.swap.fillOrderRFQ(order, signature);
+
+                expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+                expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+                expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+                expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+            });
+
+            it('should not fill RFQ order when expired', async function () {
+                const order = buildOrderRFQ('308276084001730439550074881', this.dai, this.weth, 1, 1);
+                const data = buildOrderRFQData(this.chainId, this.swap.address, order);
+                const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+                await expectRevert(
+                    this.swap.fillOrderRFQ(order, signature),
+                    'LOP: order expired',
+                );
+            });
         });
     });
 });

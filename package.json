@@ -1,10 +1,10 @@
 {
-  "name": "LimitSwap",
+  "name": "@1inch-exchange/limit-order-protocol",
   "version": "0.0.1",
-  "description": "",
+  "description": "1inch Limit Order Protocol",
   "repository": {
     "type": "git",
-    "url": "git@github.com:CryptoManiacsZone/LimitSwap.git"
+    "url": "git@github.com:1inch/limit-order-protocol.git"
   },
   "license": "MIT",
   "dependencies": {
@@ -27,19 +27,19 @@
     "ganache-cli": "^6.12.2",
     "solc": "^0.8.3",
     "solidity-coverage": "^0.7.16",
-    "solium": "^1.2.5",
+    "solhint": "^3.3.4",
     "truffle": "^5.2.6",
     "truffle-flattener": "^1.5.0"
   },
   "scripts": {
     "test": "scripts/test.sh",
-    "coverage": "scripts/coverage.sh && cat coverage/lcov.info | coveralls",
+    "coverage": "truffle run coverage",
     "lint:js": "eslint .",
     "lint:js:fix": "eslint . --fix",
-    "lint:sol": "solium -d .",
-    "lint:sol:fix": "solium -d . --fix",
-    "lint": "npm run lint:js && npm run lint:sol",
-    "lint:fix": "npm run lint:js:fix && npm run lint:sol:fix",
+    "lint:sol": "solhint --max-warnings 0 \"contracts/**/*.sol\"",
+    "lint:sol:fix": "solhint --max-warnings 0 \"contracts/**/*.sol\" --fix",
+    "lint": "yarn run lint:js && yarn run lint:sol",
+    "lint:fix": "yarn run lint:js:fix && yarn run lint:sol:fix",
     "dist": "truffle-flattener ./contracts/LimitSwap.sol > LimitSwap.full.sol && solcjs --bin --abi --optimize LimitSwap.full.sol && mv LimitSwap_full_sol_LimitSwap.bin LimitSwap.full.bin && mv LimitSwap_full_sol_LimitSwap.abi LimitSwap.full.abi && rm *_sol_*"
   }
 }

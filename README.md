@@ -1,6 +1,5 @@
-# LimitSwap
+# 1inch Limit Order Protocol
 
-TruffleFramework template with travis-ci.org and coveralls.io configured
 
-[![Build Status](https://travis-ci.org/CryptoManiacsZone/LimitSwap.svg?branch=master)](https://travis-ci.org/CryptoManiacsZone/LimitSwap)
-[![Coverage Status](https://coveralls.io/repos/github/CryptoManiacsZone/LimitSwap/badge.svg?branch=master)](https://coveralls.io/github/CryptoManiacsZone/LimitSwap?branch=master)
+[![Build Status](https://github.com/1inch/limit-order-protocol/workflows/CI/badge.svg)](https://github.com/1inch/limit-order-protocol/actions)
+[![Coverage Status](https://coveralls.io/repos/github/1inch/limit-order-protocol/badge.svg?branch=master)](https://coveralls.io/github/1inch/limit-order-protocol?branch=master)
