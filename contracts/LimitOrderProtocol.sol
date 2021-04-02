@@ -13,10 +13,9 @@ import "./helpers/ERC721Proxy.sol";
 import "./helpers/ERC1155Proxy.sol";
 import "./interfaces/IEIP1271.sol";
 import "./interfaces/InteractiveTaker.sol";
-import "./libraries/BytesParser.sol";
 import "./libraries/EIP1271Constants.sol";
 import "./libraries/UnsafeAddress.sol";
-import "./libraries/SelectorFromToAmountParser.sol";
+import "./libraries/ArgumentsDecoder.sol";
 
 
 contract LimitOrderProtocol is
@@ -31,9 +30,8 @@ contract LimitOrderProtocol is
 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    using BytesParser for bytes;
     using UnsafeAddress for address;
-    using SelectorFromToAmountParser for bytes;
+    using ArgumentsDecoder for bytes;
 
     // Partial Fill:
     //   getMakerAmount := GetMakerAmountHelper.disablePartialFill(makerAmount, ...)
@@ -127,7 +125,7 @@ contract LimitOrderProtocol is
     }
 
     function cancelOrder(Order memory order) external {
-        require(order.makerAssetData.getArgumentFrom() == msg.sender, "LOP: Access denied");
+        require(order.makerAssetData.decodeAddress(0) == msg.sender, "LOP: Access denied");
 
         bytes32 orderHash = _hash(order);
         _remaining[orderHash] = 1;
@@ -144,7 +142,7 @@ contract LimitOrderProtocol is
         require(expiration == 0 || block.timestamp <= expiration, "LOP: order expired");  // solhint-disable-line not-rely-on-time
 
         // Validate double spend
-        address maker = order.makerAssetData.getArgumentFrom();
+        address maker = order.makerAssetData.decodeAddress(0);
         uint256 invalidator = _invalidator[maker][uint64(order.info) / 256];
         require(invalidator & (1 << (order.info % 256)) == 0, "LOP: already filled");
         _invalidator[maker][uint64(order.info) / 256] = invalidator | (1 << (order.info % 256));
@@ -170,7 +168,7 @@ contract LimitOrderProtocol is
         if (!orderExists) {
             // First fill: validate order and permit maker asset
             _validate(order, signature, orderHash);
-            remainingMakerAmount = order.makerAssetData.getArgumentAmount();
+            remainingMakerAmount = order.makerAssetData.decodeUint256(2);
             if (order.permitData.length > 0) {
                 (address token, bytes memory permitData) = abi.decode(order.permitData, (address, bytes));
                 token.unsafeFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permitData), "LOP: permit failed");
@@ -187,13 +185,13 @@ contract LimitOrderProtocol is
             makingAmount = remainingMakerAmount;
         }
         if (takingAmount == 0) {
-            takingAmount = (makingAmount == order.makerAssetData.getArgumentAmount())
-                ? order.takerAssetData.getArgumentAmount()
+            takingAmount = (makingAmount == order.makerAssetData.decodeUint256(2))
+                ? order.takerAssetData.decodeUint256(2)
                 : _callGetTakerAmount(order, makingAmount);
         }
         else if (makingAmount == 0) {
-            makingAmount = (takingAmount == order.takerAssetData.getArgumentAmount())
-                ? order.makerAssetData.getArgumentAmount()
+            makingAmount = (takingAmount == order.takerAssetData.decodeUint256(2))
+                ? order.makerAssetData.decodeUint256(2)
                 : _callGetMakerAmount(order, takingAmount);
         }
         else {
@@ -264,14 +262,14 @@ contract LimitOrderProtocol is
     }
 
     function _validate(bytes memory makerAssetData, bytes memory takerAssetData, bytes memory signature, bytes32 orderHash) internal view {
-        require(makerAssetData.length >= 68, "LOP: bad makerAssetData.length");
-        require(takerAssetData.length >= 68, "LOP: bad takerAssetData.length");
-        bytes4 makerSelector = makerAssetData.getArgumentSelector();
-        bytes4 takerSelector = takerAssetData.getArgumentSelector();
+        require(makerAssetData.length >= 100, "LOP: bad makerAssetData.length");
+        require(takerAssetData.length >= 100, "LOP: bad takerAssetData.length");
+        bytes4 makerSelector = makerAssetData.decodeSelector();
+        bytes4 takerSelector = takerAssetData.decodeSelector();
         require(makerSelector >= IERC20.transferFrom.selector && makerSelector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LOP: bad makerAssetData.selector");
         require(takerSelector >= IERC20.transferFrom.selector && takerSelector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LOP: bad takerAssetData.selector");
 
-        address maker = address(makerAssetData.getArgumentFrom());
+        address maker = address(makerAssetData.decodeAddress(0));
         if (signature.length != 65 || ECDSA.recover(orderHash, signature) != maker) {
             require(IEIP1271(maker).isValidSignature(orderHash, signature) == EIP1271Constants._MAGIC_VALUE, "LOP: bad signature");
         }
@@ -279,16 +277,16 @@ contract LimitOrderProtocol is
 
     function _callMakerAssetTransferFrom(address makerAsset, bytes memory makerAssetData, address taker, uint256 makingAmount) internal {
         // Patch receiver or validate private order
-        address takerAddress = makerAssetData.getArgumentTo();
+        address takerAddress = makerAssetData.decodeAddress(1);
         if (takerAddress == address(0)) {
-            makerAssetData.patchBytes32(4 + 32, bytes32(uint256(uint160(taker))));
+            makerAssetData.patchAddress(1, taker);
         } else {
             require(takerAddress == taker, "LOP: private order");
         }
 
         // Patch amount if needed
         if (makingAmount != type(uint256).max) {
-            makerAssetData.patchBytes32(4 + 32 + 32, bytes32(makingAmount));
+            makerAssetData.patchUint256(2, makingAmount);
         }
 
         // Transfer asset from maker to taker
@@ -300,11 +298,11 @@ contract LimitOrderProtocol is
 
     function _callTakerAssetTransferFrom(address takerAsset, bytes memory takerAssetData, address taker, uint256 takingAmount) internal {
         // Patch spender
-        takerAssetData.patchBytes32(4, bytes32(uint256(uint160(taker))));
+        takerAssetData.patchAddress(0, taker);
 
         // Patch amount if needed
         if (takingAmount != type(uint256).max) {
-            takerAssetData.patchBytes32(4 + 32 + 32, bytes32(takingAmount));
+            takerAssetData.patchUint256(2, takingAmount);
         }
 
         // Transfer asset from taker to maker
