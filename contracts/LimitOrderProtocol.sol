@@ -269,7 +269,8 @@ contract LimitOrderProtocol is
 
         address maker = address(makerAssetData.decodeAddress(0));
         if (signature.length != 65 || ECDSA.recover(orderHash, signature) != maker) {
-            require(IEIP1271(maker).isValidSignature(orderHash, signature) == EIP1271Constants._MAGIC_VALUE, "LOP: bad signature");
+            bytes memory result = maker.unsafeFunctionStaticCall(abi.encodeWithSelector(IEIP1271.isValidSignature.selector, orderHash, signature), "LOP: isValidSignature failed");
+            require(result.length == 32 && abi.decode(result, (bytes4)) == EIP1271Constants._MAGIC_VALUE, "LOP: bad signature");
         }
     }
 
@@ -312,11 +313,13 @@ contract LimitOrderProtocol is
 
     function _callGetMakerAmount(Order memory order, uint256 takerAmount) internal view returns(uint256 makerAmount) {
         bytes memory result = address(this).unsafeFunctionStaticCall(abi.encodePacked(order.getMakerAmount, takerAmount), "LOP: getMakerAmount call failed");
+        require(result.length == 32, "LOP: invalid getMakerAmount ret");
         return abi.decode(result, (uint256));
     }
 
     function _callGetTakerAmount(Order memory order, uint256 makerAmount) internal view returns(uint256 takerAmount) {
         bytes memory result = address(this).unsafeFunctionStaticCall(abi.encodePacked(order.getTakerAmount, makerAmount), "LOP: getTakerAmount call failed");
+        require(result.length == 32, "LOP: invalid getTakerAmount ret");
         return abi.decode(result, (uint256));
     }
 }

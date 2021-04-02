@@ -133,7 +133,10 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
             const sentOrder = buildOrder(this.swap, this.dai, this.weth, 1, 2);
 
-            await expectRevert.unspecified(this.swap.fillOrder(sentOrder, signature, 1, 0));
+            await expectRevert(
+                this.swap.fillOrder(sentOrder, signature, 1, 0),
+                'LOP: bad signature',
+            );
         });
 
         it('should not fill (1,1)', async function () {
@@ -157,7 +160,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(_);
 
-            this.swap.fillOrder(order, signature, toBN('1').shln(255).toString(), 0);
+            await this.swap.fillOrder(order, signature, toBN('1').shln(255).toString(), 0);
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(100));
             expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(100));
