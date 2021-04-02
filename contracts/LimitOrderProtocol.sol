@@ -13,7 +13,6 @@ import "./helpers/ERC721Proxy.sol";
 import "./helpers/ERC1155Proxy.sol";
 import "./interfaces/IEIP1271.sol";
 import "./interfaces/InteractiveMaker.sol";
-import "./libraries/EIP1271Constants.sol";
 import "./libraries/UnsafeAddress.sol";
 import "./libraries/ArgumentsDecoder.sol";
 
@@ -76,6 +75,8 @@ contract LimitOrderProtocol is
     bytes32 constant public LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
         "OrderRFQ(uint256 info,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData)"
     );
+
+    bytes4 immutable private _maxSelector = bytes4(uint32(IERC20.transferFrom.selector) + 10);
 
     mapping(bytes32 => uint256) private _remaining;
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
@@ -264,23 +265,23 @@ contract LimitOrderProtocol is
         require(takerAssetData.length >= 100, "LOP: bad takerAssetData.length");
         bytes4 makerSelector = makerAssetData.decodeSelector();
         bytes4 takerSelector = takerAssetData.decodeSelector();
-        require(makerSelector >= IERC20.transferFrom.selector && makerSelector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LOP: bad makerAssetData.selector");
-        require(takerSelector >= IERC20.transferFrom.selector && takerSelector <= bytes4(uint32(IERC20.transferFrom.selector) + 10), "LOP: bad takerAssetData.selector");
+        require(makerSelector >= IERC20.transferFrom.selector && makerSelector <= _maxSelector, "LOP: bad makerAssetData.selector");
+        require(takerSelector >= IERC20.transferFrom.selector && takerSelector <= _maxSelector, "LOP: bad takerAssetData.selector");
 
         address maker = address(makerAssetData.decodeAddress(0));
         if (signature.length != 65 || ECDSA.recover(orderHash, signature) != maker) {
             bytes memory result = maker.unsafeFunctionStaticCall(abi.encodeWithSelector(IEIP1271.isValidSignature.selector, orderHash, signature), "LOP: isValidSignature failed");
-            require(result.length == 32 && abi.decode(result, (bytes4)) == EIP1271Constants._MAGIC_VALUE, "LOP: bad signature");
+            require(result.length == 32 && abi.decode(result, (bytes4)) == IEIP1271.isValidSignature.selector, "LOP: bad signature");
         }
     }
 
     function _callMakerAssetTransferFrom(address makerAsset, bytes memory makerAssetData, address taker, uint256 makingAmount) internal {
         // Patch receiver or validate private order
-        address takerAddress = makerAssetData.decodeAddress(1);
-        if (takerAddress == address(0)) {
+        address orderTakerAddress = makerAssetData.decodeAddress(1);
+        if (orderTakerAddress == address(0)) {
             makerAssetData.patchAddress(1, taker);
         } else {
-            require(takerAddress == taker, "LOP: private order");
+            require(orderTakerAddress == taker, "LOP: private order");
         }
 
         // Patch amount if needed
