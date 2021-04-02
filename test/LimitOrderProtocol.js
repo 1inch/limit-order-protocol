@@ -400,7 +400,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
                 [this.swap.address, this.swap.address],
                 [ts1, gtCall],
             ).encodeABI();
-            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _, predicate);
+            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, zeroAddress, predicate);
             const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
@@ -425,7 +425,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
                 [this.swap.address, this.swap.address],
                 [ts1, gtCall],
             ).encodeABI();
-            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _, predicate);
+            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, zeroAddress, predicate);
             const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
@@ -443,7 +443,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
                 [this.swap.address, this.swap.address],
                 [ts1, gtCall],
             ).encodeABI();
-            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _, predicate);
+            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, zeroAddress, predicate);
             const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
@@ -468,7 +468,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
                 [this.swap.address, this.swap.address],
                 [ts1, gtCall],
             ).encodeABI();
-            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _, predicate);
+            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, zeroAddress, predicate);
             const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
@@ -481,7 +481,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
 
     describe('Expiration', async function () {
         it('should fill when not expired', async function () {
-            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _, this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI());
+            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, zeroAddress, this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI());
             const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
@@ -499,7 +499,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
         });
 
         it('should not fill when expired', async function () {
-            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, _, this.swap.contract.methods.timestampBelow(0xff0000).encodeABI());
+            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, zeroAddress, this.swap.contract.methods.timestampBelow(0xff0000).encodeABI());
             const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
