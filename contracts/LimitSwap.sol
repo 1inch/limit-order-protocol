@@ -68,11 +68,6 @@ contract PredicateHelper {
         return abi.decode(result, (uint256)) > value;
     }
 
-    function arbitraryStaticCall(address target, bytes memory data) external view returns(uint256) {
-        (bytes memory result) = target.unsafeFunctionStaticCall(data, "PH: arbitraryStaticCall");
-        return abi.decode(result, (uint256));
-    }
-
     function timestampBelow(uint256 time) external view returns(bool) {
         return block.timestamp < time;  // solhint-disable-line not-rely-on-time
     }
@@ -80,6 +75,8 @@ contract PredicateHelper {
 
 
 contract AmountCalculator {
+    using UnsafeAddress for address;
+
     // Floor maker amount
     function getMakerAmount(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapTakerAmount) external pure returns(uint256) {
         return swapTakerAmount * orderMakerAmount / orderTakerAmount;
@@ -96,6 +93,11 @@ contract AmountCalculator {
 
     function getTakerAmountNoPartialFill(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapMakerAmount) external pure returns(uint256) {
         return (swapMakerAmount == orderMakerAmount) ? orderTakerAmount : 0;
+    }
+
+    function arbitraryStaticCall(address target, bytes memory data) external view returns(uint256) {
+        (bytes memory result) = target.unsafeFunctionStaticCall(data, "AC: arbitraryStaticCall");
+        return abi.decode(result, (uint256));
     }
 }
 
