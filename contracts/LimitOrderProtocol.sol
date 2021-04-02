@@ -70,11 +70,11 @@ contract LimitOrderProtocol is
         bytes permitData;     // On first fill: permitData.1.call(abi.encodePacked(permit.selector, permitData.2))
     }
 
-    bytes32 constant public LIMIT_SWAP_ORDER_TYPEHASH = keccak256(
+    bytes32 constant public LIMIT_ORDER_TYPEHASH = keccak256(
         "Order(uint256 salt,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData,bytes getMakerAmount,bytes getTakerAmount,bytes predicate,bytes permitData)"
     );
 
-    bytes32 constant public LIMIT_SWAP_ORDER_RFQ_TYPEHASH = keccak256(
+    bytes32 constant public LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
         "OrderRFQ(uint256 info,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData)"
     );
 
@@ -94,15 +94,15 @@ contract LimitOrderProtocol is
         return _remaining[orderHash];
     }
 
-    function invalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256) {
-        return _invalidator[maker][slot];
-    }
-
     function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory results) {
         results = new uint256[](orderHashes.length);
         for (uint i = 0; i < orderHashes.length; i++) {
             results[i] = _remaining[orderHashes[i]];
         }
+    }
+
+    function invalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256) {
+        return _invalidator[maker][slot];
     }
 
     function checkPredicate(Order memory order) public view returns(bool) {
@@ -225,7 +225,7 @@ contract LimitOrderProtocol is
         return _hashTypedDataV4(
             keccak256(
                 abi.encode(
-                    LIMIT_SWAP_ORDER_TYPEHASH,
+                    LIMIT_ORDER_TYPEHASH,
                     order.salt,
                     order.makerAsset,
                     order.takerAsset,
@@ -244,7 +244,7 @@ contract LimitOrderProtocol is
         return _hashTypedDataV4(
             keccak256(
                 abi.encode(
-                    LIMIT_SWAP_ORDER_RFQ_TYPEHASH,
+                    LIMIT_ORDER_RFQ_TYPEHASH,
                     order.info,
                     order.makerAsset,
                     order.takerAsset,
