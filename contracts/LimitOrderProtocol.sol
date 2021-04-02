@@ -2,171 +2,22 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
-import "./utils/BytesParser.sol";
-import "./utils/UnsafeAddress.sol";
-import "./EIP1271.sol";
-import "./SelectorFromToAmountParser.sol";
+import "./helpers/PredicateHelper.sol";
+import "./helpers/AmountCalculator.sol";
+import "./helpers/NonceManager.sol";
+import "./helpers/ERC20Proxy.sol";
+import "./helpers/ERC721Proxy.sol";
+import "./helpers/ERC1155Proxy.sol";
+import "./interfaces/IEIP1271.sol";
+import "./interfaces/InteractiveTaker.sol";
+import "./libraries/BytesParser.sol";
+import "./libraries/EIP1271Constants.sol";
+import "./libraries/UnsafeAddress.sol";
+import "./libraries/SelectorFromToAmountParser.sol";
 
-
-interface InteractiveTaker {
-    function interact(
-        address makerAsset,
-        address takerAsset,
-        uint256 makingAmount,
-        uint256 expectedTakingAmount,
-        bytes memory interactiveData
-    ) external;
-}
-
-
-contract PredicateHelper {
-    using UnsafeAddress for address;
-
-    function or(address[] calldata targets, bytes[] calldata data) external view returns(bool) {
-        for (uint i = 0; i < targets.length; i++) {
-            bytes memory result = targets[i].unsafeFunctionStaticCall(data[i], "PH: 'or' subcall failed");
-            require(result.length == 32, "PH: invalid call result");
-            if (abi.decode(result, (bool))) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    function and(address[] calldata targets, bytes[] calldata data) external view returns(bool) {
-        for (uint i = 0; i < targets.length; i++) {
-            bytes memory result = targets[i].unsafeFunctionStaticCall(data[i], "PH: 'and' subcall failed");
-            require(result.length == 32, "PH: invalid call result");
-            if (!abi.decode(result, (bool))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    function eq(uint256 value, address target, bytes memory data) external view returns(bool) {
-        bytes memory result = target.unsafeFunctionStaticCall(data, "PH: eq");
-        return abi.decode(result, (uint256)) == value;
-    }
-
-    function lt(uint256 value, address target, bytes memory data) external view returns(bool) {
-        bytes memory result = target.unsafeFunctionStaticCall(data, "PH: lt");
-        return abi.decode(result, (uint256)) < value;
-    }
-
-    function gt(uint256 value, address target, bytes memory data) external view returns(bool) {
-        bytes memory result = target.unsafeFunctionStaticCall(data, "PH: gt");
-        return abi.decode(result, (uint256)) > value;
-    }
-
-    function timestampBelow(uint256 time) external view returns(bool) {
-        return block.timestamp < time;  // solhint-disable-line not-rely-on-time
-    }
-}
-
-
-contract AmountCalculator {
-    using UnsafeAddress for address;
-
-    // Floor maker amount
-    function getMakerAmount(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapTakerAmount) external pure returns(uint256) {
-        return swapTakerAmount * orderMakerAmount / orderTakerAmount;
-    }
-
-    // Ceil taker amount
-    function getTakerAmount(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapMakerAmount) external pure returns(uint256) {
-        return (swapMakerAmount * orderTakerAmount + orderMakerAmount - 1) / orderMakerAmount;
-    }
-
-    function getMakerAmountNoPartialFill(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapTakerAmount) external pure returns(uint256) {
-        return (swapTakerAmount == orderTakerAmount) ? orderMakerAmount : 0;
-    }
-
-    function getTakerAmountNoPartialFill(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapMakerAmount) external pure returns(uint256) {
-        return (swapMakerAmount == orderMakerAmount) ? orderTakerAmount : 0;
-    }
-
-    function arbitraryStaticCall(address target, bytes memory data) external view returns(uint256) {
-        (bytes memory result) = target.unsafeFunctionStaticCall(data, "AC: arbitraryStaticCall");
-        return abi.decode(result, (uint256));
-    }
-}
-
-
-contract NonceManager {
-    using Counters for Counters.Counter;
-
-    mapping(address => Counters.Counter) private _nonces;
-
-    function nonces(address makerAddress) external view returns(uint256) {
-        return _nonces[makerAddress].current();
-    }
-
-    function advanceNonce() external {
-        _nonces[msg.sender].increment();
-    }
-
-    function nonceEquals(address makerAddress, uint256 makerNonce) external view returns(bool) {
-        return _nonces[makerAddress].current() == makerNonce;
-    }
-}
-
-
-contract ImmutableOwner {
-    address public immutable immutableOwner;
-
-    modifier onlyImmutableOwner {
-        require(msg.sender == immutableOwner, "ImmutableOwner: Access denied");
-        _;
-    }
-
-    constructor(address _immutableOwner) {
-        immutableOwner = _immutableOwner;
-    }
-}
-
-/* solhint-disable func-name-mixedcase */
-
-abstract contract ERC20Proxy is ImmutableOwner {
-    using SafeERC20 for IERC20;
-
-    // func_0000jYAHF(address,address,uint256,address) = transferFrom + 1 = 0x8d076e86
-    function func_0000jYAHF(address from, address to, uint256 amount, IERC20 token) external onlyImmutableOwner {
-        token.safeTransferFrom(from, to, amount);
-    }
-}
-
-
-abstract contract ERC721Proxy is ImmutableOwner {
-    // func_4002L9TKH(address,address,uint256,address) = transferFrom + 2 = 0x8d076e87
-    function func_4002L9TKH(address from, address to, uint256 tokenId, IERC721 token) external onlyImmutableOwner {
-        token.transferFrom(from, to, tokenId);
-    }
-
-    // func_2000nVqcj(address,address,uint256,address) == transferFrom + 3 = 0x8d076e88
-    function func_2000nVqcj(address from, address to, uint256 tokenId, IERC721 token) external onlyImmutableOwner {
-        token.safeTransferFrom(from, to, tokenId);
-    }
-}
-
-
-abstract contract ERC1155Proxy is ImmutableOwner {
-    // func_7000ksXmS(address,address,uint256,address,uint256) == transferFrom + 4 = 0x8d076e89
-    function func_7000ksXmS(address from, address to, uint256 amount, IERC1155 token, uint256 tokenId) external onlyImmutableOwner {
-        token.safeTransferFrom(from, to, tokenId, amount, "");
-    }
-}
-
-/* solhint-enable func-name-mixedcase */
 
 contract LimitOrderProtocol is
     EIP712("1inch Limit Order Protocol", "1"),

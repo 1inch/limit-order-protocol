@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "./utils/BytesParser.sol";
+import "./BytesParser.sol";
 
 
 library SelectorFromToAmountParser {
