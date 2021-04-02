@@ -40,6 +40,6 @@
     "lint:sol:fix": "solhint --max-warnings 0 \"contracts/**/*.sol\" --fix",
     "lint": "yarn run lint:js && yarn run lint:sol",
     "lint:fix": "yarn run lint:js:fix && yarn run lint:sol:fix",
-    "dist": "truffle-flattener ./contracts/LimitSwap.sol > LimitSwap.full.sol && solcjs --bin --abi --optimize LimitSwap.full.sol && mv LimitSwap_full_sol_LimitSwap.bin LimitSwap.full.bin && mv LimitSwap_full_sol_LimitSwap.abi LimitSwap.full.abi && rm *_sol_*"
+    "dist": "truffle-flattener ./contracts/LimitOrderProtocol.sol > LimitOrderProtocol.full.sol && solcjs --bin --abi --optimize LimitOrderProtocol.full.sol && mv LimitSwap_full_sol_LimitSwap.bin LimitOrderProtocol.full.bin && mv LimitSwap_full_sol_LimitSwap.abi LimitOrderProtocol.full.abi && rm *_sol_*"
   }
 }
