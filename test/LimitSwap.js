@@ -437,7 +437,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             it('`and` should pass', async function () {
                 const ts1 = this.swap.contract.methods.timestampBelow(0xff000000).encodeABI();
                 const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
-                const gtCall = this.swap.contract.methods.eq('100000', this.dai.address, balanceCall).encodeABI();
+                const gtCall = this.swap.contract.methods.eq('1000000', this.dai.address, balanceCall).encodeABI();
                 const predicate = this.swap.contract.methods.and(
                     [this.swap.address, this.swap.address],
                     [ts1, gtCall],
