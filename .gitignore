@@ -2,3 +2,5 @@ node_modules
 coverage
 coverage.json
 build
+.coverage_contracts
+.coverage_artifacts
