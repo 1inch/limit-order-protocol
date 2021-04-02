@@ -6,7 +6,7 @@ const ethSigUtil = require('eth-sig-util');
 const Wallet = require('ethereumjs-wallet').default;
 
 const TokenMock = artifacts.require('TokenMock');
-const LimitSwap = artifacts.require('LimitSwap');
+const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
 const { EIP712Domain, domainSeparator } = require('./helpers/eip712');
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
@@ -35,7 +35,7 @@ const Order = [
     { name: 'permitData', type: 'bytes' },
 ];
 
-contract('LimitSwap', async function ([_, wallet]) {
+contract('LimitOrderProtocol', async function ([_, wallet]) {
     const privatekey = '2bdd21761a483f71054e14f5b827213567971c676928d9a1808cbfa4b7501201';
     const account = Wallet.fromPrivateKey(Buffer.from(privatekey, 'hex'));
 
@@ -93,7 +93,7 @@ contract('LimitSwap', async function ([_, wallet]) {
         this.dai = await TokenMock.new('DAI', 'DAI');
         this.weth = await TokenMock.new('WETH', 'WETH');
 
-        this.swap = await LimitSwap.new();
+        this.swap = await LimitOrderProtocol.new();
 
         // We get the chain id from the contract because Ganache (used for coverage) does not return the same chain id
         // from within the EVM as from the JSON RPC interface.
@@ -141,11 +141,11 @@ contract('LimitSwap', async function ([_, wallet]) {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, 1, 1, '0x'),
-                'LS: one of amounts should be 0',
+                'LOP: one of amounts should be 0',
             );
         });
 
-        it('should take all the remaining makerAssetAmount', async function() {
+        it('should take all the remaining makerAssetAmount', async function () {
             const order = buildOrder(this.swap, this.dai, this.weth, 100, 1);
             const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
@@ -275,7 +275,7 @@ contract('LimitSwap', async function ([_, wallet]) {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, 0, 4, '0x'),
-                'LS: can\'t swap 0 amount',
+                'LOP: can\'t swap 0 amount',
             );
         });
 
@@ -315,7 +315,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             it('should not cancel foreign order', async function () {
                 await expectRevert(
                     this.swap.cancelOrder(this.order),
-                    'LS: Access denied',
+                    'LOP: Access denied',
                 );
             });
 
@@ -327,7 +327,7 @@ contract('LimitSwap', async function ([_, wallet]) {
 
                 await expectRevert(
                     this.swap.fillOrder(this.order, signature, 1, 0, '0x'),
-                    'LS: taking > remaining',
+                    'LOP: taking > remaining',
                 );
             });
         });
@@ -354,7 +354,7 @@ contract('LimitSwap', async function ([_, wallet]) {
 
                 await expectRevert(
                     this.swap.fillOrderRFQ(order, signature),
-                    'LS: already filled',
+                    'LOP: already filled',
                 );
             });
         });
@@ -385,7 +385,7 @@ contract('LimitSwap', async function ([_, wallet]) {
 
                 await expectRevert(
                     this.swap.fillOrder(order, signature, 1, 0, '0x'),
-                    'LS: private order',
+                    'LOP: private order',
                 );
             });
         });
@@ -430,7 +430,7 @@ contract('LimitSwap', async function ([_, wallet]) {
 
                 await expectRevert(
                     this.swap.fillOrder(order, signature, 1, 0, '0x'),
-                    'LS: predicate returned false',
+                    'LOP: predicate returned false',
                 );
             });
 
@@ -473,7 +473,7 @@ contract('LimitSwap', async function ([_, wallet]) {
 
                 await expectRevert(
                     this.swap.fillOrder(order, signature, 1, 0, '0x'),
-                    'LS: predicate returned false',
+                    'LOP: predicate returned false',
                 );
             });
         });
@@ -504,7 +504,7 @@ contract('LimitSwap', async function ([_, wallet]) {
 
                 await expectRevert(
                     this.swap.fillOrder(order, signature, 1, 0, '0x'),
-                    'LS: predicate returned false',
+                    'LOP: predicate returned false',
                 );
             });
 
@@ -533,7 +533,7 @@ contract('LimitSwap', async function ([_, wallet]) {
 
                 await expectRevert(
                     this.swap.fillOrderRFQ(order, signature),
-                    'LS: order expired',
+                    'LOP: order expired',
                 );
             });
         });

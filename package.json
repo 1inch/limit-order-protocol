@@ -1,10 +1,10 @@
 {
-  "name": "LimitSwap",
+  "name": "@1inch-exchange/limit-order-protocol",
   "version": "0.0.1",
-  "description": "",
+  "description": "1inch Limit Order Protocol",
   "repository": {
     "type": "git",
-    "url": "git@github.com:CryptoManiacsZone/LimitSwap.git"
+    "url": "git@github.com:1inch/limit-order-protocol.git"
   },
   "license": "MIT",
   "dependencies": {
