@@ -3,12 +3,12 @@
 pragma solidity ^0.8.0;
 
 
-library UnsafeAddress {
-    function unsafeFunctionCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
-        return unsafeFunctionCallWithValue(target, data, 0, errorMessage);
+library UncheckedAddress {
+    function uncheckedFunctionCall(address target, bytes memory data, string memory errorMessage) internal returns (bytes memory) {
+        return uncheckedFunctionCallWithValue(target, data, 0, errorMessage);
     }
 
-    function unsafeFunctionCallWithValue(address target, bytes memory data, uint256 value, string memory errorMessage) internal returns (bytes memory) {
+    function uncheckedFunctionCallWithValue(address target, bytes memory data, uint256 value, string memory errorMessage) internal returns (bytes memory) {
         require(address(this).balance >= value, "UA: insufficient balance");
         // Check turned off:
         // require(isContract(target), "Address: call to non-contract");
@@ -18,7 +18,7 @@ library UnsafeAddress {
         return _verifyCallResult(success, returndata, errorMessage);
     }
 
-    function unsafeFunctionStaticCall(address target, bytes memory data, string memory errorMessage) internal view returns (bytes memory) {
+    function uncheckedFunctionStaticCall(address target, bytes memory data, string memory errorMessage) internal view returns (bytes memory) {
         // Check turned off:
         // require(isContract(target), "Address: static call to non-contract");
 

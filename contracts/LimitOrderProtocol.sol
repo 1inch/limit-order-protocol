@@ -13,7 +13,7 @@ import "./helpers/ERC721Proxy.sol";
 import "./helpers/ERC1155Proxy.sol";
 import "./interfaces/IEIP1271.sol";
 import "./interfaces/InteractiveMaker.sol";
-import "./libraries/UnsafeAddress.sol";
+import "./libraries/UncheckedAddress.sol";
 import "./libraries/ArgumentsDecoder.sol";
 
 
@@ -29,7 +29,7 @@ contract LimitOrderProtocol is
 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    using UnsafeAddress for address;
+    using UncheckedAddress for address;
     using ArgumentsDecoder for bytes;
 
     // Partial Fill:
@@ -106,7 +106,7 @@ contract LimitOrderProtocol is
     }
 
     function checkPredicate(Order memory order) public view returns(bool) {
-        bytes memory result = address(this).unsafeFunctionStaticCall(order.predicate, "LOP: predicate call failed");
+        bytes memory result = address(this).uncheckedFunctionStaticCall(order.predicate, "LOP: predicate call failed");
         require(result.length == 32, "LOP: invalid predicate return");
         return abi.decode(result, (bool));
     }
@@ -167,7 +167,7 @@ contract LimitOrderProtocol is
             remainingMakerAmount = order.makerAssetData.decodeUint256(2);
             if (order.permit.length > 0) {
                 (address token, bytes memory permit) = abi.decode(order.permit, (address, bytes));
-                token.unsafeFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
+                token.uncheckedFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
                 require(_remaining[orderHash] == 0, "LOP: reentrancy detected");
             }
         }
@@ -270,7 +270,7 @@ contract LimitOrderProtocol is
 
         address maker = address(makerAssetData.decodeAddress(0));
         if (signature.length != 65 || ECDSA.recover(orderHash, signature) != maker) {
-            bytes memory result = maker.unsafeFunctionStaticCall(abi.encodeWithSelector(IEIP1271.isValidSignature.selector, orderHash, signature), "LOP: isValidSignature failed");
+            bytes memory result = maker.uncheckedFunctionStaticCall(abi.encodeWithSelector(IEIP1271.isValidSignature.selector, orderHash, signature), "LOP: isValidSignature failed");
             require(result.length == 32 && abi.decode(result, (bytes4)) == IEIP1271.isValidSignature.selector, "LOP: bad signature");
         }
     }
@@ -290,7 +290,7 @@ contract LimitOrderProtocol is
         }
 
         // Transfer asset from maker to taker
-        bytes memory result = makerAsset.unsafeFunctionCall(makerAssetData, "LOP: makerAsset.call failed");
+        bytes memory result = makerAsset.uncheckedFunctionCall(makerAssetData, "LOP: makerAsset.call failed");
         if (result.length > 0) {
             require(abi.decode(result, (bool)), "LOP: makerAsset.call bad result");
         }
@@ -306,20 +306,20 @@ contract LimitOrderProtocol is
         }
 
         // Transfer asset from taker to maker
-        bytes memory result = takerAsset.unsafeFunctionCall(takerAssetData, "LOP: takerAsset.call failed");
+        bytes memory result = takerAsset.uncheckedFunctionCall(takerAssetData, "LOP: takerAsset.call failed");
         if (result.length > 0) {
             require(abi.decode(result, (bool)), "LOP: takerAsset.call bad result");
         }
     }
 
     function _callGetMakerAmount(Order memory order, uint256 takerAmount) internal view returns(uint256 makerAmount) {
-        bytes memory result = address(this).unsafeFunctionStaticCall(abi.encodePacked(order.getMakerAmount, takerAmount), "LOP: getMakerAmount call failed");
+        bytes memory result = address(this).uncheckedFunctionStaticCall(abi.encodePacked(order.getMakerAmount, takerAmount), "LOP: getMakerAmount call failed");
         require(result.length == 32, "LOP: invalid getMakerAmount ret");
         return abi.decode(result, (uint256));
     }
 
     function _callGetTakerAmount(Order memory order, uint256 makerAmount) internal view returns(uint256 takerAmount) {
-        bytes memory result = address(this).unsafeFunctionStaticCall(abi.encodePacked(order.getTakerAmount, makerAmount), "LOP: getTakerAmount call failed");
+        bytes memory result = address(this).uncheckedFunctionStaticCall(abi.encodePacked(order.getTakerAmount, makerAmount), "LOP: getTakerAmount call failed");
         require(result.length == 32, "LOP: invalid getTakerAmount ret");
         return abi.decode(result, (uint256));
     }
