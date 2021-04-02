@@ -48,4 +48,4 @@ fi
 
 truffle version
 
-truffle test --stacktrace-extra "$@"
+truffle test "$@"

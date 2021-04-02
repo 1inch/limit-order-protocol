@@ -133,10 +133,7 @@ contract('LimitSwap', async function ([_, wallet]) {
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
             const sentOrder = buildOrder(this.swap, this.dai, this.weth, 1, 2);
 
-            await expectRevert(
-                this.swap.fillOrder(sentOrder, signature, 1, 0, '0x'),
-                'Target contract does not contain code',
-            );
+            await expectRevert.unspecified(this.swap.fillOrder(sentOrder, signature, 1, 0, '0x'));
         });
 
         it('should not fill (1,1)', async function () {
