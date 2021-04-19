@@ -47,6 +47,10 @@ contract LimitOrderProtocol is
         uint256 remaining
     );
 
+    event OrderFilledRFQ(
+        bytes32 orderHash
+    );
+
     struct OrderRFQ {
         uint256 info;
         address makerAsset;
@@ -138,7 +142,7 @@ contract LimitOrderProtocol is
         _invalidator[msg.sender][uint64(orderInfo) / 256] |= (1 << (orderInfo % 256));
     }
 
-    function fillOrderRFQ(OrderRFQ memory order, bytes memory signature) external {
+    function fillOrderRFQ(OrderRFQ memory order, bytes memory signature, uint256 makingAmount, uint256 takingAmount) external {
         // Check time expiration
         uint256 expiration = uint128(order.info) >> 64;
         require(expiration == 0 || block.timestamp <= expiration, "LOP: order expired");  // solhint-disable-line not-rely-on-time
@@ -149,12 +153,31 @@ contract LimitOrderProtocol is
         require(invalidator & (1 << (order.info % 256)) == 0, "LOP: already filled");
         _invalidator[maker][uint64(order.info) / 256] = invalidator | (1 << (order.info % 256));
 
+        // Compute partial fill
+        uint256 orderMakerAmount = order.makerAssetData.decodeUint256(2);
+        uint256 orderTakerAmount = order.takerAssetData.decodeUint256(2);
+        if (takingAmount == 0) {
+            takingAmount = (makingAmount * orderTakerAmount + orderMakerAmount - 1) / orderMakerAmount;
+        }
+        else if (makingAmount == 0) {
+            makingAmount = takingAmount * orderMakerAmount / orderTakerAmount;
+        }
+        else {
+            revert("LOP: one of amounts should be 0");
+        }
+
+        require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
+        require(makingAmount <= orderMakerAmount, "LOP: making amount exceeded");
+
         // Validate
-        _validate(order, signature, _hash(order));
+        bytes32 orderHash = _hash(order);
+        _validate(order, signature, orderHash);
 
         // Maker => Taker, Taker => Maker
         _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, msg.sender, type(uint256).max);
         _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, msg.sender, type(uint256).max);
+
+        emit OrderFilledRFQ(orderHash);
     }
 
     function fillOrder(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount, uint256 thresholdAmount) external returns(uint256, uint256) {
