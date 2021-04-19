@@ -172,12 +172,12 @@ contract LimitOrderProtocol is
             }
         }
 
-        // Check is order is valid
+        // Check if order is valid
         if (order.predicate.length > 0) {
             require(checkPredicate(order), "LOP: predicate returned false");
         }
 
-        // Compute maker and taket assets amount
+        // Compute maker and taker assets amount
         if (makingAmount >> 255 == 1) {
             makingAmount = remainingMakerAmount;
         }
