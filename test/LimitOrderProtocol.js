@@ -552,6 +552,30 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
             expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
+        it('nonce + ts example', async function () {
+            const ts1 = this.swap.contract.methods.timestampBelow(0xff000000).encodeABI();
+            const nonceCall = this.swap.contract.methods.nonceEquals(wallet, 0).encodeABI();
+            const predicate = this.swap.contract.methods.and(
+                [this.swap.address, this.swap.address],
+                [ts1, nonceCall],
+            ).encodeABI();
+            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, zeroAddress, predicate);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            const makerDai = await this.dai.balanceOf(wallet);
+            const takerDai = await this.dai.balanceOf(_);
+            const makerWeth = await this.weth.balanceOf(wallet);
+            const takerWeth = await this.weth.balanceOf(_);
+
+            await this.swap.fillOrder(order, signature, 1, 0);
+
+            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+        });
+
         it('`and` should fail', async function () {
             const ts1 = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
