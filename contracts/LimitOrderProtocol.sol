@@ -157,18 +157,22 @@ contract LimitOrderProtocol is
         _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, msg.sender, type(uint256).max);
     }
 
-    function fillOrder(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount) external returns(uint256, uint256) {
+    function fillOrder(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount, uint256 thresholdAmount) external returns(uint256, uint256) {
         bytes32 orderHash = _hash(order);
 
-        (bool orderExists, uint256 remainingMakerAmount) = _remaining[orderHash].trySub(1);
-        if (!orderExists) {
-            // First fill: validate order and permit maker asset
-            _validate(order, signature, orderHash);
-            remainingMakerAmount = order.makerAssetData.decodeUint256(2);
-            if (order.permit.length > 0) {
-                (address token, bytes memory permit) = abi.decode(order.permit, (address, bytes));
-                token.uncheckedFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
-                require(_remaining[orderHash] == 0, "LOP: reentrancy detected");
+        uint256 remainingMakerAmount;
+        { // Stack too deep
+            bool orderExists;
+            (orderExists, remainingMakerAmount) = _remaining[orderHash].trySub(1);
+            if (!orderExists) {
+                // First fill: validate order and permit maker asset
+                _validate(order, signature, orderHash);
+                remainingMakerAmount = order.makerAssetData.decodeUint256(2);
+                if (order.permit.length > 0) {
+                    (address token, bytes memory permit) = abi.decode(order.permit, (address, bytes));
+                    token.uncheckedFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
+                    require(_remaining[orderHash] == 0, "LOP: reentrancy detected");
+                }
             }
         }
 
@@ -185,11 +189,13 @@ contract LimitOrderProtocol is
             takingAmount = (makingAmount == order.makerAssetData.decodeUint256(2))
                 ? order.takerAssetData.decodeUint256(2)
                 : _callGetTakerAmount(order, makingAmount);
+            require(takingAmount <= thresholdAmount, "LOP: taking amount too high");
         }
         else if (makingAmount == 0) {
             makingAmount = (takingAmount == order.takerAssetData.decodeUint256(2))
                 ? order.makerAssetData.decodeUint256(2)
                 : _callGetMakerAmount(order, takingAmount);
+            require(makingAmount >= thresholdAmount, "LOP: making amount too low");
         }
         else {
             revert("LOP: one of amounts should be 0");
