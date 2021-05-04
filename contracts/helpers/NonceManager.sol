@@ -13,7 +13,11 @@ contract NonceManager {
     }
 
     function increaseNonce() external {
-        uint256 newNonce = _nonces[msg.sender] + 1;
+        advanceNonce(1);
+    }
+
+    function advanceNonce(uint8 amount) public {
+        uint256 newNonce = _nonces[msg.sender] + amount;
         _nonces[msg.sender] = newNonce;
         emit NonceIncreased(msg.sender, newNonce);
     }
