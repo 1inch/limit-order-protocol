@@ -156,26 +156,29 @@ contract LimitOrderProtocol is
         // Compute partial fill
         uint256 orderMakerAmount = order.makerAssetData.decodeUint256(2);
         uint256 orderTakerAmount = order.takerAssetData.decodeUint256(2);
-        if (takingAmount == 0) {
+
+        require(makingAmount <= orderMakerAmount, "LOP: making amount exceeded");
+        require(takingAmount <= orderTakerAmount, "LOP: taking amount exceeded");
+        require(makingAmount == 0 || takingAmount == 0, "LOP: both amounts not 0");
+
+        if (makingAmount != 0) {
             takingAmount = (makingAmount * orderTakerAmount + orderMakerAmount - 1) / orderMakerAmount;
         }
-        else if (makingAmount == 0) {
+        else if (takingAmount != 0) {
             makingAmount = takingAmount * orderMakerAmount / orderTakerAmount;
         }
         else {
-            revert("LOP: one of amounts should be 0");
+            makingAmount = type(uint256).max;
+            takingAmount = type(uint256).max;
         }
-
-        require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
-        require(makingAmount <= orderMakerAmount, "LOP: making amount exceeded");
 
         // Validate
         bytes32 orderHash = _hash(order);
         _validate(order, signature, orderHash);
 
         // Maker => Taker, Taker => Maker
-        _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, msg.sender, type(uint256).max);
-        _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, msg.sender, type(uint256).max);
+        _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, msg.sender, makingAmount);
+        _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, msg.sender, takingAmount);
 
         emit OrderFilledRFQ(orderHash);
     }
