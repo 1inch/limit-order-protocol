@@ -159,18 +159,23 @@ contract LimitOrderProtocol is
 
         require(makingAmount <= orderMakerAmount, "LOP: making amount exceeded");
         require(takingAmount <= orderTakerAmount, "LOP: taking amount exceeded");
-        require(makingAmount == 0 || takingAmount == 0, "LOP: both amounts not 0");
 
-        if (makingAmount != 0) {
-            takingAmount = (makingAmount * orderTakerAmount + orderMakerAmount - 1) / orderMakerAmount;
-        }
-        else if (takingAmount != 0) {
-            makingAmount = takingAmount * orderMakerAmount / orderTakerAmount;
-        }
-        else {
+        if (takingAmount == 0 && makingAmount == 0) {
+            // Two zeros means whole order
             makingAmount = type(uint256).max;
             takingAmount = type(uint256).max;
         }
+        else if (takingAmount == 0) {
+            takingAmount = (makingAmount * orderTakerAmount + orderMakerAmount - 1) / orderMakerAmount;
+        }
+        else if (makingAmount == 0) {
+            makingAmount = takingAmount * orderMakerAmount / orderTakerAmount;
+        }
+        else {
+            revert("LOP: one of amounts should be 0");
+        }
+
+        require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
 
         // Validate
         bytes32 orderHash = _hash(order);
@@ -207,10 +212,12 @@ contract LimitOrderProtocol is
             require(checkPredicate(order), "LOP: predicate returned false");
         }
 
-        // Compute maker and taker assets amount
-        if (makingAmount >> 255 == 1) {
+        // Two zeros means whole remaining order
+        if (makingAmount == 0 && takingAmount == 0) {
             makingAmount = remainingMakerAmount;
         }
+
+        // Compute maker and taket assets amount
         if (takingAmount == 0) {
             takingAmount = (makingAmount == order.makerAssetData.decodeUint256(2))
                 ? order.takerAssetData.decodeUint256(2)
