@@ -48,7 +48,8 @@ contract LimitOrderProtocol is
     );
 
     event OrderFilledRFQ(
-        bytes32 orderHash
+        bytes32 orderHash,
+        uint256 makingAmount
     );
 
     struct OrderRFQ {
@@ -185,7 +186,7 @@ contract LimitOrderProtocol is
         _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, msg.sender, makingAmount);
         _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, msg.sender, takingAmount);
 
-        emit OrderFilledRFQ(orderHash);
+        emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
     function fillOrder(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount, uint256 minPrice) external returns(uint256, uint256) {
