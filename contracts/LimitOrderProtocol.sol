@@ -47,6 +47,11 @@ contract LimitOrderProtocol is
         uint256 remaining
     );
 
+    event OrderFilledRFQ(
+        bytes32 orderHash,
+        uint256 makingAmount
+    );
+
     struct OrderRFQ {
         uint256 info;
         address makerAsset;
@@ -138,7 +143,7 @@ contract LimitOrderProtocol is
         _invalidator[msg.sender][uint64(orderInfo) / 256] |= (1 << (orderInfo % 256));
     }
 
-    function fillOrderRFQ(OrderRFQ memory order, bytes memory signature) external {
+    function fillOrderRFQ(OrderRFQ memory order, bytes memory signature, uint256 makingAmount, uint256 takingAmount) external {
         // Check time expiration
         uint256 expiration = uint128(order.info) >> 64;
         require(expiration == 0 || block.timestamp <= expiration, "LOP: order expired");  // solhint-disable-line not-rely-on-time
@@ -149,15 +154,42 @@ contract LimitOrderProtocol is
         require(invalidator & (1 << (order.info % 256)) == 0, "LOP: already filled");
         _invalidator[maker][uint64(order.info) / 256] = invalidator | (1 << (order.info % 256));
 
+        // Compute partial fill
+        uint256 orderMakerAmount = order.makerAssetData.decodeUint256(2);
+        uint256 orderTakerAmount = order.takerAssetData.decodeUint256(2);
+
+        require(makingAmount <= orderMakerAmount, "LOP: making amount exceeded");
+        require(takingAmount <= orderTakerAmount, "LOP: taking amount exceeded");
+
+        if (takingAmount == 0 && makingAmount == 0) {
+            // Two zeros means whole order
+            makingAmount = type(uint256).max;
+            takingAmount = type(uint256).max;
+        }
+        else if (takingAmount == 0) {
+            takingAmount = (makingAmount * orderTakerAmount + orderMakerAmount - 1) / orderMakerAmount;
+        }
+        else if (makingAmount == 0) {
+            makingAmount = takingAmount * orderMakerAmount / orderTakerAmount;
+        }
+        else {
+            revert("LOP: one of amounts should be 0");
+        }
+
+        require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
+
         // Validate
-        _validate(order, signature, _hash(order));
+        bytes32 orderHash = _hash(order);
+        _validate(order, signature, orderHash);
 
         // Maker => Taker, Taker => Maker
-        _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, msg.sender, type(uint256).max);
-        _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, msg.sender, type(uint256).max);
+        _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, msg.sender, makingAmount);
+        _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, msg.sender, takingAmount);
+
+        emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
-    function fillOrder(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount, uint256 thresholdAmount) external returns(uint256, uint256) {
+    function fillOrder(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount, uint256 minPrice) external returns(uint256, uint256) {
         bytes32 orderHash = _hash(order);
 
         uint256 remainingMakerAmount;
@@ -181,27 +213,28 @@ contract LimitOrderProtocol is
             require(checkPredicate(order), "LOP: predicate returned false");
         }
 
-        // Compute maker and taker assets amount
-        if (makingAmount >> 255 == 1) {
+        // Two zeros means whole remaining order
+        if (makingAmount == 0 && takingAmount == 0) {
             makingAmount = remainingMakerAmount;
         }
+
+        // Compute maker and taket assets amount
         if (takingAmount == 0) {
             takingAmount = (makingAmount == order.makerAssetData.decodeUint256(2))
                 ? order.takerAssetData.decodeUint256(2)
                 : _callGetTakerAmount(order, makingAmount);
-            require(takingAmount <= thresholdAmount, "LOP: taking amount too high");
         }
         else if (makingAmount == 0) {
             makingAmount = (takingAmount == order.takerAssetData.decodeUint256(2))
                 ? order.makerAssetData.decodeUint256(2)
                 : _callGetMakerAmount(order, takingAmount);
-            require(makingAmount >= thresholdAmount, "LOP: making amount too low");
         }
         else {
             revert("LOP: one of amounts should be 0");
         }
 
         require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
+        require(makingAmount * 1e18 / takingAmount >= minPrice, "LOP: price is too low");
 
         // Update remaining amount in storage
         remainingMakerAmount = remainingMakerAmount.sub(makingAmount, "LOP: taking > remaining");
