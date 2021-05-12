@@ -218,7 +218,7 @@ contract LimitOrderProtocol is
             makingAmount = remainingMakerAmount;
         }
 
-        // Compute maker and taket assets amount
+        // Compute maker and taker assets amount
         if (takingAmount == 0) {
             takingAmount = (makingAmount == order.makerAssetData.decodeUint256(2))
                 ? order.takerAssetData.decodeUint256(2)
