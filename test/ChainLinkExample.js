@@ -94,12 +94,63 @@ contract('ChainLinkExample', async function ([_, wallet]) {
         const makerWeth = await this.weth.balanceOf(wallet);
         const takerWeth = await this.weth.balanceOf(_);
 
-        await this.swap.fillOrder(order, signature, ether('1'), 0, ether('0.00024')); // min price is chainlink price - eps
+        await this.swap.fillOrder(order, signature, ether('1'), 0, ether('0.00024')); // min price = chainlink price - eps
 
         expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(ether('4040')));
         expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.sub(ether('4040')));
         expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.sub(ether('1')));
         expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.add(ether('1')));
+    });
+
+    it('dai -> 1inch stop loss order', async function () {
+        const makerAmount = ether('100');
+        const takerAmount = ether('631');
+        const calculatorCall = this.calculator.contract.methods.doublePrice(this.inchOracle.address, this.daiOracle.address, '1000000000', ether('1')).encodeABI();
+        const predicate = this.swap.contract.methods.lt(ether('6.32'), this.calculator.address, calculatorCall).encodeABI();
+
+        const order = buildOrder(
+            '1', this.inch, this.dai, makerAmount, takerAmount,
+            cutLastArg(this.swap.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI()),
+            cutLastArg(this.swap.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI()),
+            zeroAddress,
+            predicate,
+        );
+        const data = buildOrderData(this.chainId, this.swap.address, order);
+        const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+        const makerDai = await this.dai.balanceOf(wallet);
+        const takerDai = await this.dai.balanceOf(_);
+        const makerInch = await this.inch.balanceOf(wallet);
+        const takerInch = await this.inch.balanceOf(_);
+
+        await this.swap.fillOrder(order, signature, ether('100'), 0, ether('0.158'));  // ~ 1 / 6.31
+
+        expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(ether('631')));
+        expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.sub(ether('631')));
+        expect(await this.inch.balanceOf(wallet)).to.be.bignumber.equal(makerInch.sub(ether('100')));
+        expect(await this.inch.balanceOf(_)).to.be.bignumber.equal(takerInch.add(ether('100')));
+    });
+
+    it('dai -> 1inch stop loss order predicate is invalid', async function () {
+        const makerAmount = ether('100');
+        const takerAmount = ether('631');
+        const calculatorCall = this.calculator.contract.methods.doublePrice(this.inchOracle.address, this.daiOracle.address, '1000000000', ether('1')).encodeABI();
+        const predicate = this.swap.contract.methods.lt(ether('6.31'), this.calculator.address, calculatorCall).encodeABI();
+
+        const order = buildOrder(
+            '1', this.inch, this.dai, makerAmount, takerAmount,
+            cutLastArg(this.swap.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI()),
+            cutLastArg(this.swap.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI()),
+            zeroAddress,
+            predicate,
+        );
+        const data = buildOrderData(this.chainId, this.swap.address, order);
+        const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+        await expectRevert(
+            this.swap.fillOrder(order, signature, ether('100'), 0, ether('0.158')),
+            'LOP: predicate returned false',
+        );
     });
 
     it('eth -> dai stop loss order', async function () {
