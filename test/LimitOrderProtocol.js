@@ -1,4 +1,4 @@
-const { BN, ether, expectRevert } = require('@openzeppelin/test-helpers');
+const { expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 
 const { bufferToHex } = require('ethereumjs-util');
@@ -8,63 +8,15 @@ const Wallet = require('ethereumjs-wallet').default;
 const TokenMock = artifacts.require('TokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
-const { EIP712Domain, domainSeparator } = require('./helpers/eip712');
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
-
-function price (val) {
-    return ether(val).toString();
-}
-
-function toBN (num) {
-    return new BN(num);
-}
-
-const OrderRFQ = [
-    { name: 'info', type: 'uint256' },
-    { name: 'makerAsset', type: 'address' },
-    { name: 'takerAsset', type: 'address' },
-    { name: 'makerAssetData', type: 'bytes' },
-    { name: 'takerAssetData', type: 'bytes' },
-];
-
-const Order = [
-    { name: 'salt', type: 'uint256' },
-    { name: 'makerAsset', type: 'address' },
-    { name: 'takerAsset', type: 'address' },
-    { name: 'makerAssetData', type: 'bytes' },
-    { name: 'takerAssetData', type: 'bytes' },
-    { name: 'getMakerAmount', type: 'bytes' },
-    { name: 'getTakerAmount', type: 'bytes' },
-    { name: 'predicate', type: 'bytes' },
-    { name: 'permit', type: 'bytes' },
-    { name: 'interaction', type: 'bytes' },
-];
+const { buildOrderData, buildOrderRFQData } = require('./helpers/orderUtils');
+const { price, toBN, cutLastArg } = require('./helpers/utils');
 
 contract('LimitOrderProtocol', async function ([_, wallet]) {
     const privatekey = '2bdd21761a483f71054e14f5b827213567971c676928d9a1808cbfa4b7501201';
     const account = Wallet.fromPrivateKey(Buffer.from(privatekey, 'hex'));
 
     const zeroAddress = '0x0000000000000000000000000000000000000000';
-    const name = '1inch Limit Order Protocol';
-    const version = '1';
-
-    function buildOrderData (chainId, verifyingContract, order) {
-        return {
-            primaryType: 'Order',
-            types: { EIP712Domain, Order },
-            domain: { name, version, chainId, verifyingContract },
-            message: order,
-        };
-    }
-
-    function buildOrderRFQData (chainId, verifyingContract, order) {
-        return {
-            primaryType: 'OrderRFQ',
-            types: { EIP712Domain, OrderRFQ },
-            domain: { name, version, chainId, verifyingContract },
-            message: order,
-        };
-    }
 
     function buildOrder (exchange, makerAsset, takerAsset, makerAmount, takerAmount, taker = zeroAddress, predicate = '0x', permit = '0x', interaction = '0x') {
         return buildOrderWithSalt(exchange, '1', makerAsset, takerAsset, makerAmount, takerAmount, taker, predicate, permit, interaction);
@@ -77,8 +29,8 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
             takerAsset: takerAsset.address,
             makerAssetData: makerAsset.contract.methods.transferFrom(wallet, taker, makerAmount).encodeABI(),
             takerAssetData: takerAsset.contract.methods.transferFrom(taker, wallet, takerAmount).encodeABI(),
-            getMakerAmount: exchange.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68 * 2),
-            getTakerAmount: exchange.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI().substr(0, 2 + 68 * 2),
+            getMakerAmount: cutLastArg(exchange.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI()),
+            getTakerAmount: cutLastArg(exchange.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI()),
             predicate: predicate,
             permit: permit,
             interaction: interaction,
@@ -115,14 +67,6 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
         await this.weth.approve(this.swap.address, '1000000');
         await this.dai.approve(this.swap.address, '1000000', { from: wallet });
         await this.weth.approve(this.swap.address, '1000000', { from: wallet });
-    });
-
-    it('domain separator', async function () {
-        expect(
-            await this.swap.DOMAIN_SEPARATOR(),
-        ).to.equal(
-            await domainSeparator(name, version, this.chainId, this.swap.address),
-        );
     });
 
     describe('wip', async function () {
