@@ -1,4 +1,4 @@
-const { BN, ether, expectRevert } = require('@openzeppelin/test-helpers');
+const { ether, expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 
 const ethSigUtil = require('eth-sig-util');
@@ -11,7 +11,6 @@ const AggregatorV3Mock = artifacts.require('AggregatorV3Mock');
 
 const { buildOrderData } = require('./helpers/orderUtils');
 const { toBN, cutLastArg } = require('./helpers/utils');
-
 
 contract('ChainLinkExample', async function ([_, wallet]) {
     const privatekey = '2bdd21761a483f71054e14f5b827213567971c676928d9a1808cbfa4b7501201';
@@ -28,8 +27,10 @@ contract('ChainLinkExample', async function ([_, wallet]) {
         return cutLastArg(swap.contract.methods.arbitraryStaticCall(calculator.address, data).encodeABI(), (64 - (data.length - 2) % 64) % 64);
     }
 
-    function buildDoublePriceGetter (calculator, oracle1, oracle2, spread) {
-        return calculator.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), 0).encodeABI().substr(0, 2 + 100 * 2);
+    // eslint-disable-next-line no-unused-vars
+    function buildDoublePriceGetter (swap, calculator, oracle1, oracle2, spread) {
+        const data = calculator.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), 0).encodeABI();
+        return cutLastArg(swap.contract.methods.arbitraryStaticCall(calculator.address, data).encodeABI(), (64 - (data.length - 2) % 64) % 64);
     }
 
     function buildOrder (salt, makerAsset, takerAsset, makerAmount, takerAmount, makerGetter, takerGetter, taker = zeroAddress, predicate = '0x', permit = '0x', interaction = '0x') {
@@ -123,7 +124,7 @@ contract('ChainLinkExample', async function ([_, wallet]) {
         const makerInch = await this.inch.balanceOf(wallet);
         const takerInch = await this.inch.balanceOf(_);
 
-        await this.swap.fillOrder(order, signature, ether('100'), 0, ether('0.158'));  // ~ 1 / 6.31
+        await this.swap.fillOrder(order, signature, ether('100'), 0, ether('0.158')); // ~ 1 / 6.31
 
         expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(ether('631')));
         expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.sub(ether('631')));
