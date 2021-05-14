@@ -300,25 +300,6 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
     });
 
     describe('Amount Calculator', async function () {
-        it('empty getTakerAmount should work on full fill', async function () {
-            const order = buildOrder(this.swap, this.dai, this.weth, 10, 10);
-            order.getTakerAmount = '0x';
-            const data = buildOrderData(this.chainId, this.swap.address, order);
-            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
-
-            const makerDai = await this.dai.balanceOf(wallet);
-            const takerDai = await this.dai.balanceOf(_);
-            const makerWeth = await this.weth.balanceOf(wallet);
-            const takerWeth = await this.weth.balanceOf(_);
-
-            await this.swap.fillOrder(order, signature, 10, 0, price('1'));
-
-            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(10));
-            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(10));
-            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(10));
-            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(10));
-        });
-
         it('empty getTakerAmount should not work on partial fill', async function () {
             const order = buildOrder(this.swap, this.dai, this.weth, 10, 10);
             order.getTakerAmount = '0x';
@@ -329,25 +310,6 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
                 this.swap.fillOrder(order, signature, 5, 0, price('1')),
                 'LOP: getTakerAmount call failed',
             );
-        });
-
-        it('empty getMakerAmount should work on full fill', async function () {
-            const order = buildOrder(this.swap, this.dai, this.weth, 10, 10);
-            order.getMakerAmount = '0x';
-            const data = buildOrderData(this.chainId, this.swap.address, order);
-            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
-
-            const makerDai = await this.dai.balanceOf(wallet);
-            const takerDai = await this.dai.balanceOf(_);
-            const makerWeth = await this.weth.balanceOf(wallet);
-            const takerWeth = await this.weth.balanceOf(_);
-
-            await this.swap.fillOrder(order, signature, 0, 10, price('1'));
-
-            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(10));
-            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(10));
-            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(10));
-            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(10));
         });
 
         it('empty getMakerAmount should not work on partial fill', async function () {
