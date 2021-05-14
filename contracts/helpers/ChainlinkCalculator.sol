@@ -16,7 +16,7 @@ contract ChainlinkCalculator {
         bool inverse = inverseAndSpread & _INVERSE_MASK > 0;
         uint256 spread = inverseAndSpread & (~_INVERSE_MASK);
         if (inverse) {
-            return amount * 1e18 * spread / uint256(oracle.latestAnswer()) / _SPREAD_DENOMINATOR;
+            return amount * spread * 1e18 / uint256(oracle.latestAnswer()) / _SPREAD_DENOMINATOR;
         } else {
             return amount * spread * uint256(oracle.latestAnswer()) / 1e18 / _SPREAD_DENOMINATOR;
         }
