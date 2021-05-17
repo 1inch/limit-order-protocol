@@ -220,14 +220,10 @@ contract LimitOrderProtocol is
 
         // Compute maker and taker assets amount
         if (takingAmount == 0) {
-            takingAmount = (makingAmount == order.makerAssetData.decodeUint256(2))
-                ? order.takerAssetData.decodeUint256(2)
-                : _callGetTakerAmount(order, makingAmount);
+            takingAmount = _callGetTakerAmount(order, makingAmount);
         }
         else if (makingAmount == 0) {
-            makingAmount = (takingAmount == order.takerAssetData.decodeUint256(2))
-                ? order.makerAssetData.decodeUint256(2)
-                : _callGetMakerAmount(order, takingAmount);
+            makingAmount = _callGetMakerAmount(order, takingAmount);
         }
         else {
             revert("LOP: one of amounts should be 0");
