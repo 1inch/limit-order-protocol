@@ -154,17 +154,13 @@ contract LimitOrderProtocol is
         require(invalidator & (1 << (order.info % 256)) == 0, "LOP: already filled");
         _invalidator[maker][uint64(order.info) / 256] = invalidator | (1 << (order.info % 256));
 
-        // Compute partial fill
+        // Compute partial fill if needed
         uint256 orderMakerAmount = order.makerAssetData.decodeUint256(2);
         uint256 orderTakerAmount = order.takerAssetData.decodeUint256(2);
-
-        require(makingAmount <= orderMakerAmount, "LOP: making amount exceeded");
-        require(takingAmount <= orderTakerAmount, "LOP: taking amount exceeded");
-
         if (takingAmount == 0 && makingAmount == 0) {
             // Two zeros means whole order
-            makingAmount = order.makerAssetData.decodeUint256(2);
-            takingAmount = order.takerAssetData.decodeUint256(2);
+            makingAmount = orderMakerAmount;
+            takingAmount = orderTakerAmount;
         }
         else if (takingAmount == 0) {
             takingAmount = (makingAmount * orderTakerAmount + orderMakerAmount - 1) / orderMakerAmount;
@@ -177,8 +173,10 @@ contract LimitOrderProtocol is
         }
 
         require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
+        require(makingAmount <= orderMakerAmount, "LOP: making amount exceeded");
+        require(takingAmount <= orderTakerAmount, "LOP: taking amount exceeded");
 
-        // Validate
+        // Validate order
         bytes32 orderHash = _hash(order);
         _validate(order, signature, orderHash);
 
@@ -220,7 +218,7 @@ contract LimitOrderProtocol is
         else if (takingAmount == 0) {
             takingAmount = _callGetTakerAmount(order, makingAmount);
         }
-        else if (makingAmount == 0) {
+        else {
             makingAmount = _callGetMakerAmount(order, takingAmount);
         }
 
