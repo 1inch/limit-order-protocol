@@ -94,7 +94,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, 1, 1, price('0.9')),
-                'LOP: one of amounts should be 0',
+                'LOP: only one amount should be 0',
             );
         });
 
@@ -120,22 +120,15 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
             );
         });
 
-        it('should take all the remaining makerAssetAmount', async function () {
+        it('should fail when both amounts are zero', async function () {
             const order = buildOrder(this.swap, this.dai, this.weth, 100, 1);
             const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
-            const makerDai = await this.dai.balanceOf(wallet);
-            const takerDai = await this.dai.balanceOf(_);
-            const makerWeth = await this.weth.balanceOf(wallet);
-            const takerWeth = await this.weth.balanceOf(_);
-
-            await this.swap.fillOrder(order, signature, 0, 0, price('100'));
-
-            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(100));
-            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(100));
-            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
-            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+            await expectRevert(
+                this.swap.fillOrder(order, signature, 0, 0, price('100')),
+                "LOP: only one amount should be 0",
+            );
         });
 
         it('should swap fully based on signature', async function () {
@@ -593,7 +586,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
             expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it.only('should fully fill RFQ order', async function () {
+        it('should fully fill RFQ order', async function () {
             const order = buildOrderRFQ('20203181441137406086353707335681', this.dai, this.weth, 1, 1);
             const data = buildOrderRFQData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });

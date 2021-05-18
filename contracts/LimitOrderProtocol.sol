@@ -215,7 +215,7 @@ contract LimitOrderProtocol is
 
         // Compute maker and taker assets amount
         if ((takingAmount == 0) == (makingAmount == 0)) {
-            revert("OP: only one amount should be 0");
+            revert("LOP: only one amount should be 0");
         }
         else if (takingAmount == 0) {
             takingAmount = _callGetTakerAmount(order, makingAmount);
@@ -339,18 +339,20 @@ contract LimitOrderProtocol is
     }
 
     function _callGetMakerAmount(Order memory order, uint256 takerAmount) internal view returns(uint256 makerAmount) {
-        // if (order.getMakerAmount.length == 0) {
-        //     return order.makerAssetData.decodeUint256(2);
-        // }
+        if (order.getMakerAmount.length == 0 && takerAmount == order.takerAssetData.decodeUint256(2)) {
+            // On empty order.getMakerAmount calldata only whole fills are allowed
+            return order.makerAssetData.decodeUint256(2);
+        }
         bytes memory result = address(this).uncheckedFunctionStaticCall(abi.encodePacked(order.getMakerAmount, takerAmount), "LOP: getMakerAmount call failed");
         require(result.length == 32, "LOP: invalid getMakerAmount ret");
         return abi.decode(result, (uint256));
     }
 
     function _callGetTakerAmount(Order memory order, uint256 makerAmount) internal view returns(uint256 takerAmount) {
-        // if (order.getTakerAmount.length == 0) {
-        //     return order.takerAssetData.decodeUint256(2);
-        // }
+        if (order.getTakerAmount.length == 0 && makerAmount == order.makerAssetData.decodeUint256(2)) {
+            // On empty order.getTakerAmount calldata only whole fills are allowed
+            return order.takerAssetData.decodeUint256(2);
+        }
         bytes memory result = address(this).uncheckedFunctionStaticCall(abi.encodePacked(order.getTakerAmount, makerAmount), "LOP: getTakerAmount call failed");
         require(result.length == 32, "LOP: invalid getTakerAmount ret");
         return abi.decode(result, (uint256));
