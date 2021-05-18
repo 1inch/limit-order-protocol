@@ -593,6 +593,24 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
             expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
+        it.only('should fully fill RFQ order', async function () {
+            const order = buildOrderRFQ('20203181441137406086353707335681', this.dai, this.weth, 1, 1);
+            const data = buildOrderRFQData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            const makerDai = await this.dai.balanceOf(wallet);
+            const takerDai = await this.dai.balanceOf(_);
+            const makerWeth = await this.weth.balanceOf(wallet);
+            const takerWeth = await this.weth.balanceOf(_);
+
+            await this.swap.fillOrderRFQ(order, signature, 0, 0);
+
+            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
+            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
+        });
+
         it('should not partial fill RFQ order when 0', async function () {
             // Order: 5 DAI => 10 WETH
             // Swap:  0 DAI <= 1 WETH
