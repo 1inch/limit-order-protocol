@@ -95,7 +95,7 @@ contract('ChainLinkExample', async function ([_, wallet]) {
         const makerWeth = await this.weth.balanceOf(wallet);
         const takerWeth = await this.weth.balanceOf(_);
 
-        await this.swap.fillOrder(order, signature, ether('1'), 0, ether('0.00024')); // min price = chainlink price - eps
+        await this.swap.fillOrder(order, signature, ether('1'), 0, ether('4000')); // min price = chainlink price - eps
 
         expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(ether('4040')));
         expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.sub(ether('4040')));
@@ -124,12 +124,12 @@ contract('ChainLinkExample', async function ([_, wallet]) {
         const makerInch = await this.inch.balanceOf(wallet);
         const takerInch = await this.inch.balanceOf(_);
 
-        await this.swap.fillOrder(order, signature, ether('100'), 0, ether('0.158')); // ~ 1 / 6.31
+        await this.swap.fillOrder(order, signature, makerAmount, 0, takerAmount); // ~ 1 / 6.31
 
-        expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(ether('631')));
-        expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.sub(ether('631')));
-        expect(await this.inch.balanceOf(wallet)).to.be.bignumber.equal(makerInch.sub(ether('100')));
-        expect(await this.inch.balanceOf(_)).to.be.bignumber.equal(takerInch.add(ether('100')));
+        expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(takerAmount));
+        expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.sub(takerAmount));
+        expect(await this.inch.balanceOf(wallet)).to.be.bignumber.equal(makerInch.sub(makerAmount));
+        expect(await this.inch.balanceOf(_)).to.be.bignumber.equal(takerInch.add(makerAmount));
     });
 
     it('dai -> 1inch stop loss order predicate is invalid', async function () {
@@ -149,7 +149,7 @@ contract('ChainLinkExample', async function ([_, wallet]) {
         const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 
         await expectRevert(
-            this.swap.fillOrder(order, signature, ether('100'), 0, ether('0.158')),
+            this.swap.fillOrder(order, signature, makerAmount, 0, takerAmount),
             'LOP: predicate returned false',
         );
     });
@@ -175,11 +175,11 @@ contract('ChainLinkExample', async function ([_, wallet]) {
         const makerWeth = await this.weth.balanceOf(wallet);
         const takerWeth = await this.weth.balanceOf(_);
 
-        await this.swap.fillOrder(order, signature, ether('1'), 0, ether('0.00025'));
+        await this.swap.fillOrder(order, signature, makerAmount, 0, takerAmount);
 
-        expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(ether('4000')));
-        expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.sub(ether('4000')));
-        expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.sub(ether('1')));
-        expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.add(ether('1')));
+        expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(takerAmount));
+        expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.sub(takerAmount));
+        expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.sub(makerAmount));
+        expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.add(makerAmount));
     });
 });

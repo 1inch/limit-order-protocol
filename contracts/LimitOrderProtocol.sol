@@ -187,7 +187,7 @@ contract LimitOrderProtocol is
         emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
-    function fillOrder(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount, uint256 minPrice) external returns(uint256, uint256) {
+    function fillOrder(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount, uint256 thresholdAmount) external returns(uint256, uint256) {
         bytes32 orderHash = _hash(order);
 
         uint256 remainingMakerAmount;
@@ -217,13 +217,14 @@ contract LimitOrderProtocol is
         }
         else if (takingAmount == 0) {
             takingAmount = _callGetTakerAmount(order, makingAmount);
+            require(takingAmount <= thresholdAmount, "LOP: taking amount too high");
         }
         else {
             makingAmount = _callGetMakerAmount(order, takingAmount);
+            require(makingAmount >= thresholdAmount, "LOP: making amount too low");
         }
 
         require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
-        require(makingAmount * 1e18 / takingAmount >= minPrice, "LOP: price is too low");
 
         // Update remaining amount in storage
         remainingMakerAmount = remainingMakerAmount.sub(makingAmount, "LOP: taking > remaining");
