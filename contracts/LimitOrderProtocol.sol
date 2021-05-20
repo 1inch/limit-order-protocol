@@ -32,9 +32,6 @@ contract LimitOrderProtocol is
     using UncheckedAddress for address;
     using ArgumentsDecoder for bytes;
 
-    // Partial Fill:
-    //   getMakerAmount := GetMakerAmountHelper.disablePartialFill(makerAmount, ...)
-    //
     // Expiration Mask:
     //   predicate := PredicateHelper.timestampBelow(deadline)
     //
