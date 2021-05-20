@@ -1,4 +1,4 @@
-const { BN, expectRevert } = require('@openzeppelin/test-helpers');
+const { expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 
 const { bufferToHex } = require('ethereumjs-util');
@@ -10,7 +10,7 @@ const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
 const { buildOrderData, buildOrderRFQData } = require('./helpers/orderUtils');
-const { price, toBN, cutLastArg } = require('./helpers/utils');
+const { toBN, cutLastArg } = require('./helpers/utils');
 
 contract('LimitOrderProtocol', async function ([_, wallet]) {
     const privatekey = '2bdd21761a483f71054e14f5b827213567971c676928d9a1808cbfa4b7501201';
@@ -127,7 +127,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, 0, 0, 0),
-                "LOP: only one amount should be 0",
+                'LOP: only one amount should be 0',
             );
         });
 
