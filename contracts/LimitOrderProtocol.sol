@@ -113,7 +113,7 @@ contract LimitOrderProtocol is
         return abi.decode(result, (bool));
     }
 
-    function simulateTransferFroms(IERC20[] calldata tokens, bytes[] calldata data) external {
+    function simulateViewCalls(IERC20[] calldata tokens, bytes[] calldata data) external {
         bytes memory reason = new bytes(tokens.length);
         for (uint i = 0; i < tokens.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls
@@ -125,7 +125,7 @@ contract LimitOrderProtocol is
         }
 
         // Always revert and provide per call results
-        revert(string(abi.encodePacked("TRANSFERS_SUCCESSFUL_", reason)));
+        revert(string(abi.encodePacked("CALL_RESULTS_", reason)));
     }
 
     function cancelOrder(Order memory order) external {
