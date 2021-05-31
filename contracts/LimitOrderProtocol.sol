@@ -78,7 +78,8 @@ contract LimitOrderProtocol is
         "OrderRFQ(uint256 info,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData)"
     );
 
-    bytes4 constant private _MAX_SELECTOR = bytes4(uint32(IERC20.transferFrom.selector) + 10);
+    // solhint-disable-next-line var-name-mixedcase
+    bytes4 immutable private _MAX_SELECTOR = bytes4(uint32(IERC20.transferFrom.selector) + 10);
 
     mapping(bytes32 => uint256) private _remaining;
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
