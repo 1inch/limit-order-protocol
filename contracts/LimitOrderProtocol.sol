@@ -114,11 +114,11 @@ contract LimitOrderProtocol is
         return abi.decode(result, (bool));
     }
 
-    function simulateCalls(IERC20[] calldata tokens, bytes[] calldata data) external {
-        bytes memory reason = new bytes(tokens.length);
-        for (uint i = 0; i < tokens.length; i++) {
+    function simulateCalls(address[] calldata targets, bytes[] calldata data) external {
+        bytes memory reason = new bytes(targets.length);
+        for (uint i = 0; i < targets.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls
-            (bool success, bytes memory result) = address(tokens[i]).call(data[i]);
+            (bool success, bytes memory result) = targets[i].call(data[i]);
             if (success && result.length > 0) {
                 success = abi.decode(result, (bool));
             }
