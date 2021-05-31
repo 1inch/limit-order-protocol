@@ -279,11 +279,11 @@ contract LimitOrderProtocol is
     }
 
     function _validate(Order memory order, bytes memory signature, bytes32 orderHash) internal view {
-        return _validate(order.makerAssetData, order.takerAssetData, signature, orderHash);
+        _validate(order.makerAssetData, order.takerAssetData, signature, orderHash);
     }
 
     function _validate(OrderRFQ memory order, bytes memory signature, bytes32 orderHash) internal view {
-        return _validate(order.makerAssetData, order.takerAssetData, signature, orderHash);
+        _validate(order.makerAssetData, order.takerAssetData, signature, orderHash);
     }
 
     function _validate(bytes memory makerAssetData, bytes memory takerAssetData, bytes memory signature, bytes32 orderHash) internal view {
