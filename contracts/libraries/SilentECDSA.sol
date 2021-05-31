@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 /**
- * @dev Copy of OpenZeppelin ECDSA library that does not revert when recovered address is 0
+ * @dev Copy of OpenZeppelin ECDSA library that does not revert
  * https://github.com/OpenZeppelin/openzeppelin-contracts/blob/df7996b671d309ee949113c64beee9899133dc05/contracts/utils/cryptography/ECDSA.sol
  *
  * Elliptic Curve Digital Signature Algorithm (ECDSA) operations.
@@ -55,7 +55,8 @@ library SilentECDSA {
                 v := add(shr(255, vs), 27)
             }
         } else {
-            revert("ECDSA: invalid signature length");
+            // revert("ECDSA: invalid signature length");
+            return address(0);
         }
 
         return recover(hash, v, r, s);
@@ -75,12 +76,17 @@ library SilentECDSA {
         // with 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 - s1 and flip v from 27 to 28 or
         // vice versa. If your library also generates signatures with 0/1 for v instead 27/28, add 27 to v to accept
         // these malleable signatures as well.
-        require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, "ECDSA: invalid 's' value");
-        require(v == 27 || v == 28, "ECDSA: invalid 'v' value");
+        // require(uint256(s) <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0, "ECDSA: invalid 's' value");
+        if (uint256(s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
+            return address(0);
+        }
+        // require(v == 27 || v == 28, "ECDSA: invalid 'v' value");
+        if (v != 27 && v != 28) {
+            return address(0);
+        }
 
         // If the signature is valid (and not malleable), return the signer address
         address signer = ecrecover(hash, v, r, s);
-        // The next line is the only change from original OZ code
         // require(signer != address(0), "ECDSA: invalid signature");
 
         return signer;
