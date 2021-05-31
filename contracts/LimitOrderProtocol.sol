@@ -115,6 +115,7 @@ contract LimitOrderProtocol is
     }
 
     function simulateCalls(address[] calldata targets, bytes[] calldata data) external {
+        require(targets.length == data.length, "LOP: array size mismatch");
         bytes memory reason = new bytes(targets.length);
         for (uint i = 0; i < targets.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls
