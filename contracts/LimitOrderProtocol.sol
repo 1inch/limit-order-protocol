@@ -81,6 +81,10 @@ contract LimitOrderProtocol is
     // solhint-disable-next-line var-name-mixedcase
     bytes4 immutable private _MAX_SELECTOR = bytes4(uint32(IERC20.transferFrom.selector) + 10);
 
+    uint256 constant private _FROM_INDEX = 0;
+    uint256 constant private _TO_INDEX = 1;
+    uint256 constant private _AMOUNT_INDEX = 2;
+
     mapping(bytes32 => uint256) private _remaining;
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
 
@@ -131,7 +135,7 @@ contract LimitOrderProtocol is
     }
 
     function cancelOrder(Order memory order) external {
-        require(order.makerAssetData.decodeAddress(0) == msg.sender, "LOP: Access denied");
+        require(order.makerAssetData.decodeAddress(_FROM_INDEX) == msg.sender, "LOP: Access denied");
 
         bytes32 orderHash = _hash(order);
         _remaining[orderHash] = 1;
@@ -148,7 +152,7 @@ contract LimitOrderProtocol is
         require(expiration == 0 || block.timestamp <= expiration, "LOP: order expired");  // solhint-disable-line not-rely-on-time
 
         // Validate double spend
-        address maker = order.makerAssetData.decodeAddress(0);
+        address maker = order.makerAssetData.decodeAddress(_FROM_INDEX);
         uint256 invalidatorSlot = uint64(order.info) >> 8;
         uint256 invalidatorBit = 1 << uint8(order.info);
         uint256 invalidator = _invalidator[maker][invalidatorSlot];
@@ -156,8 +160,8 @@ contract LimitOrderProtocol is
         _invalidator[maker][invalidatorSlot] = invalidator | invalidatorBit;
 
         // Compute partial fill if needed
-        uint256 orderMakerAmount = order.makerAssetData.decodeUint256(2);
-        uint256 orderTakerAmount = order.takerAssetData.decodeUint256(2);
+        uint256 orderMakerAmount = order.makerAssetData.decodeUint256(_AMOUNT_INDEX);
+        uint256 orderTakerAmount = order.takerAssetData.decodeUint256(_AMOUNT_INDEX);
         if (takingAmount == 0 && makingAmount == 0) {
             // Two zeros means whole order
             makingAmount = orderMakerAmount;
@@ -198,7 +202,7 @@ contract LimitOrderProtocol is
             if (!orderExists) {
                 // First fill: validate order and permit maker asset
                 _validate(order, signature, orderHash);
-                remainingMakerAmount = order.makerAssetData.decodeUint256(2);
+                remainingMakerAmount = order.makerAssetData.decodeUint256(_AMOUNT_INDEX);
                 if (order.permit.length > 0) {
                     (address token, bytes memory permit) = abi.decode(order.permit, (address, bytes));
                     token.uncheckedFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
@@ -237,7 +241,7 @@ contract LimitOrderProtocol is
 
         // Maker can handle funds interactively
         if (order.interaction.length > 0) {
-            InteractiveMaker(order.makerAssetData.decodeAddress(0))
+            InteractiveMaker(order.makerAssetData.decodeAddress(_FROM_INDEX))
                 .notifyFillOrder(order.makerAsset, order.takerAsset, makingAmount, takingAmount, order.interaction);
         }
 
@@ -298,7 +302,7 @@ contract LimitOrderProtocol is
         require(makerSelector >= IERC20.transferFrom.selector && makerSelector <= _MAX_SELECTOR, "LOP: bad makerAssetData.selector");
         require(takerSelector >= IERC20.transferFrom.selector && takerSelector <= _MAX_SELECTOR, "LOP: bad takerAssetData.selector");
 
-        address maker = address(makerAssetData.decodeAddress(0));
+        address maker = address(makerAssetData.decodeAddress(_FROM_INDEX));
         if ((signature.length != 65 && signature.length != 64) || ECDSA.recover(orderHash, signature) != maker) {
             bytes memory result = maker.uncheckedFunctionStaticCall(abi.encodeWithSelector(IERC1271.isValidSignature.selector, orderHash, signature), "LOP: isValidSignature failed");
             require(result.length == 32 && abi.decode(result, (bytes4)) == IERC1271.isValidSignature.selector, "LOP: bad signature");
@@ -307,15 +311,15 @@ contract LimitOrderProtocol is
 
     function _callMakerAssetTransferFrom(address makerAsset, bytes memory makerAssetData, address taker, uint256 makingAmount) internal {
         // Patch receiver or validate private order
-        address orderTakerAddress = makerAssetData.decodeAddress(1);
+        address orderTakerAddress = makerAssetData.decodeAddress(_TO_INDEX);
         if (orderTakerAddress == address(0)) {
-            makerAssetData.patchAddress(1, taker);
+            makerAssetData.patchAddress(_TO_INDEX, taker);
         } else {
             require(orderTakerAddress == taker, "LOP: private order");
         }
 
         // Patch maker amount
-        makerAssetData.patchUint256(2, makingAmount);
+        makerAssetData.patchUint256(_AMOUNT_INDEX, makingAmount);
 
         // Transfer asset from maker to taker
         bytes memory result = makerAsset.uncheckedFunctionCall(makerAssetData, "LOP: makerAsset.call failed");
@@ -326,10 +330,10 @@ contract LimitOrderProtocol is
 
     function _callTakerAssetTransferFrom(address takerAsset, bytes memory takerAssetData, address taker, uint256 takingAmount) internal {
         // Patch spender
-        takerAssetData.patchAddress(0, taker);
+        takerAssetData.patchAddress(_FROM_INDEX, taker);
 
         // Patch taker amount
-        takerAssetData.patchUint256(2, takingAmount);
+        takerAssetData.patchUint256(_AMOUNT_INDEX, takingAmount);
 
         // Transfer asset from taker to maker
         bytes memory result = takerAsset.uncheckedFunctionCall(takerAssetData, "LOP: takerAsset.call failed");
@@ -339,9 +343,9 @@ contract LimitOrderProtocol is
     }
 
     function _callGetMakerAmount(Order memory order, uint256 takerAmount) internal view returns(uint256 makerAmount) {
-        if (order.getMakerAmount.length == 0 && takerAmount == order.takerAssetData.decodeUint256(2)) {
+        if (order.getMakerAmount.length == 0 && takerAmount == order.takerAssetData.decodeUint256(_AMOUNT_INDEX)) {
             // On empty order.getMakerAmount calldata only whole fills are allowed
-            return order.makerAssetData.decodeUint256(2);
+            return order.makerAssetData.decodeUint256(_AMOUNT_INDEX);
         }
         bytes memory result = address(this).uncheckedFunctionStaticCall(abi.encodePacked(order.getMakerAmount, takerAmount), "LOP: getMakerAmount call failed");
         require(result.length == 32, "LOP: invalid getMakerAmount ret");
@@ -349,9 +353,9 @@ contract LimitOrderProtocol is
     }
 
     function _callGetTakerAmount(Order memory order, uint256 makerAmount) internal view returns(uint256 takerAmount) {
-        if (order.getTakerAmount.length == 0 && makerAmount == order.makerAssetData.decodeUint256(2)) {
+        if (order.getTakerAmount.length == 0 && makerAmount == order.makerAssetData.decodeUint256(_AMOUNT_INDEX)) {
             // On empty order.getTakerAmount calldata only whole fills are allowed
-            return order.takerAssetData.decodeUint256(2);
+            return order.takerAssetData.decodeUint256(_AMOUNT_INDEX);
         }
         bytes memory result = address(this).uncheckedFunctionStaticCall(abi.encodePacked(order.getTakerAmount, makerAmount), "LOP: getTakerAmount call failed");
         require(result.length == 32, "LOP: invalid getTakerAmount ret");
