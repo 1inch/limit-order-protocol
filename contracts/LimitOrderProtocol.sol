@@ -184,7 +184,7 @@ contract LimitOrderProtocol is
 
         // Validate order
         bytes32 orderHash = _hash(order);
-        _validate(order, signature, orderHash);
+        _validate(order.makerAssetData, order.takerAssetData, signature, orderHash);
 
         // Maker => Taker, Taker => Maker
         _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, msg.sender, makingAmount);
@@ -202,7 +202,7 @@ contract LimitOrderProtocol is
             (orderExists, remainingMakerAmount) = _remaining[orderHash].trySub(1);
             if (!orderExists) {
                 // First fill: validate order and permit maker asset
-                _validate(order, signature, orderHash);
+                _validate(order.makerAssetData, order.takerAssetData, signature, orderHash);
                 remainingMakerAmount = order.makerAssetData.decodeUint256(_AMOUNT_INDEX);
                 if (order.permit.length > 0) {
                     (address token, bytes memory permit) = abi.decode(order.permit, (address, bytes));
@@ -285,14 +285,6 @@ contract LimitOrderProtocol is
                 )
             )
         );
-    }
-
-    function _validate(Order memory order, bytes memory signature, bytes32 orderHash) internal view {
-        _validate(order.makerAssetData, order.takerAssetData, signature, orderHash);
-    }
-
-    function _validate(OrderRFQ memory order, bytes memory signature, bytes32 orderHash) internal view {
-        _validate(order.makerAssetData, order.takerAssetData, signature, orderHash);
     }
 
     function _validate(bytes memory makerAssetData, bytes memory takerAssetData, bytes memory signature, bytes32 orderHash) internal view {
