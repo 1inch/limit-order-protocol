@@ -15,6 +15,7 @@ import "./helpers/ERC1155Proxy.sol";
 import "./interfaces/InteractiveMaker.sol";
 import "./libraries/UncheckedAddress.sol";
 import "./libraries/ArgumentsDecoder.sol";
+import "./libraries/SilentECDSA.sol";
 
 
 contract LimitOrderProtocol is
@@ -303,7 +304,7 @@ contract LimitOrderProtocol is
         require(takerSelector >= IERC20.transferFrom.selector && takerSelector <= _MAX_SELECTOR, "LOP: bad takerAssetData.selector");
 
         address maker = address(makerAssetData.decodeAddress(_FROM_INDEX));
-        if ((signature.length != 65 && signature.length != 64) || ECDSA.recover(orderHash, signature) != maker) {
+        if ((signature.length != 65 && signature.length != 64) || SilentECDSA.recover(orderHash, signature) != maker) {
             bytes memory result = maker.uncheckedFunctionStaticCall(abi.encodeWithSelector(IERC1271.isValidSignature.selector, orderHash, signature), "LOP: isValidSignature failed");
             require(result.length == 32 && abi.decode(result, (bytes4)) == IERC1271.isValidSignature.selector, "LOP: bad signature");
         }
