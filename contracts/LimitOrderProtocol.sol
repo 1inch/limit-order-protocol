@@ -137,7 +137,7 @@ contract LimitOrderProtocol is
     }
 
     function cancelOrderRFQ(uint256 orderInfo) external {
-        _invalidator[msg.sender][uint64(orderInfo) / 256] |= (1 << (orderInfo % 256));
+        _invalidator[msg.sender][uint64(orderInfo) >> 8] |= (1 << (orderInfo & 0xff));
     }
 
     function fillOrderRFQ(OrderRFQ memory order, bytes memory signature, uint256 makingAmount, uint256 takingAmount) external {
@@ -147,9 +147,11 @@ contract LimitOrderProtocol is
 
         // Validate double spend
         address maker = order.makerAssetData.decodeAddress(0);
-        uint256 invalidator = _invalidator[maker][uint64(order.info) / 256];
-        require(invalidator & (1 << (order.info % 256)) == 0, "LOP: already filled");
-        _invalidator[maker][uint64(order.info) / 256] = invalidator | (1 << (order.info % 256));
+        uint256 invalidatorSlot = uint64(order.info) >> 8;
+        uint256 invalidatorBit = 1 << uint8(order.info);
+        uint256 invalidator = _invalidator[maker][invalidatorSlot];
+        require(invalidator & invalidatorBit == 0, "LOP: already filled");
+        _invalidator[maker][invalidatorSlot] = invalidator | invalidatorBit;
 
         // Compute partial fill if needed
         uint256 orderMakerAmount = order.makerAssetData.decodeUint256(2);
