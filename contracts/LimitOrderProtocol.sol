@@ -113,7 +113,7 @@ contract LimitOrderProtocol is
         return abi.decode(result, (bool));
     }
 
-    function simulateViewCalls(IERC20[] calldata tokens, bytes[] calldata data) external {
+    function simulateCalls(IERC20[] calldata tokens, bytes[] calldata data) external {
         bytes memory reason = new bytes(tokens.length);
         for (uint i = 0; i < tokens.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls
