@@ -78,7 +78,7 @@ contract LimitOrderProtocol is
         "OrderRFQ(uint256 info,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData)"
     );
 
-    bytes4 immutable private _maxSelector = bytes4(uint32(IERC20.transferFrom.selector) + 10);
+    bytes4 constant private _MAX_SELECTOR = bytes4(uint32(IERC20.transferFrom.selector) + 10);
 
     mapping(bytes32 => uint256) private _remaining;
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
@@ -291,8 +291,8 @@ contract LimitOrderProtocol is
         require(takerAssetData.length >= 100, "LOP: bad takerAssetData.length");
         bytes4 makerSelector = makerAssetData.decodeSelector();
         bytes4 takerSelector = takerAssetData.decodeSelector();
-        require(makerSelector >= IERC20.transferFrom.selector && makerSelector <= _maxSelector, "LOP: bad makerAssetData.selector");
-        require(takerSelector >= IERC20.transferFrom.selector && takerSelector <= _maxSelector, "LOP: bad takerAssetData.selector");
+        require(makerSelector >= IERC20.transferFrom.selector && makerSelector <= _MAX_SELECTOR, "LOP: bad makerAssetData.selector");
+        require(takerSelector >= IERC20.transferFrom.selector && takerSelector <= _MAX_SELECTOR, "LOP: bad takerAssetData.selector");
 
         address maker = address(makerAssetData.decodeAddress(0));
         if ((signature.length != 65 && signature.length != 64) || ECDSA.recover(orderHash, signature) != maker) {
