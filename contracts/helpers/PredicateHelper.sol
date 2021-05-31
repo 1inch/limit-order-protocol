@@ -32,16 +32,19 @@ contract PredicateHelper {
 
     function eq(uint256 value, address target, bytes memory data) external view returns(bool) {
         bytes memory result = target.uncheckedFunctionStaticCall(data, "PH: eq");
+        require(result.length == 32, "PH: invalid call result");
         return abi.decode(result, (uint256)) == value;
     }
 
     function lt(uint256 value, address target, bytes memory data) external view returns(bool) {
         bytes memory result = target.uncheckedFunctionStaticCall(data, "PH: lt");
+        require(result.length == 32, "PH: invalid call result");
         return abi.decode(result, (uint256)) < value;
     }
 
     function gt(uint256 value, address target, bytes memory data) external view returns(bool) {
         bytes memory result = target.uncheckedFunctionStaticCall(data, "PH: gt");
+        require(result.length == 32, "PH: invalid call result");
         return abi.decode(result, (uint256)) > value;
     }
 
