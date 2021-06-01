@@ -539,6 +539,11 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
             expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
+        it('advance nonce', async function () {
+            await this.swap.increaseNonce();
+            expect(await this.swap.nonce(_)).to.be.bignumber.equal('1');
+        });
+
         it('`and` should fail', async function () {
             const ts1 = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();

@@ -37,8 +37,7 @@ library UncheckedAddress {
 
                 // solhint-disable-next-line no-inline-assembly
                 assembly {
-                    let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert(add(32, returndata), mload(returndata))
                 }
             } else {
                 revert(errorMessage);

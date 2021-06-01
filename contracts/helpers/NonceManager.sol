@@ -13,9 +13,7 @@ contract NonceManager {
     }
 
     function advanceNonce(uint8 amount) public {
-        uint256 newNonce = nonce[msg.sender] + amount;
-        nonce[msg.sender] = newNonce;
-        emit NonceIncreased(msg.sender, newNonce);
+        emit NonceIncreased(msg.sender, nonce[msg.sender] += amount);
     }
 
     function nonceEquals(address makerAddress, uint256 makerNonce) external view returns(bool) {
