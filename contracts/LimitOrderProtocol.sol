@@ -18,6 +18,7 @@ import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/SilentECDSA.sol";
 
 
+/// @title 1inch Limit Order Protocol v1
 contract LimitOrderProtocol is
     EIP712("1inch Limit Order Protocol", "1"),
     PredicateHelper,
@@ -94,14 +95,18 @@ contract LimitOrderProtocol is
         return _domainSeparatorV4();
     }
 
+    /// @notice Returns unfilled amount for order. Throws if order does not exist
     function remaining(bytes32 orderHash) external view returns(uint256) {
         return _remaining[orderHash].sub(1, "LOP: Unknown order");
     }
 
+    /// @notice Returns unfilled amount for order
+    /// @return Unfilled amount of order plus one if order exists. Otherwise 0
     function remainingRaw(bytes32 orderHash) external view returns(uint256) {
         return _remaining[orderHash];
     }
 
+    /// @notice Same as `remainingRaw` but for multiple orders
     function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory results) {
         results = new uint256[](orderHashes.length);
         for (uint i = 0; i < orderHashes.length; i++) {
@@ -109,16 +114,27 @@ contract LimitOrderProtocol is
         }
     }
 
+    /// @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
+    /// @return Each bit represents whenever corresponding quote was filled
     function invalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256) {
         return _invalidator[maker][slot];
     }
 
+    /// @notice Checks order predicate
     function checkPredicate(Order memory order) public view returns(bool) {
         bytes memory result = address(this).uncheckedFunctionStaticCall(order.predicate, "LOP: predicate call failed");
         require(result.length == 32, "LOP: invalid predicate return");
         return abi.decode(result, (bool));
     }
 
+    /**
+     * @notice Calls every target with corresponding data. Then reverts with CALL_RESULTS_0101011 where zeroes and ones
+     * denote failure or success of the corresponding call
+     */
+    /**
+     * @param targets Array of functions. Each function is expected to take a corresponding `data` argument
+     * as parameter and return bool
+     */
     function simulateCalls(address[] calldata targets, bytes[] calldata data) external {
         require(targets.length == data.length, "LOP: array size mismatch");
         bytes memory reason = new bytes(targets.length);
@@ -135,6 +151,7 @@ contract LimitOrderProtocol is
         revert(string(abi.encodePacked("CALL_RESULTS_", reason)));
     }
 
+    /// @notice Cancels order by setting remaining amount to zero
     function cancelOrder(Order memory order) external {
         require(order.makerAssetData.decodeAddress(_FROM_INDEX) == msg.sender, "LOP: Access denied");
 
@@ -143,10 +160,16 @@ contract LimitOrderProtocol is
         emit OrderFilled(msg.sender, orderHash, 0);
     }
 
+    /// @notice Cancels order's quote
     function cancelOrderRFQ(uint256 orderInfo) external {
         _invalidator[msg.sender][uint64(orderInfo) >> 8] |= (1 << (orderInfo & 0xff));
     }
 
+    /// @notice Fills order's quote, fully or partially (whichever is possible)
+    /// @param order Order quote to fill
+    /// @param signature Signature to confirm quote ownership
+    /// @param makingAmount Making amount
+    /// @param takingAmount Taking amount
     function fillOrderRFQ(OrderRFQ memory order, bytes memory signature, uint256 makingAmount, uint256 takingAmount) external {
         // Check time expiration
         uint256 expiration = uint128(order.info) >> 64;
@@ -193,6 +216,7 @@ contract LimitOrderProtocol is
         emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
+    /// @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
     function fillOrder(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount, uint256 thresholdAmount) external returns(uint256, uint256) {
         bytes32 orderHash = _hash(order);
 
