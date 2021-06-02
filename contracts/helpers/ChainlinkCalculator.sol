@@ -26,7 +26,6 @@ contract ChainlinkCalculator {
     }
 
     /// @notice Calculates price of token A relative to token B. Note that order is important
-    /// @param inverseAndSpread Bitmask for inverse flag and spread. Lowest 254 bits specify spread amount, the highest one specifies if it's an inverse trade
     /// @return Token A relative price times amount
     function doublePrice(AggregatorV3Interface oracle1, AggregatorV3Interface oracle2, uint256 spread, uint256 amount) external view returns(uint256) {
         // solhint-disable-next-line not-rely-on-time
