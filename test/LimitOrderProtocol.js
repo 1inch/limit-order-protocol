@@ -59,15 +59,15 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
         // See https://github.com/trufflesuite/ganache-core/issues/515
         this.chainId = await this.dai.getChainId();
 
-        await this.dai.mint(wallet, '1000000000');
-        await this.weth.mint(wallet, '1000000000');
-        await this.dai.mint(_, '1000000000');
-        await this.weth.mint(_, '1000000000');
+        await this.dai.mint(wallet, '1000000');
+        await this.weth.mint(wallet, '1000000');
+        await this.dai.mint(_, '1000000');
+        await this.weth.mint(_, '1000000');
 
-        await this.dai.approve(this.swap.address, '1000000000');
-        await this.weth.approve(this.swap.address, '1000000000');
-        await this.dai.approve(this.swap.address, '1000000000', { from: wallet });
-        await this.weth.approve(this.swap.address, '1000000000', { from: wallet });
+        await this.dai.approve(this.swap.address, '1000000');
+        await this.weth.approve(this.swap.address, '1000000');
+        await this.dai.approve(this.swap.address, '1000000', { from: wallet });
+        await this.weth.approve(this.swap.address, '1000000', { from: wallet });
     });
 
     describe('wip', async function () {
@@ -703,7 +703,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
             expect(await this.usdt.balanceOf(_)).to.be.bignumber.equal(takerUsdt.subn(1000700));
 
             const order2 = buildOrderRFQ('2', this.usdc, this.usdt, 1000000000, 1000700000, zeroAddress, this.rfq.address);
-            const signature2 = '0x' + await this.rfq.contract.methods.encoderHelper(order2).encodeABI().substr(10);
+            const signature2 = web3.eth.abi.encodeParameter(ABIOrderRFQ, order2);
 
             const receipt = await this.swap.fillOrderRFQ(order2, signature2, 1000000, 0);
 
