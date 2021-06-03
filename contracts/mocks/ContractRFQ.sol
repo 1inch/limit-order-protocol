@@ -104,10 +104,6 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
         return this.isValidSignature.selector;
     }
 
-    function encoderHelper(LimitOrderProtocol.OrderRFQ memory /* order */) public view {
-        this;
-    }
-
     function _hash(
         uint256 info,
         address makerAsset,

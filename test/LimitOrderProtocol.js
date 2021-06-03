@@ -10,7 +10,7 @@ const TokenMock = artifacts.require('TokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
-const { buildOrderData, buildOrderRFQData } = require('./helpers/orderUtils');
+const { ABIOrderRFQ, buildOrderData, buildOrderRFQData } = require('./helpers/orderUtils');
 const { toBN, cutLastArg } = require('./helpers/utils');
 
 contract('LimitOrderProtocol', async function ([_, wallet]) {
@@ -686,9 +686,9 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
             await this.usdt.approve(this.swap.address, '1000000000');
         });
 
-        it.only('should partial fill RFQ order', async function () {
+        it('should partial fill RFQ order', async function () {
             const order = buildOrderRFQ('1', this.usdc, this.usdt, 1000000000, 1000700000, zeroAddress, this.rfq.address);
-            const signature = '0x' + await this.rfq.contract.methods.encoderHelper(order).encodeABI().substr(10);
+            const signature = web3.eth.abi.encodeParameter(ABIOrderRFQ, order);
 
             const makerUsdc = await this.usdc.balanceOf(this.rfq.address);
             const takerUsdc = await this.usdc.balanceOf(_);
