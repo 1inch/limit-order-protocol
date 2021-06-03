@@ -27,6 +27,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     IERC20 immutable public token0;
     IERC20 immutable public token1;
     uint256 immutable public fee;
+    uint256 immutable public fee2;
 
     constructor(
         address _protocol,
@@ -43,6 +44,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
         token0 = _token0;
         token1 = _token1;
         fee = _fee;
+        fee2 = 2e18 * _fee / (1e18 + _fee);
         _token0.approve(_protocol, type(uint256).max);
         _token1.approve(_protocol, type(uint256).max);
     }
@@ -58,7 +60,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     function depositFor(IERC20 token, uint256 amount, address to) public {
         require(token == token0 || token == token1, "ContractRFQ: not allowed token");
 
-        _mint(to, amount * (1e18 - fee/2) / 1e18);
+        _mint(to, amount * fee2 / 1e18);
         token.safeTransferFrom(msg.sender, address(this), amount);
     }
 
@@ -70,7 +72,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
         require(token == token0 || token == token1, "ContractRFQ: not allowed token");
 
         _burn(msg.sender, amount);
-        token.safeTransfer(to, amount * (1e18 - fee/2) / 1e18);
+        token.safeTransfer(to, amount * fee2 / 1e18);
     }
 
     function isValidSignature(bytes32 hash, bytes memory signature) public view override returns(bytes4) {
@@ -93,7 +95,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
                 (makerAsset == address(token0) && takerAsset == address(token1)) ||
                 (makerAsset == address(token1) && takerAsset == address(token0))
             ) &&
-            makerAssetData.decodeUint256(_AMOUNT_INDEX) * (1e18 - fee) <= takerAssetData.decodeUint256(_AMOUNT_INDEX) * 1e18 &&
+            makerAssetData.decodeUint256(_AMOUNT_INDEX) * fee <= takerAssetData.decodeUint256(_AMOUNT_INDEX) * 1e18 &&
             takerAssetData.decodeAddress(_TO_INDEX) == address(this) &&
             _hash(info, makerAsset, takerAsset, makerAssetData, takerAssetData) == hash,
             "ContractRFQ: bad price"
