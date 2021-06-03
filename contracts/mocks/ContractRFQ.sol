@@ -3,22 +3,17 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../LimitOrderProtocol.sol";
 import "../libraries/ArgumentsDecoder.sol";
+import "./EIP712Alien.sol";
 
 
-contract ContractRFQ is IERC1271 {
+contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     using SafeERC20 for IERC20;
     using ArgumentsDecoder for bytes;
-
-    // EIP 712
-    bytes32 immutable private _CACHED_DOMAIN_SEPARATOR;
-    uint256 immutable private _CACHED_CHAIN_ID;
-    bytes32 immutable private _HASHED_NAME;
-    bytes32 immutable private _HASHED_VERSION;
-    bytes32 immutable private _TYPE_HASH;
 
     bytes32 constant public LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
         "OrderRFQ(uint256 info,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData)"
@@ -31,23 +26,51 @@ contract ContractRFQ is IERC1271 {
     address immutable public protocol;
     IERC20 immutable public token0;
     IERC20 immutable public token1;
+    uint256 immutable public fee;
 
-    constructor(address _protocol, IERC20 _token0, IERC20 _token1) {
+    constructor(
+        address _protocol,
+        IERC20 _token0,
+        IERC20 _token1,
+        uint256 _fee,
+        string memory name,
+        string memory symbol
+    )
+        EIP712Alien(_protocol, "1inch Limit Order Protocol", "1")
+        ERC20(name, symbol)
+    {
         protocol = _protocol;
         token0 = _token0;
         token1 = _token1;
+        fee = _fee;
         _token0.approve(_protocol, type(uint256).max);
         _token1.approve(_protocol, type(uint256).max);
+    }
 
-        // EIP 712
-        bytes32 hashedName = keccak256(bytes("1inch Limit Order Protocol"));
-        bytes32 hashedVersion = keccak256(bytes("1"));
-        bytes32 typeHash = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
-        _HASHED_NAME = hashedName;
-        _HASHED_VERSION = hashedVersion;
-        _CACHED_CHAIN_ID = block.chainid;
-        _CACHED_DOMAIN_SEPARATOR = _buildDomainSeparator(typeHash, hashedName, hashedVersion, _protocol);
-        _TYPE_HASH = typeHash;
+    function decimals() public pure override returns (uint8) {
+        return 6;
+    }
+
+    function deposit(IERC20 token, uint256 amount) public {
+        depositFor(token, amount, msg.sender);
+    }
+
+    function depositFor(IERC20 token, uint256 amount, address to) public {
+        require(token == token0 || token == token1, "ContractRFQ: not allowed token");
+
+        _mint(to, amount * (1e18 - fee/2) / 1e18);
+        token.safeTransferFrom(msg.sender, address(this), amount);
+    }
+
+    function withdraw(IERC20 token, uint256 amount) public {
+        withdrawFor(token, amount, msg.sender);
+    }
+
+    function withdrawFor(IERC20 token, uint256 amount, address to) public {
+        require(token == token0 || token == token1, "ContractRFQ: not allowed token");
+
+        _burn(msg.sender, amount);
+        token.safeTransfer(to, amount * (1e18 - fee/2) / 1e18);
     }
 
     function isValidSignature(bytes32 hash, bytes memory signature) public view override returns(bytes4) {
@@ -70,7 +93,7 @@ contract ContractRFQ is IERC1271 {
                 (makerAsset == address(token0) && takerAsset == address(token1)) ||
                 (makerAsset == address(token1) && takerAsset == address(token0))
             ) &&
-            makerAssetData.decodeUint256(_AMOUNT_INDEX) * 0.9993e18 <= takerAssetData.decodeUint256(_AMOUNT_INDEX) * 1e18 &&
+            makerAssetData.decodeUint256(_AMOUNT_INDEX) * (1e18 - fee) <= takerAssetData.decodeUint256(_AMOUNT_INDEX) * 1e18 &&
             takerAssetData.decodeAddress(_TO_INDEX) == address(this) &&
             _hash(info, makerAsset, takerAsset, makerAssetData, takerAssetData) == hash,
             "ContractRFQ: bad price"
@@ -102,31 +125,5 @@ contract ContractRFQ is IERC1271 {
                 )
             )
         );
-    }
-
-    // EIP 712
-
-    function _domainSeparatorV4() internal view returns (bytes32) {
-        if (block.chainid == _CACHED_CHAIN_ID) {
-            return _CACHED_DOMAIN_SEPARATOR;
-        } else {
-            return _buildDomainSeparator(_TYPE_HASH, _HASHED_NAME, _HASHED_VERSION, protocol);
-        }
-    }
-
-    function _buildDomainSeparator(bytes32 typeHash, bytes32 name, bytes32 version, address _protocol) private view returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                typeHash,
-                name,
-                version,
-                block.chainid,
-                _protocol // address(this)
-            )
-        );
-    }
-
-    function _hashTypedDataV4(bytes32 structHash) internal view virtual returns (bytes32) {
-        return ECDSA.toTypedDataHash(_domainSeparatorV4(), structHash);
     }
 }
