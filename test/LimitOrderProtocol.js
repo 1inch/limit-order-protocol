@@ -705,7 +705,9 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
             const order2 = buildOrderRFQ('2', this.usdc, this.usdt, 1000000000, 1000700000, zeroAddress, this.rfq.address);
             const signature2 = '0x' + await this.rfq.contract.methods.encoderHelper(order2).encodeABI().substr(10);
 
-            await this.swap.fillOrderRFQ(order2, signature2, 1000000, 0);
+            const receipt = await this.swap.fillOrderRFQ(order2, signature2, 1000000, 0);
+
+            await gasspectEVM(receipt.tx);
         });
     });
 });

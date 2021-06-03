@@ -51,15 +51,27 @@ contract ContractRFQ is IERC1271 {
     }
 
     function isValidSignature(bytes32 hash, bytes memory signature) public view override returns(bytes4) {
-        LimitOrderProtocol.OrderRFQ memory order = abi.decode(signature, (LimitOrderProtocol.OrderRFQ));
+        //LimitOrderProtocol.OrderRFQ memory order = abi.decode(signature, (LimitOrderProtocol.OrderRFQ));
+        uint256 info;
+        address makerAsset;
+        address takerAsset;
+        bytes memory makerAssetData;
+        bytes memory takerAssetData;
+        assembly {
+            info := mload(add(signature, 0x40))
+            makerAsset := mload(add(signature, 0x60))
+            takerAsset := mload(add(signature, 0x80))
+            makerAssetData := add(add(signature, 0x40), mload(add(signature, 0xA0)))
+            takerAssetData := add(add(signature, 0x40), mload(add(signature, 0xC0)))
+        }
 
         require(
             (
-                (order.makerAsset == address(token0) && order.takerAsset == address(token1)) ||
-                (order.makerAsset == address(token1) && order.takerAsset == address(token0))
+                (makerAsset == address(token0) && takerAsset == address(token1)) ||
+                (makerAsset == address(token1) && takerAsset == address(token0))
             ) &&
-            order.makerAssetData.decodeUint256(_AMOUNT_INDEX) * 0.9993e18 <= order.takerAssetData.decodeUint256(_AMOUNT_INDEX) * 1e18 &&
-            _hash(order) == hash,
+            makerAssetData.decodeUint256(_AMOUNT_INDEX) * 0.9993e18 <= takerAssetData.decodeUint256(_AMOUNT_INDEX) * 1e18 &&
+            _hash(info, makerAsset, takerAsset, makerAssetData, takerAssetData) == hash,
             "ContractRFQ: bad price"
         );
 
@@ -70,16 +82,22 @@ contract ContractRFQ is IERC1271 {
         // ...
     }
 
-    function _hash(LimitOrderProtocol.OrderRFQ memory order) internal view returns(bytes32) {
+    function _hash(
+        uint256 info,
+        address makerAsset,
+        address takerAsset,
+        bytes memory makerAssetData,
+        bytes memory takerAssetData
+    ) internal view returns(bytes32) {
         return _hashTypedDataV4(
             keccak256(
                 abi.encode(
                     LIMIT_ORDER_RFQ_TYPEHASH,
-                    order.info,
-                    order.makerAsset,
-                    order.takerAsset,
-                    keccak256(order.makerAssetData),
-                    keccak256(order.takerAssetData)
+                    info,
+                    makerAsset,
+                    takerAsset,
+                    keccak256(makerAssetData),
+                    keccak256(takerAssetData)
                 )
             )
         );
