@@ -675,7 +675,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
         beforeEach(async function () {
             this.usdc = await TokenMock.new('USDC', 'USDC');
             this.usdt = await TokenMock.new('USDT', 'USDT');
-            this.rfq = await ContractRFQ.new(this.swap.address, this.usdc.address, this.usdt.address, ether('0.9993'), "USDT+USDC", "USDX");
+            this.rfq = await ContractRFQ.new(this.swap.address, this.usdc.address, this.usdt.address, ether('0.9993'), 'USDT+USDC', 'USDX');
 
             await this.usdc.mint(_, '1000000000');
             await this.usdt.mint(_, '1000000000');

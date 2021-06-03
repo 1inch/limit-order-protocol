@@ -82,7 +82,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
         address takerAsset;
         bytes memory makerAssetData;
         bytes memory takerAssetData;
-        assembly {
+        assembly {  // solhint-disable-line no-inline-assembly
             info := mload(add(signature, 0x40))
             makerAsset := mload(add(signature, 0x60))
             takerAsset := mload(add(signature, 0x80))
@@ -104,8 +104,8 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
         return this.isValidSignature.selector;
     }
 
-    function encoderHelper(LimitOrderProtocol.OrderRFQ memory order) public {
-        // ...
+    function encoderHelper(LimitOrderProtocol.OrderRFQ memory /* order */) public view {
+        this;
     }
 
     function _hash(
