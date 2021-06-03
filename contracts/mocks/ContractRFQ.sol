@@ -71,6 +71,7 @@ contract ContractRFQ is IERC1271 {
                 (makerAsset == address(token1) && takerAsset == address(token0))
             ) &&
             makerAssetData.decodeUint256(_AMOUNT_INDEX) * 0.9993e18 <= takerAssetData.decodeUint256(_AMOUNT_INDEX) * 1e18 &&
+            takerAssetData.decodeAddress(_TO_INDEX) == address(this) &&
             _hash(info, makerAsset, takerAsset, makerAssetData, takerAssetData) == hash,
             "ContractRFQ: bad price"
         );
