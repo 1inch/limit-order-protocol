@@ -44,6 +44,11 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         _invalidateOrder(msg.sender, orderInfo);
     }
 
+    /// @notice Cancels multiple order's quotes
+    function cancelOrderRFQ(uint256 orderInfo, uint256 additionalMask) public {
+        _invalidator[msg.sender][uint64(orderInfo) >> 8] |= (1 << (orderInfo & 0xff)) | additionalMask;
+    }
+
     /// @notice Fills order's quote, fully or partially (whichever is possible)
     /// @param order Order quote to fill
     /// @param signature Signature to confirm quote ownership
