@@ -1,6 +1,3 @@
-# SilentECDSA
-
-
 
 Copy of OpenZeppelin ECDSA library that does not revert
 https://github.com/OpenZeppelin/openzeppelin-contracts/blob/df7996b671d309ee949113c64beee9899133dc05/contracts/utils/cryptography/ECDSA.sol
@@ -11,8 +8,12 @@ These functions can be used to verify that a message was signed by the holder
 of the private keys of a given address.
 
 ## Functions
+### recover
+```solidity
+  function recover(
+  ) internal returns (address)
+```
 
-### `recover(bytes32 hash, bytes signature) → address`
 Returns the address that signed a hashed message (`hash`) with
 `signature`. This address can then be used for verification purposes.
 
@@ -27,12 +28,22 @@ this is by receiving a hash of the original message (which may otherwise
 be too long), and then calling {toEthSignedMessageHash} on it.
 
 
-### `recover(bytes32 hash, uint8 v, bytes32 r, bytes32 s) → address`
+### recover
+```solidity
+  function recover(
+  ) internal returns (address)
+```
+
 Overload of {ECDSA-recover} that receives the `v`,
 `r` and `s` signature fields separately.
 
 
-### `toEthSignedMessageHash(bytes32 hash) → bytes32`
+### toEthSignedMessageHash
+```solidity
+  function toEthSignedMessageHash(
+  ) internal returns (bytes32)
+```
+
 Returns an Ethereum Signed Message, created from a `hash`. This
 produces hash corresponding to the one signed with the
 https://eth.wiki/json-rpc/API#eth_sign[`eth_sign`]
@@ -42,7 +53,12 @@ See {recover}.
 /
 
 
-### `toTypedDataHash(bytes32 domainSeparator, bytes32 structHash) → bytes32`
+### toTypedDataHash
+```solidity
+  function toTypedDataHash(
+  ) internal returns (bytes32)
+```
+
 Returns an Ethereum Signed Typed Data, created from a
 `domainSeparator` and a `structHash`. This produces hash corresponding
 to the one signed with the
@@ -51,8 +67,5 @@ JSON-RPC method as part of EIP-712.
 
 See {recover}.
 /
-
-
-
 
 

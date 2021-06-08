@@ -1,30 +1,48 @@
-# ArgumentsDecoder
-
-
 
 
 
 ## Functions
-
-### `decodeSelector(bytes data) → bytes4 selector`
-No description
-
-
-### `decodeAddress(bytes data, uint256 argumentIndex) → address account`
-No description
+### decodeSelector
+```solidity
+  function decodeSelector(
+  ) internal returns (bytes4 selector)
+```
 
 
-### `decodeUint256(bytes data, uint256 argumentIndex) → uint256 value`
-No description
 
 
-### `patchAddress(bytes data, uint256 argumentIndex, address account)`
-No description
+### decodeAddress
+```solidity
+  function decodeAddress(
+  ) internal returns (address account)
+```
 
 
-### `patchUint256(bytes data, uint256 argumentIndex, uint256 value)`
-No description
 
+
+### decodeUint256
+```solidity
+  function decodeUint256(
+  ) internal returns (uint256 value)
+```
+
+
+
+
+### patchAddress
+```solidity
+  function patchAddress(
+  ) internal
+```
+
+
+
+
+### patchUint256
+```solidity
+  function patchUint256(
+  ) internal
+```
 
 
 

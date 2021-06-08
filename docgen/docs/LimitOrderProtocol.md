@@ -1,108 +1,207 @@
-# LimitOrderProtocol
-
-
 
 
 
 ## Functions
+### DOMAIN_SEPARATOR
+```solidity
+  function DOMAIN_SEPARATOR(
+  ) external returns (bytes32)
+```
 
-### `DOMAIN_SEPARATOR() → bytes32`
-No description
 
 
-### `remaining(bytes32 orderHash) → uint256`
+
+### remaining
+```solidity
+  function remaining(
+  ) external returns (uint256)
+```
 Returns unfilled amount for order. Throws if order does not exist
 
 
-### `remainingRaw(bytes32 orderHash) → uint256`
+
+### remainingRaw
+```solidity
+  function remainingRaw(
+  ) external returns (uint256)
+```
 Returns unfilled amount for order
 
 
-#### Return Values:
-- Unfilled amount of order plus one if order exists. Otherwise 0
 
-### `remainingsRaw(bytes32[] orderHashes) → uint256[] results`
+#### Return Values:
+| Name                           | Type          | Description                                                                  |
+| :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
+|`Unfilled`| bytes32 | amount of order plus one if order exists. Otherwise 0
+### remainingsRaw
+```solidity
+  function remainingsRaw(
+  ) external returns (uint256[] results)
+```
 Same as `remainingRaw` but for multiple orders
 
 
-### `invalidatorForOrderRFQ(address maker, uint256 slot) → uint256`
+
+### invalidatorForOrderRFQ
+```solidity
+  function invalidatorForOrderRFQ(
+  ) external returns (uint256)
+```
 Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
 
 
-#### Return Values:
-- Each bit represents whenever corresponding quote was filled
 
-### `checkPredicate(struct LimitOrderProtocol.Order order) → bool`
+#### Return Values:
+| Name                           | Type          | Description                                                                  |
+| :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
+|`Each`| address | bit represents whenever corresponding quote was filled
+### checkPredicate
+```solidity
+  function checkPredicate(
+  ) public returns (bool)
+```
 Checks order predicate
 
 
-### `simulateCalls(address[] targets, bytes[] data)`
-No description
+
+### simulateCalls
+```solidity
+  function simulateCalls(
+    address[] targets
+  ) external
+```
+
 
 #### Parameters:
-- `targets`: Array of functions. Each function is expected to take a corresponding `data` argument
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`targets` | address[] | Array of functions. Each function is expected to take a corresponding `data` argument
 as parameter and return bool
 
-### `cancelOrder(struct LimitOrderProtocol.Order order)`
+### cancelOrder
+```solidity
+  function cancelOrder(
+  ) external
+```
 Cancels order by setting remaining amount to zero
 
 
-### `cancelOrderRFQ(uint256 orderInfo)`
+
+### cancelOrderRFQ
+```solidity
+  function cancelOrderRFQ(
+  ) external
+```
 Cancels order's quote
 
 
-### `fillOrderRFQ(struct LimitOrderProtocol.OrderRFQ order, bytes signature, uint256 makingAmount, uint256 takingAmount)`
+
+### fillOrderRFQ
+```solidity
+  function fillOrderRFQ(
+    struct LimitOrderProtocol.OrderRFQ order,
+    bytes signature,
+    uint256 makingAmount,
+    uint256 takingAmount
+  ) external
+```
 Fills order's quote, fully or partially (whichever is possible)
 
 
 #### Parameters:
-- `order`: Order quote to fill
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`order` | struct LimitOrderProtocol.OrderRFQ | Order quote to fill
+|`signature` | bytes | Signature to confirm quote ownership
+|`makingAmount` | uint256 | Making amount
+|`takingAmount` | uint256 | Taking amount
 
-- `signature`: Signature to confirm quote ownership
-
-- `makingAmount`: Making amount
-
-- `takingAmount`: Taking amount
-
-### `fillOrder(struct LimitOrderProtocol.Order order, bytes signature, uint256 makingAmount, uint256 takingAmount, uint256 thresholdAmount) → uint256, uint256`
+### fillOrder
+```solidity
+  function fillOrder(
+  ) external returns (uint256, uint256)
+```
 Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
 
 
-### `_hash(struct LimitOrderProtocol.Order order) → bytes32`
-No description
+
+### _hash
+```solidity
+  function _hash(
+  ) internal returns (bytes32)
+```
 
 
-### `_hash(struct LimitOrderProtocol.OrderRFQ order) → bytes32`
-No description
 
 
-### `_validate(bytes makerAssetData, bytes takerAssetData, bytes signature, bytes32 orderHash)`
-No description
+### _hash
+```solidity
+  function _hash(
+  ) internal returns (bytes32)
+```
 
 
-### `_callMakerAssetTransferFrom(address makerAsset, bytes makerAssetData, address taker, uint256 makingAmount)`
-No description
 
 
-### `_callTakerAssetTransferFrom(address takerAsset, bytes takerAssetData, address taker, uint256 takingAmount)`
-No description
+### _validate
+```solidity
+  function _validate(
+  ) internal
+```
 
 
-### `_callGetMakerAmount(struct LimitOrderProtocol.Order order, uint256 takerAmount) → uint256 makerAmount`
-No description
 
 
-### `_callGetTakerAmount(struct LimitOrderProtocol.Order order, uint256 makerAmount) → uint256 takerAmount`
-No description
+### _callMakerAssetTransferFrom
+```solidity
+  function _callMakerAssetTransferFrom(
+  ) internal
+```
+
+
+
+
+### _callTakerAssetTransferFrom
+```solidity
+  function _callTakerAssetTransferFrom(
+  ) internal
+```
+
+
+
+
+### _callGetMakerAmount
+```solidity
+  function _callGetMakerAmount(
+  ) internal returns (uint256 makerAmount)
+```
+
+
+
+
+### _callGetTakerAmount
+```solidity
+  function _callGetTakerAmount(
+  ) internal returns (uint256 takerAmount)
+```
 
 
 
 
 ## Events
+### OrderFilled
+```solidity
+  event OrderFilled(
+  )
+```
 
-### `OrderFilled(address maker, bytes32 orderHash, uint256 remaining)`
-No description
 
-### `OrderFilledRFQ(bytes32 orderHash, uint256 makingAmount)`
-No description
+
+### OrderFilledRFQ
+```solidity
+  event OrderFilledRFQ(
+  )
+```
+
+
 

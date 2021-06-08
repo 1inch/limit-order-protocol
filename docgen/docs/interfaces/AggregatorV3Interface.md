@@ -1,18 +1,21 @@
-# AggregatorV3Interface
-
-
 
 
 
 ## Functions
+### latestAnswer
+```solidity
+  function latestAnswer(
+  ) external returns (int256)
+```
 
-### `latestAnswer() → int256`
-No description
 
 
-### `latestTimestamp() → uint256`
-No description
 
+### latestTimestamp
+```solidity
+  function latestTimestamp(
+  ) external returns (uint256)
+```
 
 
 

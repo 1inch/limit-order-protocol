@@ -1,22 +1,30 @@
-# AggregatorV3Mock
-
-
 
 
 
 ## Functions
-
-### `constructor(int256 answer)`
-No description
-
-
-### `latestAnswer() → int256`
-No description
+### constructor
+```solidity
+  function constructor(
+  ) public
+```
 
 
-### `latestTimestamp() → uint256`
-No description
 
+
+### latestAnswer
+```solidity
+  function latestAnswer(
+  ) external returns (int256)
+```
+
+
+
+
+### latestTimestamp
+```solidity
+  function latestTimestamp(
+  ) external returns (uint256)
+```
 
 
 

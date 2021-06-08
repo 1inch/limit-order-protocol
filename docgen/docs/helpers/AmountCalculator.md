@@ -1,32 +1,43 @@
-# AmountCalculator
-
-
 
 
 
 ## Functions
-
-### `getMakerAmount(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapTakerAmount) → uint256`
+### getMakerAmount
+```solidity
+  function getMakerAmount(
+  ) external returns (uint256)
+```
 Calculates maker amount
 
 
-#### Return Values:
-- Floored maker amount
 
-### `getTakerAmount(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapMakerAmount) → uint256`
+#### Return Values:
+| Name                           | Type          | Description                                                                  |
+| :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
+|`Floored`| uint256 | maker amount
+### getTakerAmount
+```solidity
+  function getTakerAmount(
+  ) external returns (uint256)
+```
 Calculates taker amount
 
 
-#### Return Values:
-- Ceiled taker amount
 
-### `arbitraryStaticCall(address target, bytes data) → uint256`
+#### Return Values:
+| Name                           | Type          | Description                                                                  |
+| :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
+|`Ceiled`| uint256 | taker amount
+### arbitraryStaticCall
+```solidity
+  function arbitraryStaticCall(
+  ) external returns (uint256)
+```
 Performs an arbitrary call to target with data
 
 
+
 #### Return Values:
-- Result bytes transmuted to uint256
-
-
-
-
+| Name                           | Type          | Description                                                                  |
+| :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
+|`Result`| address | bytes transmuted to uint256

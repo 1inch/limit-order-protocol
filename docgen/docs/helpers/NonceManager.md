@@ -1,27 +1,40 @@
-# NonceManager
-
-
 
 
 
 ## Functions
-
-### `increaseNonce()`
+### increaseNonce
+```solidity
+  function increaseNonce(
+  ) external
+```
 Advances nonce by one
 
 
-### `advanceNonce(uint8 amount)`
-No description
+
+### advanceNonce
+```solidity
+  function advanceNonce(
+  ) public
+```
 
 
-### `nonceEquals(address makerAddress, uint256 makerNonce) → bool`
-No description
+
+
+### nonceEquals
+```solidity
+  function nonceEquals(
+  ) external returns (bool)
+```
 
 
 
 
 ## Events
+### NonceIncreased
+```solidity
+  event NonceIncreased(
+  )
+```
 
-### `NonceIncreased(address maker, uint256 newNonce)`
-No description
+
 

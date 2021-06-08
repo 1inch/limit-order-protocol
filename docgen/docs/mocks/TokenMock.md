@@ -1,26 +1,39 @@
-# TokenMock
-
-
 
 
 
 ## Functions
-
-### `constructor(string name, string symbol)`
-No description
-
-
-### `mint(address account, uint256 amount)`
-No description
+### constructor
+```solidity
+  function constructor(
+  ) public
+```
 
 
-### `burn(address account, uint256 amount)`
-No description
 
 
-### `getChainId() → uint256`
-No description
+### mint
+```solidity
+  function mint(
+  ) external
+```
 
+
+
+
+### burn
+```solidity
+  function burn(
+  ) external
+```
+
+
+
+
+### getChainId
+```solidity
+  function getChainId(
+  ) external returns (uint256)
+```
 
 
 

@@ -1,22 +1,30 @@
-# ERC721Proxy
-
-
 
 
 
 ## Functions
-
-### `constructor()`
-No description
-
-
-### `func_40aVqeY(address from, address to, uint256 tokenId, contract IERC721 token)`
-No description
+### constructor
+```solidity
+  function constructor(
+  ) internal
+```
 
 
-### `func_20xtkDI(address from, address to, uint256 tokenId, contract IERC721 token)`
-No description
 
+
+### func_40aVqeY
+```solidity
+  function func_40aVqeY(
+  ) external
+```
+
+
+
+
+### func_20xtkDI
+```solidity
+  function func_20xtkDI(
+  ) external
+```
 
 
 

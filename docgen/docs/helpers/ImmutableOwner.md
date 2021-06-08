@@ -1,14 +1,12 @@
-# ImmutableOwner
-
-
 
 
 
 ## Functions
-
-### `constructor(address _immutableOwner)`
-No description
-
+### constructor
+```solidity
+  function constructor(
+  ) public
+```
 
 
 

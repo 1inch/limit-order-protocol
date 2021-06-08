@@ -1,18 +1,21 @@
-# ERC20Proxy
-
-
 
 
 
 ## Functions
+### constructor
+```solidity
+  function constructor(
+  ) internal
+```
 
-### `constructor()`
-No description
 
 
-### `func_50BkM4K(address from, address to, uint256 amount, contract IERC20 token)`
-No description
 
+### func_50BkM4K
+```solidity
+  function func_50BkM4K(
+  ) external
+```
 
 
 
