@@ -9,6 +9,8 @@
 
 ### About
 
+You can find general overview and docs on 1inch limit orders protocol [here](https://docs.1inch.io/limit-order-protocol-utils/).
+
 This repository contains a smart contract for EVM based blockchains (Ethereum, Binance Smart Chain, etc.), this contract is core part of 1inch limit order protocol.
 
 Contract allows users to place limit orders, that later could be filled on-chain. Limit order itself is a data structure created off-chain and signed according to EIP-712.
