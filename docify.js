@@ -6,7 +6,7 @@ const SOLC_NPM_NAME = 'solc';
 const fs = require('fs');
 const path = require('path');
 const spawn = require('cross-spawn');
-const glob      = require("glob")
+const glob = require('glob');
 
 function runProcess (name, args) {
     console.log(`running ${name} with args ${JSON.stringify(args)}`);
@@ -19,13 +19,13 @@ function fixNewlinesInHandlebarsTables () {
         if (err) {
             throw err;
         }
-        for (let file of files) {
-            console.log(`Fixing ${file}`)
+        for (const file of files) {
+            console.log(`Fixing ${file}`);
             const fileContent = fs.readFileSync(file, 'utf8');
-            const newFileContent = fileContent.replaceAll(/(?<=\|.+)(\w)\r?\n(\w)/g, "$1 $2")
-            fs.writeFileSync(file, newFileContent, 'utf8')
+            const newFileContent = fileContent.replaceAll(/(?<=\|.+)(\w)\r?\n(\w)/g, '$1 $2');
+            fs.writeFileSync(file, newFileContent, 'utf8');
         }
-    })
+    });
 }
 
 function generateGitbookFiles () {
