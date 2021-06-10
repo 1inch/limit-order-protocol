@@ -43,9 +43,10 @@ Extremely **flexible** limit order, can be configured with:
 
 ### Deployments & audits:
 You can find 1inch limit order protocol deployments here: 
-- Ethereum mainnet: `0x3ef51736315f52d568d6d2cf289419b9cfffe782`
-- BSC mainnet: `0xe3456f4ee65e745a44ec3bcb83d0f2529d1b84eb`
-- Polygon mainnet: `0xb707d89d29c189421163515c59e42147371d6857`
+- Ethereum mainnet: [0x3ef51736315F52d568D6D2cf289419b9CfffE782](https://etherscan.io/address/0x3ef51736315f52d568d6d2cf289419b9cfffe782)
+- BSC mainnet: [0xe3456f4Ee65E745A44EC3bcB83D0f2529D1b84Eb](https://bscscan.com/address/0xe3456f4ee65e745a44ec3bcb83d0f2529d1b84eb)
+- Polygon mainnet: [0xb707d89D29c189421163515c59E42147371D6857](https://polygonscan.com/address/0xb707d89D29c189421163515c59E42147371D6857)
+- Kovan testnet: [0x94Bc2a1C732BcAd7343B25af48385Fe76E08734f](https://kovan.etherscan.io/address/0x94bc2a1c732bcad7343b25af48385fe76e08734f)
 
 You can find audit reports on etherscan and in the separate [audit repository](https://github.com/1inch/1inch-audits). 
 
