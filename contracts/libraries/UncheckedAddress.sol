@@ -27,6 +27,7 @@ library UncheckedAddress {
         return _verifyCallResult(success, returndata, errorMessage);
     }
 
+    //noinspection NoReturn
     function _verifyCallResult(bool success, bytes memory returndata, string memory errorMessage) private pure returns(bytes memory) {
         if (success) {
             return returndata;

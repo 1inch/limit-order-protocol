@@ -31,12 +31,14 @@
     "hardhat-deploy": "0.7.9",
     "hardhat-gas-reporter": "^1.0.4",
     "solc": "^0.8.4",
+    "solhint": "3.3.4",
     "solidity-coverage": "^0.7.16",
-    "solhint": "3.3.4"
+    "solidity-docgen": "^0.5.13"
   },
   "scripts": {
     "test": "hardhat test",
     "coverage": "hardhat coverage",
+    "docify": "node docify.js",
     "lint:js": "eslint .",
     "lint:js:fix": "eslint . --fix",
     "lint:sol": "solhint --max-warnings 0 \"contracts/**/*.sol\"",
