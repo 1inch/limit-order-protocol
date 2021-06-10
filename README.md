@@ -48,7 +48,7 @@ You can find 1inch limit order protocol deployments here:
 - Polygon mainnet: [0xb707d89D29c189421163515c59E42147371D6857](https://polygonscan.com/address/0xb707d89D29c189421163515c59E42147371D6857)
 - Kovan testnet: [0x94Bc2a1C732BcAd7343B25af48385Fe76E08734f](https://kovan.etherscan.io/address/0x94bc2a1c732bcad7343b25af48385fe76e08734f)
 
-You can find audit reports on etherscan and in the separate [audit repository](https://github.com/1inch/1inch-audits). 
+You can find audit reports on etherscan and in the separate [audit repository](https://github.com/1inch/1inch-audits/tree/master/Limit%20Order%20Protocol). 
 
 
 ### Utils library
