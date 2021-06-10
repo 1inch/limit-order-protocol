@@ -19,12 +19,7 @@ Calculates price of token relative to ETH scaled by 1e18
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`oracle` | contract AggregatorV3Interface | concatenated inverse flag and spread.
-Lowest 254 bits specify spread amount. Spread is scaled by 1e9, i.e. 101% = 1.01e9, 99% = 0.99e9.
-Highest bit is set when oracle price should be inverted,
-e.g. for DAI-ETH oracle, inverse=false means that we request DAI price in ETH
-and inverse=true means that we request ETH price in DAI
- 
+|`oracle` | contract AggregatorV3Interface | concatenated inverse flag and spread. Lowest 254 bits specify spread amount. Spread is scaled by 1e9, i.e. 101% = 1.01e9, 99% = 0.99e9. Highest bit is set when oracle price should be inverted, e.g. for DAI-ETH oracle, inverse=false means that we request DAI price in ETH and inverse=true means that we request ETH price in DAI  
 |`inverseAndSpread` | uint256 | 
 |`amount` | uint256 | 
 

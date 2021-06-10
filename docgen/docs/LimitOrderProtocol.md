@@ -153,12 +153,9 @@ Fills order's quote, fully or partially (whichever is possible)
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`order` | struct LimitOrderProtocol.OrderRFQ | Order quote to fill
- 
-|`signature` | bytes | Signature to confirm quote ownership
- 
-|`makingAmount` | uint256 | Making amount
- 
+|`order` | struct LimitOrderProtocol.OrderRFQ | Order quote to fill  
+|`signature` | bytes | Signature to confirm quote ownership  
+|`makingAmount` | uint256 | Making amount  
 |`takingAmount` | uint256 | Taking amount 
 
 

@@ -59,8 +59,7 @@ Calls target with specified data and tests if it's equal to the value
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`value` | uint256 | Value to test
- 
+|`value` | uint256 | Value to test  
 |`target` | address | 
 |`data` | bytes | 
 
@@ -82,8 +81,7 @@ Calls target with specified data and tests if it's lower than value
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`value` | uint256 | Value to test
- 
+|`value` | uint256 | Value to test  
 |`target` | address | 
 |`data` | bytes | 
 
@@ -105,8 +103,7 @@ Calls target with specified data and tests if it's bigger than value
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`value` | uint256 | Value to test
- 
+|`value` | uint256 | Value to test  
 |`target` | address | 
 |`data` | bytes | 
 
