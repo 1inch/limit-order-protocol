@@ -103,7 +103,7 @@ contract LimitOrderProtocol is
     }
 
     /// @notice Returns unfilled amount for order
-    /// @return Unfilled amount of order plus one if order exists. Otherwise 0
+    /// @return Result Unfilled amount of order plus one if order exists. Otherwise 0
     function remainingRaw(bytes32 orderHash) external view returns(uint256) {
         return _remaining[orderHash];
     }
@@ -117,7 +117,7 @@ contract LimitOrderProtocol is
     }
 
     /// @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
-    /// @return Each bit represents whenever corresponding quote was filled
+    /// @return Result Each bit represents whenever corresponding quote was filled
     function invalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256) {
         return _invalidator[maker][slot];
     }

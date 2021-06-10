@@ -16,7 +16,7 @@ contract ChainlinkCalculator {
     /// Highest bit is set when oracle price should be inverted,
     /// e.g. for DAI-ETH oracle, inverse=false means that we request DAI price in ETH
     /// and inverse=true means that we request ETH price in DAI
-    /// @return Token price times amount
+    /// @return Result Token price times amount
     function singlePrice(AggregatorV3Interface oracle, uint256 inverseAndSpread, uint256 amount) external view returns(uint256) {
         // solhint-disable-next-line not-rely-on-time
         require(oracle.latestTimestamp() + _ORACLE_EXPIRATION_TIME > block.timestamp, "CC: stale data");
@@ -30,7 +30,7 @@ contract ChainlinkCalculator {
     }
 
     /// @notice Calculates price of token A relative to token B. Note that order is important
-    /// @return Token A relative price times amount
+    /// @return Result Token A relative price times amount
     function doublePrice(AggregatorV3Interface oracle1, AggregatorV3Interface oracle2, uint256 spread, uint256 amount) external view returns(uint256) {
         // solhint-disable-next-line not-rely-on-time
         require(oracle1.latestTimestamp() + _ORACLE_EXPIRATION_TIME > block.timestamp, "CC: stale data O1");

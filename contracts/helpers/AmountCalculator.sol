@@ -9,13 +9,13 @@ contract AmountCalculator {
     using UncheckedAddress for address;
 
     /// @notice Calculates maker amount
-    /// @return Floored maker amount
+    /// @return Result Floored maker amount
     function getMakerAmount(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapTakerAmount) external pure returns(uint256) {
         return swapTakerAmount * orderMakerAmount / orderTakerAmount;
     }
 
     /// @notice Calculates taker amount
-    /// @return Ceiled taker amount
+    /// @return Result Ceiled taker amount
     function getTakerAmount(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapMakerAmount) external pure returns(uint256) {
         return (swapMakerAmount * orderTakerAmount + orderMakerAmount - 1) / orderMakerAmount;
     }
