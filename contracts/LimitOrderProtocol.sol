@@ -132,10 +132,8 @@ contract LimitOrderProtocol is
     /**
      * @notice Calls every target with corresponding data. Then reverts with CALL_RESULTS_0101011 where zeroes and ones
      * denote failure or success of the corresponding call
-     */
-    /**
-     * @param targets Array of functions. Each function is expected to take a corresponding `data` argument
-     * as parameter and return bool
+     * @param targets Array of addresses that will be called
+     * @param data Array of data that will be passed to each call
      */
     function simulateCalls(address[] calldata targets, bytes[] calldata data) external {
         require(targets.length == data.length, "LOP: array size mismatch");

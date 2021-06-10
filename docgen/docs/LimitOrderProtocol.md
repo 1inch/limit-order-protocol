@@ -101,13 +101,15 @@ function simulateCalls(
   bytes[] data
 ) external
 ```
+Calls every target with corresponding data. Then reverts with CALL_RESULTS_0101011 where zeroes and ones
+denote failure or success of the corresponding call
 
 
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`targets` | address[] | Array of functions. Each function is expected to take a corresponding `data` argument as parameter and return bool 
-|`data` | bytes[] | 
+|`targets` | address[] | Array of addresses that will be called  
+|`data` | bytes[] | Array of data that will be passed to each call 
 
 
 ### cancelOrder
