@@ -20,7 +20,6 @@ function fixNewlinesInHandlebarsTables () {
             throw err;
         }
         for (const file of files) {
-            console.log(`Fixing ${file}`);
             const fileContent = fs.readFileSync(file, 'utf8');
             const newFileContent = fileContent.replaceAll(/(?<=\|.+)(\w)\r?\n(\w)/g, '$1 $2');
             fs.writeFileSync(file, newFileContent, 'utf8');
