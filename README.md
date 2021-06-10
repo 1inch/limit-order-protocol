@@ -47,9 +47,9 @@ You can find 1inch limit order protocol deployments here:
 - BSC mainnet: `0xe3456f4ee65e745a44ec3bcb83d0f2529d1b84eb`
 - Polygon mainnet: `0xb707d89d29c189421163515c59e42147371d6857`
 
-You might find audit reports on etherscan and, and in the separate [audit reports repository](https://github.com/1inch/1inch-audits). 
+You can find audit reports on etherscan and in the separate [audit repository](https://github.com/1inch/1inch-audits). 
 
 
 ### Utils library
-You can find plenty of utils that helps create & sign orders, in our typescript utils library:  
+Plenty of utils that helps create & sign orders are available in our typescript utils library:  
 - [1inch Limit Order Utils](https://github.com/1inch/limit-order-protocol-utils) 
