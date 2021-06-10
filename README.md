@@ -2,14 +2,14 @@
   <img src="https://app.1inch.io/assets/images/logo.svg" width="200" alt="1inch network" />
 </p>
 
-# 1inch Limit Order Protocol
+# 1inch Limit Order Protocol Smart Contract
 
 [![Build Status](https://github.com/1inch/limit-order-protocol/workflows/CI/badge.svg)](https://github.com/1inch/limit-order-protocol/actions)
 [![Coverage Status](https://coveralls.io/repos/github/1inch/limit-order-protocol/badge.svg?branch=master)](https://coveralls.io/github/1inch/limit-order-protocol?branch=master)
 
 ### About
 
-You can find general overview and docs on 1inch limit orders protocol [here](https://docs.1inch.io/limit-order-protocol-utils/).
+You can find general overview and docs on 1inch limit orders protocol [here](https://docs.1inch.io/limit-order-protocol/).
 
 This repository contains a smart contract for EVM based blockchains (Ethereum, Binance Smart Chain, etc.), this contract is core part of 1inch limit order protocol.
 
