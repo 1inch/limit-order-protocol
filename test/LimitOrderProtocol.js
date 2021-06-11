@@ -13,7 +13,7 @@ const { buildOrderData, buildOrderRFQData } = require('./helpers/orderUtils');
 const { toBN, cutLastArg } = require('./helpers/utils');
 
 contract('LimitOrderProtocol', async function ([_, wallet]) {
-    const privatekey = '2bdd21761a483f71054e14f5b827213567971c676928d9a1808cbfa4b7501201';
+    const privatekey = '59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
     const account = Wallet.fromPrivateKey(Buffer.from(privatekey, 'hex'));
 
     const zeroAddress = '0x0000000000000000000000000000000000000000';
