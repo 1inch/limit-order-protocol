@@ -171,6 +171,10 @@ contract LimitOrderProtocol is
     /// @param makingAmount Making amount
     /// @param takingAmount Taking amount
     function fillOrderRFQ(OrderRFQ memory order, bytes memory signature, uint256 makingAmount, uint256 takingAmount) external {
+        fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
+    }
+
+    function fillOrderRFQTo(OrderRFQ memory order, bytes memory signature, uint256 makingAmount, uint256 takingAmount, address target) public {
         // Check time expiration
         uint256 expiration = uint128(order.info) >> 64;
         require(expiration == 0 || block.timestamp <= expiration, "LOP: order expired");  // solhint-disable-line not-rely-on-time
@@ -210,59 +214,65 @@ contract LimitOrderProtocol is
         _validate(order.makerAssetData, order.takerAssetData, signature, orderHash);
 
         // Maker => Taker, Taker => Maker
-        _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, msg.sender, makingAmount);
-        _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, msg.sender, takingAmount);
+        _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, target, makingAmount);
+        _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, takingAmount);
 
         emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
     /// @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
     function fillOrder(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount, uint256 thresholdAmount) external returns(uint256, uint256) {
+        return fillOrderTo(order, signature, makingAmount, takingAmount, thresholdAmount, msg.sender);
+    }
+
+    function fillOrderTo(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount, uint256 thresholdAmount, address target) public returns(uint256, uint256) {
         bytes32 orderHash = _hash(order);
 
-        uint256 remainingMakerAmount;
-        { // Stack too deep
-            bool orderExists;
-            (orderExists, remainingMakerAmount) = _remaining[orderHash].trySub(1);
-            if (!orderExists) {
-                // First fill: validate order and permit maker asset
-                _validate(order.makerAssetData, order.takerAssetData, signature, orderHash);
-                remainingMakerAmount = order.makerAssetData.decodeUint256(_AMOUNT_INDEX);
-                if (order.permit.length > 0) {
-                    (address token, bytes memory permit) = abi.decode(order.permit, (address, bytes));
-                    token.uncheckedFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
-                    require(_remaining[orderHash] == 0, "LOP: reentrancy detected");
+        {  // Stack too deep
+            uint256 remainingMakerAmount;
+            { // Stack too deep
+                bool orderExists;
+                (orderExists, remainingMakerAmount) = _remaining[orderHash].trySub(1);
+                if (!orderExists) {
+                    // First fill: validate order and permit maker asset
+                    _validate(order.makerAssetData, order.takerAssetData, signature, orderHash);
+                    remainingMakerAmount = order.makerAssetData.decodeUint256(_AMOUNT_INDEX);
+                    if (order.permit.length > 0) {
+                        (address token, bytes memory permit) = abi.decode(order.permit, (address, bytes));
+                        token.uncheckedFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
+                        require(_remaining[orderHash] == 0, "LOP: reentrancy detected");
+                    }
                 }
             }
-        }
 
-        // Check if order is valid
-        if (order.predicate.length > 0) {
-            require(checkPredicate(order), "LOP: predicate returned false");
-        }
+            // Check if order is valid
+            if (order.predicate.length > 0) {
+                require(checkPredicate(order), "LOP: predicate returned false");
+            }
 
-        // Compute maker and taker assets amount
-        if ((takingAmount == 0) == (makingAmount == 0)) {
-            revert("LOP: only one amount should be 0");
-        }
-        else if (takingAmount == 0) {
-            takingAmount = _callGetTakerAmount(order, makingAmount);
-            require(takingAmount <= thresholdAmount, "LOP: taking amount too high");
-        }
-        else {
-            makingAmount = _callGetMakerAmount(order, takingAmount);
-            require(makingAmount >= thresholdAmount, "LOP: making amount too low");
-        }
+            // Compute maker and taker assets amount
+            if ((takingAmount == 0) == (makingAmount == 0)) {
+                revert("LOP: only one amount should be 0");
+            }
+            else if (takingAmount == 0) {
+                takingAmount = _callGetTakerAmount(order, makingAmount);
+                require(takingAmount <= thresholdAmount, "LOP: taking amount too high");
+            }
+            else {
+                makingAmount = _callGetMakerAmount(order, takingAmount);
+                require(makingAmount >= thresholdAmount, "LOP: making amount too low");
+            }
 
-        require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
+            require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
 
-        // Update remaining amount in storage
-        remainingMakerAmount = remainingMakerAmount.sub(makingAmount, "LOP: taking > remaining");
-        _remaining[orderHash] = remainingMakerAmount + 1;
-        emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
+            // Update remaining amount in storage
+            remainingMakerAmount = remainingMakerAmount.sub(makingAmount, "LOP: taking > remaining");
+            _remaining[orderHash] = remainingMakerAmount + 1;
+            emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
+        }
 
         // Taker => Maker
-        _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, msg.sender, takingAmount);
+        _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, takingAmount);
 
         // Maker can handle funds interactively
         if (order.interaction.length > 0) {
@@ -271,7 +281,7 @@ contract LimitOrderProtocol is
         }
 
         // Maker => Taker
-        _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, msg.sender, makingAmount);
+        _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, target, makingAmount);
 
         return (makingAmount, takingAmount);
     }
@@ -329,10 +339,11 @@ contract LimitOrderProtocol is
     function _callMakerAssetTransferFrom(address makerAsset, bytes memory makerAssetData, address taker, uint256 makingAmount) internal {
         // Patch receiver or validate private order
         address orderTakerAddress = makerAssetData.decodeAddress(_TO_INDEX);
-        if (orderTakerAddress == address(0)) {
+        if (orderTakerAddress != address(0)) {
+            require(orderTakerAddress == msg.sender, "LOP: private order");
+        }
+        if (orderTakerAddress != taker) {
             makerAssetData.patchAddress(_TO_INDEX, taker);
-        } else {
-            require(orderTakerAddress == taker, "LOP: private order");
         }
 
         // Patch maker amount
@@ -345,9 +356,9 @@ contract LimitOrderProtocol is
         }
     }
 
-    function _callTakerAssetTransferFrom(address takerAsset, bytes memory takerAssetData, address taker, uint256 takingAmount) internal {
+    function _callTakerAssetTransferFrom(address takerAsset, bytes memory takerAssetData, uint256 takingAmount) internal {
         // Patch spender
-        takerAssetData.patchAddress(_FROM_INDEX, taker);
+        takerAssetData.patchAddress(_FROM_INDEX, msg.sender);
 
         // Patch taker amount
         takerAssetData.patchUint256(_AMOUNT_INDEX, takingAmount);
