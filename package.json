@@ -29,9 +29,9 @@
     "hardhat-deploy": "0.7.11",
     "hardhat-gas-reporter": "^1.0.4",
     "solc": "^0.8.4",
-    "solhint": "^3.3.6",
     "solidity-coverage": "^0.7.16",
-    "solidity-docgen": "^0.5.13"
+    "solidity-docgen": "^0.5.13",
+    "solhint": "^3.3.6"
   },
   "scripts": {
     "test": "hardhat test",
