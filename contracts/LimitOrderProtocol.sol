@@ -170,22 +170,35 @@ contract LimitOrderProtocol is
     /// @param signature Signature to confirm quote ownership
     /// @param makingAmount Making amount
     /// @param takingAmount Taking amount
-    function fillOrderRFQ(OrderRFQ memory order, bytes memory signature, uint256 makingAmount, uint256 takingAmount) external {
-        fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
+    function fillOrderRFQ(
+        OrderRFQ memory order,
+        bytes memory signature,
+        uint256 makingAmount,
+        uint256 takingAmount
+    ) external returns(uint256, uint256) {
+        return fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
     }
 
-    function fillOrderRFQTo(OrderRFQ memory order, bytes memory signature, uint256 makingAmount, uint256 takingAmount, address target) public {
+    function fillOrderRFQTo(
+        OrderRFQ memory order,
+        bytes memory signature,
+        uint256 makingAmount,
+        uint256 takingAmount,
+        address target
+    ) public returns(uint256, uint256) {
         // Check time expiration
         uint256 expiration = uint128(order.info) >> 64;
         require(expiration == 0 || block.timestamp <= expiration, "LOP: order expired");  // solhint-disable-line not-rely-on-time
 
-        // Validate double spend
-        address maker = order.makerAssetData.decodeAddress(_FROM_INDEX);
-        uint256 invalidatorSlot = uint64(order.info) >> 8;
-        uint256 invalidatorBit = 1 << uint8(order.info);
-        uint256 invalidator = _invalidator[maker][invalidatorSlot];
-        require(invalidator & invalidatorBit == 0, "LOP: already filled");
-        _invalidator[maker][invalidatorSlot] = invalidator | invalidatorBit;
+        {  // Stack too deep
+            // Validate double spend
+            address maker = order.makerAssetData.decodeAddress(_FROM_INDEX);
+            uint256 invalidatorSlot = uint64(order.info) >> 8;
+            uint256 invalidatorBit = 1 << uint8(order.info);
+            uint256 invalidator = _invalidator[maker][invalidatorSlot];
+            require(invalidator & invalidatorBit == 0, "LOP: already filled");
+            _invalidator[maker][invalidatorSlot] = invalidator | invalidatorBit;
+        }
 
         // Compute partial fill if needed
         uint256 orderMakerAmount = order.makerAssetData.decodeUint256(_AMOUNT_INDEX);
@@ -218,14 +231,33 @@ contract LimitOrderProtocol is
         _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, takingAmount);
 
         emit OrderFilledRFQ(orderHash, makingAmount);
+        return (makingAmount, takingAmount);
     }
 
     /// @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
-    function fillOrder(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount, uint256 thresholdAmount) external returns(uint256, uint256) {
+    /// @param order Order quote to fill
+    /// @param signature Signature to confirm quote ownership
+    /// @param makingAmount Making amount
+    /// @param takingAmount Taking amount
+    /// @param thresholdAmount If makingAmout > 0 this is max takingAmount, else it is min makingAmount
+    function fillOrder(
+        Order memory order,
+        bytes calldata signature,
+        uint256 makingAmount,
+        uint256 takingAmount,
+        uint256 thresholdAmount
+    ) external returns(uint256, uint256) {
         return fillOrderTo(order, signature, makingAmount, takingAmount, thresholdAmount, msg.sender);
     }
 
-    function fillOrderTo(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount, uint256 thresholdAmount, address target) public returns(uint256, uint256) {
+    function fillOrderTo(
+        Order memory order,
+        bytes calldata signature,
+        uint256 makingAmount,
+        uint256 takingAmount,
+        uint256 thresholdAmount,
+        address target
+    ) public returns(uint256, uint256) {
         bytes32 orderHash = _hash(order);
 
         {  // Stack too deep
