@@ -170,7 +170,12 @@ contract LimitOrderProtocol is
     /// @param signature Signature to confirm quote ownership
     /// @param makingAmount Making amount
     /// @param takingAmount Taking amount
-    function fillOrderRFQ(OrderRFQ memory order, bytes memory signature, uint256 makingAmount, uint256 takingAmount) external {
+    function fillOrderRFQ(
+        OrderRFQ memory order,
+        bytes memory signature,
+        uint256 makingAmount,
+        uint256 takingAmount
+    ) external returns(uint256, uint256) {
         // Check time expiration
         uint256 expiration = uint128(order.info) >> 64;
         require(expiration == 0 || block.timestamp <= expiration, "LOP: order expired");  // solhint-disable-line not-rely-on-time
@@ -214,10 +219,22 @@ contract LimitOrderProtocol is
         _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, msg.sender, takingAmount);
 
         emit OrderFilledRFQ(orderHash, makingAmount);
+        return (makingAmount, takingAmount);
     }
 
     /// @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
-    function fillOrder(Order memory order, bytes calldata signature, uint256 makingAmount, uint256 takingAmount, uint256 thresholdAmount) external returns(uint256, uint256) {
+    /// @param order Order quote to fill
+    /// @param signature Signature to confirm quote ownership
+    /// @param makingAmount Making amount
+    /// @param takingAmount Taking amount
+    /// @param thresholdAmount If makingAmout > 0 this is max takingAmount, else it is min makingAmount
+    function fillOrder(
+        Order memory order,
+        bytes calldata signature,
+        uint256 makingAmount,
+        uint256 takingAmount,
+        uint256 thresholdAmount
+    ) external returns(uint256, uint256) {
         bytes32 orderHash = _hash(order);
 
         uint256 remainingMakerAmount;
@@ -259,7 +276,6 @@ contract LimitOrderProtocol is
         // Update remaining amount in storage
         remainingMakerAmount = remainingMakerAmount.sub(makingAmount, "LOP: taking > remaining");
         _remaining[orderHash] = remainingMakerAmount + 1;
-        emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
 
         // Taker => Maker
         _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, msg.sender, takingAmount);
@@ -273,6 +289,7 @@ contract LimitOrderProtocol is
         // Maker => Taker
         _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, msg.sender, makingAmount);
 
+        emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
         return (makingAmount, takingAmount);
     }
 
