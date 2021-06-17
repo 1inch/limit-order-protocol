@@ -186,7 +186,7 @@ contract LimitOrderProtocol is
         uint256 takingAmount,
         address target,
         bytes memory permit
-    ) public returns(uint256, uint256) {
+    ) external returns(uint256, uint256) {
         _permit(permit);
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, target);
     }
