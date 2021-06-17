@@ -179,6 +179,18 @@ contract LimitOrderProtocol is
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
     }
 
+    function fillOrderRFQToWithPermit(
+        OrderRFQ memory order,
+        bytes memory signature,
+        uint256 makingAmount,
+        uint256 takingAmount,
+        address target,
+        bytes memory permit
+    ) public returns(uint256, uint256) {
+        _permit(permit);
+        return fillOrderRFQTo(order, signature, makingAmount, takingAmount, target);
+    }
+
     function fillOrderRFQTo(
         OrderRFQ memory order,
         bytes memory signature,
@@ -250,6 +262,19 @@ contract LimitOrderProtocol is
         return fillOrderTo(order, signature, makingAmount, takingAmount, thresholdAmount, msg.sender);
     }
 
+    function fillOrderToWithPermit(
+        Order memory order,
+        bytes calldata signature,
+        uint256 makingAmount,
+        uint256 takingAmount,
+        uint256 thresholdAmount,
+        address target,
+        bytes memory permit
+    ) external returns(uint256, uint256) {
+        _permit(permit);
+        return fillOrderTo(order, signature, makingAmount, takingAmount, thresholdAmount, target);
+    }
+
     function fillOrderTo(
         Order memory order,
         bytes calldata signature,
@@ -270,8 +295,7 @@ contract LimitOrderProtocol is
                     _validate(order.makerAssetData, order.takerAssetData, signature, orderHash);
                     remainingMakerAmount = order.makerAssetData.decodeUint256(_AMOUNT_INDEX);
                     if (order.permit.length > 0) {
-                        (address token, bytes memory permit) = abi.decode(order.permit, (address, bytes));
-                        token.uncheckedFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
+                        _permit(order.permit);
                         require(_remaining[orderHash] == 0, "LOP: reentrancy detected");
                     }
                 }
@@ -316,6 +340,11 @@ contract LimitOrderProtocol is
         _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, target, makingAmount);
 
         return (makingAmount, takingAmount);
+    }
+
+    function _permit(bytes memory permitData) private {
+        (address token, bytes memory permit) = abi.decode(permitData, (address, bytes));
+        token.uncheckedFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
     }
 
     function _hash(Order memory order) internal view returns(bytes32) {
