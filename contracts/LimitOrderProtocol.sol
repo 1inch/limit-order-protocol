@@ -72,6 +72,7 @@ contract LimitOrderProtocol is
         bytes predicate;      // this.staticcall(bytes) => (bool)
         bytes permit;         // On first fill: permit.1.call(abi.encodePacked(permit.selector, permit.2))
         bytes interaction;
+        bytes leverage;
     }
 
     bytes32 constant public LIMIT_ORDER_TYPEHASH = keccak256(
