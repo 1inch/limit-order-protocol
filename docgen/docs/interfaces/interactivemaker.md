@@ -1,10 +1,12 @@
 # InteractiveMaker
 
+
+
+
+
 ## Functions
-
 ### notifyFillOrder
-
-```text
+```solidity
 function notifyFillOrder(
   address makerAsset,
   address takerAsset,
@@ -14,13 +16,14 @@ function notifyFillOrder(
 ) external
 ```
 
-#### Parameters:
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `makerAsset` | address |  |
-| `takerAsset` | address |  |
-| `makingAmount` | uint256 |  |
-| `takingAmount` | uint256 |  |
-| `interactiveData` | bytes |  |
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`makerAsset` | address | 
+|`takerAsset` | address | 
+|`makingAmount` | uint256 | 
+|`takingAmount` | uint256 | 
+|`interactiveData` | bytes | 
+
 

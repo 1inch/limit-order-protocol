@@ -1,56 +1,58 @@
 # ArgumentsDecoder
 
+
+
+
+
 ## Functions
-
 ### decodeSelector
-
-```text
+```solidity
 function decodeSelector(
   bytes data
 ) internal returns (bytes4 selector)
 ```
 
-#### Parameters:
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `data` | bytes |  |
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`data` | bytes | 
+
 
 ### decodeAddress
-
-```text
+```solidity
 function decodeAddress(
   bytes data,
   uint256 argumentIndex
 ) internal returns (address account)
 ```
 
-#### Parameters:
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `data` | bytes |  |
-| `argumentIndex` | uint256 |  |
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`data` | bytes | 
+|`argumentIndex` | uint256 | 
+
 
 ### decodeUint256
-
-```text
+```solidity
 function decodeUint256(
   bytes data,
   uint256 argumentIndex
 ) internal returns (uint256 value)
 ```
 
-#### Parameters:
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `data` | bytes |  |
-| `argumentIndex` | uint256 |  |
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`data` | bytes | 
+|`argumentIndex` | uint256 | 
+
 
 ### patchAddress
-
-```text
+```solidity
 function patchAddress(
   bytes data,
   uint256 argumentIndex,
@@ -58,17 +60,17 @@ function patchAddress(
 ) internal
 ```
 
-#### Parameters:
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `data` | bytes |  |
-| `argumentIndex` | uint256 |  |
-| `account` | address |  |
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`data` | bytes | 
+|`argumentIndex` | uint256 | 
+|`account` | address | 
+
 
 ### patchUint256
-
-```text
+```solidity
 function patchUint256(
   bytes data,
   uint256 argumentIndex,
@@ -76,11 +78,12 @@ function patchUint256(
 ) internal
 ```
 
-#### Parameters:
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `data` | bytes |  |
-| `argumentIndex` | uint256 |  |
-| `value` | uint256 |  |
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`data` | bytes | 
+|`argumentIndex` | uint256 | 
+|`value` | uint256 | 
+
 

@@ -1,17 +1,21 @@
 # ERC1155Proxy
 
+
+
+
+
 ## Functions
-
 ### constructor
-
-```text
+```solidity
 function constructor(
 ) internal
 ```
 
-### func\_733NCGU
 
-```text
+
+
+### func_733NCGU
+```solidity
 function func_733NCGU(
   address from,
   address to,
@@ -22,14 +26,15 @@ function func_733NCGU(
 ) external
 ```
 
-#### Parameters:
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `from` | address |  |
-| `to` | address |  |
-| `amount` | uint256 |  |
-| `token` | contract IERC1155 |  |
-| `tokenId` | uint256 |  |
-| `data` | bytes |  |
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`from` | address | 
+|`to` | address | 
+|`amount` | uint256 | 
+|`token` | contract IERC1155 | 
+|`tokenId` | uint256 | 
+|`data` | bytes | 
+
 

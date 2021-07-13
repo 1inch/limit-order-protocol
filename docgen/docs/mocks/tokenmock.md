@@ -1,59 +1,64 @@
 # TokenMock
 
+
+
+
+
 ## Functions
-
 ### constructor
-
-```text
+```solidity
 function constructor(
   string name,
   string symbol
 ) public
 ```
 
-#### Parameters:
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `name` | string |  |
-| `symbol` | string |  |
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`name` | string | 
+|`symbol` | string | 
+
 
 ### mint
-
-```text
+```solidity
 function mint(
   address account,
   uint256 amount
 ) external
 ```
 
-#### Parameters:
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `account` | address |  |
-| `amount` | uint256 |  |
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`account` | address | 
+|`amount` | uint256 | 
+
 
 ### burn
-
-```text
+```solidity
 function burn(
   address account,
   uint256 amount
 ) external
 ```
 
-#### Parameters:
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `account` | address |  |
-| `amount` | uint256 |  |
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`account` | address | 
+|`amount` | uint256 | 
+
 
 ### getChainId
-
-```text
+```solidity
 function getChainId(
 ) external returns (uint256)
 ```
+
+
+
 

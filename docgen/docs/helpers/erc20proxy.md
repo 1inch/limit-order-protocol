@@ -1,17 +1,21 @@
 # ERC20Proxy
 
+
+
+
+
 ## Functions
-
 ### constructor
-
-```text
+```solidity
 function constructor(
 ) internal
 ```
 
-### func\_50BkM4K
 
-```text
+
+
+### func_50BkM4K
+```solidity
 function func_50BkM4K(
   address from,
   address to,
@@ -20,12 +24,13 @@ function func_50BkM4K(
 ) external
 ```
 
-#### Parameters:
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `from` | address |  |
-| `to` | address |  |
-| `amount` | uint256 |  |
-| `token` | contract IERC20 |  |
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`from` | address | 
+|`to` | address | 
+|`amount` | uint256 | 
+|`token` | contract IERC20 | 
+
 

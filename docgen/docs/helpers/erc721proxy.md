@@ -1,17 +1,21 @@
 # ERC721Proxy
 
+
+
+
+
 ## Functions
-
 ### constructor
-
-```text
+```solidity
 function constructor(
 ) internal
 ```
 
-### func\_40aVqeY
 
-```text
+
+
+### func_40aVqeY
+```solidity
 function func_40aVqeY(
   address from,
   address to,
@@ -20,18 +24,18 @@ function func_40aVqeY(
 ) external
 ```
 
+
 #### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`from` | address | 
+|`to` | address | 
+|`tokenId` | uint256 | 
+|`token` | contract IERC721 | 
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `from` | address |  |
-| `to` | address |  |
-| `tokenId` | uint256 |  |
-| `token` | contract IERC721 |  |
 
-### func\_20xtkDI
-
-```text
+### func_20xtkDI
+```solidity
 function func_20xtkDI(
   address from,
   address to,
@@ -40,12 +44,13 @@ function func_20xtkDI(
 ) external
 ```
 
-#### Parameters:
 
-| Name | Type | Description |
-| :--- | :--- | :--- |
-| `from` | address |  |
-| `to` | address |  |
-| `tokenId` | uint256 |  |
-| `token` | contract IERC721 |  |
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`from` | address | 
+|`to` | address | 
+|`tokenId` | uint256 | 
+|`token` | contract IERC721 | 
+
 
