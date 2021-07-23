@@ -410,6 +410,8 @@ contract LimitOrderProtocol is
         // Patch maker amount
         makerAssetData.patchUint256(_AMOUNT_INDEX, makingAmount);
 
+        require(makerAsset != address(0) && makerAsset != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, "LOP: raw ETH is not supported");
+
         // Transfer asset from maker to taker
         bytes memory result = makerAsset.uncheckedFunctionCall(makerAssetData, "LOP: makerAsset.call failed");
         if (result.length > 0) {
@@ -423,6 +425,8 @@ contract LimitOrderProtocol is
 
         // Patch taker amount
         takerAssetData.patchUint256(_AMOUNT_INDEX, takingAmount);
+
+        require(takerAsset != address(0) && takerAsset != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, "LOP: raw ETH is not supported");
 
         // Transfer asset from taker to maker
         bytes memory result = takerAsset.uncheckedFunctionCall(takerAssetData, "LOP: takerAsset.call failed");
