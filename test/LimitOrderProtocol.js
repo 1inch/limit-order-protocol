@@ -383,7 +383,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
 
             await expectRevert(
                 this.swap.fillOrder(this.order, signature, 1, 0, 1),
-                'LOP: taking > remaining',
+                'LOP: can\'t swap 0 amount',
             );
         });
     });
