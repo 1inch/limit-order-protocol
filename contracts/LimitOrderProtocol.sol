@@ -342,7 +342,7 @@ contract LimitOrderProtocol is
         // Maker can handle funds interactively
         if (order.interaction.length > 0) {
             InteractiveMaker(order.makerAssetData.decodeAddress(_FROM_INDEX))
-            .notifyFillOrder(order.makerAsset, order.takerAsset, makingAmount, takingAmount, order.interaction);
+                .notifyFillOrder(order.makerAsset, order.takerAsset, makingAmount, takingAmount, order.interaction);
         }
 
         // Maker => Taker
