@@ -18,7 +18,6 @@ import "./libraries/UncheckedAddress.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/SilentECDSA.sol";
 
-
 /// @title 1inch Limit Order Protocol v1
 contract LimitOrderProtocol is
     ImmutableOwner(address(this)),
@@ -327,6 +326,13 @@ contract LimitOrderProtocol is
             emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
         }
 
+        {
+            uint256 allowance = IERC20(order.takerAsset).allowance(msg.sender, address(this));
+            if (takingAmount > allowance) {
+                makingAmount = makingAmount.mul(allowance).div(takingAmount);
+                takingAmount = allowance;
+            }
+        }
         // Taker => Maker
         _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, takingAmount);
 

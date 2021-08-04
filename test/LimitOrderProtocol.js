@@ -668,5 +668,29 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
                 'LOP: order expired',
             );
         });
+
+        it('should fill partially if not enough coins', async function () {
+            const tmpSwap = await LimitOrderProtocol.new();
+            await this.dai.approve(tmpSwap.address, '2');
+            await this.weth.approve(tmpSwap.address, '2');
+            await this.dai.approve(tmpSwap.address, '2', { from: wallet });
+            await this.weth.approve(tmpSwap.address, '2', { from: wallet });
+
+            const order = buildOrder(tmpSwap, this.dai, this.weth, 3, 3);
+            const data = buildOrderData(this.chainId, tmpSwap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            const makerDai = await this.dai.balanceOf(wallet);
+            const takerDai = await this.dai.balanceOf(_);
+            const makerWeth = await this.weth.balanceOf(wallet);
+            const takerWeth = await this.weth.balanceOf(_);
+
+            const receipt = await tmpSwap.fillOrder(order, signature, 3, 0, 3);
+
+            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(2));
+            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(2));
+            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(2));
+            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(2));
+        });
     });
 });
