@@ -310,36 +310,39 @@ contract LimitOrderProtocol is
                 revert("LOP: only one amount should be 0");
             }
             else if (takingAmount == 0) {
+                if (makingAmount > remainingMakerAmount) {
+                    makingAmount = remainingMakerAmount;
+                }
                 takingAmount = _callGetTakerAmount(order, makingAmount);
                 require(takingAmount <= thresholdAmount, "LOP: taking amount too high");
             }
             else {
                 makingAmount = _callGetMakerAmount(order, takingAmount);
+                if (makingAmount > remainingMakerAmount) {
+                    takingAmount = (takingAmount * remainingMakerAmount) / makingAmount;
+                    makingAmount = remainingMakerAmount;
+                }
                 require(makingAmount >= thresholdAmount, "LOP: making amount too low");
             }
 
             require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
 
             // Update remaining amount in storage
-            remainingMakerAmount = remainingMakerAmount.sub(makingAmount, "LOP: taking > remaining");
-            _remaining[orderHash] = remainingMakerAmount + 1;
+
+            unchecked {
+                remainingMakerAmount = remainingMakerAmount - makingAmount;
+                _remaining[orderHash] = remainingMakerAmount + 1;
+            }
             emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
         }
 
-        {
-            uint256 allowance = IERC20(order.takerAsset).allowance(msg.sender, address(this));
-            if (takingAmount > allowance) {
-                makingAmount = makingAmount.mul(allowance).div(takingAmount);
-                takingAmount = allowance;
-            }
-        }
         // Taker => Maker
         _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, takingAmount);
 
         // Maker can handle funds interactively
         if (order.interaction.length > 0) {
             InteractiveMaker(order.makerAssetData.decodeAddress(_FROM_INDEX))
-                .notifyFillOrder(order.makerAsset, order.takerAsset, makingAmount, takingAmount, order.interaction);
+            .notifyFillOrder(order.makerAsset, order.takerAsset, makingAmount, takingAmount, order.interaction);
         }
 
         // Maker => Taker
