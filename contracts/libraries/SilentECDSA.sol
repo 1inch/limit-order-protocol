@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.6
+pragma solidity ^0.7.6;
 
 /**
  * @dev Copy of OpenZeppelin ECDSA library that does not revert
