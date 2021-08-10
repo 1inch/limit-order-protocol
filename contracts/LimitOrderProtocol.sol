@@ -223,10 +223,10 @@ contract LimitOrderProtocol is
             takingAmount = orderTakerAmount;
         }
         else if (takingAmount == 0) {
-            takingAmount = (makingAmount * orderTakerAmount + orderMakerAmount - 1) / orderMakerAmount;
+            takingAmount = (makingAmount.mul(orderTakerAmount).add(orderMakerAmount).sub(1)).div(orderMakerAmount);
         }
         else if (makingAmount == 0) {
-            makingAmount = takingAmount * orderMakerAmount / orderTakerAmount;
+            makingAmount = takingAmount.mul(orderMakerAmount).div(orderTakerAmount);
         }
         else {
             revert("LOP: one of amounts should be 0");
