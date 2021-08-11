@@ -18,7 +18,6 @@ import "./libraries/UncheckedAddress.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/SilentECDSA.sol";
 
-
 /// @title 1inch Limit Order Protocol v1
 contract LimitOrderProtocol is
     ImmutableOwner(address(this)),
@@ -311,19 +310,29 @@ contract LimitOrderProtocol is
                 revert("LOP: only one amount should be 0");
             }
             else if (takingAmount == 0) {
+                if (makingAmount > remainingMakerAmount) {
+                    makingAmount = remainingMakerAmount;
+                }
                 takingAmount = _callGetTakerAmount(order, makingAmount);
                 require(takingAmount <= thresholdAmount, "LOP: taking amount too high");
             }
             else {
                 makingAmount = _callGetMakerAmount(order, takingAmount);
+                if (makingAmount > remainingMakerAmount) {
+                    makingAmount = remainingMakerAmount;
+                    takingAmount = _callGetTakerAmount(order, makingAmount);
+                }
                 require(makingAmount >= thresholdAmount, "LOP: making amount too low");
             }
 
             require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
 
             // Update remaining amount in storage
-            remainingMakerAmount = remainingMakerAmount.sub(makingAmount, "LOP: taking > remaining");
-            _remaining[orderHash] = remainingMakerAmount + 1;
+
+            unchecked {
+                remainingMakerAmount = remainingMakerAmount - makingAmount;
+                _remaining[orderHash] = remainingMakerAmount + 1;
+            }
             emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
         }
 

@@ -26,7 +26,7 @@
     "ethereumjs-util": "^7.1.0",
     "ethereumjs-wallet": "^1.0.1",
     "hardhat": "^2.6.0",
-    "hardhat-deploy": "0.8.11",
+    "hardhat-deploy": "^0.8.11",
     "hardhat-gas-reporter": "^1.0.4",
     "solc": "^0.8.6",
     "solidity-coverage": "^0.7.16",

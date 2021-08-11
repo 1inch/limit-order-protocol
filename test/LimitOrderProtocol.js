@@ -383,7 +383,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
 
             await expectRevert(
                 this.swap.fillOrder(this.order, signature, 1, 0, 1),
-                'LOP: taking > remaining',
+                'LOP: can\'t swap 0 amount',
             );
         });
     });
@@ -667,6 +667,42 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
                 this.swap.fillOrderRFQ(order, signature, 1, 0),
                 'LOP: order expired',
             );
+        });
+
+        it('should fill partially if not enough coins (taker)', async function () {
+            const order = buildOrder(this.swap, this.dai, this.weth, 2, 2);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            const makerDai = await this.dai.balanceOf(wallet);
+            const takerDai = await this.dai.balanceOf(_);
+            const makerWeth = await this.weth.balanceOf(wallet);
+            const takerWeth = await this.weth.balanceOf(_);
+
+            await this.swap.fillOrder(order, signature, 0, 3, 2);
+
+            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(2));
+            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(2));
+            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(2));
+            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(2));
+        });
+
+        it('should fill partially if not enough coins (maker)', async function () {
+            const order = buildOrder(this.swap, this.dai, this.weth, 2, 2);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            const makerDai = await this.dai.balanceOf(wallet);
+            const takerDai = await this.dai.balanceOf(_);
+            const makerWeth = await this.weth.balanceOf(wallet);
+            const takerWeth = await this.weth.balanceOf(_);
+
+            await this.swap.fillOrder(order, signature, 3, 0, 2);
+
+            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(2));
+            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(2));
+            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(2));
+            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(2));
         });
     });
 });
