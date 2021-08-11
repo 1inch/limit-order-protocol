@@ -171,7 +171,7 @@ contract LimitOrderProtocol is
     /// @param takingAmount Taking amount
     function fillOrderRFQ(
         OrderRFQ memory order,
-        bytes memory signature,
+        bytes calldata signature,
         uint256 makingAmount,
         uint256 takingAmount
     ) external returns(uint256, uint256) {
@@ -180,11 +180,11 @@ contract LimitOrderProtocol is
 
     function fillOrderRFQToWithPermit(
         OrderRFQ memory order,
-        bytes memory signature,
+        bytes calldata signature,
         uint256 makingAmount,
         uint256 takingAmount,
         address target,
-        bytes memory permit
+        bytes calldata permit
     ) external returns(uint256, uint256) {
         _permit(permit);
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, target);
@@ -192,7 +192,7 @@ contract LimitOrderProtocol is
 
     function fillOrderRFQTo(
         OrderRFQ memory order,
-        bytes memory signature,
+        bytes calldata signature,
         uint256 makingAmount,
         uint256 takingAmount,
         address target
@@ -268,7 +268,7 @@ contract LimitOrderProtocol is
         uint256 takingAmount,
         uint256 thresholdAmount,
         address target,
-        bytes memory permit
+        bytes calldata permit
     ) external returns(uint256, uint256) {
         _permit(permit);
         return fillOrderTo(order, signature, makingAmount, takingAmount, thresholdAmount, target);
