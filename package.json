@@ -17,6 +17,7 @@
     "@openzeppelin/test-helpers": "^0.5.12",
     "chai": "^4.3.4",
     "coveralls": "^3.1.0",
+    "dotenv": "^10.0.0",
     "eslint": "^7.28.0",
     "eslint-config-standard": "^16.0.2",
     "eslint-plugin-import": "^2.22.1",
@@ -35,6 +36,7 @@
     "solidity-docgen": "^0.5.13"
   },
   "scripts": {
+    "optimistic:build": "hardhat compile --network optimistic",
     "test": "hardhat test",
     "coverage": "hardhat coverage",
     "docify": "node docify.js",
