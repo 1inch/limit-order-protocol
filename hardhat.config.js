@@ -1,8 +1,10 @@
 require('@eth-optimism/hardhat-ovm');
+require('@nomiclabs/hardhat-ethers');
 require('@nomiclabs/hardhat-truffle5');
 require('solidity-coverage');
 require('hardhat-deploy');
 require('hardhat-gas-reporter');
+require('dotenv').config();
 
 require('dotenv').config();
 
@@ -27,6 +29,15 @@ module.exports = {
                 runs: 1000000,
             },
         },
+    },
+    networks: networks,
+    namedAccounts: {
+        deployer: {
+            default: 0,
+        },
+    },
+    etherscan: {
+        apiKey: process.env.BSC_ETHERSCAN_KEY,
     },
     gasReporter: {
         enable: true,

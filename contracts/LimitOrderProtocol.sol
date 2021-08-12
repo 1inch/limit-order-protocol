@@ -442,6 +442,7 @@ contract LimitOrderProtocol is
             // On empty order.getMakerAmount calldata only whole fills are allowed
             return order.makerAssetData.decodeUint256(_AMOUNT_INDEX);
         }
+
         bytes memory result = address(this).uncheckedFunctionStaticCall(abi.encodePacked(order.getMakerAmount, takerAmount), "LOP: getMakerAmount call failed");
         require(result.length == 32, "LOP: invalid getMakerAmount ret");
         return abi.decode(result, (uint256));

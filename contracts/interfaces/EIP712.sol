@@ -57,6 +57,7 @@ abstract contract EIP712 {
         _HASHED_NAME = hashedName;
         _HASHED_VERSION = hashedVersion;
         uint256 id;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             id := chainid()
         }
@@ -70,6 +71,7 @@ abstract contract EIP712 {
      */
     function _domainSeparatorV4() internal view returns (bytes32) {
         uint256 id;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             id := chainid()
         }
@@ -86,6 +88,7 @@ abstract contract EIP712 {
         bytes32 versionHash
     ) private view returns (bytes32) {
         uint256 id;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             id := chainid()
         }

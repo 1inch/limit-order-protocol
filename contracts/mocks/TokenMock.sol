@@ -20,6 +20,7 @@ contract TokenMock is ERC20, Ownable {
 
     function getChainId() external view returns (uint256) {
         uint256 id;
+        // solhint-disable-next-line no-inline-assembly
         assembly {
             id := chainid()
         }

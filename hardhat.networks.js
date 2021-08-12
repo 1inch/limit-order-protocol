@@ -30,6 +30,7 @@ register('kovan', 42, process.env.KOVAN_RPC_URL, process.env.KOVAN_PRIVATE_KEY);
 register('matic', 137, process.env.MATIC_RPC_URL, process.env.MATIC_PRIVATE_KEY);
 register('arbitrum', 42161, process.env.ARBITRUM_RPC_URL, process.env.ARBITRUM_PRIVATE_KEY);
 register('kovan-optimistic', 69, process.env.KOVAN_OPTIMISTIC_RPC_URL, process.env.KOVAN_OPTIMISTIC_PRIVATE_KEY);
-register('optimistic', 10, process.env.OPTIMISTIC_RPC_URL, 1); // '1' for test purposes
+// 6d24be3ebd523cfea12ddac901fbaf375b3f930c1e4fd102da367efc4504894b isn't a real private key - just to make it compile
+register('optimistic', 10, process.env.OPTIMISTIC_RPC_URL, '6d24be3ebd523cfea12ddac901fbaf375b3f930c1e4fd102da367efc4504894b');
 
 module.exports = networks;
