@@ -13,7 +13,6 @@
 * [libraries](libraries/README.md)
   * [ArgumentsDecoder](libraries/argumentsdecoder.md)
   * [UncheckedAddress](libraries/uncheckedaddress.md)
-  * [SilentECDSA](libraries/silentecdsa.md)
 * [mocks](mocks/README.md)
   * [TokenMock](mocks/tokenmock.md)
   * [AggregatorV3Mock](mocks/aggregatorv3mock.md)

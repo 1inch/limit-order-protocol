@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 
 import "./helpers/AmountCalculator.sol";
@@ -16,7 +17,6 @@ import "./helpers/PredicateHelper.sol";
 import "./interfaces/InteractiveMaker.sol";
 import "./libraries/UncheckedAddress.sol";
 import "./libraries/ArgumentsDecoder.sol";
-import "./libraries/SilentECDSA.sol";
 
 /// @title 1inch Limit Order Protocol v1
 contract LimitOrderProtocol is
@@ -400,10 +400,7 @@ contract LimitOrderProtocol is
         require(takerSelector >= IERC20.transferFrom.selector && takerSelector <= _MAX_SELECTOR, "LOP: bad takerAssetData.selector");
 
         address maker = address(makerAssetData.decodeAddress(_FROM_INDEX));
-        if ((signature.length != 65 && signature.length != 64) || SilentECDSA.recover(orderHash, signature) != maker) {
-            bytes memory result = maker.uncheckedFunctionStaticCall(abi.encodeWithSelector(IERC1271.isValidSignature.selector, orderHash, signature), "LOP: isValidSignature failed");
-            require(result.length == 32 && abi.decode(result, (bytes4)) == IERC1271.isValidSignature.selector, "LOP: bad signature");
-        }
+        require(SignatureChecker.isValidSignatureNow(maker, orderHash, signature), "LOP: bad signature");
     }
 
     function _callMakerAssetTransferFrom(address makerAsset, bytes memory makerAssetData, address taker, uint256 makingAmount) private {
