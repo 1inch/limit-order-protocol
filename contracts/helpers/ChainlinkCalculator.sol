@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "../interfaces/AggregatorV3Interface.sol";
+import "../interfaces/AggregatorInterface.sol";
 
 /// @title A helper contract for interactions with https://docs.chain.link
 contract ChainlinkCalculator {
@@ -17,7 +17,7 @@ contract ChainlinkCalculator {
     /// e.g. for DAI-ETH oracle, inverse=false means that we request DAI price in ETH
     /// and inverse=true means that we request ETH price in DAI
     /// @return Result Token price times amount
-    function singlePrice(AggregatorV3Interface oracle, uint256 inverseAndSpread, uint256 amount) external view returns(uint256) {
+    function singlePrice(AggregatorInterface oracle, uint256 inverseAndSpread, uint256 amount) external view returns(uint256) {
         // solhint-disable-next-line not-rely-on-time
         require(oracle.latestTimestamp() + _ORACLE_EXPIRATION_TIME > block.timestamp, "CC: stale data");
         bool inverse = inverseAndSpread & _INVERSE_MASK > 0;
@@ -31,7 +31,7 @@ contract ChainlinkCalculator {
 
     /// @notice Calculates price of token A relative to token B. Note that order is important
     /// @return Result Token A relative price times amount
-    function doublePrice(AggregatorV3Interface oracle1, AggregatorV3Interface oracle2, uint256 spread, uint256 amount) external view returns(uint256) {
+    function doublePrice(AggregatorInterface oracle1, AggregatorInterface oracle2, uint256 spread, uint256 amount) external view returns(uint256) {
         // solhint-disable-next-line not-rely-on-time
         require(oracle1.latestTimestamp() + _ORACLE_EXPIRATION_TIME > block.timestamp, "CC: stale data O1");
         // solhint-disable-next-line not-rely-on-time

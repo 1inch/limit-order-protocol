@@ -7,7 +7,7 @@ const Wallet = require('ethereumjs-wallet').default;
 const TokenMock = artifacts.require('TokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 const ChainlinkCalculator = artifacts.require('ChainlinkCalculator');
-const AggregatorV3Mock = artifacts.require('AggregatorV3Mock');
+const AggregatorMock = artifacts.require('AggregatorMock');
 
 const { buildOrderData } = require('./helpers/orderUtils');
 const { toBN, cutLastArg } = require('./helpers/utils');
@@ -75,8 +75,8 @@ contract('ChainLinkExample', async function ([_, wallet]) {
         await this.weth.approve(this.swap.address, ether('1000000'), { from: wallet });
         await this.inch.approve(this.swap.address, ether('1000000'), { from: wallet });
 
-        this.daiOracle = await AggregatorV3Mock.new(ether('0.00025'));
-        this.inchOracle = await AggregatorV3Mock.new('1577615249227853');
+        this.daiOracle = await AggregatorMock.new(ether('0.00025'));
+        this.inchOracle = await AggregatorMock.new('1577615249227853');
     });
 
     it('eth -> dai chainlink+eps order', async function () {

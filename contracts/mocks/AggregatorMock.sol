@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.0;
 
-import "../interfaces/AggregatorV3Interface.sol";
+import "../interfaces/AggregatorInterface.sol";
 
 
-contract AggregatorV3Mock is AggregatorV3Interface {
+contract AggregatorMock is AggregatorInterface {
     int256 private immutable _answer;
 
     constructor(int256 answer) {
