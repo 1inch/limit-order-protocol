@@ -12,8 +12,8 @@ import "./ImmutableOwner.sol";
 
 abstract contract ERC721Proxy is ImmutableOwner {
     constructor() {
-        require(ERC721Proxy.func_40aVqeY.selector == bytes4(uint32(IERC20.transferFrom.selector) + 2), "ERC20Proxy: bad selector");
-        require(ERC721Proxy.func_20xtkDI.selector == bytes4(uint32(IERC20.transferFrom.selector) + 3), "ERC20Proxy: bad selector");
+        require(ERC721Proxy.func_40aVqeY.selector == bytes4(uint32(IERC20.transferFrom.selector) + 2), "ERC721Proxy: bad selector");
+        require(ERC721Proxy.func_20xtkDI.selector == bytes4(uint32(IERC20.transferFrom.selector) + 3), "ERC721Proxy: bad selector");
     }
 
     // keccak256("func_40aVqeY(address,address,uint256,address)") == 0x23b872df
