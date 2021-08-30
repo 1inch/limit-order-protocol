@@ -155,6 +155,7 @@ contract LimitOrderProtocol is
         require(order.makerAssetData.decodeAddress(_FROM_INDEX) == msg.sender, "LOP: Access denied");
 
         bytes32 orderHash = _hash(order);
+        require(_remaining[orderHash] != 1, "LOP: already filled");
         _remaining[orderHash] = 1;
         emit OrderFilled(msg.sender, orderHash, 0);
     }
