@@ -53,7 +53,7 @@ contract LimitOrderProtocol is
     );
 
     struct OrderRFQ {
-        uint256 info;
+        uint256 info;  // lowest 64 bits is the order id, next 64 bits is the expiration timestamp
         address makerAsset;
         address takerAsset;
         bytes makerAssetData; // (transferFrom.selector, signer, ______, makerAmount, ...)
