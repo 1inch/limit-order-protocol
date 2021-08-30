@@ -439,8 +439,9 @@ contract LimitOrderProtocol is
     }
 
     function _callGetMakerAmount(Order memory order, uint256 takerAmount) private view returns(uint256 makerAmount) {
-        if (order.getMakerAmount.length == 0 && takerAmount == order.takerAssetData.decodeUint256(_AMOUNT_INDEX)) {
+        if (order.getMakerAmount.length == 0) {
             // On empty order.getMakerAmount calldata only whole fills are allowed
+            require(takerAmount == order.takerAssetData.decodeUint256(_AMOUNT_INDEX), "LOP: wrong taker amount");
             return order.makerAssetData.decodeUint256(_AMOUNT_INDEX);
         }
 
@@ -450,8 +451,9 @@ contract LimitOrderProtocol is
     }
 
     function _callGetTakerAmount(Order memory order, uint256 makerAmount) private view returns(uint256 takerAmount) {
-        if (order.getTakerAmount.length == 0 && makerAmount == order.makerAssetData.decodeUint256(_AMOUNT_INDEX)) {
+        if (order.getTakerAmount.length == 0) {
             // On empty order.getTakerAmount calldata only whole fills are allowed
+            require(makerAmount == order.makerAssetData.decodeUint256(_AMOUNT_INDEX), "LOP: wrong maker amount");
             return order.takerAssetData.decodeUint256(_AMOUNT_INDEX);
         }
         bytes memory result = address(this).uncheckedFunctionStaticCall(abi.encodePacked(order.getTakerAmount, makerAmount), "LOP: getTakerAmount call failed");
