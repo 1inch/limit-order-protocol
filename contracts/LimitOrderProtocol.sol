@@ -205,7 +205,7 @@ contract LimitOrderProtocol is
             // Validate double spend
             address maker = order.makerAssetData.decodeAddress(_FROM_INDEX);
             uint256 invalidatorSlot = uint64(order.info) >> 8;
-            uint256 invalidatorBit = 1 << uint8(order.info);
+            uint256 invalidatorBit = 1 << (order.info & 0xff);
             uint256 invalidator = _invalidator[maker][invalidatorSlot];
             require(invalidator & invalidatorBit == 0, "LOP: already filled");
             _invalidator[maker][invalidatorSlot] = invalidator | invalidatorBit;
