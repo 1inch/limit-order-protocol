@@ -320,7 +320,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, 5, 0, 5),
-                'LOP: getTakerAmount call failed',
+                'LOP: wrong maker amount',
             );
         });
 
@@ -351,7 +351,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, 0, 5, 5),
-                'LOP: getMakerAmount call failed',
+                'LOP: wrong taker amount',
             );
         });
     });
