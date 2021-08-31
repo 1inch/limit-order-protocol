@@ -8,7 +8,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@openzeppelin/contracts": "^4.2.0"
+    "@openzeppelin/contracts": "^4.3.0"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-truffle5": "^2.0.0",
