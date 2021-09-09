@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
@@ -16,7 +17,6 @@ import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/InteractiveMaker.sol";
 import "./interfaces/IDaiLikePermit.sol";
-import "./libraries/UncheckedAddress.sol";
 import "./libraries/ArgumentsDecoder.sol";
 
 /// @title 1inch Limit Order Protocol v1
@@ -33,7 +33,7 @@ contract LimitOrderProtocol is
 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    using UncheckedAddress for address;
+    using Address for address;
     using ArgumentsDecoder for bytes;
 
     // Expiration Mask:
@@ -129,7 +129,7 @@ contract LimitOrderProtocol is
 
     /// @notice Checks order predicate
     function checkPredicate(Order memory order) public view returns(bool) {
-        bytes memory result = address(this).uncheckedFunctionStaticCall(order.predicate, "LOP: predicate call failed");
+        bytes memory result = address(this).functionStaticCall(order.predicate, "LOP: predicate call failed");
         require(result.length == 32, "LOP: invalid predicate return");
         return abi.decode(result, (bool));
     }
@@ -335,7 +335,6 @@ contract LimitOrderProtocol is
             require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
 
             // Update remaining amount in storage
-
             unchecked {
                 remainingMakerAmount = remainingMakerAmount - makingAmount;
                 _remaining[orderHash] = remainingMakerAmount + 1;
@@ -423,32 +422,20 @@ contract LimitOrderProtocol is
         if (orderTakerAddress != taker) {
             makerAssetData.patchAddress(_TO_INDEX, taker);
         }
-
-        // Patch maker amount
-        makerAssetData.patchUint256(_AMOUNT_INDEX, makingAmount);
-
-        require(makerAsset != address(0) && makerAsset != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, "LOP: raw ETH is not supported");
-
-        // Transfer asset from maker to taker
-        bytes memory result = makerAsset.uncheckedFunctionCall(makerAssetData, "LOP: makerAsset.call failed");
-        if (result.length > 0) {
-            require(abi.decode(result, (bool)), "LOP: makerAsset.call bad result");
-        }
+        _makeCall(makerAsset, makerAssetData, makingAmount);
     }
 
     function _callTakerAssetTransferFrom(address takerAsset, bytes memory takerAssetData, uint256 takingAmount) private {
         // Patch spender
         takerAssetData.patchAddress(_FROM_INDEX, msg.sender);
+        _makeCall(takerAsset, takerAssetData, takingAmount);
+    }
 
-        // Patch taker amount
-        takerAssetData.patchUint256(_AMOUNT_INDEX, takingAmount);
-
-        require(takerAsset != address(0) && takerAsset != 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE, "LOP: raw ETH is not supported");
-
-        // Transfer asset from taker to maker
-        bytes memory result = takerAsset.uncheckedFunctionCall(takerAssetData, "LOP: takerAsset.call failed");
+    function _makeCall(address asset, bytes memory assetData, uint256 amount) private {
+        assetData.patchUint256(_AMOUNT_INDEX, amount);
+        bytes memory result = asset.functionCall(assetData, "LOP: asset.call failed");
         if (result.length > 0) {
-            require(abi.decode(result, (bool)), "LOP: takerAsset.call bad result");
+            require(abi.decode(result, (bool)), "LOP: asset.call bad result");
         }
     }
 
@@ -458,7 +445,7 @@ contract LimitOrderProtocol is
             require(takerAmount == order.takerAssetData.decodeUint256(_AMOUNT_INDEX), "LOP: wrong taker amount");
             return order.makerAssetData.decodeUint256(_AMOUNT_INDEX);
         }
-        bytes memory result = address(this).uncheckedFunctionStaticCall(abi.encodePacked(order.getMakerAmount, takerAmount), "LOP: getMakerAmount call failed");
+        bytes memory result = address(this).functionStaticCall(abi.encodePacked(order.getMakerAmount, takerAmount), "LOP: getMakerAmount call failed");
         require(result.length == 32, "LOP: invalid getMakerAmount ret");
         return abi.decode(result, (uint256));
     }
@@ -469,7 +456,7 @@ contract LimitOrderProtocol is
             require(makerAmount == order.makerAssetData.decodeUint256(_AMOUNT_INDEX), "LOP: wrong maker amount");
             return order.takerAssetData.decodeUint256(_AMOUNT_INDEX);
         }
-        bytes memory result = address(this).uncheckedFunctionStaticCall(abi.encodePacked(order.getTakerAmount, makerAmount), "LOP: getTakerAmount call failed");
+        bytes memory result = address(this).functionStaticCall(abi.encodePacked(order.getTakerAmount, makerAmount), "LOP: getTakerAmount call failed");
         require(result.length == 32, "LOP: invalid getTakerAmount ret");
         return abi.decode(result, (uint256));
     }
