@@ -15,6 +15,7 @@ import "./helpers/ERC721Proxy.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/InteractiveMaker.sol";
+import "./interfaces/IDaiLikePermit.sol";
 import "./libraries/UncheckedAddress.sol";
 import "./libraries/ArgumentsDecoder.sol";
 
@@ -359,7 +360,11 @@ contract LimitOrderProtocol is
 
     function _permit(bytes memory permitData) private {
         (address token, bytes memory permit) = abi.decode(permitData, (address, bytes));
-        token.uncheckedFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
+        if (permit.length == 32 * 7) {
+            token.uncheckedFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
+        } else if (permit.length == 32 * 8) {
+            token.uncheckedFunctionCall(abi.encodePacked(IDaiLikePermit.permit.selector, permit), "LOP: DAI permit failed");
+        }
     }
 
     function _hash(Order memory order) private view returns(bytes32) {
