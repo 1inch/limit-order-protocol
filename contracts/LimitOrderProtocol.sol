@@ -357,12 +357,12 @@ contract LimitOrderProtocol is
         return (makingAmount, takingAmount);
     }
 
-    function _permit(bytes memory permitData) private {
-        (address token, bytes memory permit) = abi.decode(permitData, (address, bytes));
+    function _permit(bytes calldata permitData) private {
+        (address token, bytes calldata permit) = permitData.decodeTargetAndCalldata();
         if (permit.length == 32 * 7) {
-            token.uncheckedFunctionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
+            token.functionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
         } else if (permit.length == 32 * 8) {
-            token.uncheckedFunctionCall(abi.encodePacked(IDaiLikePermit.permit.selector, permit), "LOP: DAI permit failed");
+            token.functionCall(abi.encodePacked(IDaiLikePermit.permit.selector, permit), "LOP: DAI permit failed");
         }
     }
 
