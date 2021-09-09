@@ -2,19 +2,19 @@
 
 pragma solidity ^0.8.0;
 
-import "../libraries/UncheckedAddress.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 
 /// @title A helper contract for executing boolean functions on arbitrary target call results
 contract PredicateHelper {
-    using UncheckedAddress for address;
+    using Address for address;
 
     /// @notice Calls every target with corresponding data
     /// @return Result True if call to any target returned True. Otherwise, false
     function or(address[] calldata targets, bytes[] calldata data) external view returns(bool) {
         require(targets.length == data.length, "PH: input array size mismatch");
         for (uint i = 0; i < targets.length; i++) {
-            bytes memory result = targets[i].uncheckedFunctionStaticCall(data[i], "PH: 'or' subcall failed");
+            bytes memory result = targets[i].functionStaticCall(data[i], "PH: 'or' subcall failed");
             require(result.length == 32, "PH: invalid call result");
             if (abi.decode(result, (bool))) {
                 return true;
@@ -28,7 +28,7 @@ contract PredicateHelper {
     function and(address[] calldata targets, bytes[] calldata data) external view returns(bool) {
         require(targets.length == data.length, "PH: input array size mismatch");
         for (uint i = 0; i < targets.length; i++) {
-            bytes memory result = targets[i].uncheckedFunctionStaticCall(data[i], "PH: 'and' subcall failed");
+            bytes memory result = targets[i].functionStaticCall(data[i], "PH: 'and' subcall failed");
             require(result.length == 32, "PH: invalid call result");
             if (!abi.decode(result, (bool))) {
                 return false;
@@ -41,7 +41,7 @@ contract PredicateHelper {
     /// @param value Value to test
     /// @return Result True if call to target returns the same value as `value`. Otherwise, false
     function eq(uint256 value, address target, bytes memory data) external view returns(bool) {
-        bytes memory result = target.uncheckedFunctionStaticCall(data, "PH: eq");
+        bytes memory result = target.functionStaticCall(data, "PH: eq");
         require(result.length == 32, "PH: invalid call result");
         return abi.decode(result, (uint256)) == value;
     }
@@ -50,7 +50,7 @@ contract PredicateHelper {
     /// @param value Value to test
     /// @return Result True if call to target returns value which is lower than `value`. Otherwise, false
     function lt(uint256 value, address target, bytes memory data) external view returns(bool) {
-        bytes memory result = target.uncheckedFunctionStaticCall(data, "PH: lt");
+        bytes memory result = target.functionStaticCall(data, "PH: lt");
         require(result.length == 32, "PH: invalid call result");
         return abi.decode(result, (uint256)) < value;
     }
@@ -59,7 +59,7 @@ contract PredicateHelper {
     /// @param value Value to test
     /// @return Result True if call to target returns value which is bigger than `value`. Otherwise, false
     function gt(uint256 value, address target, bytes memory data) external view returns(bool) {
-        bytes memory result = target.uncheckedFunctionStaticCall(data, "PH: gt");
+        bytes memory result = target.functionStaticCall(data, "PH: gt");
         require(result.length == 32, "PH: invalid call result");
         return abi.decode(result, (uint256)) > value;
     }

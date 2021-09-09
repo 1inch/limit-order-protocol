@@ -357,8 +357,8 @@ contract LimitOrderProtocol is
         return (makingAmount, takingAmount);
     }
 
-    function _permit(bytes calldata permitData) private {
-        (address token, bytes calldata permit) = permitData.decodeTargetAndCalldata();
+    function _permit(bytes memory permitData) private {
+        (address token, bytes memory permit) = permitData.decodeTargetAndCalldata();
         if (permit.length == 32 * 7) {
             token.functionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
         } else if (permit.length == 32 * 8) {
