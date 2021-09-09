@@ -47,6 +47,11 @@ contract LimitOrderProtocol is
         uint256 remaining
     );
 
+    event OrderCanceled(
+        address indexed maker,
+        bytes32 orderHash
+    );
+
     event OrderFilledRFQ(
         bytes32 orderHash,
         uint256 makingAmount
@@ -157,7 +162,7 @@ contract LimitOrderProtocol is
         bytes32 orderHash = _hash(order);
         require(_remaining[orderHash] != 1, "LOP: already filled");
         _remaining[orderHash] = 1;
-        emit OrderFilled(msg.sender, orderHash, 0);
+        emit OrderCanceled(msg.sender, orderHash);
     }
 
     /// @notice Cancels order's quote
