@@ -22,7 +22,7 @@ import "./libraries/ArgumentsDecoder.sol";
 /// @title 1inch Limit Order Protocol v1
 contract LimitOrderProtocol is
     ImmutableOwner(address(this)),
-    EIP712("1inch Limit Order Protocol", "1"),
+    EIP712("1inch Limit Order Protocol", "2"),
     AmountCalculator,
     ChainlinkCalculator,
     ERC1155Proxy,
