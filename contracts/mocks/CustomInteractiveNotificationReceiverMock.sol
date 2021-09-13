@@ -18,9 +18,9 @@ contract CustomInteractiveNotificationReceiverMock {
 
     // unwrap takerAsset for tests
     function notifyFillOrder(
-        address , 
+        address /*makerAsset*/,
         address takerAsset,
-        uint256 , 
+        uint256 /*makingAmount*/,
         uint256 takingAmount,
         bytes memory interactiveData
     ) external {
