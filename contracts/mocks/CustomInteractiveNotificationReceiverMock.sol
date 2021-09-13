@@ -16,11 +16,11 @@ contract CustomInteractiveNotificationReceiverMock {
         emit Received(msg.sender, msg.value);
     }
 
-    // wrap takerAsset for tests
+    // unwrap takerAsset for tests
     function notifyFillOrder(
-        address makerAsset, // solhint-disable-line no-unused-vars
+        address , 
         address takerAsset,
-        uint256 makingAmount, // solhint-disable-line no-unused-vars
+        uint256 , 
         uint256 takingAmount,
         bytes memory interactiveData
     ) external {
