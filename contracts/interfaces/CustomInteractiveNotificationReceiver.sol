@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 
-interface CustomInteractiveNotificationReciever {
+interface CustomInteractiveNotificationReceiver {
     function notifyFillOrder(
         address makerAsset,
         address takerAsset,

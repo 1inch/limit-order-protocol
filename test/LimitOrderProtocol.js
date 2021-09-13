@@ -7,7 +7,7 @@ const Wallet = require('ethereumjs-wallet').default;
 
 const TokenMock = artifacts.require('TokenMock');
 const WrappedTokenMock = artifacts.require('WrappedTokenMock');
-const CustomInteractiveNotificationRecieverMock = artifacts.require('CustomInteractiveNotificationRecieverMock');
+const CustomInteractiveNotificationReceiverMock = artifacts.require('CustomInteractiveNotificationReceiverMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
@@ -70,7 +70,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
         await this.dai.approve(this.swap.address, '1000000', { from: wallet });
         await this.weth.approve(this.swap.address, '1000000', { from: wallet });
 
-        this.notificationReciever = await CustomInteractiveNotificationRecieverMock.new();
+        this.notificationReceiver = await CustomInteractiveNotificationReceiverMock.new();
     });
 
     describe('wip', async function () {
@@ -714,12 +714,12 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
         it('should fill and unwrap token', async function () {
             const amount = web3.utils.toWei('1', 'ether');
             await web3.eth.sendTransaction({ from: wallet, to: this.weth.address, value: amount });
-            await this.weth.approve(this.notificationReciever.address, amount, { from: wallet });
+            await this.weth.approve(this.notificationReceiver.address, amount, { from: wallet });
 
             let interactionStr = '0x';
             const prefix1 = '00000000000000000000000000000000';
             const prefix2 = '000000000000000000000000';
-            interactionStr += prefix1 + this.notificationReciever.address.substr(2);
+            interactionStr += prefix1 + this.notificationReceiver.address.substr(2);
             interactionStr += prefix2 + wallet.substr(2);
             const interaction = web3.utils.hexToBytes(interactionStr);
 

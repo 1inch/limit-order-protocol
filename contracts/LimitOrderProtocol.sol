@@ -15,7 +15,7 @@ import "./helpers/ERC20Proxy.sol";
 import "./helpers/ERC721Proxy.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
-import "./interfaces/CustomInteractiveNotificationReciever.sol";
+import "./interfaces/CustomInteractiveNotificationReceiver.sol";
 import "./interfaces/IDaiLikePermit.sol";
 import "./libraries/ArgumentsDecoder.sol";
 
@@ -348,7 +348,7 @@ contract LimitOrderProtocol is
 
         // Maker can handle funds interactively
         if (order.interaction.length > 0) {
-            CustomInteractiveNotificationReciever(order.interaction.decodeAddress(_NOTIFYER_RECIEVER_INDEX))
+            CustomInteractiveNotificationReceiver(order.interaction.decodeAddress(_NOTIFYER_RECIEVER_INDEX))
                 .notifyFillOrder(order.makerAsset, order.takerAsset, makingAmount, takingAmount, order.interaction);
         }
 
