@@ -12,6 +12,7 @@ contract WrappedTokenMock is ERC20, Ownable {
     // solhint-disable-next-line no-empty-blocks
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
 
+    // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
     function mint(address account, uint256 amount) external onlyOwner {
@@ -33,7 +34,7 @@ contract WrappedTokenMock is ERC20, Ownable {
     }
 
     function withdraw(uint wad) public {
-        require(balanceOf(msg.sender) >= wad);
+        require(balanceOf(msg.sender) >= wad, "WTM: not enough balance");
         _burn(msg.sender, wad);
         payable(msg.sender).transfer(wad);
         emit Withdrawal(msg.sender, wad);

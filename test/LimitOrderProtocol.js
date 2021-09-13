@@ -712,7 +712,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
 
     describe('Interaction', async function () {
         it('should fill and unwrap token', async function () {
-            const amount = web3.utils.toWei("1", "ether");
+            const amount = web3.utils.toWei('1', 'ether');
             await web3.eth.sendTransaction({ from: wallet, to: this.weth.address, value: amount });
             await this.weth.approve(this.notificationReciever.address, amount, { from: wallet });
 

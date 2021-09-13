@@ -3,7 +3,6 @@
 pragma solidity ^0.8.0;
 
 import "../libraries/ArgumentsDecoder.sol";
-import "../interfaces/CustomInteractiveNotificationReciever.sol";
 import "../interfaces/WrappedTokenInterface.sol";
 
 contract CustomInteractiveNotificationRecieverMock {
@@ -19,9 +18,9 @@ contract CustomInteractiveNotificationRecieverMock {
 
     // wrap takerAsset for tests
     function notifyFillOrder(
-        address makerAsset,
+        address makerAsset, // solhint-disable-line no-unused-vars
         address takerAsset,
-        uint256 makingAmount,
+        uint256 makingAmount, // solhint-disable-line no-unused-vars
         uint256 takingAmount,
         bytes memory interactiveData
     ) external {
