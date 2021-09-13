@@ -22,6 +22,14 @@ library ArgumentsDecoder {
         }
     }
 
+    function decodeTargetAndCalldata(bytes memory data) internal pure returns(address target, bytes memory args) {
+        assembly {  // solhint-disable-line no-inline-assembly
+            target := mload(add(data, 0x14))
+            args := add(data, 0x14)
+            mstore(args, sub(mload(data), 0x14))
+        }
+    }
+
     function patchAddress(bytes memory data, uint256 argumentIndex, address account) internal pure {
         assembly { // solhint-disable-line no-inline-assembly
             mstore(add(add(data, 0x24), mul(argumentIndex, 0x20)), account)
