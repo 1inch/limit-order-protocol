@@ -6,6 +6,8 @@ const ethSigUtil = require('eth-sig-util');
 const Wallet = require('ethereumjs-wallet').default;
 
 const TokenMock = artifacts.require('TokenMock');
+const WrappedTokenMock = artifacts.require('WrappedTokenMock');
+const CustomInteractiveNotificationRecieverMock = artifacts.require('CustomInteractiveNotificationRecieverMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
@@ -49,7 +51,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
 
     beforeEach(async function () {
         this.dai = await TokenMock.new('DAI', 'DAI');
-        this.weth = await TokenMock.new('WETH', 'WETH');
+        this.weth = await WrappedTokenMock.new('WETH', 'WETH');
 
         this.swap = await LimitOrderProtocol.new();
 
@@ -67,6 +69,8 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
         await this.weth.approve(this.swap.address, '1000000');
         await this.dai.approve(this.swap.address, '1000000', { from: wallet });
         await this.weth.approve(this.swap.address, '1000000', { from: wallet });
+
+        this.notificationReciever = await CustomInteractiveNotificationRecieverMock.new();
     });
 
     describe('wip', async function () {
@@ -703,6 +707,39 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
             expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(2));
             expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(2));
             expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(2));
+        });
+    });
+
+    describe('Interaction', async function () {
+        it('should fill and unwrap token', async function () {
+            const amount = web3.utils.toWei("1", "ether");
+            await web3.eth.sendTransaction({ from: wallet, to: this.weth.address, value: amount });
+            await this.weth.approve(this.notificationReciever.address, amount, { from: wallet });
+
+            let interactionStr = '0x';
+            const prefix1 = '00000000000000000000000000000000';
+            const prefix2 = '000000000000000000000000';
+            interactionStr += prefix1 + this.notificationReciever.address.substr(2);
+            interactionStr += prefix2 + wallet.substr(2);
+            const interaction = web3.utils.hexToBytes(interactionStr);
+
+            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, zeroAddress, this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(), '0x', interaction);
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            const makerDai = await this.dai.balanceOf(wallet);
+            const takerDai = await this.dai.balanceOf(_);
+            const makerWeth = await this.weth.balanceOf(wallet);
+            const takerWeth = await this.weth.balanceOf(_);
+            const makerEth = await web3.eth.getBalance(wallet);
+            
+            await this.swap.fillOrder(order, signature, 1, 0, 1);
+
+            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+            expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.addn(1));
+            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth);
+            expect(web3.utils.toBN(await web3.eth.getBalance(wallet))).to.be.bignumber.equal(web3.utils.toBN(makerEth).addn(1));
+            expect(await this.weth.balanceOf(_)).to.be.bignumber.equal(takerWeth.subn(1));
         });
     });
 });

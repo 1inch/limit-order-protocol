@@ -5,9 +5,14 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract TokenMock is ERC20, Ownable {
+contract WrappedTokenMock is ERC20, Ownable {
+    event  Deposit(address indexed dst, uint wad);
+    event  Withdrawal(address indexed src, uint wad);
+
     // solhint-disable-next-line no-empty-blocks
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
+
+    receive() external payable {}
 
     function mint(address account, uint256 amount) external onlyOwner {
         _mint(account, amount);
@@ -19,5 +24,18 @@ contract TokenMock is ERC20, Ownable {
 
     function getChainId() external view returns (uint256) {
         return block.chainid;
+    }
+
+    function deposit() public payable {
+        _mint(msg.sender, msg.value);
+        // balanceOf[msg.sender] += msg.value;
+        emit Deposit(msg.sender, msg.value);
+    }
+
+    function withdraw(uint wad) public {
+        require(balanceOf(msg.sender) >= wad);
+        _burn(msg.sender, wad);
+        payable(msg.sender).transfer(wad);
+        emit Withdrawal(msg.sender, wad);
     }
 }

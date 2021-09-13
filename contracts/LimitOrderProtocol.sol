@@ -92,6 +92,7 @@ contract LimitOrderProtocol is
     uint256 constant private _FROM_INDEX = 0;
     uint256 constant private _TO_INDEX = 1;
     uint256 constant private _AMOUNT_INDEX = 2;
+    uint256 constant private _NOTIFYER_RECIEVER_INDEX = 0;
 
     mapping(bytes32 => uint256) private _remaining;
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
@@ -347,7 +348,7 @@ contract LimitOrderProtocol is
 
         // Maker can handle funds interactively
         if (order.interaction.length > 0) {
-            CustomInteractiveNotificationReciever(address(uint160(bytes20(abi.decode(order.interaction, (bytes))))))
+            CustomInteractiveNotificationReciever(order.interaction.decodeAddress(_NOTIFYER_RECIEVER_INDEX))
                 .notifyFillOrder(order.makerAsset, order.takerAsset, makingAmount, takingAmount, order.interaction);
         }
 
