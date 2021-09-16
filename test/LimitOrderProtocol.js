@@ -20,17 +20,18 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
 
     const zeroAddress = '0x0000000000000000000000000000000000000000';
 
-    function buildOrder (exchange, makerAsset, takerAsset, makerAmount, takerAmount, taker = zeroAddress, predicate = '0x', permit = '0x', interaction = '0x') {
-        return buildOrderWithSalt(exchange, '1', makerAsset, takerAsset, makerAmount, takerAmount, taker, predicate, permit, interaction);
+    function buildOrder (exchange, makerAsset, takerAsset, makerAmount, takerAmount, taker = zeroAddress, predicate = '0x', permit = '0x', interaction = '0x', customReciever) {
+        return buildOrderWithSalt(exchange, '1', makerAsset, takerAsset, makerAmount, takerAmount, taker, predicate, permit, interaction, customReciever);
     }
 
-    function buildOrderWithSalt (exchange, salt, makerAsset, takerAsset, makerAmount, takerAmount, taker = zeroAddress, predicate = '0x', permit = '0x', interaction = '0x') {
+    function buildOrderWithSalt (exchange, salt, makerAsset, takerAsset, makerAmount, takerAmount, taker = zeroAddress, predicate = '0x', permit = '0x', interaction = '0x', customReciever) {
+        const receiver = (customReciever === undefined ? wallet : customReciever);
         return {
             salt: salt,
             makerAsset: makerAsset.address,
             takerAsset: takerAsset.address,
             makerAssetData: makerAsset.contract.methods.transferFrom(wallet, taker, makerAmount).encodeABI(),
-            takerAssetData: takerAsset.contract.methods.transferFrom(taker, wallet, takerAmount).encodeABI(),
+            takerAssetData: takerAsset.contract.methods.transferFrom(taker, receiver, takerAmount).encodeABI(),
             getMakerAmount: cutLastArg(exchange.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI()),
             getTakerAmount: cutLastArg(exchange.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI()),
             predicate: predicate,
@@ -716,11 +717,21 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
         it('should fill and unwrap token', async function () {
             const amount = web3.utils.toWei('1', 'ether');
             await web3.eth.sendTransaction({ from: wallet, to: this.weth.address, value: amount });
-            await this.weth.approve(this.notificationReceiver.address, amount, { from: wallet });
 
             const interaction = this.notificationReceiver.address + wallet.substr(2);
 
-            const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, zeroAddress, this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(), '0x', interaction);
+            const order = buildOrder(
+                this.swap,
+                this.dai,
+                this.weth,
+                1,
+                1,
+                zeroAddress,
+                this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(),
+                '0x',
+                interaction,
+                this.notificationReceiver.address,
+            );
             const data = buildOrderData(this.chainId, this.swap.address, order);
             const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
 

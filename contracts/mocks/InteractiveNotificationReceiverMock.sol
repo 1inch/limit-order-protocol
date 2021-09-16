@@ -29,7 +29,6 @@ contract InteractiveNotificationReceiverMock is InteractiveNotificationReceiver 
         assembly {
             makerAddress := shr(96, calldataload(interactiveData.offset))
         }
-        WrappedTokenInterface(takerAsset).transferFrom(makerAddress, address(this), takingAmount);
         WrappedTokenInterface(takerAsset).withdraw(takingAmount);
         makerAddress.transfer(takingAmount);
     }
