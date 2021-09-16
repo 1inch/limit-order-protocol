@@ -69,8 +69,6 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
         await this.weth.approve(this.swap.address, '1000000');
         await this.dai.approve(this.swap.address, '1000000', { from: wallet });
         await this.weth.approve(this.swap.address, '1000000', { from: wallet });
-
-        this.notificationReceiver = await CustomInteractiveNotificationReceiverMock.new();
     });
 
     describe('wip', async function () {
@@ -711,17 +709,16 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
     });
 
     describe('Interaction', async function () {
+        beforeEach(async function () {
+            this.notificationReceiver = await CustomInteractiveNotificationReceiverMock.new();
+        });
+
         it('should fill and unwrap token', async function () {
             const amount = web3.utils.toWei('1', 'ether');
             await web3.eth.sendTransaction({ from: wallet, to: this.weth.address, value: amount });
             await this.weth.approve(this.notificationReceiver.address, amount, { from: wallet });
 
-            let interactionStr = '0x';
-            const prefix1 = '00000000000000000000000000000000';
-            const prefix2 = '000000000000000000000000';
-            interactionStr += prefix1 + this.notificationReceiver.address.substr(2);
-            interactionStr += prefix2 + wallet.substr(2);
-            const interaction = web3.utils.hexToBytes(interactionStr);
+            const interaction = this.notificationReceiver.address + wallet.substr(2);
 
             const order = buildOrder(this.swap, this.dai, this.weth, 1, 1, zeroAddress, this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(), '0x', interaction);
             const data = buildOrderData(this.chainId, this.swap.address, order);
@@ -732,7 +729,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(_);
             const makerEth = await web3.eth.getBalance(wallet);
-            
+
             await this.swap.fillOrder(order, signature, 1, 0, 1);
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
