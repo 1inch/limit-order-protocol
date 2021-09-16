@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import "../libraries/ArgumentsDecoder.sol";
 import "../interfaces/InteractiveNotificationReceiver.sol";
-import "../interfaces/WrappedTokenInterface.sol";
+import "./interfaces/WrappedTokenInterface.sol";
 
 contract InteractiveNotificationReceiverMock is InteractiveNotificationReceiver {
     using ArgumentsDecoder for bytes;
