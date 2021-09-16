@@ -22,12 +22,12 @@ contract InteractiveNotificationReceiverMock is InteractiveNotificationReceiver 
         address takerAsset,
         uint256 /* makingAmount */,
         uint256 takingAmount,
-        bytes memory interactiveData
+        bytes calldata interactiveData
     ) external override {
         address payable makerAddress;
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            makerAddress := mload(add(interactiveData, 0x14))
+            makerAddress := shr(96, calldataload(interactiveData.offset))
         }
         WrappedTokenInterface(takerAsset).transferFrom(makerAddress, address(this), takingAmount);
         WrappedTokenInterface(takerAsset).withdraw(takingAmount);
