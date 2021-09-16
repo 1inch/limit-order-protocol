@@ -7,7 +7,7 @@ const Wallet = require('ethereumjs-wallet').default;
 
 const TokenMock = artifacts.require('TokenMock');
 const WrappedTokenMock = artifacts.require('WrappedTokenMock');
-const CustomInteractiveNotificationReceiverMock = artifacts.require('CustomInteractiveNotificationReceiverMock');
+const InteractiveNotificationReceiverMock = artifacts.require('InteractiveNotificationReceiverMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
@@ -710,7 +710,7 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
 
     describe('Interaction', async function () {
         beforeEach(async function () {
-            this.notificationReceiver = await CustomInteractiveNotificationReceiverMock.new();
+            this.notificationReceiver = await InteractiveNotificationReceiverMock.new();
         });
 
         it('should fill and unwrap token', async function () {
