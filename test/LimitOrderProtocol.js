@@ -276,8 +276,8 @@ contract('LimitOrderProtocol', async function ([_, wallet]) {
         const order = buildOrder(this.swap, this.dai, this.weth, 10, 10);
         this.makerAsset = this.swap.address;
         this.takerAsset = this.swap.address;
-        this.makerAssetData = this.swap.contract.methods.func_50BkM4K(wallet, zeroAddress, 10, this.dai.address).encodeABI();
-        this.takerAssetData = this.swap.contract.methods.func_50BkM4K(zeroAddress, wallet, 10, this.weth.address).encodeABI();
+        this.makerAssetData = this.swap.contract.methods.func_602HzuS(wallet, zeroAddress, 10, this.dai.address).encodeABI();
+        this.takerAssetData = this.swap.contract.methods.func_602HzuS(zeroAddress, wallet, 10, this.weth.address).encodeABI();
 
         const data = buildOrderData(this.chainId, this.swap.address, order);
         const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
