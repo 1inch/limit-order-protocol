@@ -10,9 +10,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 
 import "./helpers/AmountCalculator.sol";
 import "./helpers/ChainlinkCalculator.sol";
-import "./helpers/ERC1155Proxy.sol";
 import "./helpers/ERC20Proxy.sol";
-import "./helpers/ERC721Proxy.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/InteractiveNotificationReceiver.sol";
@@ -25,9 +23,7 @@ contract LimitOrderProtocol is
     EIP712("1inch Limit Order Protocol", "2"),
     AmountCalculator,
     ChainlinkCalculator,
-    ERC1155Proxy,
     ERC20Proxy,
-    ERC721Proxy,
     NonceManager,
     PredicateHelper
 {
@@ -86,9 +82,6 @@ contract LimitOrderProtocol is
     bytes32 constant public LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
         "OrderRFQ(uint256 info,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData)"
     );
-
-    // solhint-disable-next-line var-name-mixedcase
-    bytes4 immutable private _MAX_SELECTOR = bytes4(uint32(IERC20.transferFrom.selector) + 10);
 
     uint256 constant private _FROM_INDEX = 0;
     uint256 constant private _TO_INDEX = 1;
@@ -406,10 +399,8 @@ contract LimitOrderProtocol is
     function _validate(bytes memory makerAssetData, bytes memory takerAssetData, bytes memory signature, bytes32 orderHash) private view {
         require(makerAssetData.length >= 100, "LOP: bad makerAssetData.length");
         require(takerAssetData.length >= 100, "LOP: bad takerAssetData.length");
-        bytes4 makerSelector = makerAssetData.decodeSelector();
-        bytes4 takerSelector = takerAssetData.decodeSelector();
-        require(makerSelector >= IERC20.transferFrom.selector && makerSelector <= _MAX_SELECTOR, "LOP: bad makerAssetData.selector");
-        require(takerSelector >= IERC20.transferFrom.selector && takerSelector <= _MAX_SELECTOR, "LOP: bad takerAssetData.selector");
+        require(makerAssetData.decodeSelector() == IERC20.transferFrom.selector, "LOP: bad makerAssetData.selector");
+        require(takerAssetData.decodeSelector() == IERC20.transferFrom.selector, "LOP: bad takerAssetData.selector");
 
         address maker = address(makerAssetData.decodeAddress(_FROM_INDEX));
         require(SignatureChecker.isValidSignatureNow(maker, orderHash, signature), "LOP: bad signature");
