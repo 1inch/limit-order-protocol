@@ -14,7 +14,6 @@ import "./helpers/ERC1155Proxy.sol";
 import "./helpers/ERC20Proxy.sol";
 import "./helpers/ERC721Proxy.sol";
 import "./helpers/NonceManager.sol";
-import "./helpers/Permitable.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/InteractiveNotificationReceiver.sol";
 import "./interfaces/IDaiLikePermit.sol";
@@ -30,7 +29,6 @@ contract LimitOrderProtocol is
     ERC20Proxy,
     ERC721Proxy,
     NonceManager,
-    Permitable,
     PredicateHelper
 {
     using SafeMath for uint256;
@@ -193,9 +191,9 @@ contract LimitOrderProtocol is
         uint256 makingAmount,
         uint256 takingAmount,
         address target,
-        bytes calldata encodedTokenPermitPair
+        bytes calldata permit
     ) external returns(uint256, uint256) {
-        _permit(encodedTokenPermitPair);
+        _permit(permit);
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, target);
     }
 
@@ -277,9 +275,9 @@ contract LimitOrderProtocol is
         uint256 takingAmount,
         uint256 thresholdAmount,
         address target,
-        bytes calldata encodedTokenPermitPair
+        bytes calldata permit
     ) external returns(uint256, uint256) {
-        _permit(encodedTokenPermitPair);
+        _permit(permit);
         return fillOrderTo(order, signature, makingAmount, takingAmount, thresholdAmount, target);
     }
 
@@ -361,9 +359,13 @@ contract LimitOrderProtocol is
         return (makingAmount, takingAmount);
     }
 
-    function _permit(bytes memory encodedTokenPermitPair) private {
-        (address token, bytes memory permit) = encodedTokenPermitPair.decodeTargetAndCalldata();
-        _permit(IERC20(token), permit);
+    function _permit(bytes memory permitData) private {
+        (address token, bytes memory permit) = permitData.decodeTargetAndCalldata();
+        if (permit.length == 32 * 7) {
+            token.functionCall(abi.encodePacked(IERC20Permit.permit.selector, permit), "LOP: permit failed");
+        } else if (permit.length == 32 * 8) {
+            token.functionCall(abi.encodePacked(IDaiLikePermit.permit.selector, permit), "LOP: DAI permit failed");
+        }
     }
 
     function _hash(Order memory order) private view returns(bytes32) {
