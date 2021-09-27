@@ -1,6 +1,6 @@
 {
   "name": "@1inch/limit-order-protocol",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "1inch Limit Order Protocol",
   "repository": {
     "type": "git",
