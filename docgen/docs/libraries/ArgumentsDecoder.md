@@ -51,6 +51,20 @@ function decodeUint256(
 |`argumentIndex` | uint256 | 
 
 
+### decodeTargetAndCalldata
+```solidity
+function decodeTargetAndCalldata(
+  bytes data
+) internal returns (address target, bytes args)
+```
+
+
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`data` | bytes | 
+
+
 ### patchAddress
 ```solidity
 function patchAddress(

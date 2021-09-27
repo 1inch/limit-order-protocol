@@ -1,4 +1,4 @@
-# ERC1155Proxy
+# ERC721ProxySafe
 
 
 
@@ -8,21 +8,24 @@
 ### constructor
 ```solidity
 function constructor(
-) internal
+  address _immutableOwner
+) public
 ```
 
 
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`_immutableOwner` | address | 
 
 
-### func_733NCGU
+### func_602HzuS
 ```solidity
-function func_733NCGU(
+function func_602HzuS(
   address from,
   address to,
-  uint256 amount,
-  contract IERC1155 token,
   uint256 tokenId,
-  bytes data
+  contract IERC721 token
 ) external
 ```
 
@@ -32,9 +35,7 @@ function func_733NCGU(
 | :--- | :--- | :------------------------------------------------------------------- |
 |`from` | address | 
 |`to` | address | 
-|`amount` | uint256 | 
-|`token` | contract IERC1155 | 
 |`tokenId` | uint256 | 
-|`data` | bytes | 
+|`token` | contract IERC721 | 
 
 
