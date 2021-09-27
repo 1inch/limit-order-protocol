@@ -7,10 +7,10 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./helpers/AmountCalculator.sol";
 import "./helpers/ChainlinkCalculator.sol";
-import "./helpers/ERC20Proxy.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/InteractiveNotificationReceiver.sol";
@@ -19,16 +19,13 @@ import "./libraries/ArgumentsDecoder.sol";
 
 /// @title 1inch Limit Order Protocol v1
 contract LimitOrderProtocol is
-    ImmutableOwner(address(this)),
     EIP712("1inch Limit Order Protocol", "2"),
     AmountCalculator,
     ChainlinkCalculator,
-    ERC20Proxy,
     NonceManager,
     PredicateHelper
 {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20;
     using Address for address;
     using ArgumentsDecoder for bytes;
 
