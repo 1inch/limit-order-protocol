@@ -4,7 +4,7 @@ const { name, version } = require('./helpers/orderUtils');
 const TokenMock = artifacts.require('TokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
-contract('LimitOrderProtocol', async function () {
+describe('LimitOrderProtocol', async function () {
     beforeEach(async function () {
         this.dai = await TokenMock.new('DAI', 'DAI');
         this.swap = await LimitOrderProtocol.new();

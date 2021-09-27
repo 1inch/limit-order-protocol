@@ -12,7 +12,8 @@ const AggregatorMock = artifacts.require('AggregatorMock');
 const { buildOrderData } = require('./helpers/orderUtils');
 const { toBN, cutLastArg } = require('./helpers/utils');
 
-contract('ChainLinkExample', async function ([_, wallet]) {
+describe('ChainLinkExample', async function () {
+    let _, wallet;
     const privatekey = '59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
     const account = Wallet.fromPrivateKey(Buffer.from(privatekey, 'hex'));
 
@@ -47,6 +48,10 @@ contract('ChainLinkExample', async function ([_, wallet]) {
             interaction: interaction,
         };
     }
+
+    before(async function () {
+        [_, wallet] = await web3.eth.getAccounts();
+    });
 
     beforeEach(async function () {
         this.dai = await TokenMock.new('DAI', 'DAI');

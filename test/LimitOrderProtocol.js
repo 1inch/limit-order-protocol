@@ -16,7 +16,9 @@ const { buildOrderData, buildOrderRFQData } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { addr1PrivateKey, toBN, cutLastArg } = require('./helpers/utils');
 
-contract('LimitOrderProtocol', async function ([addr1, wallet]) {
+describe('LimitOrderProtocol', async function () {
+    let addr1, wallet;
+
     const privatekey = '59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
     const account = Wallet.fromPrivateKey(Buffer.from(privatekey, 'hex'));
 
@@ -51,6 +53,10 @@ contract('LimitOrderProtocol', async function ([addr1, wallet]) {
             takerAssetData: takerAsset.contract.methods.transferFrom(taker, wallet, takerAmount).encodeABI(),
         };
     }
+
+    before(async function () {
+        [addr1, wallet] = await web3.eth.getAccounts();
+    });
 
     beforeEach(async function () {
         this.dai = await TokenMock.new('DAI', 'DAI');
