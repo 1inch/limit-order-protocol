@@ -1,4 +1,4 @@
-# InteractiveMaker
+# InteractiveNotificationReceiver
 
 
 
@@ -8,6 +8,7 @@
 ### notifyFillOrder
 ```solidity
 function notifyFillOrder(
+  address taker,
   address makerAsset,
   address takerAsset,
   uint256 makingAmount,
@@ -20,6 +21,7 @@ function notifyFillOrder(
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
+|`taker` | address | 
 |`makerAsset` | address | 
 |`takerAsset` | address | 
 |`makingAmount` | uint256 | 

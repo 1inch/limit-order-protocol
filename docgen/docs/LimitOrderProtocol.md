@@ -147,7 +147,7 @@ function fillOrderRFQ(
   bytes signature,
   uint256 makingAmount,
   uint256 takingAmount
-) external
+) external returns (uint256, uint256)
 ```
 Fills order's quote, fully or partially (whichever is possible)
 
@@ -159,6 +159,52 @@ Fills order's quote, fully or partially (whichever is possible)
 |`signature` | bytes | Signature to confirm quote ownership  
 |`makingAmount` | uint256 | Making amount  
 |`takingAmount` | uint256 | Taking amount 
+
+
+### fillOrderRFQToWithPermit
+```solidity
+function fillOrderRFQToWithPermit(
+  struct LimitOrderProtocol.OrderRFQ order,
+  bytes signature,
+  uint256 makingAmount,
+  uint256 takingAmount,
+  address target,
+  bytes permit
+) external returns (uint256, uint256)
+```
+
+
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`order` | struct LimitOrderProtocol.OrderRFQ | 
+|`signature` | bytes | 
+|`makingAmount` | uint256 | 
+|`takingAmount` | uint256 | 
+|`target` | address | 
+|`permit` | bytes | 
+
+
+### fillOrderRFQTo
+```solidity
+function fillOrderRFQTo(
+  struct LimitOrderProtocol.OrderRFQ order,
+  bytes signature,
+  uint256 makingAmount,
+  uint256 takingAmount,
+  address target
+) public returns (uint256, uint256)
+```
+
+
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`order` | struct LimitOrderProtocol.OrderRFQ | 
+|`signature` | bytes | 
+|`makingAmount` | uint256 | 
+|`takingAmount` | uint256 | 
+|`target` | address | 
 
 
 ### fillOrder
@@ -173,6 +219,31 @@ function fillOrder(
 ```
 Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
 
+
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`order` | struct LimitOrderProtocol.Order | Order quote to fill  
+|`signature` | bytes | Signature to confirm quote ownership  
+|`makingAmount` | uint256 | Making amount  
+|`takingAmount` | uint256 | Taking amount  
+|`thresholdAmount` | uint256 | If makingAmout > 0 this is max takingAmount, else it is min makingAmount 
+
+
+### fillOrderToWithPermit
+```solidity
+function fillOrderToWithPermit(
+  struct LimitOrderProtocol.Order order,
+  bytes signature,
+  uint256 makingAmount,
+  uint256 takingAmount,
+  uint256 thresholdAmount,
+  address target,
+  bytes permit
+) external returns (uint256, uint256)
+```
+
+
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
@@ -181,126 +252,32 @@ Fills an order. If one doesn't exist (first fill) it will be created using order
 |`makingAmount` | uint256 | 
 |`takingAmount` | uint256 | 
 |`thresholdAmount` | uint256 | 
+|`target` | address | 
+|`permit` | bytes | 
 
 
-### _hash
+### fillOrderTo
 ```solidity
-function _hash(
-  struct LimitOrderProtocol.Order order
-) internal returns (bytes32)
-```
-
-
-#### Parameters:
-| Name | Type | Description                                                          |
-| :--- | :--- | :------------------------------------------------------------------- |
-|`order` | struct LimitOrderProtocol.Order | 
-
-
-### _hash
-```solidity
-function _hash(
-  struct LimitOrderProtocol.OrderRFQ order
-) internal returns (bytes32)
-```
-
-
-#### Parameters:
-| Name | Type | Description                                                          |
-| :--- | :--- | :------------------------------------------------------------------- |
-|`order` | struct LimitOrderProtocol.OrderRFQ | 
-
-
-### _validate
-```solidity
-function _validate(
-  bytes makerAssetData,
-  bytes takerAssetData,
+function fillOrderTo(
+  struct LimitOrderProtocol.Order order,
   bytes signature,
-  bytes32 orderHash
-) internal
+  uint256 makingAmount,
+  uint256 takingAmount,
+  uint256 thresholdAmount,
+  address target
+) public returns (uint256, uint256)
 ```
 
 
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`makerAssetData` | bytes | 
-|`takerAssetData` | bytes | 
+|`order` | struct LimitOrderProtocol.Order | 
 |`signature` | bytes | 
-|`orderHash` | bytes32 | 
-
-
-### _callMakerAssetTransferFrom
-```solidity
-function _callMakerAssetTransferFrom(
-  address makerAsset,
-  bytes makerAssetData,
-  address taker,
-  uint256 makingAmount
-) internal
-```
-
-
-#### Parameters:
-| Name | Type | Description                                                          |
-| :--- | :--- | :------------------------------------------------------------------- |
-|`makerAsset` | address | 
-|`makerAssetData` | bytes | 
-|`taker` | address | 
 |`makingAmount` | uint256 | 
-
-
-### _callTakerAssetTransferFrom
-```solidity
-function _callTakerAssetTransferFrom(
-  address takerAsset,
-  bytes takerAssetData,
-  address taker,
-  uint256 takingAmount
-) internal
-```
-
-
-#### Parameters:
-| Name | Type | Description                                                          |
-| :--- | :--- | :------------------------------------------------------------------- |
-|`takerAsset` | address | 
-|`takerAssetData` | bytes | 
-|`taker` | address | 
 |`takingAmount` | uint256 | 
-
-
-### _callGetMakerAmount
-```solidity
-function _callGetMakerAmount(
-  struct LimitOrderProtocol.Order order,
-  uint256 takerAmount
-) internal returns (uint256 makerAmount)
-```
-
-
-#### Parameters:
-| Name | Type | Description                                                          |
-| :--- | :--- | :------------------------------------------------------------------- |
-|`order` | struct LimitOrderProtocol.Order | 
-|`takerAmount` | uint256 | 
-
-
-### _callGetTakerAmount
-```solidity
-function _callGetTakerAmount(
-  struct LimitOrderProtocol.Order order,
-  uint256 makerAmount
-) internal returns (uint256 takerAmount)
-```
-
-
-#### Parameters:
-| Name | Type | Description                                                          |
-| :--- | :--- | :------------------------------------------------------------------- |
-|`order` | struct LimitOrderProtocol.Order | 
-|`makerAmount` | uint256 | 
+|`thresholdAmount` | uint256 | 
+|`target` | address | 
 
 
 ## Events
@@ -320,6 +297,21 @@ event OrderFilled(
 |`maker` | address | 
 |`orderHash` | bytes32 | 
 |`remaining` | uint256 | 
+
+### OrderCanceled
+```solidity
+event OrderCanceled(
+  address maker,
+  bytes32 orderHash
+)
+```
+
+
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`maker` | address | 
+|`orderHash` | bytes32 | 
 
 ### OrderFilledRFQ
 ```solidity
