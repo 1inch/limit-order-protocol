@@ -278,8 +278,8 @@ contract('LimitOrderProtocol', async function ([addr1, wallet]) {
         const erc721proxy = await ERC721Proxy.new(this.swap.address);
 
         const order = buildOrder(this.swap, this.dai, this.weth, 10, 10);
-        this.makerAsset = this.swap.address;
-        this.takerAsset = this.swap.address;
+        this.makerAsset = erc721proxy.address;
+        this.takerAsset = erc721proxy.address;
         this.makerAssetData = erc721proxy.contract.methods.func_602HzuS(wallet, zeroAddress, 10, this.dai.address).encodeABI();
         this.takerAssetData = erc721proxy.contract.methods.func_602HzuS(zeroAddress, wallet, 10, this.weth.address).encodeABI();
 
