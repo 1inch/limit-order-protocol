@@ -8,10 +8,10 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@openzeppelin/contracts": "^4.3.1"
+    "@openzeppelin/contracts": "^4.3.2"
   },
   "devDependencies": {
-    "@nomiclabs/hardhat-truffle5": "^2.0.0",
+    "@nomiclabs/hardhat-truffle5": "^2.0.1",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/test-helpers": "^0.5.13",
     "chai": "^4.3.4",
@@ -25,14 +25,13 @@
     "eth-sig-util": "^3.0.1",
     "ethereumjs-util": "^7.1.0",
     "ethereumjs-wallet": "^1.0.1",
-    "hardhat": "^2.6.1",
-    "hardhat-deploy": "^0.9.0",
+    "hardhat": "^2.6.4",
+    "hardhat-deploy": "^0.9.1",
     "hardhat-gas-reporter": "^1.0.4",
     "rimraf": "^3.0.2",
-    "solc": "^0.8.7-fixed",
     "solhint": "^3.3.6",
     "solidity-coverage": "^0.7.17",
-    "solidity-docgen": "^0.5.13"
+    "solidity-docgen": "^0.5.14"
   },
   "scripts": {
     "clean": "rimraf artifacts cache coverage",
