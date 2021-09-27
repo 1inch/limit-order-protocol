@@ -3,8 +3,9 @@
 pragma solidity ^0.8.0;
 
 
-interface InteractiveMaker {
+interface InteractiveNotificationReceiver {
     function notifyFillOrder(
+        address taker,
         address makerAsset,
         address takerAsset,
         uint256 makingAmount,

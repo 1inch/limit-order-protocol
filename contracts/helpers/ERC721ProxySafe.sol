@@ -10,14 +10,14 @@ import "./ImmutableOwner.sol";
 
 /* solhint-disable func-name-mixedcase */
 
-contract ERC721Proxy is ImmutableOwner {
+contract ERC721ProxySafe is ImmutableOwner {
     constructor(address _immutableOwner) ImmutableOwner(_immutableOwner) {
-        require(ERC721Proxy.func_602HzuS.selector == bytes4(uint32(IERC20.transferFrom.selector)), "ERC721Proxy: bad selector");
+        require(ERC721ProxySafe.func_602HzuS.selector == bytes4(uint32(IERC20.transferFrom.selector)), "ERC721ProxySafe: bad selector");
     }
 
-    // keccak256("func_602HzuS(address,address,uint256,address)") == 0x23b872dd (IERC20.transferFrom)
+    // keccak256("func_602HzuS(address,address,uint256,address)" == 0x23b872dd (IERC20.transferFrom)
     function func_602HzuS(address from, address to, uint256 tokenId, IERC721 token) external onlyImmutableOwner {
-        token.transferFrom(from, to, tokenId);
+        token.safeTransferFrom(from, to, tokenId);
     }
 }
 

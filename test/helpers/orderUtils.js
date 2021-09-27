@@ -22,7 +22,7 @@ const Order = [
 ];
 
 const name = '1inch Limit Order Protocol';
-const version = '1';
+const version = '2';
 
 function buildOrderData (chainId, verifyingContract, order) {
     return {

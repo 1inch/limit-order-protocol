@@ -12,10 +12,10 @@ import "./ImmutableOwner.sol";
 
 contract ERC1155Proxy is ImmutableOwner {
     constructor(address _immutableOwner) ImmutableOwner(_immutableOwner) {
-        require(ERC1155Proxy.func_301JL5R.selector == bytes4(uint32(IERC20.transferFrom.selector) + 4), "ERC1155Proxy: bad selector");
+        require(ERC1155Proxy.func_301JL5R.selector == bytes4(uint32(IERC20.transferFrom.selector)), "ERC1155Proxy: bad selector");
     }
 
-    // keccak256("func_301JL5R(address,address,uint256,address,uint256,bytes)") == 0x23b872e1
+    // keccak256("func_733NCGU(address,address,uint256,address,uint256,bytes)") == 0x23b872dd (IERC20.transferFrom)
     function func_301JL5R(address from, address to, uint256 amount, IERC1155 token, uint256 tokenId, bytes calldata data) external onlyImmutableOwner {
         token.safeTransferFrom(from, to, tokenId, amount, data);
     }

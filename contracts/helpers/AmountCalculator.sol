@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import "../libraries/UncheckedAddress.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 /// @title A helper contract for calculations related to order amounts
 contract AmountCalculator {
-    using UncheckedAddress for address;
+    using Address for address;
 
     /// @notice Calculates maker amount
     /// @return Result Floored maker amount
@@ -23,7 +23,7 @@ contract AmountCalculator {
     /// @notice Performs an arbitrary call to target with data
     /// @return Result bytes transmuted to uint256
     function arbitraryStaticCall(address target, bytes memory data) external view returns(uint256) {
-        (bytes memory result) = target.uncheckedFunctionStaticCall(data, "AC: arbitraryStaticCall");
+        (bytes memory result) = target.functionStaticCall(data, "AC: arbitraryStaticCall");
         return abi.decode(result, (uint256));
     }
 }
