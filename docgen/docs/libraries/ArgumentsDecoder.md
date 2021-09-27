@@ -23,6 +23,7 @@ function decodeSelector(
 ```solidity
 function decodeAddress(
   bytes data,
+  uint256 offset,
   uint256 argumentIndex
 ) internal returns (address account)
 ```
@@ -32,6 +33,7 @@ function decodeAddress(
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
 |`data` | bytes | 
+|`offset` | uint256 | 
 |`argumentIndex` | uint256 | 
 
 
@@ -39,6 +41,7 @@ function decodeAddress(
 ```solidity
 function decodeUint256(
   bytes data,
+  uint256 offset,
   uint256 argumentIndex
 ) internal returns (uint256 value)
 ```
@@ -48,6 +51,25 @@ function decodeUint256(
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
 |`data` | bytes | 
+|`offset` | uint256 | 
+|`argumentIndex` | uint256 | 
+
+
+### decodeBool
+```solidity
+function decodeBool(
+  bytes data,
+  uint256 offset,
+  uint256 argumentIndex
+) internal returns (bool value)
+```
+
+
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`data` | bytes | 
+|`offset` | uint256 | 
 |`argumentIndex` | uint256 | 
 
 
