@@ -10,15 +10,21 @@ library ArgumentsDecoder {
         }
     }
 
-    function decodeAddress(bytes memory data, uint256 argumentIndex) internal pure returns(address account) {
+    function decodeAddress(bytes memory data, uint256 offset, uint256 argumentIndex) internal pure returns(address account) {
         assembly { // solhint-disable-line no-inline-assembly
-            account := mload(add(add(data, 0x24), mul(argumentIndex, 0x20)))
+            account := mload(add(add(data, offset), mul(argumentIndex, 0x20)))
         }
     }
 
-    function decodeUint256(bytes memory data, uint256 argumentIndex) internal pure returns(uint256 value) {
+    function decodeUint256(bytes memory data, uint256 offset, uint256 argumentIndex) internal pure returns(uint256 value) {
         assembly { // solhint-disable-line no-inline-assembly
-            value := mload(add(add(data, 0x24), mul(argumentIndex, 0x20)))
+            value := mload(add(add(data, offset), mul(argumentIndex, 0x20)))
+        }
+    }
+
+    function decodeBool(bytes memory data, uint256 offset, uint256 argumentIndex) internal pure returns(bool value) {
+        assembly { // solhint-disable-line no-inline-assembly
+            value := mload(add(add(data, offset), mul(argumentIndex, 0x20)))
         }
     }
 
