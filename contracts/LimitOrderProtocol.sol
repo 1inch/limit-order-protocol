@@ -80,6 +80,8 @@ contract LimitOrderProtocol is
         "OrderRFQ(uint256 info,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData)"
     );
 
+    uint256 constant public MAGIC_SALT_SKIPPING_INVALIDATION = 0xDEF1DEF1;
+
     uint256 constant private _FROM_INDEX = 0;
     uint256 constant private _TO_INDEX = 1;
     uint256 constant private _AMOUNT_INDEX = 2;
@@ -198,7 +200,7 @@ contract LimitOrderProtocol is
         uint256 expiration = uint128(order.info) >> 64;
         require(expiration == 0 || block.timestamp <= expiration, "LOP: order expired");  // solhint-disable-line not-rely-on-time
 
-        {  // Stack too deep
+        if (uint64(order.info) != MAGIC_SALT_SKIPPING_INVALIDATION) {
             // Validate double spend
             address maker = order.makerAssetData.decodeAddress(_FROM_INDEX);
             uint256 invalidatorSlot = uint64(order.info) >> 8;
@@ -283,7 +285,7 @@ contract LimitOrderProtocol is
 
         {  // Stack too deep
             uint256 remainingMakerAmount;
-            { // Stack too deep
+            if (uint64(order.salt) != MAGIC_SALT_SKIPPING_INVALIDATION) {
                 bool orderExists;
                 (orderExists, remainingMakerAmount) = _remaining[orderHash].trySub(1);
                 if (!orderExists) {
@@ -295,6 +297,9 @@ contract LimitOrderProtocol is
                         require(_remaining[orderHash] == 0, "LOP: reentrancy detected");
                     }
                 }
+            }
+            else {
+                remainingMakerAmount = order.makerAssetData.decodeUint256(_AMOUNT_INDEX);
             }
 
             // Check if order is valid
@@ -327,7 +332,11 @@ contract LimitOrderProtocol is
             // Update remaining amount in storage
             unchecked {
                 remainingMakerAmount = remainingMakerAmount - makingAmount;
-                _remaining[orderHash] = remainingMakerAmount + 1;
+            }
+            if (uint64(order.salt) != MAGIC_SALT_SKIPPING_INVALIDATION) {
+                unchecked {
+                    _remaining[orderHash] = remainingMakerAmount + 1;
+                }
             }
             emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
         }
