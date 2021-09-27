@@ -9,6 +9,7 @@ const TokenMock = artifacts.require('TokenMock');
 const WrappedTokenMock = artifacts.require('WrappedTokenMock');
 const InteractiveNotificationReceiverMock = artifacts.require('InteractiveNotificationReceiverMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
+const ERC721Proxy = artifacts.require('ERC721Proxy');
 
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
 const { buildOrderData, buildOrderRFQData } = require('./helpers/orderUtils');
@@ -273,12 +274,14 @@ contract('LimitOrderProtocol', async function ([addr1, wallet]) {
         });
     });
 
-    it('ERC20Proxy should work', async function () {
+    it('ERC721Proxy should work', async function () {
+        const erc721proxy = await ERC721Proxy.new(this.swap.address);
+
         const order = buildOrder(this.swap, this.dai, this.weth, 10, 10);
         this.makerAsset = this.swap.address;
         this.takerAsset = this.swap.address;
-        this.makerAssetData = this.swap.contract.methods.func_602HzuS(wallet, zeroAddress, 10, this.dai.address).encodeABI();
-        this.takerAssetData = this.swap.contract.methods.func_602HzuS(zeroAddress, wallet, 10, this.weth.address).encodeABI();
+        this.makerAssetData = erc721proxy.contract.methods.func_602HzuS(wallet, zeroAddress, 10, this.dai.address).encodeABI();
+        this.takerAssetData = erc721proxy.contract.methods.func_602HzuS(zeroAddress, wallet, 10, this.weth.address).encodeABI();
 
         const data = buildOrderData(this.chainId, this.swap.address, order);
         const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
