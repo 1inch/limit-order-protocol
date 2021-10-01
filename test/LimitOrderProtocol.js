@@ -22,11 +22,34 @@ describe('LimitOrderProtocol', async function () {
     const privatekey = '59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
     const account = Wallet.fromPrivateKey(Buffer.from(privatekey, 'hex'));
 
-    function buildOrder (exchange, makerAsset, takerAsset, makingAmount, takingAmount, allowedSender = constants.ZERO_ADDRESS, predicate = '0x', permit = '0x', interaction = '0x', receiver = constants.ZERO_ADDRESS) {
+    function buildOrder (
+        exchange,
+        makerAsset,
+        takerAsset,
+        makingAmount,
+        takingAmount,
+        allowedSender = constants.ZERO_ADDRESS,
+        predicate = '0x',
+        permit = '0x',
+        interaction = '0x',
+        receiver = constants.ZERO_ADDRESS,
+    ) {
         return buildOrderWithSalt(exchange, '1', makerAsset, takerAsset, makingAmount, takingAmount, allowedSender, predicate, permit, interaction, receiver);
     }
 
-    function buildOrderWithSalt (exchange, salt, makerAsset, takerAsset, makingAmount, takingAmount, allowedSender = constants.ZERO_ADDRESS, predicate = '0x', permit = '0x', interaction = '0x', receiver = constants.ZERO_ADDRESS) {
+    function buildOrderWithSalt (
+        exchange,
+        salt,
+        makerAsset,
+        takerAsset,
+        makingAmount,
+        takingAmount,
+        allowedSender = constants.ZERO_ADDRESS,
+        predicate = '0x',
+        permit = '0x',
+        interaction = '0x',
+        receiver = constants.ZERO_ADDRESS,
+    ) {
         return {
             salt: salt,
             makerAsset: makerAsset.address,
@@ -36,8 +59,8 @@ describe('LimitOrderProtocol', async function () {
             allowedSender,
             makingAmount,
             takingAmount,
-            makerAssetData: "0x",
-            takerAssetData: "0x",
+            makerAssetData: '0x',
+            takerAssetData: '0x',
             getMakerAmount: cutLastArg(exchange.contract.methods.getMakerAmount(makingAmount, takingAmount, 0).encodeABI()),
             getTakerAmount: cutLastArg(exchange.contract.methods.getTakerAmount(makingAmount, takingAmount, 0).encodeABI()),
             predicate: predicate,

@@ -32,7 +32,19 @@ describe('ChainLinkExample', async function () {
         return cutLastArg(swap.contract.methods.arbitraryStaticCall(calculator.address, data).encodeABI(), (64 - (data.length - 2) % 64) % 64);
     }
 
-    function buildOrder (salt, makerAsset, takerAsset, makingAmount, takingAmount, makerGetter, takerGetter, allowedSender = constants.ZERO_ADDRESS, predicate = '0x', permit = '0x', interaction = '0x') {
+    function buildOrder (
+        salt,
+        makerAsset,
+        takerAsset,
+        makingAmount,
+        takingAmount,
+        makerGetter,
+        takerGetter,
+        allowedSender = constants.ZERO_ADDRESS,
+        predicate = '0x',
+        permit = '0x',
+        interaction = '0x',
+    ) {
         return {
             salt: salt,
             makerAsset: makerAsset.address,
@@ -42,8 +54,8 @@ describe('ChainLinkExample', async function () {
             allowedSender,
             makingAmount,
             takingAmount,
-            makerAssetData: "0x",
-            takerAssetData: "0x",
+            makerAssetData: '0x',
+            takerAssetData: '0x',
             getMakerAmount: makerGetter,
             getTakerAmount: takerGetter,
             predicate,
