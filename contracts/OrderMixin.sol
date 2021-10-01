@@ -27,12 +27,6 @@ abstract contract OrderMixin is
     using Address for address;
     using ArgumentsDecoder for bytes;
 
-    // Expiration Mask:
-    //   predicate := PredicateHelper.timestampBelow(deadline)
-    //
-    // Maker Nonce:
-    //   predicate := this.nonceEquals(makerAddress, makerNonce)
-
     event OrderFilled(
         address indexed maker,
         bytes32 orderHash,
@@ -44,12 +38,28 @@ abstract contract OrderMixin is
         bytes32 orderHash
     );
 
+    struct StaticOrder {
+        uint256 salt;
+        address makerAsset;
+        address takerAsset;
+        address maker;
+        address receiver;
+        address allowedSender;  // equals to Zero address on public orders
+        uint256 makingAmount;
+        uint256 takingAmount;
+    }
+
     struct Order {
         uint256 salt;
         address makerAsset;
         address takerAsset;
-        bytes makerAssetData; // (transferFrom.selector, signer, ______, makerAmount, ...)
-        bytes takerAssetData; // (transferFrom.selector, sender, signer, takerAmount, ...)
+        address maker;
+        address receiver;
+        address allowedSender;  // equals to Zero address on public orders
+        uint256 makingAmount;
+        uint256 takingAmount;
+        bytes makerAssetData;
+        bytes takerAssetData;
         bytes getMakerAmount; // this.staticcall(abi.encodePacked(bytes, swapTakerAmount)) => (swapMakerAmount)
         bytes getTakerAmount; // this.staticcall(abi.encodePacked(bytes, swapMakerAmount)) => (swapTakerAmount)
         bytes predicate;      // this.staticcall(bytes) => (bool)
@@ -58,14 +68,8 @@ abstract contract OrderMixin is
     }
 
     bytes32 constant public LIMIT_ORDER_TYPEHASH = keccak256(
-        "Order(uint256 salt,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData,bytes getMakerAmount,bytes getTakerAmount,bytes predicate,bytes permit,bytes interaction)"
+        "Order(uint256 salt,address makerAsset,address takerAsset,address maker,address receiver,address allowedSender,uint256 makingAmount,uint256 takingAmount,bytes makerAssetData,bytes takerAssetData,bytes getMakerAmount,bytes getTakerAmount,bytes predicate,bytes permit,bytes interaction)"
     );
-
-    uint256 constant private _FUNCTION_CALL_OFFSET = 0x24;
-    uint256 constant private _BYTES_OFFSET = 0x20;
-    uint256 constant private _FROM_INDEX = 0;
-    uint256 constant private _TO_INDEX = 1;
-    uint256 constant private _AMOUNT_INDEX = 2;
 
     mapping(bytes32 => uint256) private _remaining;
 
@@ -73,9 +77,7 @@ abstract contract OrderMixin is
     function remaining(bytes32 orderHash) external view returns(uint256 amount) {
         amount = _remaining[orderHash];
         require(amount > 0, "LOP: Unknown order");
-        unchecked {
-            amount -= 1;
-        }
+        unchecked { amount -= 1; }
     }
 
     /// @notice Returns unfilled amount for order
@@ -96,7 +98,7 @@ abstract contract OrderMixin is
     function checkPredicate(Order memory order) public view returns(bool) {
         bytes memory result = address(this).functionStaticCall(order.predicate, "LOP: predicate call failed");
         require(result.length == 32, "LOP: invalid predicate return");
-        return result.decodeBool(_BYTES_OFFSET, 0);
+        return result.decodeBool();
     }
 
     /**
@@ -112,7 +114,7 @@ abstract contract OrderMixin is
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory result) = targets[i].call(data[i]);
             if (success && result.length > 0) {
-                success = result.decodeBool(_BYTES_OFFSET, 0);
+                success = result.decodeBool();
             }
             reason[i] = success ? bytes1("1") : bytes1("0");
         }
@@ -123,7 +125,7 @@ abstract contract OrderMixin is
 
     /// @notice Cancels order by setting remaining amount to zero
     function cancelOrder(Order memory order) external {
-        require(order.makerAssetData.decodeAddress(_FUNCTION_CALL_OFFSET, _FROM_INDEX) == msg.sender, "LOP: Access denied");
+        require(order.maker == msg.sender, "LOP: Access denied");
 
         bytes32 orderHash = _hash(order);
         require(_remaining[orderHash] != 1, "LOP: already filled");
@@ -156,7 +158,8 @@ abstract contract OrderMixin is
         address target,
         bytes calldata permit
     ) external returns(uint256, uint256) {
-        _permit(permit);
+        (address token, bytes calldata permitData) = permit.decodeTargetAndData();
+        _permit(token, permitData);
         return fillOrderTo(order, signature, makingAmount, takingAmount, thresholdAmount, target);
     }
 
@@ -171,22 +174,19 @@ abstract contract OrderMixin is
         bytes32 orderHash = _hash(order);
 
         {  // Stack too deep
-            uint256 remainingMakerAmount;
-            { // Stack too deep
-                remainingMakerAmount = _remaining[orderHash];
-                if (remainingMakerAmount == 0) {
-                    // First fill: validate order and permit maker asset
-                    _validate(order.makerAssetData, order.takerAssetData, signature, orderHash);
-                    remainingMakerAmount = order.makerAssetData.decodeUint256(_FUNCTION_CALL_OFFSET, _AMOUNT_INDEX);
-                    if (order.permit.length > 0) {
-                        _permit(order.permit);
-                        require(_remaining[orderHash] == 0, "LOP: reentrancy detected");
-                    }
-                } else {
-                    unchecked {
-                        remainingMakerAmount -= 1;
-                    }
+            uint256 remainingMakerAmount = _remaining[orderHash];
+            if (remainingMakerAmount == 0) {
+                // First fill: validate order and permit maker asset
+                require(order.allowedSender == address(0) || order.allowedSender == msg.sender, "LOP: private order");
+                require(SignatureChecker.isValidSignatureNow(order.maker, orderHash, signature), "LOP: bad signature");
+                remainingMakerAmount = order.makingAmount;
+                if (order.permit.length > 0) {
+                    (address token, bytes memory permit) = order.permit.decodeTargetAndCalldata();
+                    _permitMemory(token, permit);
+                    require(_remaining[orderHash] == 0, "LOP: reentrancy detected");
                 }
+            } else {
+                unchecked { remainingMakerAmount -= 1; }
             }
 
             // Check if order is valid
@@ -225,7 +225,16 @@ abstract contract OrderMixin is
         }
 
         // Taker => Maker
-        _callTakerAssetTransferFrom(order.takerAsset, order.takerAssetData, takingAmount);
+        _makeCall(
+            order.takerAsset,
+            abi.encodePacked(
+                IERC20.transferFrom.selector,
+                uint256(uint160(msg.sender)),
+                uint256(uint160(order.receiver == address(0) ? order.maker : order.receiver)),
+                takingAmount,
+                order.takerAssetData
+            )
+        );
 
         // Maker can handle funds interactively
         if (order.interaction.length > 0) {
@@ -236,24 +245,30 @@ abstract contract OrderMixin is
         }
 
         // Maker => Taker
-        _callMakerAssetTransferFrom(order.makerAsset, order.makerAssetData, target, makingAmount);
+        _makeCall(
+            order.makerAsset,
+            abi.encodePacked(
+                IERC20.transferFrom.selector,
+                uint256(uint160(order.maker)),
+                uint256(uint160(target)),
+                makingAmount,
+                order.makerAsset
+            )
+        );
 
         return (makingAmount, takingAmount);
     }
 
-    function _permit(bytes memory permitData) private {
-        (address token, bytes memory permit) = permitData.decodeTargetAndCalldata();
-        _permitMemory(token, permit);
-    }
-
     function _hash(Order memory order) private view returns(bytes32) {
+        StaticOrder memory staticOrder;
+        assembly {  // solhint-disable-line no-inline-assembly
+            staticOrder := order
+        }
         return _hashTypedDataV4(
             keccak256(
                 abi.encode(
                     LIMIT_ORDER_TYPEHASH,
-                    order.salt,
-                    order.makerAsset,
-                    order.takerAsset,
+                    staticOrder,
                     keccak256(order.makerAssetData),
                     keccak256(order.takerAssetData),
                     keccak256(order.getMakerAmount),
@@ -266,61 +281,32 @@ abstract contract OrderMixin is
         );
     }
 
-    function _validate(bytes memory makerAssetData, bytes memory takerAssetData, bytes memory signature, bytes32 orderHash) private view {
-        require(makerAssetData.length >= 100, "LOP: bad makerAssetData.length");
-        require(takerAssetData.length >= 100, "LOP: bad takerAssetData.length");
-        require(makerAssetData.decodeSelector() == IERC20.transferFrom.selector, "LOP: bad makerAssetData.selector");
-        require(takerAssetData.decodeSelector() == IERC20.transferFrom.selector, "LOP: bad takerAssetData.selector");
-
-        address maker = address(makerAssetData.decodeAddress(_FUNCTION_CALL_OFFSET, _FROM_INDEX));
-        require(SignatureChecker.isValidSignatureNow(maker, orderHash, signature), "LOP: bad signature");
-    }
-
-    function _callMakerAssetTransferFrom(address makerAsset, bytes memory makerAssetData, address taker, uint256 makingAmount) private {
-        // Patch receiver or validate private order
-        address orderTakerAddress = makerAssetData.decodeAddress(_FUNCTION_CALL_OFFSET, _TO_INDEX);
-        if (orderTakerAddress != address(0)) {
-            require(orderTakerAddress == msg.sender, "LOP: private order");
-        }
-        if (orderTakerAddress != taker) {
-            makerAssetData.patchAddress(_TO_INDEX, taker);
-        }
-        _makeCall(makerAsset, makerAssetData, makingAmount);
-    }
-
-    function _callTakerAssetTransferFrom(address takerAsset, bytes memory takerAssetData, uint256 takingAmount) private {
-        // Patch spender
-        takerAssetData.patchAddress(_FROM_INDEX, msg.sender);
-        _makeCall(takerAsset, takerAssetData, takingAmount);
-    }
-
-    function _makeCall(address asset, bytes memory assetData, uint256 amount) private {
-        assetData.patchUint256(_AMOUNT_INDEX, amount);
+    function _makeCall(address asset, bytes memory assetData) private {
         bytes memory result = asset.functionCall(assetData, "LOP: asset.call failed");
         if (result.length > 0) {
-            require(result.decodeBool(_BYTES_OFFSET, 0), "LOP: asset.call bad result");
+            require(result.decodeBool(), "LOP: asset.call bad result");
         }
     }
 
     function _callGetMakerAmount(Order memory order, uint256 takerAmount) private view returns(uint256 makerAmount) {
         if (order.getMakerAmount.length == 0) {
             // On empty order.getMakerAmount calldata only whole fills are allowed
-            require(takerAmount == order.takerAssetData.decodeUint256(_FUNCTION_CALL_OFFSET, _AMOUNT_INDEX), "LOP: wrong taker amount");
-            return order.makerAssetData.decodeUint256(_FUNCTION_CALL_OFFSET, _AMOUNT_INDEX);
+            require(takerAmount == order.takingAmount, "LOP: wrong taker amount");
+            return order.makingAmount;
         }
         bytes memory result = address(this).functionStaticCall(abi.encodePacked(order.getMakerAmount, takerAmount), "LOP: getMakerAmount call failed");
         require(result.length == 32, "LOP: invalid getMakerAmount ret");
-        return result.decodeUint256(_BYTES_OFFSET, 0);
+        return result.decodeUint256();
     }
 
     function _callGetTakerAmount(Order memory order, uint256 makerAmount) private view returns(uint256 takerAmount) {
         if (order.getTakerAmount.length == 0) {
             // On empty order.getTakerAmount calldata only whole fills are allowed
-            require(makerAmount == order.makerAssetData.decodeUint256(_FUNCTION_CALL_OFFSET, _AMOUNT_INDEX), "LOP: wrong maker amount");
-            return order.takerAssetData.decodeUint256(_FUNCTION_CALL_OFFSET, _AMOUNT_INDEX);
+            require(makerAmount == order.makingAmount, "LOP: wrong maker amount");
+            return order.takingAmount;
         }
         bytes memory result = address(this).functionStaticCall(abi.encodePacked(order.getTakerAmount, makerAmount), "LOP: getTakerAmount call failed");
         require(result.length == 32, "LOP: invalid getTakerAmount ret");
-        return result.decodeUint256(_BYTES_OFFSET, 0);
+        return result.decodeUint256();
     }
 }

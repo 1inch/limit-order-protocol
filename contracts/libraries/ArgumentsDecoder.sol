@@ -4,27 +4,15 @@ pragma solidity ^0.8.0;
 
 
 library ArgumentsDecoder {
-    function decodeSelector(bytes memory data) internal pure returns(bytes4 selector) {
+    function decodeUint256(bytes memory data) internal pure returns(uint256 value) {
         assembly { // solhint-disable-line no-inline-assembly
-            selector := mload(add(data, 0x20))
+            value := mload(add(data, 0x20))
         }
     }
 
-    function decodeAddress(bytes memory data, uint256 offset, uint256 argumentIndex) internal pure returns(address account) {
+    function decodeBool(bytes memory data) internal pure returns(bool value) {
         assembly { // solhint-disable-line no-inline-assembly
-            account := mload(add(add(data, offset), mul(argumentIndex, 0x20)))
-        }
-    }
-
-    function decodeUint256(bytes memory data, uint256 offset, uint256 argumentIndex) internal pure returns(uint256 value) {
-        assembly { // solhint-disable-line no-inline-assembly
-            value := mload(add(add(data, offset), mul(argumentIndex, 0x20)))
-        }
-    }
-
-    function decodeBool(bytes memory data, uint256 offset, uint256 argumentIndex) internal pure returns(bool value) {
-        assembly { // solhint-disable-line no-inline-assembly
-            value := mload(add(add(data, offset), mul(argumentIndex, 0x20)))
+            value := mload(add(data, 0x20))
         }
     }
 
@@ -36,15 +24,10 @@ library ArgumentsDecoder {
         }
     }
 
-    function patchAddress(bytes memory data, uint256 argumentIndex, address account) internal pure {
-        assembly { // solhint-disable-line no-inline-assembly
-            mstore(add(add(data, 0x24), mul(argumentIndex, 0x20)), account)
+    function decodeTargetAndData(bytes calldata data) internal pure returns(address target, bytes calldata args) {
+        assembly {  // solhint-disable-line no-inline-assembly
+            target := shr(96, calldataload(data.offset))
         }
-    }
-
-    function patchUint256(bytes memory data, uint256 argumentIndex, uint256 value) internal pure {
-        assembly { // solhint-disable-line no-inline-assembly
-            mstore(add(add(data, 0x24), mul(argumentIndex, 0x20)), value)
-        }
+        args = data[20:];
     }
 }
