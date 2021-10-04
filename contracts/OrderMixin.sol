@@ -12,7 +12,6 @@ import "./helpers/ChainlinkCalculator.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/InteractiveNotificationReceiver.sol";
-import "./interfaces/IDaiLikePermit.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Permitable.sol";
 
