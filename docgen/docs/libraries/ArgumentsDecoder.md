@@ -5,44 +5,10 @@
 
 
 ## Functions
-### decodeSelector
-```solidity
-function decodeSelector(
-  bytes data
-) internal returns (bytes4 selector)
-```
-
-
-#### Parameters:
-| Name | Type | Description                                                          |
-| :--- | :--- | :------------------------------------------------------------------- |
-|`data` | bytes | 
-
-
-### decodeAddress
-```solidity
-function decodeAddress(
-  bytes data,
-  uint256 offset,
-  uint256 argumentIndex
-) internal returns (address account)
-```
-
-
-#### Parameters:
-| Name | Type | Description                                                          |
-| :--- | :--- | :------------------------------------------------------------------- |
-|`data` | bytes | 
-|`offset` | uint256 | 
-|`argumentIndex` | uint256 | 
-
-
 ### decodeUint256
 ```solidity
 function decodeUint256(
-  bytes data,
-  uint256 offset,
-  uint256 argumentIndex
+  bytes data
 ) internal returns (uint256 value)
 ```
 
@@ -51,16 +17,12 @@ function decodeUint256(
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
 |`data` | bytes | 
-|`offset` | uint256 | 
-|`argumentIndex` | uint256 | 
 
 
 ### decodeBool
 ```solidity
 function decodeBool(
-  bytes data,
-  uint256 offset,
-  uint256 argumentIndex
+  bytes data
 ) internal returns (bool value)
 ```
 
@@ -69,8 +31,6 @@ function decodeBool(
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
 |`data` | bytes | 
-|`offset` | uint256 | 
-|`argumentIndex` | uint256 | 
 
 
 ### decodeTargetAndCalldata
@@ -87,13 +47,11 @@ function decodeTargetAndCalldata(
 |`data` | bytes | 
 
 
-### patchAddress
+### decodeTargetAndData
 ```solidity
-function patchAddress(
-  bytes data,
-  uint256 argumentIndex,
-  address account
-) internal
+function decodeTargetAndData(
+  bytes data
+) internal returns (address target, bytes args)
 ```
 
 
@@ -101,25 +59,5 @@ function patchAddress(
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
 |`data` | bytes | 
-|`argumentIndex` | uint256 | 
-|`account` | address | 
-
-
-### patchUint256
-```solidity
-function patchUint256(
-  bytes data,
-  uint256 argumentIndex,
-  uint256 value
-) internal
-```
-
-
-#### Parameters:
-| Name | Type | Description                                                          |
-| :--- | :--- | :------------------------------------------------------------------- |
-|`data` | bytes | 
-|`argumentIndex` | uint256 | 
-|`value` | uint256 | 
 
 
