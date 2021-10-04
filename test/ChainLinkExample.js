@@ -1,4 +1,4 @@
-const { ether, expectRevert } = require('@openzeppelin/test-helpers');
+const { ether, expectRevert, constants } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 
 const ethSigUtil = require('eth-sig-util');
@@ -17,8 +17,6 @@ describe('ChainLinkExample', async function () {
     const privatekey = '59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d';
     const account = Wallet.fromPrivateKey(Buffer.from(privatekey, 'hex'));
 
-    const zeroAddress = '0x0000000000000000000000000000000000000000';
-
     function buildInverseWithSpread (inverse, spread) {
         return toBN(spread).setn(255, inverse).toString();
     }
@@ -34,18 +32,35 @@ describe('ChainLinkExample', async function () {
         return cutLastArg(swap.contract.methods.arbitraryStaticCall(calculator.address, data).encodeABI(), (64 - (data.length - 2) % 64) % 64);
     }
 
-    function buildOrder (salt, makerAsset, takerAsset, makerAmount, takerAmount, makerGetter, takerGetter, taker = zeroAddress, predicate = '0x', permit = '0x', interaction = '0x') {
+    function buildOrder (
+        salt,
+        makerAsset,
+        takerAsset,
+        makingAmount,
+        takingAmount,
+        makerGetter,
+        takerGetter,
+        allowedSender = constants.ZERO_ADDRESS,
+        predicate = '0x',
+        permit = '0x',
+        interaction = '0x',
+    ) {
         return {
             salt: salt,
             makerAsset: makerAsset.address,
             takerAsset: takerAsset.address,
-            makerAssetData: makerAsset.contract.methods.transferFrom(wallet, taker, makerAmount).encodeABI(),
-            takerAssetData: takerAsset.contract.methods.transferFrom(taker, wallet, takerAmount).encodeABI(),
+            maker: wallet,
+            receiver: constants.ZERO_ADDRESS,
+            allowedSender,
+            makingAmount,
+            takingAmount,
+            makerAssetData: '0x',
+            takerAssetData: '0x',
             getMakerAmount: makerGetter,
             getTakerAmount: takerGetter,
-            predicate: predicate,
-            permit: permit,
-            interaction: interaction,
+            predicate,
+            permit,
+            interaction,
         };
     }
 
@@ -87,7 +102,7 @@ describe('ChainLinkExample', async function () {
     it('eth -> dai chainlink+eps order', async function () {
         // chainlink rate is 1 eth = 4000 dai
         const order = buildOrder(
-            '1', this.weth, this.dai, ether('1'), ether('4000'),
+            '1', this.weth, this.dai, ether('1').toString(), ether('4000').toString(),
             buildSinglePriceGetter(this.swap, this.calculator, this.daiOracle, false, '990000000'), // maker offset is 0.99
             buildSinglePriceGetter(this.swap, this.calculator, this.daiOracle, true, '1010000000'), // taker offset is 1.01
         );
@@ -115,10 +130,10 @@ describe('ChainLinkExample', async function () {
         const predicate = this.swap.contract.methods.lt(ether('6.32'), this.calculator.address, calculatorCall).encodeABI();
 
         const order = buildOrder(
-            '1', this.inch, this.dai, makerAmount, takerAmount,
+            '1', this.inch, this.dai, makerAmount.toString(), takerAmount.toString(),
             cutLastArg(this.swap.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI()),
             cutLastArg(this.swap.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI()),
-            zeroAddress,
+            constants.ZERO_ADDRESS,
             predicate,
         );
         const data = buildOrderData(this.chainId, this.swap.address, order);
@@ -144,10 +159,10 @@ describe('ChainLinkExample', async function () {
         const predicate = this.swap.contract.methods.lt(ether('6.31'), this.calculator.address, calculatorCall).encodeABI();
 
         const order = buildOrder(
-            '1', this.inch, this.dai, makerAmount, takerAmount,
+            '1', this.inch, this.dai, makerAmount.toString(), takerAmount.toString(),
             cutLastArg(this.swap.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI()),
             cutLastArg(this.swap.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI()),
-            zeroAddress,
+            constants.ZERO_ADDRESS,
             predicate,
         );
         const data = buildOrderData(this.chainId, this.swap.address, order);
@@ -166,10 +181,10 @@ describe('ChainLinkExample', async function () {
         const predicate = this.swap.contract.methods.lt(ether('0.0002501'), this.daiOracle.address, latestAnswerCall).encodeABI();
 
         const order = buildOrder(
-            '1', this.weth, this.dai, makerAmount, takerAmount,
+            '1', this.weth, this.dai, makerAmount.toString(), takerAmount.toString(),
             cutLastArg(this.swap.contract.methods.getMakerAmount(makerAmount, takerAmount, 0).encodeABI()),
             cutLastArg(this.swap.contract.methods.getTakerAmount(makerAmount, takerAmount, 0).encodeABI()),
-            zeroAddress,
+            constants.ZERO_ADDRESS,
             predicate,
         );
         const data = buildOrderData(this.chainId, this.swap.address, order);

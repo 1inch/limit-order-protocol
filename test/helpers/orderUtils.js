@@ -4,14 +4,21 @@ const OrderRFQ = [
     { name: 'info', type: 'uint256' },
     { name: 'makerAsset', type: 'address' },
     { name: 'takerAsset', type: 'address' },
-    { name: 'makerAssetData', type: 'bytes' },
-    { name: 'takerAssetData', type: 'bytes' },
+    { name: 'maker', type: 'address' },
+    { name: 'allowedSender', type: 'address' },
+    { name: 'makingAmount', type: 'uint256' },
+    { name: 'takingAmount', type: 'uint256' },
 ];
 
 const Order = [
     { name: 'salt', type: 'uint256' },
     { name: 'makerAsset', type: 'address' },
     { name: 'takerAsset', type: 'address' },
+    { name: 'maker', type: 'address' },
+    { name: 'receiver', type: 'address' },
+    { name: 'allowedSender', type: 'address' },
+    { name: 'makingAmount', type: 'uint256' },
+    { name: 'takingAmount', type: 'uint256' },
     { name: 'makerAssetData', type: 'bytes' },
     { name: 'takerAssetData', type: 'bytes' },
     { name: 'getMakerAmount', type: 'bytes' },
