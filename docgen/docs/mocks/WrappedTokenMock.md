@@ -1,6 +1,6 @@
 # WrappedTokenMock
 
-
+Generic token for testing purposes with deposit/withdraw capabilities
 
 
 

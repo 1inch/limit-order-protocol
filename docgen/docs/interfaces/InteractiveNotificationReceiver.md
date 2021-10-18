@@ -1,6 +1,6 @@
 # InteractiveNotificationReceiver
 
-
+Interface for interactor which acts between `maker => taker` and `taker => maker` transfers.
 
 
 
@@ -16,7 +16,8 @@ function notifyFillOrder(
   bytes interactiveData
 ) external
 ```
-
+Callback method that gets called after taker transferred funds to maker but before
+the opposite transfer happened
 
 #### Parameters:
 | Name | Type | Description                                                          |

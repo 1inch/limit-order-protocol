@@ -1,6 +1,6 @@
 # OrderRFQMixin
 
-
+Order RFQ Limits v1 mixin
 
 
 
@@ -71,17 +71,20 @@ function fillOrderRFQToWithPermit(
   bytes permit
 ) external returns (uint256, uint256)
 ```
+Fills Same as `fillOrderRFQ` but calls permit first,
+allowing to approve token spending and make a swap in one transaction.
+Also allows to specify funds destination instead of `msg.sender`
 
 
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`order` | struct OrderRFQMixin.OrderRFQ | 
-|`signature` | bytes | 
-|`makingAmount` | uint256 | 
-|`takingAmount` | uint256 | 
-|`target` | address | 
-|`permit` | bytes | 
+|`order` | struct OrderRFQMixin.OrderRFQ | Order quote to fill  
+|`signature` | bytes | Signature to confirm quote ownership  
+|`makingAmount` | uint256 | Making amount  
+|`takingAmount` | uint256 | Taking amount  
+|`target` | address | Address that will receive swap funds  
+|`permit` | bytes | Should consist of abiencoded token address and encoded `IERC20Permit.permit` call. See tests for examples 
 
 
 ### fillOrderRFQTo
@@ -94,16 +97,17 @@ function fillOrderRFQTo(
   address target
 ) public returns (uint256, uint256)
 ```
+Same as `fillOrderRFQ` but allows to specify funds destination instead of `msg.sender`
 
 
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`order` | struct OrderRFQMixin.OrderRFQ | 
-|`signature` | bytes | 
-|`makingAmount` | uint256 | 
-|`takingAmount` | uint256 | 
-|`target` | address | 
+|`order` | struct OrderRFQMixin.OrderRFQ | Order quote to fill  
+|`signature` | bytes | Signature to confirm quote ownership  
+|`makingAmount` | uint256 | Making amount  
+|`takingAmount` | uint256 | Taking amount  
+|`target` | address | Address that will receive swap funds 
 
 
 ## Events
@@ -114,7 +118,7 @@ event OrderFilledRFQ(
   uint256 makingAmount
 )
 ```
-
+Emitted when RFQ gets filled
 
 #### Parameters:
 | Name | Type | Description                                                          |

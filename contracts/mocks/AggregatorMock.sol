@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import "../interfaces/AggregatorInterface.sol";
 
-
+/// @title Mock oracle that always returns specified token price
 contract AggregatorMock is AggregatorInterface {
     int256 private immutable _answer;
 

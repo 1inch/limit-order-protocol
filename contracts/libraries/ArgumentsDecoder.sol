@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-
+/// @title Library with gas efficient alternatives to `abi.decode`
 library ArgumentsDecoder {
     function decodeUint256(bytes memory data) internal pure returns(uint256 value) {
         assembly { // solhint-disable-line no-inline-assembly

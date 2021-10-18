@@ -3,10 +3,14 @@
 pragma solidity ^0.8.0;
 
 
+/// @title Library that allows to parse unsuccessful arbitrary calls revert reasons.
+/// See https://solidity.readthedocs.io/en/latest/control-structures.html#revert for details.
+/// Note that we assume revert reason being abi-encoded as Error(string) so it may fail to parse reason
+/// if structured reverts appear in the future.
+///
+/// All unsuccessful parsings get encoded as Unknown(data) string
 library RevertReasonParser {
     function parse(bytes memory data, string memory prefix) internal pure returns (string memory) {
-        // https://solidity.readthedocs.io/en/latest/control-structures.html#revert
-        // We assume that revert reason is abi-encoded as Error(string)
         bytes4 selector;
         assembly {  // solhint-disable-line no-inline-assembly
             selector := mload(add(data, 0x20))

@@ -21,7 +21,7 @@ contract AmountCalculator {
     }
 
     /// @notice Performs an arbitrary call to target with data
-    /// @return Result bytes transmuted to uint256
+    /// @return Result Bytes transmuted to uint256
     function arbitraryStaticCall(address target, bytes memory data) external view returns(uint256) {
         (bytes memory result) = target.functionStaticCall(data, "AC: arbitraryStaticCall");
         return abi.decode(result, (uint256));

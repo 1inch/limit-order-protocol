@@ -1,6 +1,6 @@
 # OrderMixin
 
-
+Order Limits v1 mixin
 
 
 
@@ -117,7 +117,7 @@ Fills an order. If one doesn't exist (first fill) it will be created using order
 |`signature` | bytes | Signature to confirm quote ownership  
 |`makingAmount` | uint256 | Making amount  
 |`takingAmount` | uint256 | Taking amount  
-|`thresholdAmount` | uint256 | If makingAmout > 0 this is max takingAmount, else it is min makingAmount 
+|`thresholdAmount` | uint256 | Specifies maximum allowed takingAmount it's zero. Otherwise minimum allowed makingAmount 
 
 
 ### fillOrderToWithPermit
@@ -132,18 +132,21 @@ function fillOrderToWithPermit(
   bytes permit
 ) external returns (uint256, uint256)
 ```
+Same as `fillOrder` but calls permit first,
+allowing to approve token spending and make a swap in one transaction.
+Also allows to specify funds destination instead of `msg.sender`
 
 
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`order` | struct OrderMixin.Order | 
-|`signature` | bytes | 
-|`makingAmount` | uint256 | 
-|`takingAmount` | uint256 | 
-|`thresholdAmount` | uint256 | 
-|`target` | address | 
-|`permit` | bytes | 
+|`order` | struct OrderMixin.Order | Order quote to fill  
+|`signature` | bytes | Signature to confirm quote ownership  
+|`makingAmount` | uint256 | Making amount  
+|`takingAmount` | uint256 | Taking amount  
+|`thresholdAmount` | uint256 | Specifies maximum allowed takingAmount it's zero. Otherwise minimum allowed makingAmount  
+|`target` | address | Address that will receive swap funds  
+|`permit` | bytes | Should consist of abiencoded token address and encoded `IERC20Permit.permit` call. See tests for examples 
 
 
 ### fillOrderTo
@@ -157,17 +160,18 @@ function fillOrderTo(
   address target
 ) public returns (uint256, uint256)
 ```
+Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
 
 
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`order` | struct OrderMixin.Order | 
-|`signature` | bytes | 
-|`makingAmount` | uint256 | 
-|`takingAmount` | uint256 | 
-|`thresholdAmount` | uint256 | 
-|`target` | address | 
+|`order` | struct OrderMixin.Order | Order quote to fill  
+|`signature` | bytes | Signature to confirm quote ownership  
+|`makingAmount` | uint256 | Making amount  
+|`takingAmount` | uint256 | Taking amount  
+|`thresholdAmount` | uint256 | Specifies maximum allowed takingAmount it's zero. Otherwise minimum allowed makingAmount  
+|`target` | address | Address that will receive swap funds 
 
 
 ## Events
@@ -179,7 +183,7 @@ event OrderFilled(
   uint256 remaining
 )
 ```
-
+Emitted every time order gets filled, including partial fills
 
 #### Parameters:
 | Name | Type | Description                                                          |
@@ -195,7 +199,7 @@ event OrderCanceled(
   bytes32 orderHash
 )
 ```
-
+Emitted when order gets cancelled
 
 #### Parameters:
 | Name | Type | Description                                                          |

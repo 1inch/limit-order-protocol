@@ -15,6 +15,8 @@ contract ERC721ProxySafe is ImmutableOwner {
         require(ERC721ProxySafe.func_602HzuS.selector == bytes4(uint32(IERC20.transferFrom.selector)), "ERC721ProxySafe: bad selector");
     }
 
+    /// @notice Proxy transfer method for `IERC721.transferFrom`. Selector must match `IERC20.transferFrom`.
+    /// Note that `uint256` encodes token id unlike `IERC20` which expects amount there.
     // keccak256("func_602HzuS(address,address,uint256,address)" == 0x23b872dd (IERC20.transferFrom)
     function func_602HzuS(address from, address to, uint256 tokenId, IERC721 token) external onlyImmutableOwner {
         token.safeTransferFrom(from, to, tokenId);

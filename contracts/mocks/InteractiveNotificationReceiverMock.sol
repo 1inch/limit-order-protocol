@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import "../libraries/ArgumentsDecoder.sol";
 import "../interfaces/InteractiveNotificationReceiver.sol";
-import "./interfaces/WrappedTokenInterface.sol";
+import "./interfaces/IWithdrawable.sol";
 
 contract InteractiveNotificationReceiverMock is InteractiveNotificationReceiver {
     using ArgumentsDecoder for bytes;
@@ -29,7 +29,7 @@ contract InteractiveNotificationReceiverMock is InteractiveNotificationReceiver 
         assembly {
             makerAddress := shr(96, calldataload(interactiveData.offset))
         }
-        WrappedTokenInterface(takerAsset).withdraw(takingAmount);
+        IWithdrawable(takerAsset).withdraw(takingAmount);
         makerAddress.transfer(takingAmount);
     }
 }
