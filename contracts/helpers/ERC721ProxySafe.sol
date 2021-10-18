@@ -12,7 +12,7 @@ import "./ImmutableOwner.sol";
 
 contract ERC721ProxySafe is ImmutableOwner {
     constructor(address _immutableOwner) ImmutableOwner(_immutableOwner) {
-        require(ERC721ProxySafe.func_602HzuS.selector == bytes4(uint32(IERC20.transferFrom.selector)), "ERC721ProxySafe: bad selector");
+        require(ERC721ProxySafe.func_602HzuS.selector == IERC20.transferFrom.selector, "ERC721ProxySafe: bad selector");
     }
 
     // keccak256("func_602HzuS(address,address,uint256,address)" == 0x23b872dd (IERC20.transferFrom)
