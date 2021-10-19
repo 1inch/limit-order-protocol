@@ -1,6 +1,6 @@
 # ArgumentsDecoder
 
-
+Library with gas efficient alternatives to `abi.decode`
 
 
 

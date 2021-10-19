@@ -1,6 +1,6 @@
 # Permitable
 
-
+Base contract with common permit handling logics
 
 
 

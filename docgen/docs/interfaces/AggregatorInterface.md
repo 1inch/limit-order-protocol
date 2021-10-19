@@ -1,6 +1,6 @@
 # AggregatorInterface
 
-
+Interface for oracles that provide token prices and timestamp information
 
 
 
