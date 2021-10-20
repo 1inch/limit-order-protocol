@@ -68,4 +68,4 @@ Performs an arbitrary call to target with data
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| address | bytes transmuted to uint256
+|`Result`| address | Bytes transmuted to uint256

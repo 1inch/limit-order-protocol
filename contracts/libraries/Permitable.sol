@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.9;
+pragma abicoder v1;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-IERC20Permit.sol";
 import "./RevertReasonParser.sol";
 import "../interfaces/IDaiLikePermit.sol";
 
-contract Permitable {
+/// @title Base contract with common permit handling logics
+abstract contract Permitable {
     function _permit(address token, bytes calldata permit) internal {
         if (permit.length > 0) {
             bool success;

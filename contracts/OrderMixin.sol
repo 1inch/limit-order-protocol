@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
@@ -15,6 +15,7 @@ import "./interfaces/InteractiveNotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Permitable.sol";
 
+/// @title Order Limits v1 mixin
 abstract contract OrderMixin is
     EIP712,
     AmountCalculator,
@@ -26,17 +27,20 @@ abstract contract OrderMixin is
     using Address for address;
     using ArgumentsDecoder for bytes;
 
+    /// @notice Emitted every time order gets filled, including partial fills
     event OrderFilled(
         address indexed maker,
         bytes32 orderHash,
         uint256 remaining
     );
 
+    /// @notice Emitted when order gets cancelled
     event OrderCanceled(
         address indexed maker,
         bytes32 orderHash
     );
 
+    // Fixed-size order part with core information
     struct StaticOrder {
         uint256 salt;
         address makerAsset;
@@ -48,6 +52,7 @@ abstract contract OrderMixin is
         uint256 takingAmount;
     }
 
+    // `StaticOrder` extension including variable-sized additional order meta information
     struct Order {
         uint256 salt;
         address makerAsset;
@@ -70,6 +75,8 @@ abstract contract OrderMixin is
         "Order(uint256 salt,address makerAsset,address takerAsset,address maker,address receiver,address allowedSender,uint256 makingAmount,uint256 takingAmount,bytes makerAssetData,bytes takerAssetData,bytes getMakerAmount,bytes getTakerAmount,bytes predicate,bytes permit,bytes interaction)"
     );
 
+    /// @notice Stores unfilled amounts for each order plus one.
+    /// Therefore 0 means order doesn't exist and 1 means order was filled
     mapping(bytes32 => uint256) private _remaining;
 
     /// @notice Returns unfilled amount for order. Throws if order does not exist
@@ -137,7 +144,7 @@ abstract contract OrderMixin is
     /// @param signature Signature to confirm quote ownership
     /// @param makingAmount Making amount
     /// @param takingAmount Taking amount
-    /// @param thresholdAmount If makingAmout > 0 this is max takingAmount, else it is min makingAmount
+    /// @param thresholdAmount Specifies maximum allowed takingAmount it's zero. Otherwise minimum allowed makingAmount
     function fillOrder(
         Order memory order,
         bytes calldata signature,
@@ -148,6 +155,17 @@ abstract contract OrderMixin is
         return fillOrderTo(order, signature, makingAmount, takingAmount, thresholdAmount, msg.sender);
     }
 
+    /// @notice Same as `fillOrder` but calls permit first,
+    /// allowing to approve token spending and make a swap in one transaction.
+    /// Also allows to specify funds destination instead of `msg.sender`
+    /// @param order Order quote to fill
+    /// @param signature Signature to confirm quote ownership
+    /// @param makingAmount Making amount
+    /// @param takingAmount Taking amount
+    /// @param thresholdAmount Specifies maximum allowed takingAmount it's zero. Otherwise minimum allowed makingAmount
+    /// @param target Address that will receive swap funds
+    /// @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
+    /// See tests for examples
     function fillOrderToWithPermit(
         Order memory order,
         bytes calldata signature,
@@ -162,6 +180,13 @@ abstract contract OrderMixin is
         return fillOrderTo(order, signature, makingAmount, takingAmount, thresholdAmount, target);
     }
 
+    /// @notice Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
+    /// @param order Order quote to fill
+    /// @param signature Signature to confirm quote ownership
+    /// @param makingAmount Making amount
+    /// @param takingAmount Taking amount
+    /// @param thresholdAmount Specifies maximum allowed takingAmount it's zero. Otherwise minimum allowed makingAmount
+    /// @param target Address that will receive swap funds
     function fillOrderTo(
         Order memory order,
         bytes calldata signature,

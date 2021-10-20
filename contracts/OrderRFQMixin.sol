@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
@@ -9,10 +9,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./helpers/AmountCalculator.sol";
 import "./libraries/Permitable.sol";
 
-
+/// @title Order RFQ Limits v1 mixin
 abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
     using SafeERC20 for IERC20;
 
+    /// @notice Emitted when RFQ gets filled
     event OrderFilledRFQ(
         bytes32 orderHash,
         uint256 makingAmount
@@ -59,6 +60,16 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
     }
 
+    /// @notice Fills Same as `fillOrderRFQ` but calls permit first,
+    /// allowing to approve token spending and make a swap in one transaction.
+    /// Also allows to specify funds destination instead of `msg.sender`
+    /// @param order Order quote to fill
+    /// @param signature Signature to confirm quote ownership
+    /// @param makingAmount Making amount
+    /// @param takingAmount Taking amount
+    /// @param target Address that will receive swap funds
+    /// @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
+    /// See tests for examples
     function fillOrderRFQToWithPermit(
         OrderRFQ memory order,
         bytes calldata signature,
@@ -71,6 +82,12 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, target);
     }
 
+    /// @notice Same as `fillOrderRFQ` but allows to specify funds destination instead of `msg.sender`
+    /// @param order Order quote to fill
+    /// @param signature Signature to confirm quote ownership
+    /// @param makingAmount Making amount
+    /// @param takingAmount Taking amount
+    /// @param target Address that will receive swap funds
     function fillOrderRFQTo(
         OrderRFQ memory order,
         bytes calldata signature,

@@ -9,7 +9,7 @@
   * [ERC1155Proxy](helpers/ERC1155Proxy.md)
   * [ImmutableOwner](helpers/ImmutableOwner.md)
   * [NonceManager](helpers/NonceManager.md)  
-  * [PredicateHelper](helpers/PredicateHelper.d)
+  * [PredicateHelper](helpers/PredicateHelper.md)
 * [interfaces](interfaces/README.md)
   * [AggregatorInterface](interfaces/AggregatorInterface.md)
   * [IDaiLikePermit](interfaces/IDaiLikePermit.md)

@@ -20,7 +20,7 @@ function advanceNonce(
   uint8 amount
 ) public
 ```
-
+Advances nonce by specified amount
 
 #### Parameters:
 | Name | Type | Description                                                          |
@@ -35,6 +35,7 @@ function nonceEquals(
   uint256 makerNonce
 ) external returns (bool)
 ```
+Checks if `makerAddress` has specified `makerNonce`
 
 
 #### Parameters:
@@ -43,7 +44,10 @@ function nonceEquals(
 |`makerAddress` | address | 
 |`makerNonce` | uint256 | 
 
-
+#### Return Values:
+| Name                           | Type          | Description                                                                  |
+| :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
+|`Result`| address | True if `makerAddress` has specified nonce. Otherwise, false
 ## Events
 ### NonceIncreased
 ```solidity

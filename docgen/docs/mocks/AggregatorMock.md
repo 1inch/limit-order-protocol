@@ -1,6 +1,6 @@
 # AggregatorMock
 
-
+Mock oracle that always returns specified token price
 
 
 

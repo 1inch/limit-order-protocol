@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.9;
+pragma abicoder v1;
 
 import "../interfaces/AggregatorInterface.sol";
 
-
+/// @title Mock oracle that always returns specified token price
 contract AggregatorMock is AggregatorInterface {
     int256 private immutable _answer;
 

@@ -30,7 +30,7 @@ function func_301JL5R(
   bytes data
 ) external
 ```
-
+Proxy transfer method for `IERC1155.safeTransferFrom`. Selector must match `IERC20.transferFrom`
 
 #### Parameters:
 | Name | Type | Description                                                          |
