@@ -6,10 +6,11 @@ import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "./helpers/AmountCalculator.sol";
 import "./libraries/Permitable.sol";
 
 
-abstract contract OrderRFQMixin is EIP712, Permitable {
+abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
     using SafeERC20 for IERC20;
 
     event OrderFilledRFQ(
@@ -104,11 +105,11 @@ abstract contract OrderRFQMixin is EIP712, Permitable {
             }
             else if (takingAmount == 0) {
                 require(makingAmount <= orderMakingAmount, "LOP: making amount exceeded");
-                takingAmount = (orderTakingAmount * makingAmount + orderMakingAmount - 1) / orderMakingAmount;
+                takingAmount = getTakerAmount(orderMakingAmount, orderTakingAmount, makingAmount);
             }
             else if (makingAmount == 0) {
                 require(takingAmount <= orderTakingAmount, "LOP: taking amount exceeded");
-                makingAmount = orderMakingAmount * takingAmount / orderTakingAmount;
+                makingAmount = getMakerAmount(orderMakingAmount, orderTakingAmount, takingAmount);
             }
             else {
                 revert("LOP: one of amounts should be 0");
