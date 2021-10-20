@@ -577,7 +577,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(this.order, signature, 1, 0, 1),
-                'LOP: can\'t swap 0 amount',
+                'LOP: remaining amoint is 0',
             );
         });
     });
