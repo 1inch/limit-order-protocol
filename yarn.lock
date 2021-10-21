@@ -2,6 +2,13 @@
 # yarn lockfile v1
 
 
+"@1inch/1inch-solidity-utils@^1.1.2":
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/@1inch/1inch-solidity-utils/-/1inch-solidity-utils-1.1.2.tgz#b04c33a232b99f94c98a2d0bb1b0e1ff1617b024"
+  integrity sha512-OwJzZ/LWwRVxvwptFj0Rb0hNk0fK/11XcP6Q3vz5zA+662TAkjerDaMZVw++yV879BkZKrYKeVy6Z6khDgGZlQ==
+  dependencies:
+    "@openzeppelin/contracts" "^4.3.2"
+
 "@babel/code-frame@7.12.11":
   version "7.12.11"
   resolved "https://registry.yarnpkg.com/@babel/code-frame/-/code-frame-7.12.11.tgz#f4ad435aa263db935b8f10f2c552d23fb716a63f"
@@ -7766,10 +7773,10 @@ solidity-coverage@^0.7.17:
     shelljs "^0.8.3"
     web3-utils "^1.3.0"
 
-solidity-docgen@^0.5.14:
-  version "0.5.14"
-  resolved "https://registry.yarnpkg.com/solidity-docgen/-/solidity-docgen-0.5.14.tgz#a03918fa026a60fab73289a14c834439394d9f25"
-  integrity sha512-PDH1ZxmjB8aNaCiWSlt4lfrq0GaJXVr1Xu4KTtgzLNLutj5TQlpzSxFcV1wrGI5SxkjMTGPIU64DS1KBaLSo1A==
+solidity-docgen@^0.5.16:
+  version "0.5.16"
+  resolved "https://registry.yarnpkg.com/solidity-docgen/-/solidity-docgen-0.5.16.tgz#c12a5cac7ca656ff01b10dd832891983bb071f50"
+  integrity sha512-rFVpqSNnDGKvL68mPf4J9mEQIl+Ixy6bIz/YE6AgjBCPtrlm4KjWQhcBMQWc/LarSCenOpzhbG1tHqP9gf9kcg==
   dependencies:
     "@oclif/command" "^1.8.0"
     "@oclif/config" "^1.17.0"
