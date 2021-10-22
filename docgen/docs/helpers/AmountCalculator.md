@@ -27,6 +27,7 @@ Calculates maker amount
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
 |`Result`| uint256 | Floored maker amount
+
 ### getTakerAmount
 ```solidity
 function getTakerAmount(
@@ -49,6 +50,7 @@ Calculates taker amount
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
 |`Result`| uint256 | Ceiled taker amount
+
 ### arbitraryStaticCall
 ```solidity
 function arbitraryStaticCall(
@@ -68,4 +70,5 @@ Performs an arbitrary call to target with data
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| address | Bytes transmuted to uint256
+|`Result`| uint256 | Bytes transmuted to uint256
+

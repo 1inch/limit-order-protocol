@@ -24,7 +24,8 @@ Returns bitmask for double-spend invalidators based on lowest byte of order.info
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| address | Each bit represents whenever corresponding quote was filled
+|`Result`| uint256 | Each bit represents whenever corresponding quote was filled
+
 ### cancelOrderRFQ
 ```solidity
 function cancelOrderRFQ(
