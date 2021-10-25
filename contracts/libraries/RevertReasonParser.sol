@@ -11,14 +11,17 @@ pragma abicoder v1;
 ///
 /// All unsuccessful parsings get encoded as Unknown(data) string
 library RevertReasonParser {
+    bytes4 constant private _PANIC_SELECTOR = bytes4(keccak256("Panic(uint256)"));
+    bytes4 constant private _ERROR_SELECTOR = bytes4(keccak256("Error(string)"));
+
     function parse(bytes memory data, string memory prefix) internal pure returns (string memory) {
         bytes4 selector;
         assembly {  // solhint-disable-line no-inline-assembly
             selector := mload(add(data, 0x20))
         }
 
-        // 68 = 4-byte selector 0x08c379a0 + 32 bytes offset + 32 bytes length
-        if (selector == 0x08c379a0 && data.length >= 68) {
+        // 68 = 4-byte selector + 32 bytes offset + 32 bytes length
+        if (selector == _ERROR_SELECTOR && data.length >= 68) {
             string memory reason;
             // solhint-disable no-inline-assembly
             assembly {
@@ -35,8 +38,8 @@ library RevertReasonParser {
             require(data.length >= 68 + bytes(reason).length, "Invalid revert reason");
             return string(abi.encodePacked(prefix, "Error(", reason, ")"));
         }
-        // 36 = 4-byte selector 0x4e487b71 + 32 bytes integer
-        else if (selector == 0x4e487b71 && data.length == 36) {
+        // 36 = 4-byte selector + 32 bytes integer
+        else if (selector == _PANIC_SELECTOR && data.length == 36) {
             uint256 code;
             // solhint-disable no-inline-assembly
             assembly {
