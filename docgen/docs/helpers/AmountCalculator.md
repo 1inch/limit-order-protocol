@@ -11,7 +11,7 @@ function getMakerAmount(
   uint256 orderMakerAmount,
   uint256 orderTakerAmount,
   uint256 swapTakerAmount
-) external returns (uint256)
+) public returns (uint256)
 ```
 Calculates maker amount
 
@@ -34,7 +34,7 @@ function getTakerAmount(
   uint256 orderMakerAmount,
   uint256 orderTakerAmount,
   uint256 swapMakerAmount
-) external returns (uint256)
+) public returns (uint256)
 ```
 Calculates taker amount
 
