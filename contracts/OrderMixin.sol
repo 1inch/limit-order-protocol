@@ -277,7 +277,7 @@ abstract contract OrderMixin is
                 uint256(uint160(order.maker)),
                 uint256(uint160(target)),
                 makingAmount,
-                order.makerAsset
+                order.makerAssetData
             )
         );
 
