@@ -227,14 +227,14 @@ abstract contract OrderMixin is
                 if (makingAmount > remainingMakerAmount) {
                     makingAmount = remainingMakerAmount;
                 }
-                takingAmount = _callGetTakerAmount(order, makingAmount);
+                takingAmount = _callGetter(order.getTakerAmount, order.makingAmount, makingAmount);
                 require(takingAmount <= thresholdAmount, "LOP: taking amount too high");
             }
             else {
-                makingAmount = _callGetMakerAmount(order, takingAmount);
+                makingAmount = _callGetter(order.getMakerAmount, order.takingAmount, takingAmount);
                 if (makingAmount > remainingMakerAmount) {
                     makingAmount = remainingMakerAmount;
-                    takingAmount = _callGetTakerAmount(order, makingAmount);
+                    takingAmount = _callGetter(order.getTakerAmount, order.makingAmount, makingAmount);
                 }
                 require(makingAmount >= thresholdAmount, "LOP: making amount too low");
             }
@@ -313,25 +313,15 @@ abstract contract OrderMixin is
         }
     }
 
-    function _callGetMakerAmount(Order memory order, uint256 takerAmount) private view returns(uint256 makerAmount) {
-        if (order.getMakerAmount.length == 0) {
-            // On empty order.getMakerAmount calldata only whole fills are allowed
-            require(takerAmount == order.takingAmount, "LOP: wrong taker amount");
-            return order.makingAmount;
+    function _callGetter(bytes memory getter, uint256 orderAmount, uint256 amount) private view returns (uint256 /* resultAmount */) {
+        if (getter.length == 0) {
+            // On empty getter calldata only whole fills are allowed
+            require(amount == orderAmount, "LOP: wrong amount");
+            return orderAmount;
+        } else {
+            bytes memory result = address(this).functionStaticCall(abi.encodePacked(getter, amount), "LOP: getAmount call failed");
+            require(result.length == 32, "LOP: invalid getAmount return");
+            return result.decodeUint256();
         }
-        bytes memory result = address(this).functionStaticCall(abi.encodePacked(order.getMakerAmount, takerAmount), "LOP: getMakerAmount call failed");
-        require(result.length == 32, "LOP: invalid getMakerAmount ret");
-        return result.decodeUint256();
-    }
-
-    function _callGetTakerAmount(Order memory order, uint256 makerAmount) private view returns(uint256 takerAmount) {
-        if (order.getTakerAmount.length == 0) {
-            // On empty order.getTakerAmount calldata only whole fills are allowed
-            require(makerAmount == order.makingAmount, "LOP: wrong maker amount");
-            return order.takingAmount;
-        }
-        bytes memory result = address(this).functionStaticCall(abi.encodePacked(order.getTakerAmount, makerAmount), "LOP: getTakerAmount call failed");
-        require(result.length == 32, "LOP: invalid getTakerAmount ret");
-        return result.decodeUint256();
     }
 }
