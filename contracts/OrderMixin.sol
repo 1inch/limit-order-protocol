@@ -151,7 +151,7 @@ abstract contract OrderMixin is
         uint256 makingAmount,
         uint256 takingAmount,
         uint256 thresholdAmount
-    ) external returns(uint256, uint256) {
+    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */) {
         return fillOrderTo(order, signature, makingAmount, takingAmount, thresholdAmount, msg.sender);
     }
 
@@ -174,7 +174,7 @@ abstract contract OrderMixin is
         uint256 thresholdAmount,
         address target,
         bytes calldata permit
-    ) external returns(uint256, uint256) {
+    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */) {
         (address token, bytes calldata permitData) = permit.decodeTargetAndData();
         _permit(token, permitData);
         return fillOrderTo(order, signature, makingAmount, takingAmount, thresholdAmount, target);
@@ -194,7 +194,7 @@ abstract contract OrderMixin is
         uint256 takingAmount,
         uint256 thresholdAmount,
         address target
-    ) public returns(uint256, uint256) {
+    ) public returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */) {
         bytes32 orderHash = _hash(order);
 
         {  // Stack too deep
