@@ -514,7 +514,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, 5, 0, 5),
-                'LOP: wrong maker amount',
+                'LOP: wrong amount',
             );
         });
 
@@ -545,7 +545,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, 0, 5, 5),
-                'LOP: wrong taker amount',
+                'LOP: wrong amount',
             );
         });
     });
