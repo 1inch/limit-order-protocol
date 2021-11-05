@@ -24,20 +24,22 @@ library RevertReasonParser {
 
             // 68 = 4-byte selector + 32 bytes offset + 32 bytes length
             if (selector == _ERROR_SELECTOR && data.length >= 68) {
-                string memory reason;
+                uint256 offset;
+                bytes memory reason;
                 // solhint-disable no-inline-assembly
                 assembly {
-                    // 68 = 32 bytes data length + 4-byte selector + 32 bytes offset
-                    reason := add(data, 68)
+                    // 36 = 32 bytes data length + 4-byte selector
+                    offset := mload(add(data, 36))
+                    reason := add(data, add(36, offset))
                 }
                 /*
                     revert reason is padded up to 32 bytes with ABI encoder: Error(string)
                     also sometimes there is extra 32 bytes of zeros padded in the end:
                     https://github.com/ethereum/solidity/issues/10170
                     because of that we can't check for equality and instead check
-                    that string length + extra 68 bytes is less than overall data length
+                    that offset + string length + extra 36 bytes is less than overall data length
                 */
-                require(data.length >= 68 + bytes(reason).length, "Invalid revert reason");
+                require(data.length >= 36 + offset + reason.length, "Invalid revert reason");
                 return string(abi.encodePacked(prefix, "Error(", reason, ")"));
             }
             // 36 = 4-byte selector + 32 bytes integer
