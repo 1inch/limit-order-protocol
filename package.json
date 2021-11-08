@@ -38,6 +38,7 @@
   "scripts": {
     "clean": "rimraf artifacts cache coverage",
     "test": "hardhat test",
+    "deploy": "hardhat deploy --network",
     "coverage": "hardhat coverage",
     "docify": "npx solidity-utils-docify",
     "lint:js": "eslint .",

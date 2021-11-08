@@ -2,6 +2,9 @@ require('@nomiclabs/hardhat-truffle5');
 require('solidity-coverage');
 require('hardhat-deploy');
 require('hardhat-gas-reporter');
+require('dotenv').config();
+
+const networks = require('./hardhat.networks');
 
 module.exports = {
     solidity: {
@@ -11,6 +14,12 @@ module.exports = {
                 enabled: true,
                 runs: 1000000,
             },
+        },
+    },
+    networks: networks,
+    namedAccounts: {
+        deployer: {
+            default: 0,
         },
     },
     gasReporter: {
