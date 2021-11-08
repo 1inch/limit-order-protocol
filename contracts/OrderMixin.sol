@@ -37,7 +37,8 @@ abstract contract OrderMixin is
     /// @notice Emitted when order gets cancelled
     event OrderCanceled(
         address indexed maker,
-        bytes32 orderHash
+        bytes32 orderHash,
+        uint256 remainingRaw
     );
 
     // Fixed-size order part with core information
@@ -134,9 +135,10 @@ abstract contract OrderMixin is
         require(order.maker == msg.sender, "LOP: Access denied");
 
         bytes32 orderHash = _hash(order);
-        require(_remaining[orderHash] != 1, "LOP: already filled");
+        uint256 orderRemaining = _remaining[orderHash];
+        require(orderRemaining != 1, "LOP: already filled");
+        emit OrderCanceled(msg.sender, orderHash, orderRemaining);
         _remaining[orderHash] = 1;
-        emit OrderCanceled(msg.sender, orderHash);
     }
 
     /// @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
