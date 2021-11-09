@@ -75,6 +75,8 @@ abstract contract OrderMixin is
     bytes32 constant public LIMIT_ORDER_TYPEHASH = keccak256(
         "Order(uint256 salt,address makerAsset,address takerAsset,address maker,address receiver,address allowedSender,uint256 makingAmount,uint256 takingAmount,bytes makerAssetData,bytes takerAssetData,bytes getMakerAmount,bytes getTakerAmount,bytes predicate,bytes permit,bytes interaction)"
     );
+    uint256 constant private _ORDER_DOES_NOT_EXIST = 0;
+    uint256 constant private _ORDER_FILLED = 1;
 
     /// @notice Stores unfilled amounts for each order plus one.
     /// Therefore 0 means order doesn't exist and 1 means order was filled
@@ -83,7 +85,7 @@ abstract contract OrderMixin is
     /// @notice Returns unfilled amount for order. Throws if order does not exist
     function remaining(bytes32 orderHash) external view returns(uint256) {
         uint256 amount = _remaining[orderHash];
-        require(amount > 0, "LOP: Unknown order");
+        require(amount != _ORDER_DOES_NOT_EXIST, "LOP: Unknown order");
         unchecked { amount -= 1; }
         return amount;
     }
@@ -131,9 +133,9 @@ abstract contract OrderMixin is
 
         bytes32 orderHash = hashOrder(order);
         uint256 orderRemaining = _remaining[orderHash];
-        require(orderRemaining != 1, "LOP: already filled");
+        require(orderRemaining != _ORDER_FILLED, "LOP: already filled");
         emit OrderCanceled(msg.sender, orderHash, orderRemaining);
-        _remaining[orderHash] = 1;
+        _remaining[orderHash] = _ORDER_FILLED;
     }
 
     /// @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
@@ -196,16 +198,16 @@ abstract contract OrderMixin is
 
         {  // Stack too deep
             uint256 remainingMakerAmount = _remaining[orderHash];
-            require(remainingMakerAmount != 1, "LOP: remaining amoint is 0");
+            require(remainingMakerAmount != _ORDER_FILLED, "LOP: remaining amoint is 0");
             require(order.allowedSender == address(0) || order.allowedSender == msg.sender, "LOP: private order");
-            if (remainingMakerAmount == 0) {
+            if (remainingMakerAmount == _ORDER_DOES_NOT_EXIST) {
                 // First fill: validate order and permit maker asset
                 require(SignatureChecker.isValidSignatureNow(order.maker, orderHash, signature), "LOP: bad signature");
                 remainingMakerAmount = order.makingAmount;
                 if (order.permit.length > 0) {
                     (address token, bytes memory permit) = order.permit.decodeTargetAndCalldata();
                     _permitMemory(token, permit);
-                    require(_remaining[orderHash] == 0, "LOP: reentrancy detected");
+                    require(_remaining[orderHash] == _ORDER_DOES_NOT_EXIST, "LOP: reentrancy detected");
                 }
             } else {
                 unchecked { remainingMakerAmount -= 1; }
