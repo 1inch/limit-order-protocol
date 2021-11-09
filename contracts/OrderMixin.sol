@@ -129,7 +129,7 @@ abstract contract OrderMixin is
     function cancelOrder(Order memory order) external {
         require(order.maker == msg.sender, "LOP: Access denied");
 
-        bytes32 orderHash = _hash(order);
+        bytes32 orderHash = hashOrder(order);
         uint256 orderRemaining = _remaining[orderHash];
         require(orderRemaining != 1, "LOP: already filled");
         emit OrderCanceled(msg.sender, orderHash, orderRemaining);
@@ -192,7 +192,7 @@ abstract contract OrderMixin is
         uint256 thresholdAmount,
         address target
     ) public returns(uint256, uint256) {
-        bytes32 orderHash = _hash(order);
+        bytes32 orderHash = hashOrder(order);
 
         {  // Stack too deep
             uint256 remainingMakerAmount = _remaining[orderHash];
@@ -288,7 +288,7 @@ abstract contract OrderMixin is
         return result.decodeBool();
     }
 
-    function _hash(Order memory order) private view returns(bytes32) {
+    function hashOrder(Order memory order) public view returns(bytes32) {
         StaticOrder memory staticOrder;
         assembly {  // solhint-disable-line no-inline-assembly
             staticOrder := order
