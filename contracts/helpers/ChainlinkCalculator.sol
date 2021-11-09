@@ -3,7 +3,7 @@
 pragma solidity 0.8.9;
 pragma abicoder v1;
 
-import "../interfaces/AggregatorInterface.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorInterface.sol";
 
 /// @title A helper contract for interactions with https://docs.chain.link
 contract ChainlinkCalculator {
