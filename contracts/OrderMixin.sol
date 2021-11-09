@@ -101,13 +101,6 @@ abstract contract OrderMixin is
         }
     }
 
-    /// @notice Checks order predicate
-    function checkPredicate(Order memory order) public view returns(bool) {
-        bytes memory result = address(this).functionStaticCall(order.predicate, "LOP: predicate call failed");
-        require(result.length == 32, "LOP: invalid predicate return");
-        return result.decodeBool();
-    }
-
     /**
      * @notice Calls every target with corresponding data. Then reverts with CALL_RESULTS_0101011 where zeroes and ones
      * denote failure or success of the corresponding call
@@ -284,6 +277,13 @@ abstract contract OrderMixin is
         );
 
         return (makingAmount, takingAmount);
+    }
+
+    /// @notice Checks order predicate
+    function checkPredicate(Order memory order) public view returns(bool) {
+        bytes memory result = address(this).functionStaticCall(order.predicate, "LOP: predicate call failed");
+        require(result.length == 32, "LOP: invalid predicate return");
+        return result.decodeBool();
     }
 
     function _hash(Order memory order) private view returns(bytes32) {
