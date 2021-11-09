@@ -55,7 +55,7 @@ abstract contract OrderRFQMixin is EIP712, Permitable {
         bytes calldata signature,
         uint256 makingAmount,
         uint256 takingAmount
-    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */) {
+    ) external returns(uint256, uint256) {
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
     }
 
@@ -76,7 +76,7 @@ abstract contract OrderRFQMixin is EIP712, Permitable {
         uint256 takingAmount,
         address target,
         bytes calldata permit
-    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */) {
+    ) external returns(uint256, uint256) {
         _permit(address(order.takerAsset), permit);
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, target);
     }
@@ -93,7 +93,7 @@ abstract contract OrderRFQMixin is EIP712, Permitable {
         uint256 makingAmount,
         uint256 takingAmount,
         address target
-    ) public returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */) {
+    ) public returns(uint256, uint256) {
         address maker = order.maker;
         {  // Stack too deep
             uint256 info = order.info;
