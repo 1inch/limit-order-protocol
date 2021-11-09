@@ -96,7 +96,7 @@ abstract contract OrderMixin is
     /// @notice Same as `remainingRaw` but for multiple orders
     function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory results) {
         results = new uint256[](orderHashes.length);
-        for (uint i = 0; i < orderHashes.length; i++) {
+        for (uint256 i = 0; i < orderHashes.length; i++) {
             results[i] = _remaining[orderHashes[i]];
         }
     }
@@ -110,7 +110,7 @@ abstract contract OrderMixin is
     function simulateCalls(address[] calldata targets, bytes[] calldata data) external {
         require(targets.length == data.length, "LOP: array size mismatch");
         bytes memory reason = new bytes(targets.length);
-        for (uint i = 0; i < targets.length; i++) {
+        for (uint256 i = 0; i < targets.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory result) = targets[i].call(data[i]);
             if (success && result.length > 0) {
