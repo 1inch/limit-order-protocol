@@ -16,7 +16,9 @@ contract NonceManager {
 
     /// @notice Advances nonce by specified amount
     function advanceNonce(uint8 amount) public {
-        emit NonceIncreased(msg.sender, nonce[msg.sender] += amount);
+        uint256 newNonce = nonce[msg.sender] + amount;
+        nonce[msg.sender] = newNonce;
+        emit NonceIncreased(msg.sender, newNonce);
     }
 
     /// @notice Checks if `makerAddress` has specified `makerNonce`
