@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./libraries/Permitable.sol";
 
-/// @title Order RFQ Limits v1 mixin
+/// @title RFQ Limit Order mixin
 abstract contract OrderRFQMixin is EIP712, Permitable {
     using SafeERC20 for IERC20;
 
