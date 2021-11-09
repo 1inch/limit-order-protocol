@@ -199,9 +199,9 @@ abstract contract OrderMixin is
 
         {  // Stack too deep
             uint256 remainingMakerAmount = _remaining[orderHash];
+            require(order.allowedSender == address(0) || order.allowedSender == msg.sender, "LOP: private order");
             if (remainingMakerAmount == 0) {
                 // First fill: validate order and permit maker asset
-                require(order.allowedSender == address(0) || order.allowedSender == msg.sender, "LOP: private order");
                 require(SignatureChecker.isValidSignatureNow(order.maker, orderHash, signature), "LOP: bad signature");
                 remainingMakerAmount = order.makingAmount;
                 if (order.permit.length > 0) {
