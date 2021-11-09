@@ -6,7 +6,6 @@ const Wallet = require('ethereumjs-wallet').default;
 
 const TokenMock = artifacts.require('TokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
-const ChainlinkCalculator = artifacts.require('ChainlinkCalculator');
 const AggregatorMock = artifacts.require('AggregatorMock');
 
 const { buildOrderData } = require('./helpers/orderUtils');
@@ -21,15 +20,13 @@ describe('ChainLinkExample', async function () {
         return toBN(spread).setn(255, inverse).toString();
     }
 
-    function buildSinglePriceGetter (swap, calculator, oracle, inverse, spread) {
-        const data = calculator.contract.methods.singlePrice(oracle.address, buildInverseWithSpread(inverse, spread), 0).encodeABI();
-        return cutLastArg(swap.contract.methods.arbitraryStaticCall(calculator.address, data).encodeABI(), (64 - (data.length - 2) % 64) % 64);
+    function buildSinglePriceGetter (swap, oracle, inverse, spread, amount='0') {
+        return swap.contract.methods.singlePrice(oracle.address, buildInverseWithSpread(inverse, spread), amount).encodeABI();
     }
 
     // eslint-disable-next-line no-unused-vars
-    function buildDoublePriceGetter (swap, calculator, oracle1, oracle2, spread) {
-        const data = calculator.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), 0).encodeABI();
-        return cutLastArg(swap.contract.methods.arbitraryStaticCall(calculator.address, data).encodeABI(), (64 - (data.length - 2) % 64) % 64);
+    function buildDoublePriceGetter (swap, oracle1, oracle2, spread, amount='0') {
+        return swap.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), amount).encodeABI();
     }
 
     function buildOrder (
@@ -74,7 +71,6 @@ describe('ChainLinkExample', async function () {
         this.inch = await TokenMock.new('1INCH', '1INCH');
 
         this.swap = await LimitOrderProtocol.new();
-        this.calculator = await ChainlinkCalculator.new();
 
         // We get the chain id from the contract because Ganache (used for coverage) does not return the same chain id
         // from within the EVM as from the JSON RPC interface.
@@ -103,8 +99,8 @@ describe('ChainLinkExample', async function () {
         // chainlink rate is 1 eth = 4000 dai
         const order = buildOrder(
             '1', this.weth, this.dai, ether('1').toString(), ether('4000').toString(),
-            buildSinglePriceGetter(this.swap, this.calculator, this.daiOracle, false, '990000000'), // maker offset is 0.99
-            buildSinglePriceGetter(this.swap, this.calculator, this.daiOracle, true, '1010000000'), // taker offset is 1.01
+            cutLastArg(buildSinglePriceGetter(this.swap, this.daiOracle, false, '990000000')), // maker offset is 0.99
+            cutLastArg(buildSinglePriceGetter(this.swap, this.daiOracle, true, '1010000000')), // taker offset is 1.01
         );
 
         const data = buildOrderData(this.chainId, this.swap.address, order);
@@ -126,8 +122,8 @@ describe('ChainLinkExample', async function () {
     it('dai -> 1inch stop loss order', async function () {
         const makerAmount = ether('100');
         const takerAmount = ether('631');
-        const calculatorCall = this.calculator.contract.methods.doublePrice(this.inchOracle.address, this.daiOracle.address, '1000000000', ether('1')).encodeABI();
-        const predicate = this.swap.contract.methods.lt(ether('6.32'), this.calculator.address, calculatorCall).encodeABI();
+        const priceCall = buildDoublePriceGetter(this.swap, this.inchOracle, this.daiOracle, '1000000000', ether('1'));
+        const predicate = this.swap.contract.methods.lt(ether('6.32'), this.swap.address, priceCall).encodeABI();
 
         const order = buildOrder(
             '1', this.inch, this.dai, makerAmount.toString(), takerAmount.toString(),
@@ -155,8 +151,8 @@ describe('ChainLinkExample', async function () {
     it('dai -> 1inch stop loss order predicate is invalid', async function () {
         const makerAmount = ether('100');
         const takerAmount = ether('631');
-        const calculatorCall = this.calculator.contract.methods.doublePrice(this.inchOracle.address, this.daiOracle.address, '1000000000', ether('1')).encodeABI();
-        const predicate = this.swap.contract.methods.lt(ether('6.31'), this.calculator.address, calculatorCall).encodeABI();
+        const priceCall = buildDoublePriceGetter(this.swap, this.inchOracle, this.daiOracle, '1000000000', ether('1'));
+        const predicate = this.swap.contract.methods.lt(ether('6.31'), this.swap.address, priceCall).encodeABI();
 
         const order = buildOrder(
             '1', this.inch, this.dai, makerAmount.toString(), takerAmount.toString(),
