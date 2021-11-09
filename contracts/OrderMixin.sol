@@ -15,7 +15,7 @@ import "./interfaces/InteractiveNotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Permitable.sol";
 
-/// @title Order Limits v1 mixin
+/// @title Regular Limit Order mixin
 abstract contract OrderMixin is
     EIP712,
     AmountCalculator,
