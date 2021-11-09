@@ -81,10 +81,11 @@ abstract contract OrderMixin is
     mapping(bytes32 => uint256) private _remaining;
 
     /// @notice Returns unfilled amount for order. Throws if order does not exist
-    function remaining(bytes32 orderHash) external view returns(uint256 amount) {
-        amount = _remaining[orderHash];
+    function remaining(bytes32 orderHash) external view returns(uint256) {
+        uint256 amount = _remaining[orderHash];
         require(amount > 0, "LOP: Unknown order");
         unchecked { amount -= 1; }
+        return amount;
     }
 
     /// @notice Returns unfilled amount for order
@@ -94,11 +95,12 @@ abstract contract OrderMixin is
     }
 
     /// @notice Same as `remainingRaw` but for multiple orders
-    function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory results) {
-        results = new uint256[](orderHashes.length);
+    function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory) {
+        uint256[] memory results = new uint256[](orderHashes.length);
         for (uint256 i = 0; i < orderHashes.length; i++) {
             results[i] = _remaining[orderHashes[i]];
         }
+        return results;
     }
 
     /**
@@ -315,7 +317,7 @@ abstract contract OrderMixin is
         }
     }
 
-    function _callGetter(bytes memory getter, uint256 orderAmount, uint256 amount) private view returns (uint256 /* resultAmount */) {
+    function _callGetter(bytes memory getter, uint256 orderAmount, uint256 amount) private view returns(uint256) {
         if (getter.length == 0) {
             // On empty getter calldata only whole fills are allowed
             require(amount == orderAmount, "LOP: wrong amount");
