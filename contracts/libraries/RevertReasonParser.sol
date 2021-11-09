@@ -20,8 +20,7 @@ library RevertReasonParser {
         // 68 = 4-byte selector 0x08c379a0 + 32 bytes offset + 32 bytes length
         if (selector == 0x08c379a0 && data.length >= 68) {
             string memory reason;
-            // solhint-disable no-inline-assembly
-            assembly {
+            assembly {  // solhint-disable-line no-inline-assembly
                 // 68 = 32 bytes data length + 4-byte selector + 32 bytes offset
                 reason := add(data, 68)
             }
@@ -38,8 +37,7 @@ library RevertReasonParser {
         // 36 = 4-byte selector 0x4e487b71 + 32 bytes integer
         else if (selector == 0x4e487b71 && data.length == 36) {
             uint256 code;
-            // solhint-disable no-inline-assembly
-            assembly {
+            assembly {  // solhint-disable-line no-inline-assembly
                 // 36 = 32 bytes data length + 4-byte selector
                 code := mload(add(data, 36))
             }
