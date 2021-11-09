@@ -310,11 +310,12 @@ describe('LimitOrderProtocol', async function () {
     it('ERC721Proxy should work', async function () {
         const erc721proxy = await ERC721Proxy.new(this.swap.address);
 
-        const order = buildOrder(this.swap, this.dai, this.weth, 10, 10);
-        this.makerAsset = erc721proxy.address;
-        this.takerAsset = erc721proxy.address;
-        this.makerAssetData = erc721proxy.contract.methods.func_602HzuS(wallet, constants.ZERO_ADDRESS, 10, this.dai.address).encodeABI();
-        this.takerAssetData = erc721proxy.contract.methods.func_602HzuS(constants.ZERO_ADDRESS, wallet, 10, this.weth.address).encodeABI();
+        await this.dai.approve(erc721proxy.address, '10', { from: wallet });
+        await this.weth.approve(erc721proxy.address, '10');
+
+        const order = buildOrder(this.swap, erc721proxy, erc721proxy, 10, 10);
+        order.makerAssetData = '0x' + erc721proxy.contract.methods.func_602HzuS(wallet, constants.ZERO_ADDRESS, 10, this.dai.address).encodeABI().substr(202);
+        order.takerAssetData = '0x' + erc721proxy.contract.methods.func_602HzuS(constants.ZERO_ADDRESS, wallet, 10, this.weth.address).encodeABI().substr(202);
 
         const data = buildOrderData(this.chainId, this.swap.address, order);
         const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
