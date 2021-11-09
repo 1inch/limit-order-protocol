@@ -20,12 +20,12 @@ describe('ChainLinkExample', async function () {
         return toBN(spread).setn(255, inverse).toString();
     }
 
-    function buildSinglePriceGetter (swap, oracle, inverse, spread, amount='0') {
+    function buildSinglePriceGetter (swap, oracle, inverse, spread, amount = '0') {
         return swap.contract.methods.singlePrice(oracle.address, buildInverseWithSpread(inverse, spread), amount).encodeABI();
     }
 
     // eslint-disable-next-line no-unused-vars
-    function buildDoublePriceGetter (swap, oracle1, oracle2, spread, amount='0') {
+    function buildDoublePriceGetter (swap, oracle1, oracle2, spread, amount = '0') {
         return swap.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), amount).encodeABI();
     }
 
