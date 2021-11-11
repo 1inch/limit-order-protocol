@@ -203,6 +203,7 @@ abstract contract OrderMixin is
             require(order.allowedSender == address(0) || order.allowedSender == msg.sender, "LOP: private order");
             if (remainingMakerAmount == _ORDER_DOES_NOT_EXIST) {
                 // First fill: validate order and permit maker asset
+                require(order.getMakerAmount.length > 0 == order.getTakerAmount.length > 0, "LOP: only one getter specified");
                 require(SignatureChecker.isValidSignatureNow(order.maker, orderHash, signature), "LOP: bad signature");
                 remainingMakerAmount = order.makingAmount;
                 if (order.permit.length > 0) {
