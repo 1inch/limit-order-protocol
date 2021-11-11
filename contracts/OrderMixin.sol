@@ -194,6 +194,7 @@ abstract contract OrderMixin is
         uint256 thresholdAmount,
         address target
     ) public returns(uint256, uint256) {
+        require(target != address(0), "LOP: zero target is forbidden");
         bytes32 orderHash = hashOrder(order);
 
         {  // Stack too deep

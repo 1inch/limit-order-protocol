@@ -94,6 +94,8 @@ abstract contract OrderRFQMixin is EIP712, Permitable {
         uint256 takingAmount,
         address target
     ) public returns(uint256, uint256) {
+        require(target != address(0), "LOP: zero target is forbidden");
+
         address maker = order.maker;
         {  // Stack too deep
             uint256 info = order.info;
