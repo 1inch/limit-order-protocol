@@ -130,7 +130,7 @@ abstract contract OrderRFQMixin is EIP712, Permitable {
                 makingAmount = orderMakingAmount * takingAmount / orderTakingAmount;
             }
             else {
-                revert("LOP: one of amounts should be 0");
+                revert("LOP: both amounts are non-zero");
             }
         }
 
