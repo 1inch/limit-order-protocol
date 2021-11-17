@@ -4,9 +4,13 @@ pragma solidity 0.8.9;
 pragma abicoder v1;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
 
 /// @title A helper contract for interactions with https://docs.chain.link
 contract ChainlinkCalculator {
+    using SafeCast for int256;
+
     uint256 private constant _SPREAD_DENOMINATOR = 1e9;
     uint256 private constant _ORACLE_EXPIRATION_TIME = 30 minutes;
     uint256 private constant _INVERSE_MASK = 1 << 255;
@@ -25,9 +29,9 @@ contract ChainlinkCalculator {
         bool inverse = inverseAndSpread & _INVERSE_MASK > 0;
         uint256 spread = inverseAndSpread & (~_INVERSE_MASK);
         if (inverse) {
-            return amount * spread * (10 ** oracle.decimals()) / uint256(latestAnswer) / _SPREAD_DENOMINATOR;
+            return amount * spread * (10 ** oracle.decimals()) / latestAnswer.toUint256() / _SPREAD_DENOMINATOR;
         } else {
-            return amount * spread * uint256(latestAnswer) / (10 ** oracle.decimals()) / _SPREAD_DENOMINATOR;
+            return amount * spread * latestAnswer.toUint256() / (10 ** oracle.decimals()) / _SPREAD_DENOMINATOR;
         }
     }
 
@@ -43,6 +47,6 @@ contract ChainlinkCalculator {
         // solhint-disable-next-line not-rely-on-time
         require(latestTimestamp2 + _ORACLE_EXPIRATION_TIME > block.timestamp, "CC: stale data O2");
 
-        return amount * spread * uint256(latestAnswer1) / uint256(latestAnswer2) / _SPREAD_DENOMINATOR;
+        return amount * spread * latestAnswer1.toUint256() / latestAnswer2.toUint256() / _SPREAD_DENOMINATOR;
     }
 }

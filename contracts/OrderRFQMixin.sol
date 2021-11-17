@@ -6,10 +6,11 @@ import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "./helpers/AmountCalculator.sol";
 import "./libraries/Permitable.sol";
 
 /// @title RFQ Limit Order mixin
-abstract contract OrderRFQMixin is EIP712, Permitable {
+abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
     using SafeERC20 for IERC20;
 
     /// @notice Emitted when RFQ gets filled
@@ -42,7 +43,7 @@ abstract contract OrderRFQMixin is EIP712, Permitable {
 
     /// @notice Cancels order's quote
     function cancelOrderRFQ(uint256 orderInfo) external {
-        _invalidator[msg.sender][uint64(orderInfo) >> 8] |= 1 << uint8(orderInfo);
+        _invalidateOrder(msg.sender, orderInfo);
     }
 
     /// @notice Fills order's quote, fully or partially (whichever is possible)
@@ -102,14 +103,7 @@ abstract contract OrderRFQMixin is EIP712, Permitable {
             // Check time expiration
             uint256 expiration = uint128(info) >> 64;
             require(expiration == 0 || block.timestamp <= expiration, "LOP: order expired");  // solhint-disable-line not-rely-on-time
-
-            // Validate double spend
-            uint256 invalidatorSlot = uint64(info) >> 8;
-            uint256 invalidatorBit = 1 << uint8(info);
-            mapping(uint256 => uint256) storage invalidatorStorage = _invalidator[maker];
-            uint256 invalidator = invalidatorStorage[invalidatorSlot];
-            require(invalidator & invalidatorBit == 0, "LOP: already filled");
-            invalidatorStorage[invalidatorSlot] = invalidator | invalidatorBit;
+            _invalidateOrder(maker, info);
         }
 
         {  // stack too deep
@@ -123,11 +117,11 @@ abstract contract OrderRFQMixin is EIP712, Permitable {
             }
             else if (takingAmount == 0) {
                 require(makingAmount <= orderMakingAmount, "LOP: making amount exceeded");
-                takingAmount = (orderTakingAmount * makingAmount + orderMakingAmount - 1) / orderMakingAmount;
+                takingAmount = getTakerAmount(orderMakingAmount, orderTakingAmount, makingAmount);
             }
             else if (makingAmount == 0) {
                 require(takingAmount <= orderTakingAmount, "LOP: taking amount exceeded");
-                makingAmount = orderMakingAmount * takingAmount / orderTakingAmount;
+                makingAmount = getMakerAmount(orderMakingAmount, orderTakingAmount, takingAmount);
             }
             else {
                 revert("LOP: both amounts are non-zero");
@@ -147,5 +141,14 @@ abstract contract OrderRFQMixin is EIP712, Permitable {
 
         emit OrderFilledRFQ(orderHash, makingAmount);
         return (makingAmount, takingAmount);
+    }
+
+    function _invalidateOrder(address maker, uint256 orderInfo) private {
+        uint256 invalidatorSlot = uint64(orderInfo) >> 8;
+        uint256 invalidatorBit = 1 << uint8(orderInfo);
+        mapping(uint256 => uint256) storage invalidatorStorage = _invalidator[maker];
+        uint256 invalidator = invalidatorStorage[invalidatorSlot];
+        require(invalidator & invalidatorBit == 0, "LOP: invalidated order");
+        invalidatorStorage[invalidatorSlot] = invalidator | invalidatorBit;
     }
 }

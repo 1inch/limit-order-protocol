@@ -36,7 +36,8 @@ Returns unfilled amount for order
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| bytes32 | Unfilled amount of order plus one if order exists. Otherwise 0
+|`Result`| uint256 | Unfilled amount of order plus one if order exists. Otherwise 0
+
 ### remainingsRaw
 ```solidity
 function remainingsRaw(

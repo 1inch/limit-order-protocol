@@ -24,7 +24,8 @@ Calls every target with corresponding data
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| address[] | True if call to any target returned True. Otherwise, false
+|`Result`| bool | True if call to any target returned True. Otherwise, false
+
 ### and
 ```solidity
 function and(
@@ -44,7 +45,8 @@ Calls every target with corresponding data
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| address[] | True if calls to all targets returned True. Otherwise, false
+|`Result`| bool | True if calls to all targets returned True. Otherwise, false
+
 ### eq
 ```solidity
 function eq(
@@ -66,7 +68,8 @@ Calls target with specified data and tests if it's equal to the value
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| uint256 | True if call to target returns the same value as `value`. Otherwise, false
+|`Result`| bool | True if call to target returns the same value as `value`. Otherwise, false
+
 ### lt
 ```solidity
 function lt(
@@ -88,7 +91,8 @@ Calls target with specified data and tests if it's lower than value
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| uint256 | True if call to target returns value which is lower than `value`. Otherwise, false
+|`Result`| bool | True if call to target returns value which is lower than `value`. Otherwise, false
+
 ### gt
 ```solidity
 function gt(
@@ -110,7 +114,8 @@ Calls target with specified data and tests if it's bigger than value
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| uint256 | True if call to target returns value which is bigger than `value`. Otherwise, false
+|`Result`| bool | True if call to target returns value which is bigger than `value`. Otherwise, false
+
 ### timestampBelow
 ```solidity
 function timestampBelow(
@@ -128,4 +133,5 @@ Checks passed time against block timestamp
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| uint256 | True if current block timestamp is lower than `time`. Otherwise, false
+|`Result`| bool | True if current block timestamp is lower than `time`. Otherwise, false
+

@@ -17,7 +17,7 @@ contract ERC1155Proxy is ImmutableOwner {
     }
 
     /// @notice Proxy transfer method for `IERC1155.safeTransferFrom`. Selector must match `IERC20.transferFrom`
-    // keccak256("func_733NCGU(address,address,uint256,address,uint256,bytes)") == 0x23b872dd (IERC20.transferFrom)
+    // keccak256("func_301JL5R(address,address,uint256,address,uint256,bytes)") == 0x23b872dd (IERC20.transferFrom)
     function func_301JL5R(address from, address to, uint256 amount, IERC1155 token, uint256 tokenId, bytes calldata data) external onlyImmutableOwner {
         token.safeTransferFrom(from, to, tokenId, amount, data);
     }

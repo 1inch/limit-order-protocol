@@ -150,7 +150,7 @@ abstract contract OrderMixin is
         uint256 makingAmount,
         uint256 takingAmount,
         uint256 thresholdAmount
-    ) external returns(uint256, uint256) {
+    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */) {
         return fillOrderTo(order, signature, makingAmount, takingAmount, thresholdAmount, msg.sender);
     }
 
@@ -173,7 +173,8 @@ abstract contract OrderMixin is
         uint256 thresholdAmount,
         address target,
         bytes calldata permit
-    ) external returns(uint256, uint256) {
+    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */) {
+        require(permit.length >= 20, "LOP: permit length too low");
         (address token, bytes calldata permitData) = permit.decodeTargetAndData();
         _permit(token, permitData);
         return fillOrderTo(order, signature, makingAmount, takingAmount, thresholdAmount, target);
@@ -193,7 +194,7 @@ abstract contract OrderMixin is
         uint256 takingAmount,
         uint256 thresholdAmount,
         address target
-    ) public returns(uint256, uint256) {
+    ) public returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */) {
         require(target != address(0), "LOP: zero target is forbidden");
         bytes32 orderHash = hashOrder(order);
 
@@ -205,7 +206,8 @@ abstract contract OrderMixin is
                 // First fill: validate order and permit maker asset
                 require(SignatureChecker.isValidSignatureNow(order.maker, orderHash, signature), "LOP: bad signature");
                 remainingMakerAmount = order.makingAmount;
-                if (order.permit.length > 0) {
+                if (order.permit.length >= 20) {
+                    // proceed only if permit length is enough to store address
                     (address token, bytes memory permit) = order.permit.decodeTargetAndCalldata();
                     _permitMemory(token, permit);
                     require(_remaining[orderHash] == _ORDER_DOES_NOT_EXIST, "LOP: reentrancy detected");
@@ -222,8 +224,7 @@ abstract contract OrderMixin is
             // Compute maker and taker assets amount
             if ((takingAmount == 0) == (makingAmount == 0)) {
                 revert("LOP: only one amount should be 0");
-            }
-            else if (takingAmount == 0) {
+            } else if (takingAmount == 0) {
                 uint256 requestedMakingAmount = makingAmount;
                 if (makingAmount > remainingMakerAmount) {
                     makingAmount = remainingMakerAmount;
@@ -232,8 +233,7 @@ abstract contract OrderMixin is
                 // check that actual rate is not worse than what was expected
                 // takingAmount / makingAmount <= thresholdAmount / requestedMakingAmount
                 require(takingAmount * requestedMakingAmount <= thresholdAmount * makingAmount, "LOP: taking amount too high");
-            }
-            else {
+            } else {
                 uint256 requestedTakingAmount = takingAmount;
                 makingAmount = _callGetter(order.getMakerAmount, order.takingAmount, takingAmount);
                 if (makingAmount > remainingMakerAmount) {
@@ -268,7 +268,8 @@ abstract contract OrderMixin is
         );
 
         // Maker can handle funds interactively
-        if (order.interaction.length > 0) {
+        if (order.interaction.length >= 20) {
+            // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes memory interactionData) = order.interaction.decodeTargetAndCalldata();
             InteractiveNotificationReceiver(interactionTarget).notifyFillOrder(
                 msg.sender, order.makerAsset, order.takerAsset, makingAmount, takingAmount, interactionData

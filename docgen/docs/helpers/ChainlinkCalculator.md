@@ -26,7 +26,8 @@ Calculates price of token relative to ETH scaled by 1e18
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| contract AggregatorInterface | Token price times amount
+|`Result`| uint256 | Token price times amount
+
 ### doublePrice
 ```solidity
 function doublePrice(
@@ -50,4 +51,5 @@ Calculates price of token A relative to token B. Note that order is important
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| contract AggregatorInterface | Token A relative price times amount
+|`Result`| uint256 | Token A relative price times amount
+

@@ -605,7 +605,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrderRFQ(order, signature, 1, 0),
-                'LOP: already filled',
+                'LOP: invalidated order',
             );
         });
     });

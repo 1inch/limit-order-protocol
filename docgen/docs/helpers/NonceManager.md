@@ -47,7 +47,8 @@ Checks if `makerAddress` has specified `makerNonce`
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| address | True if `makerAddress` has specified nonce. Otherwise, false
+|`Result`| bool | True if `makerAddress` has specified nonce. Otherwise, false
+
 ## Events
 ### NonceIncreased
 ```solidity
