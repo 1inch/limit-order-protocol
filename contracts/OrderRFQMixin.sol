@@ -36,7 +36,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
 
     /// @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
-    /// @return Result Each bit represents whenever corresponding quote was filled
+    /// @return Result Each bit represents whether corresponding was already invalidated
     function invalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256) {
         return _invalidator[maker][slot];
     }
@@ -69,7 +69,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
     /// @param takingAmount Taking amount
     /// @param target Address that will receive swap funds
     /// @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
-    /// See tests for examples
+    /// @dev See tests for examples
     function fillOrderRFQToWithPermit(
         OrderRFQ memory order,
         bytes calldata signature,
