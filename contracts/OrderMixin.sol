@@ -224,19 +224,25 @@ abstract contract OrderMixin is
                 revert("LOP: only one amount should be 0");
             }
             else if (takingAmount == 0) {
+                uint256 requestedMakingAmount = makingAmount;
                 if (makingAmount > remainingMakerAmount) {
                     makingAmount = remainingMakerAmount;
                 }
                 takingAmount = _callGetter(order.getTakerAmount, order.makingAmount, makingAmount);
-                require(takingAmount <= thresholdAmount, "LOP: taking amount too high");
+                // check that actual rate is not worse than what was expected
+                // takingAmount / makingAmount <= thresholdAmount / requestedMakingAmount
+                require(takingAmount * requestedMakingAmount <= thresholdAmount * makingAmount, "LOP: taking amount too high");
             }
             else {
+                uint256 requestedTakingAmount = takingAmount;
                 makingAmount = _callGetter(order.getMakerAmount, order.takingAmount, takingAmount);
                 if (makingAmount > remainingMakerAmount) {
                     makingAmount = remainingMakerAmount;
                     takingAmount = _callGetter(order.getTakerAmount, order.makingAmount, makingAmount);
                 }
-                require(makingAmount >= thresholdAmount, "LOP: making amount too low");
+                // check that actual rate is not worse than what was expected
+                // makingAmount / takingAmount >= thresholdAmount / requestedTakingAmount
+                require(makingAmount * requestedTakingAmount >= thresholdAmount * takingAmount, "LOP: making amount too low");
             }
 
             require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");

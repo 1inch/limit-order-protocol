@@ -892,7 +892,7 @@ describe('LimitOrderProtocol', async function () {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(addr1);
 
-            await this.swap.fillOrder(order, signature, 3, 0, 2);
+            await this.swap.fillOrder(order, signature, 3, 0, 3);
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(2));
             expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(takerDai.addn(2));
