@@ -118,7 +118,7 @@ abstract contract OrderMixin is
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory result) = targets[i].call(data[i]);
             if (success && result.length > 0) {
-                success = result.decodeBool();
+                success = result.length == 32 && result.decodeBool();
             }
             reason[i] = success ? bytes1("1") : bytes1("0");
         }
@@ -316,7 +316,7 @@ abstract contract OrderMixin is
     function _makeCall(address asset, bytes memory assetData) private {
         bytes memory result = asset.functionCall(assetData, "LOP: asset.call failed");
         if (result.length > 0) {
-            require(result.decodeBool(), "LOP: asset.call bad result");
+            require(result.length == 32 && result.decodeBool(), "LOP: asset.call bad result");
         }
     }
 
