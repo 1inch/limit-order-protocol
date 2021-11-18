@@ -98,6 +98,12 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
         require(target != address(0), "LOP: zero target is forbidden");
 
         address maker = order.maker;
+
+        // Validate order
+        require(order.allowedSender == address(0) || order.allowedSender == msg.sender, "LOP: private order");
+        bytes32 orderHash = _hashTypedDataV4(keccak256(abi.encode(LIMIT_ORDER_RFQ_TYPEHASH, order)));
+        require(SignatureChecker.isValidSignatureNow(maker, orderHash, signature), "LOP: bad signature");
+
         {  // Stack too deep
             uint256 info = order.info;
             // Check time expiration
@@ -129,11 +135,6 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
         }
 
         require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
-
-        // Validate order
-        require(order.allowedSender == address(0) || order.allowedSender == msg.sender, "LOP: private order");
-        bytes32 orderHash = _hashTypedDataV4(keccak256(abi.encode(LIMIT_ORDER_RFQ_TYPEHASH, order)));
-        require(SignatureChecker.isValidSignatureNow(maker, orderHash, signature), "LOP: bad signature");
 
         // Maker => Taker, Taker => Maker
         order.makerAsset.safeTransferFrom(maker, target, makingAmount);
