@@ -200,7 +200,7 @@ abstract contract OrderMixin is
 
         {  // Stack too deep
             uint256 remainingMakerAmount = _remaining[orderHash];
-            require(remainingMakerAmount != _ORDER_FILLED, "LOP: remaining amoint is 0");
+            require(remainingMakerAmount != _ORDER_FILLED, "LOP: remaining amount is 0");
             require(order.allowedSender == address(0) || order.allowedSender == msg.sender, "LOP: private order");
             if (remainingMakerAmount == _ORDER_DOES_NOT_EXIST) {
                 // First fill: validate order and permit maker asset
