@@ -143,7 +143,7 @@ abstract contract OrderMixin is
     /// @param signature Signature to confirm quote ownership
     /// @param makingAmount Making amount
     /// @param takingAmount Taking amount
-    /// @param thresholdAmount Specifies maximum allowed takingAmount whent takingAmount is zero, otherwise specifies minimum allowed makingAmount
+    /// @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
     function fillOrder(
         Order memory order,
         bytes calldata signature,
@@ -161,7 +161,7 @@ abstract contract OrderMixin is
     /// @param signature Signature to confirm quote ownership
     /// @param makingAmount Making amount
     /// @param takingAmount Taking amount
-    /// @param thresholdAmount Specifies maximum allowed takingAmount whent takingAmount is zero, otherwise specifies minimum allowed makingAmount
+    /// @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
     /// @param target Address that will receive swap funds
     /// @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
     /// @dev See tests for examples
@@ -185,7 +185,7 @@ abstract contract OrderMixin is
     /// @param signature Signature to confirm quote ownership
     /// @param makingAmount Making amount
     /// @param takingAmount Taking amount
-    /// @param thresholdAmount Specifies maximum allowed takingAmount whent takingAmount is zero, otherwise specifies minimum allowed makingAmount
+    /// @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
     /// @param target Address that will receive swap funds
     function fillOrderTo(
         Order memory order,

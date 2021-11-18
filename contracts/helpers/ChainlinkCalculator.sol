@@ -15,7 +15,7 @@ contract ChainlinkCalculator {
     uint256 private constant _ORACLE_EXPIRATION_TIME = 30 minutes;
     uint256 private constant _INVERSE_MASK = 1 << 255;
 
-    /// @notice Calculates price of token realtive to oracle unit (ETH or USD)
+    /// @notice Calculates price of token relative to oracle unit (ETH or USD)
     /// @param inverseAndSpread concatenated inverse flag and spread.
     /// Lowest 254 bits specify spread amount. Spread is scaled by 1e9, i.e. 101% = 1.01e9, 99% = 0.99e9.
     /// Highest bit is set when oracle price should be inverted,
