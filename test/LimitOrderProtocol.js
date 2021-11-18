@@ -314,8 +314,8 @@ describe('LimitOrderProtocol', async function () {
         await this.weth.approve(erc721proxy.address, '10');
 
         const order = buildOrder(this.swap, erc721proxy, erc721proxy, 10, 10);
-        order.makerAssetData = '0x' + erc721proxy.contract.methods.func_602HzuS(wallet, constants.ZERO_ADDRESS, 10, this.dai.address).encodeABI().substr(202);
-        order.takerAssetData = '0x' + erc721proxy.contract.methods.func_602HzuS(constants.ZERO_ADDRESS, wallet, 10, this.weth.address).encodeABI().substr(202);
+        order.makerAssetData = '0x' + erc721proxy.contract.methods.func_60iHVgK(wallet, constants.ZERO_ADDRESS, 0, 10, this.dai.address).encodeABI().substr(202);
+        order.takerAssetData = '0x' + erc721proxy.contract.methods.func_60iHVgK(constants.ZERO_ADDRESS, wallet, 0, 10, this.weth.address).encodeABI().substr(202);
 
         const data = buildOrderData(this.chainId, this.swap.address, order);
         const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
@@ -892,7 +892,7 @@ describe('LimitOrderProtocol', async function () {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(addr1);
 
-            await this.swap.fillOrder(order, signature, 3, 0, 2);
+            await this.swap.fillOrder(order, signature, 3, 0, 3);
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(2));
             expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(takerDai.addn(2));

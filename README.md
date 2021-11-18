@@ -15,13 +15,13 @@ This repository contains a smart contract for EVM based blockchains (Ethereum, B
 
 Contract allows users to place limit orders, that later could be filled on-chain. Limit order itself is a data structure created off-chain and signed according to EIP-712.
 
-Ket features of the protocol is **extreme flexibility** and **high gas efficiency** that achieved by using following order types.
+Key features of the protocol is **extreme flexibility** and **high gas efficiency** that achieved by using following order types.
 
 ### Limit Order
 Extremely **flexible** limit order, can be configured with:
 1) Order execution predicate.
     - Typical usage is checking that certain time stamp or block number. With this you can set certain expiration time.
-    - You can specify construct any predicate that you want, for example check that certain price is higher than oracle price, to implement stop loss or take profit stategies 
+    - You can specify construct any predicate that you want, for example check that certain price is higher than oracle price, to implement stop loss or take profit strategies 
 2) Helper function for asset price evaluation.
     - Function that will allow to extract assets price from arbitrary on-chain source
 3) Callback, for to notify maker on order execution.
@@ -31,7 +31,7 @@ Extremely **flexible** limit order, can be configured with:
 **Gas optimized order** with restricted capabilities suitable **for market makers**
 
 - Support expiration time
-- Support cancelation by order id
+- Support cancellation by order id
 - RFQ Order could be filled only once
 - Partial Fill is possible (once)
 

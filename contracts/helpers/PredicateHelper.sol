@@ -13,7 +13,7 @@ contract PredicateHelper {
     /// @return Result True if call to any target returned True. Otherwise, false
     function or(address[] calldata targets, bytes[] calldata data) external view returns(bool) {
         require(targets.length == data.length, "PH: input array size mismatch");
-        for (uint i = 0; i < targets.length; i++) {
+        for (uint256 i = 0; i < targets.length; i++) {
             bytes memory result = targets[i].functionStaticCall(data[i], "PH: 'or' subcall failed");
             require(result.length == 32, "PH: invalid call result");
             if (abi.decode(result, (bool))) {
@@ -27,7 +27,7 @@ contract PredicateHelper {
     /// @return Result True if calls to all targets returned True. Otherwise, false
     function and(address[] calldata targets, bytes[] calldata data) external view returns(bool) {
         require(targets.length == data.length, "PH: input array size mismatch");
-        for (uint i = 0; i < targets.length; i++) {
+        for (uint256 i = 0; i < targets.length; i++) {
             bytes memory result = targets[i].functionStaticCall(data[i], "PH: 'and' subcall failed");
             require(result.length == 32, "PH: invalid call result");
             if (!abi.decode(result, (bool))) {
