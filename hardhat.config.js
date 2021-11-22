@@ -8,7 +8,7 @@ const networks = require('./hardhat.networks');
 
 module.exports = {
     solidity: {
-        version: '0.8.9',
+        version: '0.8.10',
         settings: {
             optimizer: {
                 enabled: true,
@@ -21,6 +21,9 @@ module.exports = {
         deployer: {
             default: 0,
         },
+    },
+    etherscan: {
+        apiKey: process.env.MAINNET_ETHERSCAN_KEY,
     },
     gasReporter: {
         enable: true,
