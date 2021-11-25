@@ -229,16 +229,16 @@ abstract contract OrderMixin is
                 if (makingAmount > remainingMakerAmount) {
                     makingAmount = remainingMakerAmount;
                 }
-                takingAmount = _callGetter(order.getTakerAmount, order.makingAmount, makingAmount);
+                takingAmount = _callGetter(order.getTakerAmount, order.makingAmount, makingAmount, order.takingAmount);
                 // check that actual rate is not worse than what was expected
                 // takingAmount / makingAmount <= thresholdAmount / requestedMakingAmount
                 require(takingAmount * requestedMakingAmount <= thresholdAmount * makingAmount, "LOP: taking amount too high");
             } else {
                 uint256 requestedTakingAmount = takingAmount;
-                makingAmount = _callGetter(order.getMakerAmount, order.takingAmount, takingAmount);
+                makingAmount = _callGetter(order.getMakerAmount, order.takingAmount, takingAmount, order.makingAmount);
                 if (makingAmount > remainingMakerAmount) {
                     makingAmount = remainingMakerAmount;
-                    takingAmount = _callGetter(order.getTakerAmount, order.makingAmount, makingAmount);
+                    takingAmount = _callGetter(order.getTakerAmount, order.makingAmount, makingAmount, order.takingAmount);
                 }
                 // check that actual rate is not worse than what was expected
                 // makingAmount / takingAmount >= thresholdAmount / requestedTakingAmount
@@ -327,11 +327,11 @@ abstract contract OrderMixin is
         }
     }
 
-    function _callGetter(bytes memory getter, uint256 orderAmount, uint256 amount) private view returns(uint256) {
+    function _callGetter(bytes memory getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
         if (getter.length == 0) {
             // On empty getter calldata only exact amount is allowed
-            require(amount == orderAmount, "LOP: wrong amount");
-            return orderAmount;
+            require(amount == orderExpectedAmount, "LOP: wrong amount");
+            return orderResultAmount;
         } else {
             bytes memory result = address(this).functionStaticCall(abi.encodePacked(getter, amount), "LOP: getAmount call failed");
             require(result.length == 32, "LOP: invalid getAmount return");
