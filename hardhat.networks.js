@@ -40,6 +40,14 @@ if (process.env.ARBITRUM_RPC_URL && process.env.ARBITRUM_PRIVATE_KEY) {
     };
 }
 
+if (process.env.OPTIMISTIC_RPC_URL && process.env.OPTIMISTIC_PRIVATE_KEY) {
+    networks.optimistic = {
+        url: process.env.OPTIMISTIC_RPC_URL,
+        chainId: 10,
+        accounts: [process.env.OPTIMISTIC_PRIVATE_KEY],
+    };
+}
+
 if (process.env.ROPSTEN_RPC_URL && process.env.ROPSTEN_PRIVATE_KEY) {
     networks.ropsten = {
         url: process.env.ROPSTEN_RPC_URL,

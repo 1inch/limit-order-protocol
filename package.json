@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@1inch/1inch-solidity-utils": "^1.1.3",
+    "@nomiclabs/hardhat-etherscan": "^2.1.6",
     "@nomiclabs/hardhat-truffle5": "^2.0.2",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/test-helpers": "^0.5.15",
