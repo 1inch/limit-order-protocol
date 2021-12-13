@@ -3,20 +3,13 @@
 pragma solidity 0.8.10;
 pragma abicoder v1;
 
-import "../libraries/ArgumentsDecoder.sol";
-import "../interfaces/InteractiveNotificationReceiver.sol";
+import "./interfaces/InteractiveNotificationReceiver.sol";
 import "./interfaces/IWithdrawable.sol";
 
-contract InteractiveNotificationReceiverMock is InteractiveNotificationReceiver {
-    using ArgumentsDecoder for bytes;
+contract WethUnwrapper is InteractiveNotificationReceiver {
+    // solhint-disable-next-line no-empty-blocks
+    receive() external payable {}
 
-    event Received(address, uint);
-
-    receive() external payable {
-        emit Received(msg.sender, msg.value);
-    }
-
-    // unwrap takerAsset for tests
     function notifyFillOrder(
         address /* taker */,
         address /* makerAsset */,
