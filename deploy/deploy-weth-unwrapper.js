@@ -10,7 +10,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
     const wethUnwrapper = await deploy('WethUnwrapper', {
         from: deployer,
-        skipIfAlreadyDeployed: true,
     });
 
     console.log('WethUnwrapper deployed to:', wethUnwrapper.address);
