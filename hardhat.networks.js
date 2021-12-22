@@ -1,75 +1,27 @@
 const networks = {};
 
-if (process.env.MAINNET_RPC_URL && process.env.MAINNET_PRIVATE_KEY) {
-    networks.mainnet = {
-        url: process.env.MAINNET_RPC_URL,
-        chainId: 1,
-        accounts: [process.env.MAINNET_PRIVATE_KEY],
-    };
+function register (name, chainId, url, privateKey) {
+    if (url && privateKey) {
+        networks[name] = {
+            url,
+            chainId,
+            accounts: [privateKey],
+        };
+        console.log(`Network '${name}' registered`);
+    } else {
+        console.log(`Network '${name}' not registered`);
+    }
 }
 
-if (process.env.BSC_RPC_URL && process.env.BSC_PRIVATE_KEY) {
-    networks.bsc = {
-        url: process.env.BSC_RPC_URL,
-        chainId: 56,
-        accounts: [process.env.BSC_PRIVATE_KEY],
-    };
-}
-
-if (process.env.KOVAN_RPC_URL && process.env.KOVAN_PRIVATE_KEY) {
-    networks.kovan = {
-        url: process.env.KOVAN_RPC_URL,
-        chainId: 42,
-        accounts: [process.env.KOVAN_PRIVATE_KEY],
-    };
-}
-
-if (process.env.MATIC_RPC_URL && process.env.MATIC_PRIVATE_KEY) {
-    networks.matic = {
-        url: process.env.MATIC_RPC_URL,
-        chainId: 137,
-        accounts: [process.env.MATIC_PRIVATE_KEY],
-    };
-}
-
-if (process.env.ARBITRUM_RPC_URL && process.env.ARBITRUM_PRIVATE_KEY) {
-    networks.arbitrum = {
-        url: process.env.ARBITRUM_RPC_URL,
-        chainId: 42161,
-        accounts: [process.env.ARBITRUM_PRIVATE_KEY],
-    };
-}
-
-if (process.env.OPTIMISTIC_RPC_URL && process.env.OPTIMISTIC_PRIVATE_KEY) {
-    networks.optimistic = {
-        url: process.env.OPTIMISTIC_RPC_URL,
-        chainId: 10,
-        accounts: [process.env.OPTIMISTIC_PRIVATE_KEY],
-    };
-}
-
-if (process.env.ROPSTEN_RPC_URL && process.env.ROPSTEN_PRIVATE_KEY) {
-    networks.ropsten = {
-        url: process.env.ROPSTEN_RPC_URL,
-        chainId: 3,
-        accounts: [process.env.ROPSTEN_PRIVATE_KEY],
-    };
-}
-
-if (process.env.XDAI_RPC_URL && process.env.XDAI_PRIVATE_KEY) {
-    networks.xdai = {
-        url: process.env.XDAI_RPC_URL,
-        chainId: 100,
-        accounts: [process.env.XDAI_PRIVATE_KEY],
-    };
-}
-
-if (process.env.AVAX_RPC_URL && process.env.AVAX_PRIVATE_KEY) {
-    networks.avax = {
-        url: process.env.AVAX_RPC_URL,
-        chainId: 43114,
-        accounts: [process.env.AVAX_PRIVATE_KEY],
-    };
-}
+register('mainnet', 1, process.env.MAINNET_RPC_URL, process.env.MAINNET_PRIVATE_KEY);
+register('bsc', 56, process.env.BSC_RPC_URL, process.env.BSC_PRIVATE_KEY);
+register('kovan', 42, process.env.KOVAN_RPC_URL, process.env.KOVAN_PRIVATE_KEY);
+register('optimistic', 10, process.env.OPTIMISTIC_RPC_URL, process.env.OPTIMISTIC_PRIVATE_KEY);
+register('kovan-optimistic', 69, process.env.KOVAN_OPTIMISTIC_RPC_URL, process.env.KOVAN_OPTIMISTIC_PRIVATE_KEY);
+register('matic', 137, process.env.MATIC_RPC_URL, process.env.MATIC_PRIVATE_KEY);
+register('arbitrum', 42161, process.env.ARBITRUM_RPC_URL, process.env.ARBITRUM_PRIVATE_KEY);
+register('ropsten', 3, process.env.ROPSTEN_RPC_URL, process.env.ROPSTEN_PRIVATE_KEY);
+register('xdai', 100, process.env.XDAI_RPC_URL, process.env.XDAI_PRIVATE_KEY);
+register('avax', 43114, process.env.AVAX_RPC_URL, process.env.AVAX_PRIVATE_KEY);
 
 module.exports = networks;
