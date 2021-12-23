@@ -26,7 +26,7 @@ describe('ChainLinkExample', async function () {
 
     // eslint-disable-next-line no-unused-vars
     function buildDoublePriceGetter (swap, oracle1, oracle2, spread, amount = '0') {
-        return swap.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), amount).encodeABI();
+        return swap.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount).encodeABI();
     }
 
     function buildOrder (

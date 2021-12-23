@@ -23,9 +23,7 @@ contract ChainlinkCalculator {
     /// and inverse=true means that we request ETH price in DAI
     /// @return Amount * spread * oracle price
     function singlePrice(AggregatorV3Interface oracle, uint256 inverseAndSpread, uint256 amount) external view returns(uint256) {
-        (, int256 latestAnswer,, uint256 latestTimestamp,) = oracle.latestRoundData();
-        // solhint-disable-next-line not-rely-on-time
-        require(latestTimestamp + _ORACLE_EXPIRATION_TIME > block.timestamp, "CC: stale data");
+        (, int256 latestAnswer,,,) = oracle.latestRoundData();
         bool inverse = inverseAndSpread & _INVERSE_MASK > 0;
         uint256 spread = inverseAndSpread & (~_INVERSE_MASK);
         if (inverse) {
@@ -37,16 +35,16 @@ contract ChainlinkCalculator {
 
     /// @notice Calculates price of token A relative to token B. Note that order is important
     /// @return Result Token A relative price times amount
-    function doublePrice(AggregatorV3Interface oracle1, AggregatorV3Interface oracle2, uint256 spread, uint256 amount) external view returns(uint256) {
+    function doublePrice(AggregatorV3Interface oracle1, AggregatorV3Interface oracle2, uint256 spread, int256 decimalsScale, uint256 amount) external view returns(uint256) {
         require(oracle1.decimals() == oracle2.decimals(), "CC: oracle decimals don't match");
-
-        (, int256 latestAnswer1,, uint256 latestTimestamp1,) = oracle1.latestRoundData();
-        (, int256 latestAnswer2,, uint256 latestTimestamp2,) = oracle2.latestRoundData();
-        // solhint-disable-next-line not-rely-on-time
-        require(latestTimestamp1 + _ORACLE_EXPIRATION_TIME > block.timestamp, "CC: stale data O1");
-        // solhint-disable-next-line not-rely-on-time
-        require(latestTimestamp2 + _ORACLE_EXPIRATION_TIME > block.timestamp, "CC: stale data O2");
-
-        return amount * spread * latestAnswer1.toUint256() / latestAnswer2.toUint256() / _SPREAD_DENOMINATOR;
+        (, int256 latestAnswer1,,,) = oracle1.latestRoundData();
+        (, int256 latestAnswer2,,,) = oracle2.latestRoundData();
+        if (decimalsScale > 0) {
+            return amount * spread * latestAnswer1.toUint256() * (10 ** decimalsScale.toUint256()) / latestAnswer2.toUint256() / _SPREAD_DENOMINATOR;
+        } else if (decimalsScale < 0) {
+            return amount * spread * latestAnswer1.toUint256() / latestAnswer2.toUint256() / _SPREAD_DENOMINATOR / (10 ** (-decimalsScale).toUint256());
+        } else {
+            return amount * spread * latestAnswer1.toUint256() / latestAnswer2.toUint256() / _SPREAD_DENOMINATOR;
+        }
     }
 }
