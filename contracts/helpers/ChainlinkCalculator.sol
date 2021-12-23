@@ -12,7 +12,6 @@ contract ChainlinkCalculator {
     using SafeCast for int256;
 
     uint256 private constant _SPREAD_DENOMINATOR = 1e9;
-    uint256 private constant _ORACLE_EXPIRATION_TIME = 30 minutes;
     uint256 private constant _INVERSE_MASK = 1 << 255;
 
     /// @notice Calculates price of token relative to oracle unit (ETH or USD)
