@@ -9,7 +9,7 @@
 
 ### About
 
-You can find general overview and docs on 1inch limit orders protocol [here](https://docs.1inch.io/limit-order-protocol/).
+You can find general overview and docs on 1inch limit orders protocol [here](https://docs.1inch.io/docs/limit-order-protocol/introduction/).
 
 This repository contains a smart contract for EVM based blockchains (Ethereum, Binance Smart Chain, etc.), this contract is core part of 1inch limit order protocol.
 
