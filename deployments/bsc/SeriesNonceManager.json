@@ -1,0 +1,205 @@
+{
+  "address": "0x1488a117641eD5D2D29AB3eD2397963FdEFEc25e",
+  "abi": [
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "maker",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint8",
+          "name": "series",
+          "type": "uint8"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newNonce",
+          "type": "uint256"
+        }
+      ],
+      "name": "NonceIncreased",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "series",
+          "type": "uint8"
+        },
+        {
+          "internalType": "uint8",
+          "name": "amount",
+          "type": "uint8"
+        }
+      ],
+      "name": "advanceNonce",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "series",
+          "type": "uint8"
+        }
+      ],
+      "name": "increaseNonce",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "nonce",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "series",
+          "type": "uint8"
+        },
+        {
+          "internalType": "address",
+          "name": "makerAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "makerNonce",
+          "type": "uint256"
+        }
+      ],
+      "name": "nonceEquals",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xb8c0e8f84887c36e65420c17475c68d05a16f917622d5e48c559b3865dcaf3aa",
+  "receipt": {
+    "to": null,
+    "from": "0x11799622F4D98A24514011E8527B969f7488eF47",
+    "contractAddress": "0x1488a117641eD5D2D29AB3eD2397963FdEFEc25e",
+    "transactionIndex": 202,
+    "gasUsed": "188587",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x96c52464cde9786006ec97ba4ab339e0300db784dec47de9d4a053c18e555b4d",
+    "transactionHash": "0xb8c0e8f84887c36e65420c17475c68d05a16f917622d5e48c559b3865dcaf3aa",
+    "logs": [],
+    "blockNumber": 15332292,
+    "cumulativeGasUsed": "30954009",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "solcInputHash": "d36c857c471fa74c6511200d3f825669",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.11+commit.d7f03943\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"maker\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint8\",\"name\":\"series\",\"type\":\"uint8\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"newNonce\",\"type\":\"uint256\"}],\"name\":\"NonceIncreased\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"series\",\"type\":\"uint8\"},{\"internalType\":\"uint8\",\"name\":\"amount\",\"type\":\"uint8\"}],\"name\":\"advanceNonce\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"series\",\"type\":\"uint8\"}],\"name\":\"increaseNonce\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"nonce\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"series\",\"type\":\"uint8\"},{\"internalType\":\"address\",\"name\":\"makerAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"makerNonce\",\"type\":\"uint256\"}],\"name\":\"nonceEquals\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"nonceEquals(uint8,address,uint256)\":{\"returns\":{\"_0\":\"Result True if `makerAddress` has specified nonce. Otherwise, false\"}}},\"title\":\"A helper contract to manage nonce with the series\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"advanceNonce(uint8,uint8)\":{\"notice\":\"Advances nonce by specified amount\"},\"increaseNonce(uint8)\":{\"notice\":\"Advances nonce by one\"},\"nonceEquals(uint8,address,uint256)\":{\"notice\":\"Checks if `makerAddress` has specified `makerNonce` for `series`\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/helpers/SeriesNonceManager.sol\":\"SeriesNonceManager\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":1000000},\"remappings\":[]},\"sources\":{\"contracts/helpers/SeriesNonceManager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n\\npragma solidity 0.8.11;\\npragma abicoder v1;\\n\\n/// @title A helper contract to manage nonce with the series\\ncontract SeriesNonceManager {\\n    event NonceIncreased(address indexed maker, uint8 series, uint256 newNonce);\\n\\n    // {\\n    //    1: {\\n    //        '0x762f73Ad...842Ffa8': 0,\\n    //        '0xd20c41ee...32aaDe2': 1\\n    //    },\\n    //    2: {\\n    //        '0x762f73Ad...842Ffa8': 3,\\n    //        '0xd20c41ee...32aaDe2': 15\\n    //    },\\n    //    ...\\n    // }\\n    mapping(uint8 => mapping(address => uint256)) public nonce;\\n\\n    /// @notice Advances nonce by one\\n    function increaseNonce(uint8 series) external {\\n        advanceNonce(series, 1);\\n    }\\n\\n    /// @notice Advances nonce by specified amount\\n    function advanceNonce(uint8 series, uint8 amount) public {\\n        uint256 newNonce = nonce[series][msg.sender] + amount;\\n        nonce[series][msg.sender] = newNonce;\\n        emit NonceIncreased(msg.sender, series, newNonce);\\n    }\\n\\n    /// @notice Checks if `makerAddress` has specified `makerNonce` for `series`\\n    /// @return Result True if `makerAddress` has specified nonce. Otherwise, false\\n    function nonceEquals(uint8 series, address makerAddress, uint256 makerNonce) external view returns(bool) {\\n        return nonce[series][makerAddress] == makerNonce;\\n    }\\n}\\n\",\"keccak256\":\"0x4fd5ee1e7dd685e3b6d73caeb33e15f4b131ef6f9be5d2e24294ef95b01e0f86\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b50610274806100206000396000f3fe608060405234801561001057600080fd5b506004361061004c5760003560e01c80631438a25814610051578063238f0b02146100bb57806362534ddf146100e55780637a37dc2c14610143575b600080fd5b6100a76004803603606081101561006757600080fd5b50803560ff166000908152602081815260408083208285013573ffffffffffffffffffffffffffffffffffffffff16845290915290819020549101351490565b604080519115158252519081900360200190f35b6100e3600480360360408110156100d157600080fd5b5060ff81358116916020013516610163565b005b610131600480360360408110156100fb57600080fd5b5060006020818152823560ff1682526040808320825292013573ffffffffffffffffffffffffffffffffffffffff168152205481565b60408051918252519081900360200190f35b6100e36004803603602081101561015957600080fd5b503560ff166101f1565b60ff828116600090815260208181526040808320338452909152812054909161018f91908416906101ff565b60ff841660008181526020818152604080832033808552908352928190208590558051938452908301849052805193945090927fadef1448bc9b001b77ebb51ce9f8dfb29525aae2947f9c5efe516bf35b44da849281900390910190a2505050565b6101fc816001610163565b50565b60008219821115610239577f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b50019056fea264697066735822122008e5f667b4a5256cd48bb59bc2bbda3f1f1b89fc85f2eeb6cbcd35682020853c64736f6c634300080b0033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b506004361061004c5760003560e01c80631438a25814610051578063238f0b02146100bb57806362534ddf146100e55780637a37dc2c14610143575b600080fd5b6100a76004803603606081101561006757600080fd5b50803560ff166000908152602081815260408083208285013573ffffffffffffffffffffffffffffffffffffffff16845290915290819020549101351490565b604080519115158252519081900360200190f35b6100e3600480360360408110156100d157600080fd5b5060ff81358116916020013516610163565b005b610131600480360360408110156100fb57600080fd5b5060006020818152823560ff1682526040808320825292013573ffffffffffffffffffffffffffffffffffffffff168152205481565b60408051918252519081900360200190f35b6100e36004803603602081101561015957600080fd5b503560ff166101f1565b60ff828116600090815260208181526040808320338452909152812054909161018f91908416906101ff565b60ff841660008181526020818152604080832033808552908352928190208590558051938452908301849052805193945090927fadef1448bc9b001b77ebb51ce9f8dfb29525aae2947f9c5efe516bf35b44da849281900390910190a2505050565b6101fc816001610163565b50565b60008219821115610239577f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b50019056fea264697066735822122008e5f667b4a5256cd48bb59bc2bbda3f1f1b89fc85f2eeb6cbcd35682020853c64736f6c634300080b0033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "nonceEquals(uint8,address,uint256)": {
+        "returns": {
+          "_0": "Result True if `makerAddress` has specified nonce. Otherwise, false"
+        }
+      }
+    },
+    "title": "A helper contract to manage nonce with the series",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "advanceNonce(uint8,uint8)": {
+        "notice": "Advances nonce by specified amount"
+      },
+      "increaseNonce(uint8)": {
+        "notice": "Advances nonce by one"
+      },
+      "nonceEquals(uint8,address,uint256)": {
+        "notice": "Checks if `makerAddress` has specified `makerNonce` for `series`"
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 17,
+        "contract": "contracts/helpers/SeriesNonceManager.sol:SeriesNonceManager",
+        "label": "nonce",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_mapping(t_uint8,t_mapping(t_address,t_uint256))"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_mapping(t_address,t_uint256)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => uint256)",
+        "numberOfBytes": "32",
+        "value": "t_uint256"
+      },
+      "t_mapping(t_uint8,t_mapping(t_address,t_uint256))": {
+        "encoding": "mapping",
+        "key": "t_uint8",
+        "label": "mapping(uint8 => mapping(address => uint256))",
+        "numberOfBytes": "32",
+        "value": "t_mapping(t_address,t_uint256)"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      },
+      "t_uint8": {
+        "encoding": "inplace",
+        "label": "uint8",
+        "numberOfBytes": "1"
+      }
+    }
+  }
+}
