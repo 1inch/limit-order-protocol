@@ -24,7 +24,15 @@ module.exports = {
         },
     },
     etherscan: {
-        apiKey: process.env.MAINNET_ETHERSCAN_KEY,
+        apiKey: {
+            mainnet: process.env.MAINNET_ETHERSCAN_KEY,
+            bsc: process.env.BSC_ETHERSCAN_KEY,
+            optimisticEthereum: process.env.OPTIMISTIC_ETHERSCAN_KEY,
+            polygon: process.env.MATIC_ETHERSCAN_KEY,
+            arbitrumOne: process.env.ARBITRUM_ETHERSCAN_KEY,
+            xdai: process.env.XDAI_ETHERSCAN_KEY,
+            avalanche: process.env.AVAX_ETHERSCAN_KEY,
+        },
     },
     gasReporter: {
         enable: true,
