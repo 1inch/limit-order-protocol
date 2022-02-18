@@ -32,6 +32,7 @@ module.exports = {
             arbitrumOne: process.env.ARBITRUM_ETHERSCAN_KEY,
             xdai: process.env.XDAI_ETHERSCAN_KEY,
             avalanche: process.env.AVAX_ETHERSCAN_KEY,
+            kovan: process.env.KOVAN_ETHERSCAN_KEY,
         },
     },
     gasReporter: {
