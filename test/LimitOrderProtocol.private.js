@@ -92,7 +92,7 @@ describe('LimitOrderProtocol', async function () {
         expect(account.getAddressString().toLowerCase()).to.be.equal('0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266');
         expect(addr1.toLowerCase()).to.be.equal('0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266');
 
-        expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal('1000000');
-        expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal('1000000');
+        expect(await this.weth.balanceOf(addr1)).not.to.be.bignumber.equal('1000000');
+        expect(await this.dai.balanceOf(addr1)).not.to.be.bignumber.equal('1000000');
     });
 });
