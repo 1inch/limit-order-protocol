@@ -1,6 +1,7 @@
-<p align="center">
-  <img src="https://app.1inch.io/assets/images/logo.svg" width="200" alt="1inch network" />
-</p>
+<div align="center">
+    <img src="https://github.com/1inch/limit-order-protocol/blob/master/.github/1inch_github_b.png#gh-light-mode-only">
+    <img src="https://github.com/1inch/limit-order-protocol/blob/master/.github/1inch_github_w.png#gh-dark-mode-only">
+</div>
 
 # 1inch Limit Order Protocol Smart Contract
 
