@@ -33,6 +33,7 @@ module.exports = {
             xdai: process.env.XDAI_ETHERSCAN_KEY,
             avalanche: process.env.AVAX_ETHERSCAN_KEY,
             kovan: process.env.KOVAN_ETHERSCAN_KEY,
+            opera: process.env.FANTOM_ETHERSCAN_KEY,
         },
     },
     gasReporter: {

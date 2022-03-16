@@ -61,6 +61,8 @@ You can find 1inch limit order protocol deployments here:
 
 **Kovan Testnet:** [0xa218543cc21ee9388Fa1E509F950FD127Ca82155](https://kovan.etherscan.io/address/0xa218543cc21ee9388Fa1E509F950FD127Ca82155)
 
+**Fantom Opera:** [0x11DEE30E710B8d4a8630392781Cc3c0046365d4c](https://ftmscan.com/address/0x11DEE30E710B8d4a8630392781Cc3c0046365d4c)
+
 
 You can find audit reports on etherscan and in the separate [audit repository](https://github.com/1inch/1inch-audits/tree/master/Limit%20Order%20Protocol). 
 
