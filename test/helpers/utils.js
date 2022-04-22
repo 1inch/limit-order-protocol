@@ -23,7 +23,7 @@ function cutSelector (data) {
     return hexPrefix + data.substr(hexPrefix.length + 8);
 }
 
-function cutLastArg (data, padding=0) {
+function cutLastArg(data, padding= 0) {
     return data.substr(0, data.length - 64 - padding);
 }
 

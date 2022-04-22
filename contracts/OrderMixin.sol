@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./helpers/AmountCalculator.sol";
+import "./helpers/RangeAmountCalculator.sol";
 import "./helpers/ChainlinkCalculator.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
@@ -19,6 +20,7 @@ import "./libraries/Permitable.sol";
 abstract contract OrderMixin is
     EIP712,
     AmountCalculator,
+    RangeAmountCalculator,
     ChainlinkCalculator,
     NonceManager,
     PredicateHelper,
@@ -70,6 +72,14 @@ abstract contract OrderMixin is
         bytes predicate;      // this.staticcall(bytes) => (bool)
         bytes permit;         // On first fill: permit.1.call(abi.encodePacked(permit.selector, permit.2))
         bytes interaction;
+    }
+
+    struct OrderAmountGetterParams {
+        bytes getter;
+        uint256 orderExpectedAmount;
+        uint256 amount;
+        uint256 orderResultAmount;
+        uint256 alreadyFilledAmount;
     }
 
     bytes32 constant public LIMIT_ORDER_TYPEHASH = keccak256(
@@ -221,6 +231,8 @@ abstract contract OrderMixin is
                 require(checkPredicate(order), "LOP: predicate returned false");
             }
 
+            uint256 alreadyFilledAmount = order.makingAmount - remainingMakerAmount;
+
             // Compute maker and taker assets amount
             if ((takingAmount == 0) == (makingAmount == 0)) {
                 revert("LOP: only one amount should be 0");
@@ -229,16 +241,34 @@ abstract contract OrderMixin is
                 if (makingAmount > remainingMakerAmount) {
                     makingAmount = remainingMakerAmount;
                 }
-                takingAmount = _callGetter(order.getTakerAmount, order.makingAmount, makingAmount, order.takingAmount);
+                takingAmount = _callGetter(OrderAmountGetterParams(
+                    order.getTakerAmount,
+                    order.makingAmount,
+                    makingAmount,
+                    order.takingAmount,
+                    alreadyFilledAmount
+                ));
                 // check that actual rate is not worse than what was expected
                 // takingAmount / makingAmount <= thresholdAmount / requestedMakingAmount
                 require(takingAmount * requestedMakingAmount <= thresholdAmount * makingAmount, "LOP: taking amount too high");
             } else {
                 uint256 requestedTakingAmount = takingAmount;
-                makingAmount = _callGetter(order.getMakerAmount, order.takingAmount, takingAmount, order.makingAmount);
+                makingAmount = _callGetter(OrderAmountGetterParams(
+                    order.getMakerAmount,
+                    order.takingAmount,
+                    takingAmount,
+                    order.makingAmount,
+                    alreadyFilledAmount
+                ));
                 if (makingAmount > remainingMakerAmount) {
                     makingAmount = remainingMakerAmount;
-                    takingAmount = _callGetter(order.getTakerAmount, order.makingAmount, makingAmount, order.takingAmount);
+                    takingAmount = _callGetter(OrderAmountGetterParams(
+                        order.getTakerAmount,
+                        order.makingAmount,
+                        makingAmount,
+                        order.takingAmount,
+                        alreadyFilledAmount
+                    ));
                 }
                 // check that actual rate is not worse than what was expected
                 // makingAmount / takingAmount >= thresholdAmount / requestedTakingAmount
@@ -327,13 +357,16 @@ abstract contract OrderMixin is
         }
     }
 
-    function _callGetter(bytes memory getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
-        if (getter.length == 0) {
+    function _callGetter(OrderAmountGetterParams memory params) internal view returns(uint256) {
+        if (params.getter.length == 0) {
             // On empty getter calldata only exact amount is allowed
-            require(amount == orderExpectedAmount, "LOP: wrong amount");
-            return orderResultAmount;
+            require(params.amount == params.orderExpectedAmount, "LOP: wrong amount");
+            return params.orderResultAmount;
         } else {
-            bytes memory result = address(this).functionStaticCall(abi.encodePacked(getter, amount), "LOP: getAmount call failed");
+            bytes memory result = address(this).functionStaticCall(
+                abi.encodePacked(params.getter, params.amount, params.alreadyFilledAmount),
+                "LOP: getAmount call failed"
+            );
             require(result.length == 32, "LOP: invalid getAmount return");
             return result.decodeUint256();
         }
