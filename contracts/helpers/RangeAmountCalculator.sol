@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.11;
 
+import "../libraries/Math.sol";
+
 /**
  * Range limit order is used to sell an asset within a given price range.
  * For example, right now ETH is worth 3000 DAI and you believe that within the next week the price of ETH will rise and reach at least 4000 DAI.
@@ -27,7 +29,6 @@ contract RangeAmountCalculator {
 
             uint256 amountBeforeFill = priceStart * remainingLiquidity + priceEnd * filledFor;
             uint256 amountAfterFill = priceStart * remainingLiquidityAfterFill + priceEnd * filledForAfterFill;
-            // TODO: looks like wrong formula. Because when we fill a full order at the start we never get the end price
             uint256 price = (amountBeforeFill + amountAfterFill) / totalLiquidity / 2;
 
             return fillAmount * price;
@@ -35,22 +36,27 @@ contract RangeAmountCalculator {
     }
 
     function getRangeMakerAmount(
-            uint256 priceStart,
-            uint256 priceEnd,
-            uint256 totalLiquidity,
-            uint256 takingAmount,
-            uint256 filledFor
-        ) public pure returns(uint256) {
-            // TODO: set correct formula
-            unchecked {
-                uint256 remainingLiquidity = totalLiquidity - filledFor;
-                uint256 priceDiff = priceEnd - priceStart;
+        uint256 priceStart,
+        uint256 priceEnd,
+        uint256 totalLiquidity,
+        uint256 takingAmount,
+        uint256 filledFor
+    ) public pure returns(uint256) {
+        unchecked {
+            uint256 priceRangeDiff = priceEnd - priceStart;
+            uint256 liquidityRemaining = totalLiquidity - filledFor;
+            uint256 priceStartSqr = priceStart * priceStart;
 
-                return (
-                takingAmount * 2 * totalLiquidity
-                - priceStart * remainingLiquidity
-                - priceEnd * filledFor
-                - priceStart * totalLiquidity) / priceDiff;
-            }
+            uint256 d = 4 * (
+                2 * totalLiquidity * takingAmount * priceRangeDiff
+                + priceEnd * priceEnd * filledFor * filledFor
+                + priceStartSqr * totalLiquidity * totalLiquidity
+                + priceStartSqr * filledFor * filledFor
+                - 2 * priceStartSqr * totalLiquidity * filledFor
+                + 2 * priceStart * priceEnd * filledFor * liquidityRemaining
+            );
+
+            return (Math.sqrt(d / 4) - priceStart * liquidityRemaining - priceEnd * filledFor) / priceRangeDiff;
         }
+    }
 }
