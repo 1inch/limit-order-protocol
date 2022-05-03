@@ -6,7 +6,7 @@ import "../interfaces/InteractiveNotificationReceiver.sol";
 import "../interfaces/IWhitelistRegistry.sol";
 
 contract WhitelistChecker is InteractiveNotificationReceiver {
-    error SenderIsNotWhitelisted();
+    error TakerIsNotWhitelisted();
 
     IWhitelistRegistry public immutable whitelistRegistry;
 
@@ -15,6 +15,6 @@ contract WhitelistChecker is InteractiveNotificationReceiver {
     }
 
     function notifyFillOrder(address taker, address, address, uint256, uint256, bytes memory) external view {
-        if (whitelistRegistry.status(taker) != 1) revert SenderIsNotWhitelisted();
+        if (whitelistRegistry.status(taker) != 1) revert TakerIsNotWhitelisted();
     }
 }
