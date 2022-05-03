@@ -1,0 +1,110 @@
+{
+  "address": "0x40a04Ce49d9Ca7440726395C68Da990A3Bb19367",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "contract IWhitelistRegistry",
+          "name": "_whitelistRegistry",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [],
+      "name": "TakerIsNotWhitelisted",
+      "type": "error"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "taker",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ],
+      "name": "notifyFillOrder",
+      "outputs": [],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "whitelistRegistry",
+      "outputs": [
+        {
+          "internalType": "contract IWhitelistRegistry",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x32d30d74c0cc6ec22856350cb537c6664959f6f69f29f0b1869ea20b2f6e9da0",
+  "receipt": {
+    "to": null,
+    "from": "0x11799622F4D98A24514011E8527B969f7488eF47",
+    "contractAddress": "0x40a04Ce49d9Ca7440726395C68Da990A3Bb19367",
+    "transactionIndex": 128,
+    "gasUsed": "235919",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x1d10ee7aea1efd4ac62bd4e7278c3b5c171204c6e336a6386a3584f23f937e8d",
+    "transactionHash": "0x32d30d74c0cc6ec22856350cb537c6664959f6f69f29f0b1869ea20b2f6e9da0",
+    "logs": [],
+    "blockNumber": 14706634,
+    "cumulativeGasUsed": "7068120",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0xFC0E24F6Fe4765C8996591F5D3E43b7060ABa83B"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "c10e28d262c1ab685f621e99f77d59ab",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.11+commit.d7f03943\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"contract IWhitelistRegistry\",\"name\":\"_whitelistRegistry\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"TakerIsNotWhitelisted\",\"type\":\"error\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"taker\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"name\":\"notifyFillOrder\",\"outputs\":[],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"whitelistRegistry\",\"outputs\":[{\"internalType\":\"contract IWhitelistRegistry\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/helpers/WhitelistChecker.sol\":\"WhitelistChecker\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":1000000},\"remappings\":[]},\"sources\":{\"contracts/helpers/WhitelistChecker.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n\\npragma solidity 0.8.11;\\n\\nimport \\\"../interfaces/InteractiveNotificationReceiver.sol\\\";\\nimport \\\"../interfaces/IWhitelistRegistry.sol\\\";\\n\\ncontract WhitelistChecker is InteractiveNotificationReceiver {\\n    error TakerIsNotWhitelisted();\\n\\n    IWhitelistRegistry public immutable whitelistRegistry;\\n\\n    constructor(IWhitelistRegistry _whitelistRegistry) {\\n        whitelistRegistry = _whitelistRegistry;\\n    }\\n\\n    function notifyFillOrder(address taker, address, address, uint256, uint256, bytes memory) external view {\\n        if (whitelistRegistry.status(taker) != 1) revert TakerIsNotWhitelisted();\\n    }\\n}\\n\",\"keccak256\":\"0xc1c8471798c6c23968f4694ad1b9199cc63f060e82387b06cf7061377b3ebea8\",\"license\":\"MIT\"},\"contracts/interfaces/IWhitelistRegistry.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n\\npragma solidity 0.8.11;\\n\\ninterface IWhitelistRegistry {\\n    function status(address addr) external view returns(uint256);\\n}\\n\",\"keccak256\":\"0x2f8c9d20c17eed2ef41e7048f4bade872a926e8fe8ecddb5178e892be63a1e76\",\"license\":\"MIT\"},\"contracts/interfaces/InteractiveNotificationReceiver.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n\\npragma solidity 0.8.11;\\npragma abicoder v1;\\n\\n/// @title Interface for interactor which acts between `maker => taker` and `taker => maker` transfers.\\ninterface InteractiveNotificationReceiver {\\n    /// @notice Callback method that gets called after taker transferred funds to maker but before\\n    /// the opposite transfer happened\\n    function notifyFillOrder(\\n        address taker,\\n        address makerAsset,\\n        address takerAsset,\\n        uint256 makingAmount,\\n        uint256 takingAmount,\\n        bytes memory interactiveData\\n    ) external;\\n}\\n\",\"keccak256\":\"0x94dd744e55a6eee1aa944b885d46c9ca5adc49bde5be854e08f8d4c31484a687\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x60a060405234801561001057600080fd5b506040516103db3803806103db83398101604081905261002f91610040565b6001600160a01b0316608052610070565b60006020828403121561005257600080fd5b81516001600160a01b038116811461006957600080fd5b9392505050565b60805161034b610090600039600081816055015260e5015261034b6000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c8063cf21c7751461003b578063ed95063814610050575b600080fd5b61004e6100493660046101e9565b6100a0565b005b6100777f000000000000000000000000000000000000000000000000000000000000000081565b60405173ffffffffffffffffffffffffffffffffffffffff909116815260200160405180910390f35b6040517f645b8b1b00000000000000000000000000000000000000000000000000000000815273ffffffffffffffffffffffffffffffffffffffff87811660048301527f0000000000000000000000000000000000000000000000000000000000000000169063645b8b1b90602401602060405180830381865afa15801561012c573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061015091906102fc565b600114610189576040517fff90872c00000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b505050505050565b803573ffffffffffffffffffffffffffffffffffffffff811681146101b557600080fd5b919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b60008060008060008060c0878903121561020257600080fd5b61020b87610191565b955061021960208801610191565b945061022760408801610191565b9350606087013592506080870135915060a087013567ffffffffffffffff8082111561025257600080fd5b818901915089601f83011261026657600080fd5b813581811115610278576102786101ba565b604051601f82017fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0908116603f011681019083821181831017156102be576102be6101ba565b816040528281528c60208487010111156102d757600080fd5b8260208601602083013760006020848301015280955050505050509295509295509295565b60006020828403121561030e57600080fd5b505191905056fea2646970667358221220f64dd60815c7a8cf3bdf0fa9210517f0eaac08a43a938da8e19389ddc29ab8a764736f6c634300080b0033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106100365760003560e01c8063cf21c7751461003b578063ed95063814610050575b600080fd5b61004e6100493660046101e9565b6100a0565b005b6100777f000000000000000000000000000000000000000000000000000000000000000081565b60405173ffffffffffffffffffffffffffffffffffffffff909116815260200160405180910390f35b6040517f645b8b1b00000000000000000000000000000000000000000000000000000000815273ffffffffffffffffffffffffffffffffffffffff87811660048301527f0000000000000000000000000000000000000000000000000000000000000000169063645b8b1b90602401602060405180830381865afa15801561012c573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061015091906102fc565b600114610189576040517fff90872c00000000000000000000000000000000000000000000000000000000815260040160405180910390fd5b505050505050565b803573ffffffffffffffffffffffffffffffffffffffff811681146101b557600080fd5b919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b60008060008060008060c0878903121561020257600080fd5b61020b87610191565b955061021960208801610191565b945061022760408801610191565b9350606087013592506080870135915060a087013567ffffffffffffffff8082111561025257600080fd5b818901915089601f83011261026657600080fd5b813581811115610278576102786101ba565b604051601f82017fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0908116603f011681019083821181831017156102be576102be6101ba565b816040528281528c60208487010111156102d757600080fd5b8260208601602083013760006020848301015280955050505050509295509295509295565b60006020828403121561030e57600080fd5b505191905056fea2646970667358221220f64dd60815c7a8cf3bdf0fa9210517f0eaac08a43a938da8e19389ddc29ab8a764736f6c634300080b0033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": null
+  }
+}
