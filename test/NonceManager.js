@@ -34,7 +34,6 @@ describe('NonceManager', async function () {
     });
 
     it('Nonce equals - should return true when nonce matches', async function () {
-
         await this.nonceManager.advanceNonce(4);
         const isEquals = await this.nonceManager.nonceEquals(currentAddress, 4);
         expect(isEquals).to.equal(true);
