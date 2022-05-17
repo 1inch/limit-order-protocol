@@ -8,6 +8,8 @@ const Wallet = require('ethereumjs-wallet').default;
 const TokenMock = artifacts.require('TokenMock');
 const WrappedTokenMock = artifacts.require('WrappedTokenMock');
 const WethUnwrapper = artifacts.require('WethUnwrapper');
+const WhitelistChecker = artifacts.require('WhitelistChecker');
+const WhitelistRegistryMock = artifacts.require('WhitelistRegistryMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 const ERC721Proxy = artifacts.require('ERC721Proxy');
 
@@ -904,6 +906,9 @@ describe('LimitOrderProtocol', async function () {
     describe('Interaction', async function () {
         beforeEach(async function () {
             this.notificationReceiver = await WethUnwrapper.new();
+
+            this.whitelistRegistryMock = await WhitelistRegistryMock.new();
+            this.whitelistChecker = await WhitelistChecker.new(this.whitelistRegistryMock.address);
         });
 
         it('should fill and unwrap token', async function () {
@@ -940,6 +945,72 @@ describe('LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth);
             expect(web3.utils.toBN(await web3.eth.getBalance(wallet))).to.be.bignumber.equal(web3.utils.toBN(makerEth).addn(1));
             expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(takerWeth.subn(1));
+        });
+
+        it('should check whitelist and fill and unwrap token', async function () {
+            const amount = web3.utils.toWei('1', 'ether');
+            await web3.eth.sendTransaction({ from: wallet, to: this.weth.address, value: amount });
+
+            const wethUnwrapInteraction = this.notificationReceiver.address.substr(2) + wallet.substr(2);
+            const interaction = this.whitelistChecker.address + wethUnwrapInteraction;
+
+            const order = buildOrder(
+                this.swap,
+                this.dai,
+                this.weth,
+                1,
+                1,
+                constants.ZERO_ADDRESS,
+                this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(),
+                '0x',
+                interaction,
+                this.notificationReceiver.address,
+            );
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            const makerDai = await this.dai.balanceOf(wallet);
+            const takerDai = await this.dai.balanceOf(addr1);
+            const makerWeth = await this.weth.balanceOf(wallet);
+            const takerWeth = await this.weth.balanceOf(addr1);
+            const makerEth = await web3.eth.getBalance(wallet);
+
+            await this.whitelistRegistryMock.allow();
+            await this.swap.fillOrder(order, signature, 1, 0, 1);
+
+            expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
+            expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(takerDai.addn(1));
+            expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth);
+            expect(web3.utils.toBN(await web3.eth.getBalance(wallet))).to.be.bignumber.equal(web3.utils.toBN(makerEth).addn(1));
+            expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(takerWeth.subn(1));
+        });
+
+        it('should revert transaction when address is not allowed by whitelist', async function () {
+            const amount = web3.utils.toWei('1', 'ether');
+            await web3.eth.sendTransaction({ from: wallet, to: this.weth.address, value: amount });
+
+            const interaction = this.whitelistChecker.address;
+
+            const order = buildOrder(
+                this.swap,
+                this.dai,
+                this.weth,
+                1,
+                1,
+                constants.ZERO_ADDRESS,
+                this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(),
+                '0x',
+                interaction,
+                this.notificationReceiver.address,
+            );
+            const data = buildOrderData(this.chainId, this.swap.address, order);
+            const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+
+            await this.whitelistRegistryMock.ban();
+            await expectRevert(
+                this.swap.fillOrder(order, signature, 1, 0, 1),
+                'TakerIsNotWhitelisted()',
+            );
         });
     });
 });
