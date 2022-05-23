@@ -28,7 +28,7 @@ contract WhitelistChecker is InteractiveNotificationReceiver {
         if (whitelistRegistry.status(taker) != 1) revert TakerIsNotWhitelisted();
 
         if (nextInteractiveData.length != 0) {
-            (address interactionTarget, bytes memory interactionData) = nextInteractiveData.decodeTargetAndCalldata();
+            (address interactionTarget, bytes calldata interactionData) = nextInteractiveData.decodeTargetAndData();
 
             InteractiveNotificationReceiver(interactionTarget).notifyFillOrder(
                 taker, makerAsset, takerAsset, makingAmount, takingAmount, interactionData
