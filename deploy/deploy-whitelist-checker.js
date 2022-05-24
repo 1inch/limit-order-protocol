@@ -20,7 +20,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     if (await getChainId() !== '31337') {
         await hre.run('verify:verify', {
             address: whitelistChecker.address,
-            constructorArguments: [REGISTRY]
+            constructorArguments: [REGISTRY],
         });
     }
 };
