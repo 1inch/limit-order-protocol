@@ -53,7 +53,7 @@ describe('LimitOrderProtocol', async function () {
         receiver = constants.ZERO_ADDRESS,
     ) {
         return {
-            salt: salt,
+            salt,
             makerAsset: makerAsset.address,
             takerAsset: takerAsset.address,
             maker: wallet,
@@ -65,9 +65,9 @@ describe('LimitOrderProtocol', async function () {
             takerAssetData: '0x',
             getMakerAmount: cutLastArg(exchange.contract.methods.getMakerAmount(makingAmount, takingAmount, 0).encodeABI()),
             getTakerAmount: cutLastArg(exchange.contract.methods.getTakerAmount(makingAmount, takingAmount, 0).encodeABI()),
-            predicate: predicate,
-            permit: permit,
-            interaction: interaction,
+            predicate,
+            permit,
+            interaction,
         };
     }
 
@@ -85,6 +85,7 @@ describe('LimitOrderProtocol', async function () {
 
     before(async function () {
         [addr1, wallet] = await web3.eth.getAccounts();
+        this.chainId = await web3.eth.getChainId();
     });
 
     beforeEach(async function () {
@@ -92,11 +93,6 @@ describe('LimitOrderProtocol', async function () {
         this.weth = await WrappedTokenMock.new('WETH', 'WETH');
 
         this.swap = await LimitOrderProtocol.new();
-
-        // We get the chain id from the contract because Ganache (used for coverage) does not return the same chain id
-        // from within the EVM as from the JSON RPC interface.
-        // See https://github.com/trufflesuite/ganache-core/issues/515
-        this.chainId = await this.dai.getChainId();
 
         await this.dai.mint(wallet, '1000000');
         await this.weth.mint(wallet, '1000000');

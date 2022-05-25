@@ -43,7 +43,7 @@ describe('ChainLinkExample', async function () {
         interaction = '0x',
     ) {
         return {
-            salt: salt,
+            salt,
             makerAsset: makerAsset.address,
             takerAsset: takerAsset.address,
             maker: wallet,
@@ -63,6 +63,7 @@ describe('ChainLinkExample', async function () {
 
     before(async function () {
         [_, wallet] = await web3.eth.getAccounts();
+        this.chainId = await web3.eth.getChainId();
     });
 
     beforeEach(async function () {
@@ -71,11 +72,6 @@ describe('ChainLinkExample', async function () {
         this.inch = await TokenMock.new('1INCH', '1INCH');
 
         this.swap = await LimitOrderProtocol.new();
-
-        // We get the chain id from the contract because Ganache (used for coverage) does not return the same chain id
-        // from within the EVM as from the JSON RPC interface.
-        // See https://github.com/trufflesuite/ganache-core/issues/515
-        this.chainId = await this.dai.getChainId();
 
         await this.dai.mint(wallet, ether('1000000'));
         await this.weth.mint(wallet, ether('1000000'));
