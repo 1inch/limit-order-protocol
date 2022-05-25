@@ -18,20 +18,16 @@ contract RangeAmountCalculator {
     function getRangeTakerAmount(
         uint256 priceStart,
         uint256 priceEnd,
-        uint256 totalLiquidity,
+        uint256 totalAmount,
         uint256 fillAmount,
-        uint256 filledFor
+        uint256 remainingAmount
     ) public pure returns(uint256) {
         unchecked {
-            uint256 remainingLiquidity = totalLiquidity - filledFor;
-            uint256 filledForAfterFill = filledFor + fillAmount;
-            uint256 remainingLiquidityAfterFill = remainingLiquidity - fillAmount;
-
-            uint256 amountBeforeFill = priceStart * remainingLiquidity + priceEnd * filledFor;
-            uint256 amountAfterFill = priceStart * remainingLiquidityAfterFill + priceEnd * filledForAfterFill;
-            uint256 price = (amountBeforeFill + amountAfterFill) / totalLiquidity / 2;
-
-            return fillAmount * price;
+            // TODO: think about overflows
+            return (
+                priceStart * (2 * remainingAmount - fillAmount) +
+                priceEnd * (2 * (totalAmount - remainingAmount) + fillAmount)
+            ) * fillAmount / totalAmount / 2e18;
         }
     }
 
