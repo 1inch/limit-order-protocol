@@ -47,23 +47,7 @@ function buildOrderRFQData (chainId, verifyingContract, order) {
 
 function signOrder (order, chainId, target, privateKey) {
     const data = buildOrderData(chainId, target, order);
-
-    // Flatten head
-    const interactions = data.message.interactions;
-    data.message = data.message.head;
-    data.message.interactions = interactions;
-
-    console.log('data.types =', data.types);
-    const signature = ethSigUtil.signTypedMessage(privateKey, data);
-
-    // Unnesting head
-    data.message = {
-        head: data.message,
-        interactions: data.message.interactions,
-    };
-    delete data.message.head.interactions;
-
-    return signature;
+    return ethSigUtil.signTypedMessage(privateKey, { data });
 }
 
 module.exports = {

@@ -1,7 +1,6 @@
 const { ether, expectRevert, constants } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
-
-const ethSigUtil = require('eth-sig-util');
+const { web3 } = require('hardhat');
 const Wallet = require('ethereumjs-wallet').default;
 
 const TokenMock = artifacts.require('TokenMock');
@@ -57,24 +56,27 @@ describe('ChainLinkExample', async function () {
             postInteraction,
         ];
 
-        const interactions = '0x' + allInteractions.map(a => a.substr(2)).join();
+        const interactions = '0x' + allInteractions.map(a => a.substr(2)).join('');
 
         // https://stackoverflow.com/a/55261098/440168
         const cumulativeSum = (sum => value => sum += value)(0);
-        const offsets = allInteractions.map(a => a.length / 2 - 1).map(cumulativeSum);
+        const offsets = allInteractions
+            .map(a => a.length / 2 - 1)
+            .map(cumulativeSum)
+            .reduce((acc, a, i) => acc.add(toBN(a).shln(32 * i)), toBN('0'))
+            .toString();
+
 
         return {
-            head: {
-                salt,
-                makerAsset: makerAsset.address,
-                takerAsset: takerAsset.address,
-                maker: wallet,
-                receiver: constants.ZERO_ADDRESS,
-                allowedSender,
-                makingAmount,
-                takingAmount,
-                offsets,
-            },
+            salt,
+            makerAsset: makerAsset.address,
+            takerAsset: takerAsset.address,
+            maker: wallet,
+            receiver: constants.ZERO_ADDRESS,
+            allowedSender,
+            makingAmount,
+            takingAmount,
+            offsets,
             interactions,
         };
     }
@@ -124,7 +126,8 @@ describe('ChainLinkExample', async function () {
         const makerWeth = await this.weth.balanceOf(wallet);
         const takerWeth = await this.weth.balanceOf(_);
 
-        await this.swap.fillOrder(order, signature, '', ether('1'), 0, ether('4040.01')); // taking threshold = 4000 + 1% + eps
+        console.log("order: ", order)
+        await this.swap.fillOrder(order, signature, '0x', ether('1'), 0, ether('4040.01')); // taking threshold = 4000 + 1% + eps
 
         expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(ether('4040')));
         expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.sub(ether('4040')));
