@@ -21,7 +21,7 @@ contract ArgumentsDecoderTest {
         (bool success, bytes memory result) = address(this).staticcall(abi.encodePacked(this.fBool.selector));
         require(success, "fBool call failed");
         uint256 gasCustom = gasleft();
-        result.decodeBool();
+        result.decodeBoolMemory();
         gasCustom = gasCustom - gasleft();
         uint256 gasNative = gasleft();
         abi.decode(result, (bool));
@@ -33,7 +33,7 @@ contract ArgumentsDecoderTest {
         (bool success, bytes memory result) = address(this).staticcall(abi.encodePacked(this.fUint.selector));
         require(success, "fUint call failed");
         uint256 gasCustom = gasleft();
-        result.decodeUint256();
+        result.decodeUint256Memory();
         gasCustom = gasCustom - gasleft();
         uint256 gasNative = gasleft();
         abi.decode(result, (uint256));

@@ -8,7 +8,7 @@ const TokenMock = artifacts.require('TokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 const AggregatorMock = artifacts.require('AggregatorMock');
 
-const { buildOrderData } = require('./helpers/orderUtils');
+const { signOrder } = require('./helpers/orderUtils');
 const { toBN, cutLastArg } = require('./helpers/utils');
 
 describe('ChainLinkExample', async function () {
@@ -35,29 +35,47 @@ describe('ChainLinkExample', async function () {
         takerAsset,
         makingAmount,
         takingAmount,
-        makerGetter,
-        takerGetter,
+        getMakerAmount,
+        getTakerAmount,
         allowedSender = constants.ZERO_ADDRESS,
         predicate = '0x',
         permit = '0x',
-        interaction = '0x',
+        preInteraction = '0x',
+        postInteraction = '0x'
     ) {
-        return {
-            salt,
-            makerAsset: makerAsset.address,
-            takerAsset: takerAsset.address,
-            maker: wallet,
-            receiver: constants.ZERO_ADDRESS,
-            allowedSender,
-            makingAmount,
-            takingAmount,
-            makerAssetData: '0x',
-            takerAssetData: '0x',
-            getMakerAmount: makerGetter,
-            getTakerAmount: takerGetter,
+        const makerAssetData = '0x';
+        const takerAssetData = '0x';
+
+        const allInteractions = [
+            makerAssetData,
+            takerAssetData,
+            getMakerAmount,
+            getTakerAmount,
             predicate,
             permit,
-            interaction,
+            preInteraction,
+            postInteraction,
+        ];
+
+        const interactions = '0x' + allInteractions.map(a => a.substr(2)).join();
+
+        // https://stackoverflow.com/a/55261098/440168
+        const cumulativeSum = (sum => value => sum += value)(0);
+        const offsets = allInteractions.map(a => a.length / 2 - 1).map(cumulativeSum);
+
+        return {
+            head: {
+                salt,
+                makerAsset: makerAsset.address,
+                takerAsset: takerAsset.address,
+                maker: wallet,
+                receiver: constants.ZERO_ADDRESS,
+                allowedSender,
+                makingAmount,
+                takingAmount,
+                offsets,
+            },
+            interactions,
         };
     }
 
@@ -99,15 +117,14 @@ describe('ChainLinkExample', async function () {
             cutLastArg(buildSinglePriceGetter(this.swap, this.daiOracle, true, '1010000000')), // taker offset is 1.01
         );
 
-        const data = buildOrderData(this.chainId, this.swap.address, order);
-        const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+        const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
         const makerDai = await this.dai.balanceOf(wallet);
         const takerDai = await this.dai.balanceOf(_);
         const makerWeth = await this.weth.balanceOf(wallet);
         const takerWeth = await this.weth.balanceOf(_);
 
-        await this.swap.fillOrder(order, signature, ether('1'), 0, ether('4040.01')); // taking threshold = 4000 + 1% + eps
+        await this.swap.fillOrder(order, signature, '', ether('1'), 0, ether('4040.01')); // taking threshold = 4000 + 1% + eps
 
         expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(ether('4040')));
         expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.sub(ether('4040')));
@@ -128,15 +145,14 @@ describe('ChainLinkExample', async function () {
             constants.ZERO_ADDRESS,
             predicate,
         );
-        const data = buildOrderData(this.chainId, this.swap.address, order);
-        const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+        const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
         const makerDai = await this.dai.balanceOf(wallet);
         const takerDai = await this.dai.balanceOf(_);
         const makerInch = await this.inch.balanceOf(wallet);
         const takerInch = await this.inch.balanceOf(_);
 
-        await this.swap.fillOrder(order, signature, makerAmount, 0, takerAmount.add(ether('0.01'))); // taking threshold = exact taker amount + eps
+        await this.swap.fillOrder(order, signature, '', makerAmount, 0, takerAmount.add(ether('0.01'))); // taking threshold = exact taker amount + eps
 
         expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(takerAmount));
         expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.sub(takerAmount));
@@ -157,11 +173,10 @@ describe('ChainLinkExample', async function () {
             constants.ZERO_ADDRESS,
             predicate,
         );
-        const data = buildOrderData(this.chainId, this.swap.address, order);
-        const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+        const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
         await expectRevert(
-            this.swap.fillOrder(order, signature, makerAmount, 0, takerAmount.add(ether('0.01'))), // taking threshold = exact taker amount + eps
+            this.swap.fillOrder(order, signature, '', makerAmount, 0, takerAmount.add(ether('0.01'))), // taking threshold = exact taker amount + eps
             'LOP: predicate returned false',
         );
     });
@@ -179,15 +194,14 @@ describe('ChainLinkExample', async function () {
             constants.ZERO_ADDRESS,
             predicate,
         );
-        const data = buildOrderData(this.chainId, this.swap.address, order);
-        const signature = ethSigUtil.signTypedMessage(account.getPrivateKey(), { data });
+        const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
         const makerDai = await this.dai.balanceOf(wallet);
         const takerDai = await this.dai.balanceOf(_);
         const makerWeth = await this.weth.balanceOf(wallet);
         const takerWeth = await this.weth.balanceOf(_);
 
-        await this.swap.fillOrder(order, signature, makerAmount, 0, takerAmount);
+        await this.swap.fillOrder(order, signature, '', makerAmount, 0, takerAmount);
 
         expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(takerAmount));
         expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.sub(takerAmount));

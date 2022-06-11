@@ -6,6 +6,7 @@ import "../interfaces/InteractiveNotificationReceiver.sol";
 import "../interfaces/IWhitelistRegistry.sol";
 import "../libraries/ArgumentsDecoder.sol";
 
+// TODO: why WL checker is in interaction, but not in predicate?
 contract WhitelistChecker is InteractiveNotificationReceiver {
     using ArgumentsDecoder for bytes;
 
@@ -17,7 +18,7 @@ contract WhitelistChecker is InteractiveNotificationReceiver {
         whitelistRegistry = _whitelistRegistry;
     }
 
-    function notifyFillOrder(
+    function fillOrderPreInteraction(
         address taker,
         address makerAsset,
         address takerAsset,
@@ -28,9 +29,26 @@ contract WhitelistChecker is InteractiveNotificationReceiver {
         if (whitelistRegistry.status(taker) != 1) revert TakerIsNotWhitelisted();
 
         if (nextInteractiveData.length != 0) {
-            (address interactionTarget, bytes calldata interactionData) = nextInteractiveData.decodeTargetAndData();
+            (address interactionTarget, bytes calldata interactionData) = nextInteractiveData.decodeTargetAndCalldata();
 
-            InteractiveNotificationReceiver(interactionTarget).notifyFillOrder(
+            InteractiveNotificationReceiver(interactionTarget).fillOrderPreInteraction(
+                taker, makerAsset, takerAsset, makingAmount, takingAmount, interactionData
+            );
+        }
+    }
+
+    function fillOrderPostInteraction(
+        address taker,
+        address makerAsset,
+        address takerAsset,
+        uint256 makingAmount,
+        uint256 takingAmount,
+        bytes calldata nextInteractiveData
+    ) external override {
+        if (nextInteractiveData.length != 0) {
+            (address interactionTarget, bytes calldata interactionData) = nextInteractiveData.decodeTargetAndCalldata();
+
+            InteractiveNotificationReceiver(interactionTarget).fillOrderPostInteraction(
                 taker, makerAsset, takerAsset, makingAmount, takingAmount, interactionData
             );
         }

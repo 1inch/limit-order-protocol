@@ -6,11 +6,11 @@ pragma abicoder v1;
 import "../interfaces/InteractiveNotificationReceiver.sol";
 import "../interfaces/IWithdrawable.sol";
 
-contract WethUnwrapper is InteractiveNotificationReceiver {
+contract WethUnwrapper is InteractiveNotificationReceiverTaker {
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    function notifyFillOrder(
+    function fillOrderInteraction(
         address /* taker */,
         address /* makerAsset */,
         address takerAsset,
