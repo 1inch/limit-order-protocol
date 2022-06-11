@@ -57,11 +57,15 @@ describe('ChainLinkExample', async function () {
             postInteraction,
         ];
 
-        const interactions = '0x' + allInteractions.map(a => a.substr(2)).join();
+        const interactions = '0x' + allInteractions.map(a => a.substr(2)).join('');
 
         // https://stackoverflow.com/a/55261098/440168
         const cumulativeSum = (sum => value => sum += value)(0);
-        const offsets = allInteractions.map(a => a.length / 2 - 1).map(cumulativeSum);
+        const offsets = allInteractions
+            .map(a => a.length / 2 - 1)
+            .map(cumulativeSum)
+            .reduce((acc, a, i) => acc.add(toBN(a).shln(32 * i)), toBN('0'))
+            .toString();
 
         return {
             head: {
@@ -109,7 +113,7 @@ describe('ChainLinkExample', async function () {
         this.inchOracle = await AggregatorMock.new('1577615249227853');
     });
 
-    it('eth -> dai chainlink+eps order', async function () {
+    it.only('eth -> dai chainlink+eps order', async function () {
         // chainlink rate is 1 eth = 4000 dai
         const order = buildOrder(
             '1', this.weth, this.dai, ether('1').toString(), ether('4000').toString(),
@@ -124,6 +128,8 @@ describe('ChainLinkExample', async function () {
         const makerWeth = await this.weth.balanceOf(wallet);
         const takerWeth = await this.weth.balanceOf(_);
 
+        console.log('order =', order);
+        console.log('signature =', signature);
         await this.swap.fillOrder(order, signature, '', ether('1'), 0, ether('4040.01')); // taking threshold = 4000 + 1% + eps
 
         expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(ether('4040')));

@@ -53,8 +53,7 @@ function signOrder (order, chainId, target, privateKey) {
     data.message = data.message.head;
     data.message.interactions = interactions;
 
-    console.log('data.types =', data.types);
-    const signature = ethSigUtil.signTypedMessage(privateKey, data);
+    const signature = ethSigUtil.signTypedMessage(privateKey, { data });
 
     // Unnesting head
     data.message = {

@@ -14,7 +14,7 @@ const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 const ERC721Proxy = artifacts.require('ERC721Proxy');
 
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
-const { buildOrderData, buildOrderRFQData } = require('./helpers/orderUtils');
+const { buildOrderData, signOrder, buildOrderRFQData } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { addr1PrivateKey, toBN, cutLastArg } = require('./helpers/utils');
 
@@ -70,11 +70,15 @@ describe('LimitOrderProtocol', async function () {
             postInteraction,
         ];
 
-        const interactions = '0x' + allInteractions.map(a => a.substr(2)).join();
+        const interactions = '0x' + allInteractions.map(a => a.substr(2)).join('');
 
         // https://stackoverflow.com/a/55261098/440168
         const cumulativeSum = (sum => value => sum += value)(0);
-        const offsets = allInteractions.map(a => a.length / 2 - 1).map(cumulativeSum);
+        const offsets = allInteractions
+            .map(a => a.length / 2 - 1)
+            .map(cumulativeSum)
+            .reduce((acc, a, i) => acc.add(toBN(a).shln(32 * i)), toBN('0'))
+            .toString();
 
         return {
             head: {
