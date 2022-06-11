@@ -2,6 +2,7 @@ const { ether, expectRevert, constants } = require('@openzeppelin/test-helpers')
 const { expect } = require('chai');
 const { web3 } = require('hardhat');
 const Wallet = require('ethereumjs-wallet').default;
+const { intToBuffer, setLengthLeft, bufferToHex } = require('ethereumjs-util');
 
 const TokenMock = artifacts.require('TokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
@@ -40,7 +41,7 @@ describe('ChainLinkExample', async function () {
         predicate = '0x',
         permit = '0x',
         preInteraction = '0x',
-        postInteraction = '0x'
+        postInteraction = '0x',
     ) {
         const makerAssetData = '0x';
         const takerAssetData = '0x';
@@ -60,11 +61,11 @@ describe('ChainLinkExample', async function () {
 
         // https://stackoverflow.com/a/55261098/440168
         const cumulativeSum = (sum => value => sum += value)(0);
-        const offsets = allInteractions
-            .map(a => a.length / 2 - 1)
+        const offsets = '0x' + allInteractions.map(a => a.length / 2 - 1)
             .map(cumulativeSum)
-            .reduce((acc, a, i) => acc.add(toBN(a).shln(32 * i)), toBN('0'))
-            .toString();
+            .map(offset => bufferToHex(setLengthLeft(intToBuffer(offset), 4)).substring(2))
+            .reverse()
+            .join('');
 
         return {
             salt,
@@ -110,7 +111,7 @@ describe('ChainLinkExample', async function () {
         this.inchOracle = await AggregatorMock.new('1577615249227853');
     });
 
-    it.only('eth -> dai chainlink+eps order', async function () {
+    it('eth -> dai chainlink+eps order', async function () {
         // chainlink rate is 1 eth = 4000 dai
         const order = buildOrder(
             '1', this.weth, this.dai, ether('1').toString(), ether('4000').toString(),
@@ -125,7 +126,6 @@ describe('ChainLinkExample', async function () {
         const makerWeth = await this.weth.balanceOf(wallet);
         const takerWeth = await this.weth.balanceOf(_);
 
-        console.log("order: ", order)
         await this.swap.fillOrder(order, signature, '0x', ether('1'), 0, ether('4040.01')); // taking threshold = 4000 + 1% + eps
 
         expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(ether('4040')));
@@ -154,7 +154,7 @@ describe('ChainLinkExample', async function () {
         const makerInch = await this.inch.balanceOf(wallet);
         const takerInch = await this.inch.balanceOf(_);
 
-        await this.swap.fillOrder(order, signature, '', makerAmount, 0, takerAmount.add(ether('0.01'))); // taking threshold = exact taker amount + eps
+        await this.swap.fillOrder(order, signature, '0x', makerAmount, 0, takerAmount.add(ether('0.01'))); // taking threshold = exact taker amount + eps
 
         expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(takerAmount));
         expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.sub(takerAmount));
@@ -178,7 +178,7 @@ describe('ChainLinkExample', async function () {
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
         await expectRevert(
-            this.swap.fillOrder(order, signature, '', makerAmount, 0, takerAmount.add(ether('0.01'))), // taking threshold = exact taker amount + eps
+            this.swap.fillOrder(order, signature, '0x', makerAmount, 0, takerAmount.add(ether('0.01'))), // taking threshold = exact taker amount + eps
             'LOP: predicate returned false',
         );
     });
@@ -203,7 +203,7 @@ describe('ChainLinkExample', async function () {
         const makerWeth = await this.weth.balanceOf(wallet);
         const takerWeth = await this.weth.balanceOf(_);
 
-        await this.swap.fillOrder(order, signature, '', makerAmount, 0, takerAmount);
+        await this.swap.fillOrder(order, signature, '0x', makerAmount, 0, takerAmount);
 
         expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.add(takerAmount));
         expect(await this.dai.balanceOf(_)).to.be.bignumber.equal(takerDai.sub(takerAmount));

@@ -50,8 +50,8 @@ library OrderType {
 
     function _get(Order calldata order, DynamicField field) private pure returns(bytes calldata) {
         return order.interactions[
-            uint32(order.offsets >> (32 * uint256(field))):
-                uint32(order.offsets >> (32 * uint256(field) + 32))
+            (uint256(field) == 0 ? 0 : uint32(order.offsets >> (32 * uint256(field) - 32))):
+                uint32(order.offsets >> (32 * uint256(field)))
         ];
     }
 

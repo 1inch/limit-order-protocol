@@ -90,9 +90,9 @@ describe('LimitOrderProtocol', async function () {
                 allowedSender,
                 makingAmount,
                 takingAmount,
-                offsets
+                offsets,
             },
-            interactions
+            interactions,
         };
     }
 
