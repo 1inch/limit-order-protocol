@@ -233,14 +233,14 @@ abstract contract OrderMixin is
     }
 
     /// @notice Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
-    /// @param order Order quote to fill
+    /// @param order_ Order quote to fill
     /// @param signature Signature to confirm quote ownership
     /// @param makingAmount Making amount
     /// @param takingAmount Taking amount
     /// @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
     /// @param target Address that will receive swap funds
     function fillOrderTo(
-        OrderType.Order calldata order,
+        OrderType.Order calldata order_,
         bytes calldata signature,
         bytes calldata interaction,
         uint256 makingAmount,
@@ -249,20 +249,20 @@ abstract contract OrderMixin is
         address target
     ) public returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */) {
         require(target != address(0), "LOP: zero target is forbidden");
-        bytes32 orderHash = hashOrder(order);
+        bytes32 orderHash = hashOrder(order_);
 
-        OrderType.Order calldata order_ = order; // Helps with "Stack too deep"
+        OrderType.Order calldata order = order_; // Helps with "Stack too deep"
 
         {  // Stack too deep
             uint256 remainingMakerAmount = _remaining[orderHash];
             require(remainingMakerAmount != _ORDER_FILLED, "LOP: remaining amount is 0");
-            require(order_.allowedSender == address(0) || order_.allowedSender == msg.sender, "LOP: private order");
+            require(order.allowedSender == address(0) || order.allowedSender == msg.sender, "LOP: private order");
             if (remainingMakerAmount == _ORDER_DOES_NOT_EXIST) {
                 // First fill: validate order and permit maker asset
-                require(SignatureChecker.isValidSignatureNow(order_.maker, orderHash, signature), "LOP: bad signature");
-                remainingMakerAmount = order_.makingAmount;
+                require(SignatureChecker.isValidSignatureNow(order.maker, orderHash, signature), "LOP: bad signature");
+                remainingMakerAmount = order.makingAmount;
 
-                bytes calldata permit = order_.permit(); // Helps with "Stack too deep"
+                bytes calldata permit = order.permit(); // Helps with "Stack too deep"
                 if (permit.length >= 20) {
                     // proceed only if permit length is enough to store address
                     (address token, bytes calldata permitCalldata) = permit.decodeTargetAndCalldata();
@@ -286,16 +286,16 @@ abstract contract OrderMixin is
                 if (makingAmount > remainingMakerAmount) {
                     makingAmount = remainingMakerAmount;
                 }
-                takingAmount = _callGetter(order_.getTakingAmount(), order_.makingAmount, makingAmount, order_.takingAmount);
+                takingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, makingAmount, order.takingAmount);
                 // check that actual rate is not worse than what was expected
                 // takingAmount / makingAmount <= thresholdAmount / requestedMakingAmount
                 require(takingAmount * requestedMakingAmount <= thresholdAmount * makingAmount, "LOP: taking amount too high");
             } else {
                 uint256 requestedTakingAmount = takingAmount;
-                makingAmount = _callGetter(order_.getMakingAmount(), order_.takingAmount, takingAmount, order_.makingAmount);
+                makingAmount = _callGetter(order.getMakingAmount(), order.takingAmount, takingAmount, order.makingAmount);
                 if (makingAmount > remainingMakerAmount) {
                     makingAmount = remainingMakerAmount;
-                    takingAmount = _callGetter(order_.getTakingAmount(), order_.makingAmount, makingAmount, order_.takingAmount);
+                    takingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, makingAmount, order.takingAmount);
                 }
                 // check that actual rate is not worse than what was expected
                 // makingAmount / takingAmount >= thresholdAmount / requestedTakingAmount
@@ -313,23 +313,23 @@ abstract contract OrderMixin is
         }
 
         // Maker can handle funds interactively
-        if (order_.preInteraction().length >= 20) {
+        if (order.preInteraction().length >= 20) {
             // proceed only if interaction length is enough to store address
-            (address interactionTarget, bytes calldata interactionData) = order_.preInteraction().decodeTargetAndCalldata();
+            (address interactionTarget, bytes calldata interactionData) = order.preInteraction().decodeTargetAndCalldata();
             PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                msg.sender, order_.makerAsset, order_.takerAsset, makingAmount, takingAmount, interactionData
+                msg.sender, order.makerAsset, order.takerAsset, makingAmount, takingAmount, interactionData
             );
         }
 
         // Maker => Taker
         _makeCall(
-            order_.makerAsset,
+            order.makerAsset,
             abi.encodePacked(
                 IERC20.transferFrom.selector,
-                uint256(uint160(order_.maker)),
+                uint256(uint160(order.maker)),
                 uint256(uint160(target)),
                 makingAmount,
-                order_.makerAssetData()
+                order.makerAssetData()
             )
         );
 
@@ -337,28 +337,28 @@ abstract contract OrderMixin is
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata();
             InteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
-                msg.sender, order_.makerAsset, order_.takerAsset, makingAmount, takingAmount, interactionData
+                msg.sender, order.makerAsset, order.takerAsset, makingAmount, takingAmount, interactionData
             );
         }
 
         // Taker => Maker
         _makeCall(
-            order_.takerAsset,
+            order.takerAsset,
             abi.encodePacked(
                 IERC20.transferFrom.selector,
                 uint256(uint160(msg.sender)),
-                uint256(uint160(order_.receiver == address(0) ? order_.maker : order_.receiver)),
+                uint256(uint160(order.receiver == address(0) ? order.maker : order.receiver)),
                 takingAmount,
-                order_.takerAssetData()
+                order.takerAssetData()
             )
         );
 
         // Maker can handle funds interactively
-        if (order_.postInteraction().length >= 20) {
+        if (order.postInteraction().length >= 20) {
             // proceed only if interaction length is enough to store address
-            (address interactionTarget, bytes calldata interactionData) = order_.postInteraction().decodeTargetAndCalldata();
+            (address interactionTarget, bytes calldata interactionData) = order.postInteraction().decodeTargetAndCalldata();
             PostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
-                msg.sender, order_.makerAsset, order_.takerAsset, makingAmount, takingAmount, interactionData
+                msg.sender, order.makerAsset, order.takerAsset, makingAmount, takingAmount, interactionData
             );
         }
 
