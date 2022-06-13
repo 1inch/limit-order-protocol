@@ -399,7 +399,7 @@ abstract contract OrderMixin is
         }
     }
 
-    function _callGetter(bytes memory getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
+    function _callGetter(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
         if (getter.length == 0) {
             // On empty getter calldata only exact amount is allowed
             require(amount == orderExpectedAmount, "LOP: wrong amount");
