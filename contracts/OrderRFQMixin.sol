@@ -4,14 +4,37 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./helpers/AmountCalculator.sol";
 import "./libraries/Permitable.sol";
 
+library SafestERC20 {
+    error TransferFromFailed();
+
+    function safeTransferFrom(IERC20 token, address from, address to, uint value) internal {
+        bytes4 selector = IERC20.transferFrom.selector;
+        bytes4 exception = TransferFromFailed.selector;
+        assembly { // solhint-disable-line no-inline-assembly
+            let data := mload(0x40)
+            mstore(0x40, add(data, 100))
+
+            mstore(data, selector)
+            mstore(add(data, 0x04), from)
+            mstore(add(data, 0x24), to)
+            mstore(add(data, 0x44), value)
+            let success := call(gas(), token, 0, data, 100, 0x0, 0x20)
+            if or(iszero(success), and(gt(returndatasize(), 31), iszero(eq(mload(0), 1)))) {
+                mstore(0, exception)
+                revert(0, 4)
+            }
+        }
+    }
+}
+
 /// @title RFQ Limit Order mixin
 abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
-    using SafeERC20 for IERC20;
+    using SafestERC20 for IERC20;
 
     /// @notice Emitted when RFQ gets filled
     event OrderFilledRFQ(

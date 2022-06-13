@@ -207,7 +207,7 @@ describe('LimitOrderProtocol', async function () {
 
                 expect(
                     await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
-                ).to.be.deep.equal([2, 1, 7, 7, 2]);
+                ).to.be.deep.equal([2, 1, 7, 7, 0]);
 
                 await gasspectEVM(receipt.tx);
 
