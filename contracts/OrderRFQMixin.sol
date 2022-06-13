@@ -123,11 +123,11 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
             }
             else if (takingAmount == 0) {
                 require(makingAmount <= orderMakingAmount, "LOP: making amount exceeded");
-                takingAmount = getTakerAmount(orderMakingAmount, orderTakingAmount, makingAmount);
+                takingAmount = getTakingAmount(orderMakingAmount, orderTakingAmount, makingAmount);
             }
             else if (makingAmount == 0) {
                 require(takingAmount <= orderTakingAmount, "LOP: taking amount exceeded");
-                makingAmount = getMakerAmount(orderMakingAmount, orderTakingAmount, takingAmount);
+                makingAmount = getMakingAmount(orderMakingAmount, orderTakingAmount, takingAmount);
             }
             else {
                 revert("LOP: both amounts are non-zero");

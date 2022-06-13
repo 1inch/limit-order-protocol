@@ -9,7 +9,7 @@ function _normalizeOp (op) {
         }
         else if (op.stack.length > 8 && op.stack[op.stack.length - 8] <= '00000000000000000000000000000000000000000000000000000000000000FF') {
             op.gasCost = 700;
-            op.op = 'STATICCALL-' + op.stack[op.stack.length - 8].substr(62, 2);
+            op.op = 'STATICCALL-' + op.stack[op.stack.length - 8].substring(62, 64);
         }
         else {
             op.gasCost = 700;

@@ -11,7 +11,7 @@ import "./helpers/AmountCalculator.sol";
 import "./helpers/ChainlinkCalculator.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
-import "./interfaces/InteractiveNotificationReceiver.sol";
+import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Permitable.sol";
 
@@ -28,20 +28,20 @@ library OrderType {
         uint256 offsets;
         // bytes makerAssetData;
         // bytes takerAssetData;
-        // bytes getMakerAmount; // this.staticcall(abi.encodePacked(bytes, swapTakerAmount)) => (swapMakerAmount)
-        // bytes getTakerAmount; // this.staticcall(abi.encodePacked(bytes, swapMakerAmount)) => (swapTakerAmount)
+        // bytes getMakingAmount; // this.staticcall(abi.encodePacked(bytes, swapTakerAmount)) => (swapMakerAmount)
+        // bytes getTakingAmount; // this.staticcall(abi.encodePacked(bytes, swapMakerAmount)) => (swapTakerAmount)
         // bytes predicate;      // this.staticcall(bytes) => (bool)
         // bytes permit;         // On first fill: permit.1.call(abi.encodePacked(permit.selector, permit.2))
         // bytes preInteraction;
         // bytes postInteraction;
-        bytes interactions; // concat(makerAssetData, takerAssetData, getMakerAmount, getTakerAmount, predicate, permit, preIntercation, postInteraction)
+        bytes interactions; // concat(makerAssetData, takerAssetData, getMakingAmount, getTakingAmount, predicate, permit, preIntercation, postInteraction)
     }
 
     enum DynamicField {
         MakerAssetData,
         TakerAssetData,
-        GetMakerAmount,
-        GetTakerAmount,
+        GetMakingAmount,
+        GetTakingAmount,
         Predicate,
         Permit,
         PreInteraction,
@@ -49,9 +49,14 @@ library OrderType {
     }
 
     function _get(Order calldata order, DynamicField field) private pure returns(bytes calldata) {
+        if (uint256(field) == 0) {
+            return order.interactions[0:uint32(order.offsets)];
+        }
+
+        uint256 bitShift = 32 * uint256(field);
         return order.interactions[
-            (uint256(field) == 0 ? 0 : uint32(order.offsets >> (32 * uint256(field) - 32))):
-                uint32(order.offsets >> (32 * uint256(field)))
+            uint32(order.offsets >> (bitShift - 32)):
+            uint32(order.offsets >> bitShift)
         ];
     }
 
@@ -63,12 +68,12 @@ library OrderType {
         return _get(order, DynamicField.TakerAssetData);
     }
 
-    function getMakerAmount(Order calldata order) internal pure returns(bytes calldata) {
-        return _get(order, DynamicField.GetMakerAmount);
+    function getMakingAmount(Order calldata order) internal pure returns(bytes calldata) {
+        return _get(order, DynamicField.GetMakingAmount);
     }
 
-    function getTakerAmount(Order calldata order) internal pure returns(bytes calldata) {
-        return _get(order, DynamicField.GetTakerAmount);
+    function getTakingAmount(Order calldata order) internal pure returns(bytes calldata) {
+        return _get(order, DynamicField.GetTakingAmount);
     }
 
     function predicate(Order calldata order) internal pure returns(bytes calldata) {
@@ -281,16 +286,16 @@ abstract contract OrderMixin is
                 if (makingAmount > remainingMakerAmount) {
                     makingAmount = remainingMakerAmount;
                 }
-                takingAmount = _callGetter(order_.getTakerAmount(), order_.makingAmount, makingAmount, order_.takingAmount);
+                takingAmount = _callGetter(order_.getTakingAmount(), order_.makingAmount, makingAmount, order_.takingAmount);
                 // check that actual rate is not worse than what was expected
                 // takingAmount / makingAmount <= thresholdAmount / requestedMakingAmount
                 require(takingAmount * requestedMakingAmount <= thresholdAmount * makingAmount, "LOP: taking amount too high");
             } else {
                 uint256 requestedTakingAmount = takingAmount;
-                makingAmount = _callGetter(order_.getMakerAmount(), order_.takingAmount, takingAmount, order_.makingAmount);
+                makingAmount = _callGetter(order_.getMakingAmount(), order_.takingAmount, takingAmount, order_.makingAmount);
                 if (makingAmount > remainingMakerAmount) {
                     makingAmount = remainingMakerAmount;
-                    takingAmount = _callGetter(order_.getTakerAmount(), order_.makingAmount, makingAmount, order_.takingAmount);
+                    takingAmount = _callGetter(order_.getTakingAmount(), order_.makingAmount, makingAmount, order_.takingAmount);
                 }
                 // check that actual rate is not worse than what was expected
                 // makingAmount / takingAmount >= thresholdAmount / requestedTakingAmount
@@ -311,7 +316,7 @@ abstract contract OrderMixin is
         if (order_.preInteraction().length >= 20) {
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order_.preInteraction().decodeTargetAndCalldata();
-            InteractiveNotificationReceiver(interactionTarget).fillOrderPreInteraction(
+            PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
                 msg.sender, order_.makerAsset, order_.takerAsset, makingAmount, takingAmount, interactionData
             );
         }
@@ -331,7 +336,7 @@ abstract contract OrderMixin is
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata();
-            InteractiveNotificationReceiverTaker(interactionTarget).fillOrderInteraction(
+            InteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
                 msg.sender, order_.makerAsset, order_.takerAsset, makingAmount, takingAmount, interactionData
             );
         }
@@ -352,7 +357,7 @@ abstract contract OrderMixin is
         if (order_.postInteraction().length >= 20) {
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order_.postInteraction().decodeTargetAndCalldata();
-            InteractiveNotificationReceiver(interactionTarget).fillOrderPostInteraction(
+            PostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
                 msg.sender, order_.makerAsset, order_.takerAsset, makingAmount, takingAmount, interactionData
             );
         }
