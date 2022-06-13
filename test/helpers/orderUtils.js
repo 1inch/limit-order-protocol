@@ -50,10 +50,16 @@ function signOrder (order, chainId, target, privateKey) {
     return ethSigUtil.signTypedMessage(privateKey, { data });
 }
 
+function signRFQOrder (order, chainId, target, privateKey) {
+    const data = buildOrderRFQData(chainId, target, order);
+    return ethSigUtil.signTypedMessage(privateKey, { data });
+}
+
 module.exports = {
     buildOrderData,
     buildOrderRFQData,
     signOrder,
+    signRFQOrder,
     name,
     version,
 };
