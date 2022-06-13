@@ -16,7 +16,7 @@ const ERC721Proxy = artifacts.require('ERC721Proxy');
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
 const { buildOrder, buildOrderRFQ, buildOrderData, signOrder, signOrderRFQ } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
-const { addr1PrivateKey, toBN, cutLastArg } = require('./helpers/utils');
+const { addr1PrivateKey, toBN } = require('./helpers/utils');
 
 describe('LimitOrderProtocol', async function () {
     let addr1, wallet;
@@ -61,7 +61,7 @@ describe('LimitOrderProtocol', async function () {
                     makingAmount: 1,
                     takingAmount: 1,
                     from: wallet,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
             const sentOrder = buildOrder(
@@ -72,7 +72,7 @@ describe('LimitOrderProtocol', async function () {
                     makingAmount: 1,
                     takingAmount: 2,
                     from: wallet,
-                }
+                },
             );
 
             await expectRevert(
@@ -90,7 +90,7 @@ describe('LimitOrderProtocol', async function () {
                     makingAmount: 1,
                     takingAmount: 1,
                     from: wallet,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -109,7 +109,7 @@ describe('LimitOrderProtocol', async function () {
                     makingAmount: 2,
                     takingAmount: 2,
                     from: wallet,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -128,7 +128,7 @@ describe('LimitOrderProtocol', async function () {
                     makingAmount: 2,
                     takingAmount: 2,
                     from: wallet,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -147,7 +147,7 @@ describe('LimitOrderProtocol', async function () {
                     makingAmount: 100,
                     takingAmount: 1,
                     from: wallet,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -169,7 +169,7 @@ describe('LimitOrderProtocol', async function () {
                     makingAmount: 1,
                     takingAmount: 1,
                     from: wallet,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -230,7 +230,7 @@ describe('LimitOrderProtocol', async function () {
                     makingAmount: 2,
                     takingAmount: 2,
                     from: wallet,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -265,7 +265,7 @@ describe('LimitOrderProtocol', async function () {
                     makingAmount: 2,
                     takingAmount: 10,
                     from: wallet,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -294,7 +294,7 @@ describe('LimitOrderProtocol', async function () {
                     makingAmount: 2,
                     takingAmount: 10,
                     from: wallet,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -316,7 +316,7 @@ describe('LimitOrderProtocol', async function () {
                     makingAmount: 10,
                     takingAmount: 2,
                     from: wallet,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -352,7 +352,7 @@ describe('LimitOrderProtocol', async function () {
             {
                 makerAssetData: '0x' + erc721proxy.contract.methods.func_60iHVgK(wallet, constants.ZERO_ADDRESS, 0, 10, this.dai.address).encodeABI().substring(202),
                 takerAssetData: '0x' + erc721proxy.contract.methods.func_60iHVgK(constants.ZERO_ADDRESS, wallet, 0, 10, this.weth.address).encodeABI().substring(202),
-            }
+            },
         );
 
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
@@ -383,7 +383,7 @@ describe('LimitOrderProtocol', async function () {
                         makingAmount: 1,
                         takingAmount: 1,
                         from: wallet,
-                    }
+                    },
                 );
                 const signature = signOrder(order, this.chainId, swap.address, account.getPrivateKey());
 
@@ -416,7 +416,7 @@ describe('LimitOrderProtocol', async function () {
                         makingAmount: 1,
                         takingAmount: 1,
                         from: wallet,
-                    }
+                    },
                 );
                 const signature = signOrder(order, this.chainId, swap.address, account.getPrivateKey());
 
@@ -441,7 +441,7 @@ describe('LimitOrderProtocol', async function () {
                         makingAmount: 1,
                         takingAmount: 1,
                         from: wallet,
-                    }
+                    },
                 );
                 const signature = signOrder(order, this.chainId, swap.address, account.getPrivateKey());
 
@@ -771,7 +771,7 @@ describe('LimitOrderProtocol', async function () {
                 },
                 {
                     predicate,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -807,7 +807,7 @@ describe('LimitOrderProtocol', async function () {
                 },
                 {
                     predicate,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -836,7 +836,7 @@ describe('LimitOrderProtocol', async function () {
                 },
                 {
                     predicate,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -871,7 +871,7 @@ describe('LimitOrderProtocol', async function () {
                 },
                 {
                     predicate,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -912,7 +912,7 @@ describe('LimitOrderProtocol', async function () {
                 },
                 {
                     predicate,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -936,7 +936,7 @@ describe('LimitOrderProtocol', async function () {
                 },
                 {
                     predicate: this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(),
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -965,8 +965,8 @@ describe('LimitOrderProtocol', async function () {
                 },
                 {
                     predicate: this.swap.contract.methods.timestampBelow(0xff0000).encodeABI(),
-                }
-        );
+                },
+            );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
             await expectRevert(
@@ -1078,7 +1078,7 @@ describe('LimitOrderProtocol', async function () {
                 makingAmount: 2,
                 takingAmount: 2,
                 from: wallet,
-            },);
+            });
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
             const makerDai = await this.dai.balanceOf(wallet);
@@ -1120,7 +1120,7 @@ describe('LimitOrderProtocol', async function () {
                 {
                     predicate: this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(),
                     postInteraction: this.notificationReceiver.address + wallet.substring(2),
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -1157,7 +1157,7 @@ describe('LimitOrderProtocol', async function () {
                     predicate: this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(),
                     preInteraction: this.whitelistChecker.address,
                     postInteraction: this.notificationReceiver.address + wallet.substring(2),
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -1195,7 +1195,7 @@ describe('LimitOrderProtocol', async function () {
                 {
                     predicate: this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(),
                     preInteraction,
-                }
+                },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 

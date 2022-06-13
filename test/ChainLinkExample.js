@@ -1,8 +1,7 @@
-const { ether, expectRevert, constants } = require('@openzeppelin/test-helpers');
+const { ether, expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 const { web3 } = require('hardhat');
 const Wallet = require('ethereumjs-wallet').default;
-const { intToBuffer, setLengthLeft, bufferToHex } = require('ethereumjs-util');
 
 const TokenMock = artifacts.require('TokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
@@ -73,7 +72,7 @@ describe('ChainLinkExample', async function () {
             {
                 getMakingAmount: cutLastArg(buildSinglePriceGetter(this.swap, this.daiOracle, false, '990000000')), // maker offset is 0.99
                 getTakingAmount: cutLastArg(buildSinglePriceGetter(this.swap, this.daiOracle, true, '1010000000')), // taker offset is 1.01
-            }
+            },
         );
 
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
@@ -108,7 +107,7 @@ describe('ChainLinkExample', async function () {
                 getMakingAmount: cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()),
                 getTakingAmount: cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()),
                 predicate: this.swap.contract.methods.lt(ether('6.32'), this.swap.address, priceCall).encodeABI(),
-            }
+            },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -143,7 +142,7 @@ describe('ChainLinkExample', async function () {
                 getMakingAmount: cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()),
                 getTakingAmount: cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()),
                 predicate: this.swap.contract.methods.lt(ether('6.31'), this.swap.address, priceCall).encodeABI(),
-            }
+            },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
@@ -171,7 +170,7 @@ describe('ChainLinkExample', async function () {
                 getMakingAmount: cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()),
                 getTakingAmount: cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()),
                 predicate: this.swap.contract.methods.lt(ether('0.0002501'), this.daiOracle.address, latestAnswerCall).encodeABI(),
-            }
+            },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
