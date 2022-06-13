@@ -373,23 +373,21 @@ abstract contract OrderMixin is
     }
 
     function hashOrder(OrderType.Order calldata order) public view returns(bytes32) {
-        return _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    LIMIT_ORDER_TYPEHASH,
-                    order.salt,
-                    order.makerAsset,
-                    order.takerAsset,
-                    order.maker,
-                    order.receiver,
-                    order.allowedSender,
-                    order.makingAmount,
-                    order.takingAmount,
-                    order.offsets,
-                    keccak256(order.interactions)
-                )
-            )
-        );
+        bytes32 typehash = LIMIT_ORDER_TYPEHASH;
+        bytes calldata interactions = order.interactions;
+        bytes32 hash;
+        assembly { // solhint-disable-line no-inline-assembly
+            let ptr := mload(0x40)
+            mstore(0x40, add(ptr, add(0x160, interactions.length)))
+
+            calldatacopy(ptr, interactions.offset, interactions.length)
+            mstore(add(ptr, 0x140), keccak256(ptr, interactions.length))
+            calldatacopy(add(ptr, 0x20), order, 0x120)
+            mstore(ptr, typehash)
+            hash := keccak256(ptr, 0x160)
+        }
+
+        return _hashTypedDataV4(hash);
     }
 
     function _makeCall(address asset, bytes memory assetData) private {
