@@ -128,11 +128,11 @@ abstract contract OrderMixin is
     }
 
     /// @notice Cancels order by setting remaining amount to zero
-    function cancelOrder(Order memory order) external {
+    function cancelOrder(Order memory order) external returns(uint256 orderRemaining, bytes32 orderHash) {
         require(order.maker == msg.sender, "LOP: Access denied");
 
-        bytes32 orderHash = hashOrder(order);
-        uint256 orderRemaining = _remaining[orderHash];
+        orderHash = hashOrder(order);
+        orderRemaining = _remaining[orderHash];
         require(orderRemaining != _ORDER_FILLED, "LOP: already filled");
         emit OrderCanceled(msg.sender, orderHash, orderRemaining);
         _remaining[orderHash] = _ORDER_FILLED;
@@ -150,7 +150,7 @@ abstract contract OrderMixin is
         uint256 makingAmount,
         uint256 takingAmount,
         uint256 thresholdAmount
-    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */) {
+    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
         return fillOrderTo(order, signature, makingAmount, takingAmount, thresholdAmount, msg.sender);
     }
 
@@ -173,7 +173,7 @@ abstract contract OrderMixin is
         uint256 thresholdAmount,
         address target,
         bytes calldata permit
-    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */) {
+    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
         require(permit.length >= 20, "LOP: permit length too low");
         (address token, bytes calldata permitData) = permit.decodeTargetAndData();
         _permit(token, permitData);
@@ -194,9 +194,9 @@ abstract contract OrderMixin is
         uint256 takingAmount,
         uint256 thresholdAmount,
         address target
-    ) public returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */) {
+    ) public returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
         require(target != address(0), "LOP: zero target is forbidden");
-        bytes32 orderHash = hashOrder(order);
+        orderHash = hashOrder(order);
 
         {  // Stack too deep
             uint256 remainingMakerAmount = _remaining[orderHash];
@@ -288,7 +288,7 @@ abstract contract OrderMixin is
             )
         );
 
-        return (makingAmount, takingAmount);
+        return (makingAmount, takingAmount, orderHash);
     }
 
     /// @notice Checks order predicate
