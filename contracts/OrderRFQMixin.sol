@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./helpers/AmountCalculator.sol";
 import "./libraries/Permitable.sol";
 
-library SafestERC20 {
+library SafeERC20 {
     error TransferFromFailed();
 
     function safeTransferFrom(IERC20 token, address from, address to, uint value) internal {
@@ -34,7 +34,7 @@ library SafestERC20 {
 
 /// @title RFQ Limit Order mixin
 abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
-    using SafestERC20 for IERC20;
+    using SafeERC20 for IERC20;
 
     /// @notice Emitted when RFQ gets filled
     event OrderFilledRFQ(
