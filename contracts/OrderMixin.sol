@@ -73,7 +73,7 @@ abstract contract OrderMixin is
         return results;
     }
 
-    error SimulationSuccessful(bool success, bytes res);
+    error SimulationResults(bool success, bytes res);
 
     /**
      * @notice Delegates execution to custom implementation. Could be used to validate if `transferFrom` works properly
@@ -83,7 +83,7 @@ abstract contract OrderMixin is
     function simulate(address target, bytes calldata data) external {
         // solhint-disable-next-lineavoid-low-level-calls
         (bool success, bytes memory result) = target.delegatecall(data);
-        revert SimulationSuccessful(success, result);
+        revert SimulationResults(success, result);
     }
 
     /// @notice Cancels order by setting remaining amount to zero
