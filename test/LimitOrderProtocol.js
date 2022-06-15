@@ -14,7 +14,7 @@ const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 const ERC721Proxy = artifacts.require('ERC721Proxy');
 
 const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
-const { buildOrder, buildOrderRFQ, buildOrderData, signOrder, signOrderRFQ, compressSignature } = require('./helpers/orderUtils');
+const { buildOrder, buildOrderRFQ, buildOrderData, signOrder, signOrderRFQ, compactSignature } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { addr1PrivateKey, toBN } = require('./helpers/utils');
 
@@ -231,7 +231,7 @@ describe('LimitOrderProtocol', async function () {
                 const makerWeth = await this.weth.balanceOf(wallet);
                 const takerWeth = await this.weth.balanceOf(addr1);
 
-                const { r, vs } = compressSignature(signature);
+                const { r, vs } = compactSignature(signature);
                 const receipt = await this.swap.fillOrderRFQCompact(order, r, vs, 1);
 
                 expect(
@@ -739,7 +739,7 @@ describe('LimitOrderProtocol', async function () {
 
             await this.swap.cancelOrderRFQ('1', { from: wallet });
 
-            const { r, vs } = compressSignature(signature);
+            const { r, vs } = compactSignature(signature);
             await expectRevert(
                 this.swap.fillOrderRFQCompact(order, r, vs, 1),
                 'LOP: invalidated order',
@@ -1053,7 +1053,7 @@ describe('LimitOrderProtocol', async function () {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(addr1);
 
-            const { r, vs } = compressSignature(signature);
+            const { r, vs } = compactSignature(signature);
             console.log('signature', signature);
             console.log('r', r);
             console.log('vs', vs);
@@ -1091,7 +1091,7 @@ describe('LimitOrderProtocol', async function () {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(addr1);
 
-            const { r, vs } = compressSignature(signature);
+            const { r, vs } = compactSignature(signature);
             await this.swap.fillOrderRFQCompact(order, r, vs, 1);
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
@@ -1126,7 +1126,7 @@ describe('LimitOrderProtocol', async function () {
             const makerWeth = await this.weth.balanceOf(wallet);
             const takerWeth = await this.weth.balanceOf(addr1);
 
-            const { r, vs } = compressSignature(signature);
+            const { r, vs } = compactSignature(signature);
             await this.swap.fillOrderRFQCompact(order, r, vs, 0);
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
@@ -1149,7 +1149,7 @@ describe('LimitOrderProtocol', async function () {
             const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 5, 10, wallet);
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, account.getPrivateKey());
 
-            const { r, vs } = compressSignature(signature);
+            const { r, vs } = compactSignature(signature);
             await expectRevert(
                 this.swap.fillOrderRFQCompact(order, r, vs, toBN('1').shln(255).addn(1)),
                 'LOP: can\'t swap 0 amount',
@@ -1170,7 +1170,7 @@ describe('LimitOrderProtocol', async function () {
             const order = buildOrderRFQ('308276084001730439550074881', this.dai.address, this.weth.address, 1, 1, wallet);
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, account.getPrivateKey());
 
-            const { r, vs } = compressSignature(signature);
+            const { r, vs } = compactSignature(signature);
             await expectRevert(
                 this.swap.fillOrderRFQCompact(order, r, vs, 1),
                 'LOP: order expired',

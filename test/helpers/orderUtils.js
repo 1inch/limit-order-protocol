@@ -140,13 +140,13 @@ function signOrderRFQ (order, chainId, target, privateKey) {
     return ethSigUtil.signTypedMessage(privateKey, { data });
 }
 
-function compressSignature (signature) {
+function compactSignature (signature) {
     const r = toBN(Buffer.from(signature.substring(2, 66), 'hex'));
     const s = toBN(Buffer.from(signature.substring(66, 130), 'hex'));
     const v = toBN(Buffer.from(signature.substring(130, 132), 'hex'));
     return {
-        r: '0x' + r.toString('hex'),
-        vs: '0x' + v.subn(27).shln(255).add(s).toString('hex'),
+        r: '0x' + r.toString('hex').padStart(64, '0'),
+        vs: '0x' + v.subn(27).shln(255).add(s).toString('hex').padStart(64, '0'),
     }
 }
 
@@ -157,7 +157,7 @@ module.exports = {
     buildOrderRFQData,
     signOrder,
     signOrderRFQ,
-    compressSignature,
+    compactSignature,
     name,
     version,
 };
