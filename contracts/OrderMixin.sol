@@ -169,7 +169,7 @@ abstract contract OrderMixin is
         address target
     ) public returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
         require(target != address(0), "LOP: zero target is forbidden");
-        orderHash = hashOrder(order);
+        orderHash = hashOrder(order_);
 
         OrderLib.Order calldata order = order_; // Helps with "Stack too deep"
 
