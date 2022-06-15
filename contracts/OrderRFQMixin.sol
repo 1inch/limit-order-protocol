@@ -87,7 +87,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
         bytes calldata signature,
         uint256 makingAmount,
         uint256 takingAmount
-    ) external returns(uint256, uint256) {
+    ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
     }
 
@@ -108,7 +108,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
         uint256 takingAmount,
         address target,
         bytes calldata permit
-    ) external returns(uint256, uint256) {
+    ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
         _permit(address(order.takerAsset), permit);
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, target);
     }
@@ -125,7 +125,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
         uint256 makingAmount,
         uint256 takingAmount,
         address target
-    ) public returns(uint256, uint256) {
+    ) public returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
         require(target != address(0), "LOP: zero target is forbidden");
 
         address maker = order.maker;
@@ -172,7 +172,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
         order.takerAsset.safeTransferFrom(msg.sender, maker, takingAmount);
 
         emit OrderFilledRFQ(orderHash, makingAmount);
-        return (makingAmount, takingAmount);
+        return (makingAmount, takingAmount, orderHash);
     }
 
     function _invalidateOrder(address maker, uint256 orderInfo) private {
