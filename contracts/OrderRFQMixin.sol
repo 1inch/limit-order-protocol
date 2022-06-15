@@ -30,7 +30,15 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
     }
 
     bytes32 constant public LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
-        "OrderRFQ(uint256 info,address makerAsset,address takerAsset,address maker,address allowedSender,uint256 makingAmount,uint256 takingAmount)"
+        "OrderRFQ("
+            "uint256 info,"
+            "address makerAsset,"
+            "address takerAsset,"
+            "address maker,"
+            "address allowedSender,"
+            "uint256 makingAmount,"
+            "uint256 takingAmount"
+        ")"
     );
 
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
