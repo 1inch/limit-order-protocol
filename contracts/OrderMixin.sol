@@ -234,13 +234,13 @@ abstract contract OrderMixin is
         }
 
         // Maker => Taker
-        _callTransferFrom(
+        require(_callTransferFrom(
             order.makerAsset,
             order.maker,
             target,
             makingAmount,
             order.makerAssetData()
-        );
+        ), "LOP: transfer from maker to taker failed");
 
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
@@ -251,13 +251,13 @@ abstract contract OrderMixin is
         }
 
         // Taker => Maker
-        _callTransferFrom(
+        require(_callTransferFrom(
             order.takerAsset,
             msg.sender,
             order.receiver == address(0) ? order.maker : order.receiver,
             takingAmount,
             order.takerAssetData()
-        );
+        ), "LOP: transfer from taker to maker failed");
 
         // Maker can handle funds interactively
         if (order.postInteraction().length >= 20) {
@@ -281,9 +281,8 @@ abstract contract OrderMixin is
         return _hashTypedDataV4(order.hash());
     }
 
-    function _callTransferFrom(address asset, address from, address to, uint256 amount, bytes calldata input) private {
+    function _callTransferFrom(address asset, address from, address to, uint256 amount, bytes calldata input) private returns(bool success) {
         bytes4 selector = IERC20.transferFrom.selector;
-        bool success;
         assembly { // solhint-disable-line no-inline-assembly
             let data := mload(0x40)
             mstore(0x40, add(data, add(100, input.length)))
@@ -295,9 +294,6 @@ abstract contract OrderMixin is
             calldatacopy(add(data, 0x64), input.offset, input.length)
             let status := call(gas(), asset, 0, data, add(100, input.length), 0x0, 0x20)
             success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
-        }
-        if (!success) {
-            revert("LOP: asset.call bad result");
         }
     }
 
