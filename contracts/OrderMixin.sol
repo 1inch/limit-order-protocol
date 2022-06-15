@@ -14,6 +14,7 @@ import "./helpers/PredicateHelper.sol";
 import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Permitable.sol";
+import "./libraries/Callib.sol";
 import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
@@ -278,9 +279,8 @@ abstract contract OrderMixin is
 
     /// @notice Checks order predicate
     function checkPredicate(OrderLib.Order calldata order) public view returns(bool) {
-        bytes memory result = address(this).functionStaticCall(order.predicate(), "LOP: predicate call failed");
-        require(result.length == 32, "LOP: invalid predicate return");
-        return result.decodeBoolMemory();
+        (bool success, uint256 res) = Callib.callReturningUint(address(this), order.predicate());
+        return success && res == 1;
     }
 
     function hashOrder(OrderLib.Order calldata order) public view returns(bytes32) {

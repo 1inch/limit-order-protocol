@@ -3,7 +3,7 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/Address.sol";
-
+import "../libraries/Callib.sol";
 
 /// @title A helper contract for executing boolean functions on arbitrary target call results
 contract PredicateHelper {
@@ -14,9 +14,8 @@ contract PredicateHelper {
     function or(address[] calldata targets, bytes[] calldata data) external view returns(bool) {
         require(targets.length == data.length, "PH: input array size mismatch");
         for (uint256 i = 0; i < targets.length; i++) {
-            bytes memory result = targets[i].functionStaticCall(data[i], "PH: 'or' subcall failed");
-            require(result.length == 32, "PH: invalid call result");
-            if (abi.decode(result, (bool))) {
+            (bool success, uint256 res) = Callib.callReturningUint(targets[i], data[i]);
+            if (success && res == 1) {
                 return true;
             }
         }
@@ -28,9 +27,8 @@ contract PredicateHelper {
     function and(address[] calldata targets, bytes[] calldata data) external view returns(bool) {
         require(targets.length == data.length, "PH: input array size mismatch");
         for (uint256 i = 0; i < targets.length; i++) {
-            bytes memory result = targets[i].functionStaticCall(data[i], "PH: 'and' subcall failed");
-            require(result.length == 32, "PH: invalid call result");
-            if (!abi.decode(result, (bool))) {
+            (bool success, uint256 res) = Callib.callReturningUint(targets[i], data[i]);
+            if (!success || res != 1) {
                 return false;
             }
         }
@@ -40,28 +38,25 @@ contract PredicateHelper {
     /// @notice Calls target with specified data and tests if it's equal to the value
     /// @param value Value to test
     /// @return Result True if call to target returns the same value as `value`. Otherwise, false
-    function eq(uint256 value, address target, bytes memory data) external view returns(bool) {
-        bytes memory result = target.functionStaticCall(data, "PH: eq");
-        require(result.length == 32, "PH: invalid call result");
-        return abi.decode(result, (uint256)) == value;
+    function eq(uint256 value, address target, bytes calldata data) external view returns(bool) {
+        (bool success, uint256 res) = Callib.callReturningUint(target, data);
+        return success && res == value;
     }
 
     /// @notice Calls target with specified data and tests if it's lower than value
     /// @param value Value to test
     /// @return Result True if call to target returns value which is lower than `value`. Otherwise, false
-    function lt(uint256 value, address target, bytes memory data) external view returns(bool) {
-        bytes memory result = target.functionStaticCall(data, "PH: lt");
-        require(result.length == 32, "PH: invalid call result");
-        return abi.decode(result, (uint256)) < value;
+    function lt(uint256 value, address target, bytes calldata data) external view returns(bool) {
+        (bool success, uint256 res) = Callib.callReturningUint(target, data);
+        return success && res < value;
     }
 
     /// @notice Calls target with specified data and tests if it's bigger than value
     /// @param value Value to test
     /// @return Result True if call to target returns value which is bigger than `value`. Otherwise, false
-    function gt(uint256 value, address target, bytes memory data) external view returns(bool) {
-        bytes memory result = target.functionStaticCall(data, "PH: gt");
-        require(result.length == 32, "PH: invalid call result");
-        return abi.decode(result, (uint256)) > value;
+    function gt(uint256 value, address target, bytes calldata data) external view returns(bool) {
+        (bool success, uint256 res) = Callib.callReturningUint(target, data);
+        return success && res > value;
     }
 
     /// @notice Checks passed time against block timestamp
