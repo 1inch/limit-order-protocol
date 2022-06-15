@@ -189,7 +189,7 @@ abstract contract OrderMixin is
                 if (permit.length >= 20) {
                     // proceed only if permit length is enough to store address
                     (address token, bytes calldata permitCalldata) = permit.decodeTargetAndCalldata();
-                    _permitMemory(token, permitCalldata);
+                    _permit(token, permitCalldata);
                     require(_remaining[orderHash] == _ORDER_DOES_NOT_EXIST, "LOP: reentrancy detected");
                 }
             } else {
