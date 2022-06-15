@@ -1,25 +1,23 @@
-# Permitable
+# IWithdrawable
 
 
-Base contract with common permit handling logics
+
 
 
 
 
 ## Functions
-### _permit
+### withdraw
 ```solidity
-function _permit(
-  address token,
-  bytes permit
-) internal
+function withdraw(
+  uint256 wad
+) external
 ```
 
 
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`token` | address | 
-|`permit` | bytes | 
+|`wad` | uint256 | 
 
 

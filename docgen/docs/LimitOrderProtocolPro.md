@@ -1,12 +1,11 @@
-# LimitOrderProtocol
+# LimitOrderProtocolPro
 
 
-1inch Limit Order Protocol v2
+1inch Pro Limit Order Protocol
 
 
 
 ## Derives
-- [OrderRFQMixin](OrderRFQMixin.md)
 - [OrderMixin](OrderMixin.md)
 - [Permitable](libraries/Permitable.md)
 - [PredicateHelper](helpers/PredicateHelper.md)
