@@ -73,26 +73,17 @@ abstract contract OrderMixin is
         return results;
     }
 
-    /**
-     * @notice Calls every target with corresponding data. Then reverts with CALL_RESULTS_0101011 where zeroes and ones
-     * denote failure or success of the corresponding call
-     * @param targets Array of addresses that will be called
-     * @param data Array of data that will be passed to each call
-     */
-    function simulateCalls(address[] calldata targets, bytes[] calldata data) external {
-        require(targets.length == data.length, "LOP: array size mismatch");
-        bytes memory reason = new bytes(targets.length);
-        for (uint256 i = 0; i < targets.length; i++) {
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, bytes memory result) = targets[i].call(data[i]);
-            if (success && result.length > 0) {
-                success = result.length == 32 && result.decodeBoolMemory();
-            }
-            reason[i] = success ? bytes1("1") : bytes1("0");
-        }
+    error SimulationSuccessful(bool success, bytes res);
 
-        // Always revert and provide per call results
-        revert(string(abi.encodePacked("CALL_RESULTS_", reason)));
+    /**
+     * @notice Delegates execution to custom implementation. Could be used to validate if `transferFrom` works properly
+     * @param target Addresses that will be delegated
+     * @param data Data that will be passed to delegatee
+     */
+    function simulate(address target, bytes calldata data) external {
+        // solhint-disable-next-lineavoid-low-level-calls
+        (bool success, bytes memory result) = target.delegatecall(data);
+        revert SimulationSuccessful(success, result);
     }
 
     /// @notice Cancels order by setting remaining amount to zero
