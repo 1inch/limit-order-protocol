@@ -232,7 +232,7 @@ describe('LimitOrderProtocol', async function () {
                 const takerWeth = await this.weth.balanceOf(addr1);
 
                 const { r, vs } = compressSignature(signature);
-                const receipt = await this.swap.fillOrderRFQCompact(order, r, vs, 1, 0);
+                const receipt = await this.swap.fillOrderRFQCompact(order, r, vs, 1);
 
                 expect(
                     await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
@@ -741,7 +741,7 @@ describe('LimitOrderProtocol', async function () {
 
             const { r, vs } = compressSignature(signature);
             await expectRevert(
-                this.swap.fillOrderRFQCompact(order, r, vs, 1, 0),
+                this.swap.fillOrderRFQCompact(order, r, vs, 1),
                 'LOP: invalidated order',
             );
         });
@@ -1057,7 +1057,7 @@ describe('LimitOrderProtocol', async function () {
             console.log('signature', signature);
             console.log('r', r);
             console.log('vs', vs);
-            await this.swap.fillOrderRFQCompact(order, r, vs, 1, 0);
+            await this.swap.fillOrderRFQCompact(order, r, vs, 1);
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
             expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(takerDai.addn(1));
@@ -1092,7 +1092,7 @@ describe('LimitOrderProtocol', async function () {
             const takerWeth = await this.weth.balanceOf(addr1);
 
             const { r, vs } = compressSignature(signature);
-            await this.swap.fillOrderRFQCompact(order, r, vs, 1, 0);
+            await this.swap.fillOrderRFQCompact(order, r, vs, 1);
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
             expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(takerDai.addn(1));
@@ -1127,7 +1127,7 @@ describe('LimitOrderProtocol', async function () {
             const takerWeth = await this.weth.balanceOf(addr1);
 
             const { r, vs } = compressSignature(signature);
-            await this.swap.fillOrderRFQCompact(order, r, vs, 0, 0);
+            await this.swap.fillOrderRFQCompact(order, r, vs, 0);
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
             expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(takerDai.addn(1));
@@ -1151,7 +1151,7 @@ describe('LimitOrderProtocol', async function () {
 
             const { r, vs } = compressSignature(signature);
             await expectRevert(
-                this.swap.fillOrderRFQCompact(order, r, vs, 0, 1),
+                this.swap.fillOrderRFQCompact(order, r, vs, toBN('1').shln(255).addn(1)),
                 'LOP: can\'t swap 0 amount',
             );
         });
@@ -1172,7 +1172,7 @@ describe('LimitOrderProtocol', async function () {
 
             const { r, vs } = compressSignature(signature);
             await expectRevert(
-                this.swap.fillOrderRFQCompact(order, r, vs, 1, 0),
+                this.swap.fillOrderRFQCompact(order, r, vs, 1),
                 'LOP: order expired',
             );
         });

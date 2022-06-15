@@ -97,12 +97,16 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
         OrderRFQ memory order,
         bytes32 r,
         bytes32 vs,
-        uint256 makingAmount,
-        uint256 takingAmount
-    ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
+        uint256 amount
+    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 /* orderHash */) {
         unchecked {
             bytes memory signature = abi.encodePacked(r, uint256(vs) & ~uint256(1 << 255), uint8(27 + (uint256(vs) >> 255)));
-            console.logBytes(signature);
+            // console.logBytes(signature);
+            if (amount >> 255 == 0) {
+                makingAmount = amount;
+            } else {
+                takingAmount = amount & ~uint256(1 << 255);
+            }
             return fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
         }
     }
