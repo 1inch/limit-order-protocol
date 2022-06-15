@@ -234,15 +234,12 @@ abstract contract OrderMixin is
         }
 
         // Maker => Taker
-        _makeCall(
+        _callTransferFrom(
             order.makerAsset,
-            abi.encodePacked(
-                IERC20.transferFrom.selector,
-                uint256(uint160(order.maker)),
-                uint256(uint160(target)),
-                makingAmount,
-                order.makerAssetData()
-            )
+            order.maker,
+            target,
+            makingAmount,
+            order.makerAssetData()
         );
 
         if (interaction.length >= 20) {
@@ -254,15 +251,12 @@ abstract contract OrderMixin is
         }
 
         // Taker => Maker
-        _makeCall(
+        _callTransferFrom(
             order.takerAsset,
-            abi.encodePacked(
-                IERC20.transferFrom.selector,
-                uint256(uint160(msg.sender)),
-                uint256(uint160(order.receiver == address(0) ? order.maker : order.receiver)),
-                takingAmount,
-                order.takerAssetData()
-            )
+            msg.sender,
+            order.receiver == address(0) ? order.maker : order.receiver,
+            takingAmount,
+            order.takerAssetData()
         );
 
         // Maker can handle funds interactively
@@ -287,10 +281,23 @@ abstract contract OrderMixin is
         return _hashTypedDataV4(order.hash());
     }
 
-    function _makeCall(address asset, bytes memory assetData) private {
-        bytes memory result = asset.functionCall(assetData, "LOP: asset.call failed");
-        if (result.length > 0) {
-            require(result.length == 32 && result.decodeBoolMemory(), "LOP: asset.call bad result");
+    function _callTransferFrom(address asset, address from, address to, uint256 amount, bytes calldata input) private {
+        bytes4 selector = IERC20.transferFrom.selector;
+        bool success;
+        assembly { // solhint-disable-line no-inline-assembly
+            let data := mload(0x40)
+            mstore(0x40, add(data, add(100, input.length)))
+
+            mstore(data, selector)
+            mstore(add(data, 0x04), from)
+            mstore(add(data, 0x24), to)
+            mstore(add(data, 0x44), amount)
+            calldatacopy(add(data, 0x64), input.offset, input.length)
+            let status := call(gas(), asset, 0, data, add(100, input.length), 0x0, 0x20)
+            success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
+        }
+        if (!success) {
+            revert("LOP: asset.call bad result");
         }
     }
 
@@ -299,9 +306,18 @@ abstract contract OrderMixin is
             // On empty getter calldata only exact amount is allowed
             require(amount == orderExpectedAmount, "LOP: wrong amount");
             return orderResultAmount;
+        } else if (getter.length == 1) {
+            // Linear proportion
+            if (getter[0] == "m") {
+                return amount * orderExpectedAmount / orderResultAmount;
+            } else if (getter[0] == "t") {
+                return (amount * orderResultAmount + orderExpectedAmount - 1) / orderExpectedAmount;
+            } else {
+                revert("LOP: wrong getter");
+            }
         } else {
-            bytes memory result = address(this).functionStaticCall(abi.encodePacked(getter, amount), "LOP: getAmount call failed");
-            require(result.length == 32, "LOP: invalid getAmount return");
+            (bool success, bytes memory result) = address(this).staticcall(abi.encodePacked(getter, amount));
+            require(success && result.length == 32, "LOP: getAmount call failed");
             return result.decodeUint256Memory();
         }
     }
