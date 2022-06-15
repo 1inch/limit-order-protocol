@@ -3,14 +3,14 @@
 pragma solidity 0.8.11;
 pragma abicoder v1;
 
-import "../interfaces/InteractiveNotificationReceiver.sol";
+import "../interfaces/NotificationReceiver.sol";
 import "../interfaces/IWithdrawable.sol";
 
-contract WethUnwrapper is InteractiveNotificationReceiver {
+contract WethUnwrapper is PostInteractionNotificationReceiver {
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {}
 
-    function notifyFillOrder(
+    function fillOrderPostInteraction(
         address /* taker */,
         address /* makerAsset */,
         address takerAsset,

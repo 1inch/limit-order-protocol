@@ -20,11 +20,11 @@ function trim0x (bigNumber) {
 
 function cutSelector (data) {
     const hexPrefix = '0x';
-    return hexPrefix + data.substr(hexPrefix.length + 8);
+    return hexPrefix + data.substring(hexPrefix.length + 8);
 }
 
 function cutLastArg (data, padding=0) {
-    return data.substr(0, data.length - 64 - padding);
+    return data.substring(0, data.length - 64 - padding);
 }
 
 module.exports = {

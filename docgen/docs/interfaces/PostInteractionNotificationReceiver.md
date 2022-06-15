@@ -1,13 +1,15 @@
-# InteractiveNotificationReceiver
+# PostInteractionNotificationReceiver
 
-Interface for interactor which acts between `maker => taker` and `taker => maker` transfers.
+
+
+
 
 
 
 ## Functions
-### notifyFillOrder
+### fillOrderPostInteraction
 ```solidity
-function notifyFillOrder(
+function fillOrderPostInteraction(
   address taker,
   address makerAsset,
   address takerAsset,

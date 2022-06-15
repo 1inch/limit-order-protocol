@@ -2,11 +2,12 @@
 
 pragma solidity 0.8.11;
 
-import "../interfaces/InteractiveNotificationReceiver.sol";
+import "../interfaces/NotificationReceiver.sol";
 import "../interfaces/IWhitelistRegistry.sol";
 import "../libraries/ArgumentsDecoder.sol";
 
-contract WhitelistChecker is InteractiveNotificationReceiver {
+// TODO: why WL checker is in interaction, but not in predicate?
+contract WhitelistChecker is PreInteractionNotificationReceiver {
     using ArgumentsDecoder for bytes;
 
     error TakerIsNotWhitelisted();
@@ -17,7 +18,7 @@ contract WhitelistChecker is InteractiveNotificationReceiver {
         whitelistRegistry = _whitelistRegistry;
     }
 
-    function notifyFillOrder(
+    function fillOrderPreInteraction(
         address taker,
         address makerAsset,
         address takerAsset,
@@ -28,9 +29,9 @@ contract WhitelistChecker is InteractiveNotificationReceiver {
         if (whitelistRegistry.status(taker) != 1) revert TakerIsNotWhitelisted();
 
         if (nextInteractiveData.length != 0) {
-            (address interactionTarget, bytes calldata interactionData) = nextInteractiveData.decodeTargetAndData();
+            (address interactionTarget, bytes calldata interactionData) = nextInteractiveData.decodeTargetAndCalldata();
 
-            InteractiveNotificationReceiver(interactionTarget).notifyFillOrder(
+            PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
                 taker, makerAsset, takerAsset, makingAmount, takingAmount, interactionData
             );
         }

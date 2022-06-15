@@ -8,7 +8,7 @@ import "./OrderRFQMixin.sol";
 
 /// @title 1inch Limit Order Protocol v2
 contract LimitOrderProtocol is
-    EIP712("1inch Limit Order Protocol", "2"),
+    EIP712("1inch Limit Order Protocol", "3"),
     OrderMixin,
     OrderRFQMixin
 {
