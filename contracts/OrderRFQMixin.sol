@@ -14,7 +14,7 @@ library SafestERC20 {
 
     function safeTransferFrom(IERC20 token, address from, address to, uint value) internal {
         bytes4 selector = IERC20.transferFrom.selector;
-        bytes4 exception = TransferFromFailed.selector;
+        bool success;
         assembly { // solhint-disable-line no-inline-assembly
             let data := mload(0x40)
             mstore(0x40, add(data, 100))
@@ -23,11 +23,11 @@ library SafestERC20 {
             mstore(add(data, 0x04), from)
             mstore(add(data, 0x24), to)
             mstore(add(data, 0x44), value)
-            let success := call(gas(), token, 0, data, 100, 0x0, 0x20)
-            if or(iszero(success), and(gt(returndatasize(), 31), iszero(eq(mload(0), 1)))) {
-                mstore(0, exception)
-                revert(0, 4)
-            }
+            let status := call(gas(), token, 0, data, 100, 0x0, 0x20)
+            success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
+        }
+        if (!success) {
+            revert TransferFromFailed();
         }
     }
 }
