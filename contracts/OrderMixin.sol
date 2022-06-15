@@ -43,9 +43,6 @@ abstract contract OrderMixin is
         uint256 remainingRaw
     );
 
-    bytes32 constant public LIMIT_ORDER_TYPEHASH = keccak256(
-        "Order(uint256 salt,address makerAsset,address takerAsset,address maker,address receiver,address allowedSender,uint256 makingAmount,uint256 takingAmount,uint256 offsets,bytes interactions)"
-    );
     uint256 constant private _ORDER_DOES_NOT_EXIST = 0;
     uint256 constant private _ORDER_FILLED = 1;
 
@@ -296,7 +293,7 @@ abstract contract OrderMixin is
     }
 
     function hashOrder(OrderLib.Order calldata order) public view returns(bytes32) {
-        return _hashTypedDataV4(order.hash(LIMIT_ORDER_TYPEHASH));
+        return _hashTypedDataV4(order.hash());
     }
 
     function _makeCall(address asset, bytes memory assetData) private {

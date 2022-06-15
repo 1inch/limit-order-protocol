@@ -24,6 +24,21 @@ library OrderLib {
         bytes interactions; // concat(makerAssetData, takerAssetData, getMakingAmount, getTakingAmount, predicate, permit, preIntercation, postInteraction)
     }
 
+    bytes32 constant internal _LIMIT_ORDER_TYPEHASH = keccak256(
+        "Order("
+            "uint256 salt,"
+            "address makerAsset,"
+            "address takerAsset,"
+            "address maker,"
+            "address receiver,"
+            "address allowedSender,"
+            "uint256 makingAmount,"
+            "uint256 takingAmount,"
+            "uint256 offsets,"
+            "bytes interactions"
+        ")"
+    );
+
     enum DynamicField {
         MakerAssetData,
         TakerAssetData,
@@ -79,8 +94,9 @@ library OrderLib {
         return _get(order, DynamicField.PostInteraction);
     }
 
-    function hash(Order calldata order, bytes32 typehash) internal pure returns(bytes32 result) {
+    function hash(Order calldata order) internal pure returns(bytes32 result) {
         bytes calldata interactions = order.interactions;
+        bytes32 typehash = _LIMIT_ORDER_TYPEHASH;
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
             mstore(0x40, add(ptr, add(0x160, interactions.length)))
