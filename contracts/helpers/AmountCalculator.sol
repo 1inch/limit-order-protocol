@@ -3,11 +3,11 @@
 pragma solidity 0.8.11;
 pragma abicoder v1;
 
-import "@openzeppelin/contracts/utils/Address.sol";
+import "../libraries/Callib.sol";
 
 /// @title A helper contract for calculations related to order amounts
 contract AmountCalculator {
-    using Address for address;
+    using Callib for address;
 
     /// @notice Calculates maker amount
     /// @return Result Floored maker amount
@@ -23,8 +23,9 @@ contract AmountCalculator {
 
     /// @notice Performs an arbitrary call to target with data
     /// @return Result Bytes transmuted to uint256
-    function arbitraryStaticCall(address target, bytes memory data) external view returns(uint256) {
-        (bytes memory result) = target.functionStaticCall(data, "AC: arbitraryStaticCall");
-        return abi.decode(result, (uint256));
+    function arbitraryStaticCall(address target, bytes calldata data) external view returns(uint256) {
+        (bool success, uint256 res) = target.staticcallForUint(data);
+        require(success, "AC: arbitraryStaticCall");
+        return res;
     }
 }

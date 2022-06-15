@@ -182,7 +182,7 @@ describe('LimitOrderProtocol', async function () {
 
             expect(
                 await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
-            ).to.be.deep.equal([2, 2, 7, 7, 3]);
+            ).to.be.deep.equal([2, 2, 7, 7, 0]);
 
             expect(await this.dai.balanceOf(wallet)).to.be.bignumber.equal(makerDai.subn(1));
             expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(takerDai.addn(1));
@@ -243,7 +243,7 @@ describe('LimitOrderProtocol', async function () {
 
             expect(
                 await profileEVM(receipt.tx, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
-            ).to.be.deep.equal([2, 2, 7, 7, 3]);
+            ).to.be.deep.equal([2, 2, 7, 7, 0]);
 
             // await gasspectEVM(receipt.tx);
 
@@ -751,6 +751,16 @@ describe('LimitOrderProtocol', async function () {
     });
 
     describe('Predicate', async function () {
+        it('benchmark gas', async function () {
+            const ts1 = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
+            const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
+            const gtCall = this.swap.contract.methods.gt('100000', this.dai.address, balanceCall).encodeABI();
+            await this.swap.contract.methods.or(
+                [this.swap.address, this.swap.address],
+                [ts1, gtCall],
+            ).send({ from: wallet });
+        });
+
         it('`or` should pass', async function () {
             const ts1 = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
@@ -813,7 +823,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-                'LOP: predicate returned false',
+                'LOP: predicate is not true',
             );
         });
 
@@ -918,7 +928,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-                'LOP: predicate returned false',
+                'LOP: predicate is not true',
             );
         });
     });
@@ -971,7 +981,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-                'LOP: predicate returned false',
+                'LOP: predicate is not true',
             );
         });
 
