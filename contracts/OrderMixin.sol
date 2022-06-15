@@ -14,84 +14,7 @@ import "./helpers/PredicateHelper.sol";
 import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Permitable.sol";
-
-library OrderType {
-    struct Order {
-        uint256 salt;
-        address makerAsset;
-        address takerAsset;
-        address maker;
-        address receiver;
-        address allowedSender;  // equals to Zero address on public orders
-        uint256 makingAmount;
-        uint256 takingAmount;
-        uint256 offsets;
-        // bytes makerAssetData;
-        // bytes takerAssetData;
-        // bytes getMakingAmount; // this.staticcall(abi.encodePacked(bytes, swapTakerAmount)) => (swapMakerAmount)
-        // bytes getTakingAmount; // this.staticcall(abi.encodePacked(bytes, swapMakerAmount)) => (swapTakerAmount)
-        // bytes predicate;      // this.staticcall(bytes) => (bool)
-        // bytes permit;         // On first fill: permit.1.call(abi.encodePacked(permit.selector, permit.2))
-        // bytes preInteraction;
-        // bytes postInteraction;
-        bytes interactions; // concat(makerAssetData, takerAssetData, getMakingAmount, getTakingAmount, predicate, permit, preIntercation, postInteraction)
-    }
-
-    enum DynamicField {
-        MakerAssetData,
-        TakerAssetData,
-        GetMakingAmount,
-        GetTakingAmount,
-        Predicate,
-        Permit,
-        PreInteraction,
-        PostInteraction
-    }
-
-    function _get(Order calldata order, DynamicField field) private pure returns(bytes calldata) {
-        if (uint256(field) == 0) {
-            return order.interactions[0:uint32(order.offsets)];
-        }
-
-        uint256 bitShift = 32 * uint256(field);
-        return order.interactions[
-            uint32(order.offsets >> (bitShift - 32)):
-            uint32(order.offsets >> bitShift)
-        ];
-    }
-
-    function makerAssetData(Order calldata order) internal pure returns(bytes calldata) {
-        return _get(order, DynamicField.MakerAssetData);
-    }
-
-    function takerAssetData(Order calldata order) internal pure returns(bytes calldata) {
-        return _get(order, DynamicField.TakerAssetData);
-    }
-
-    function getMakingAmount(Order calldata order) internal pure returns(bytes calldata) {
-        return _get(order, DynamicField.GetMakingAmount);
-    }
-
-    function getTakingAmount(Order calldata order) internal pure returns(bytes calldata) {
-        return _get(order, DynamicField.GetTakingAmount);
-    }
-
-    function predicate(Order calldata order) internal pure returns(bytes calldata) {
-        return _get(order, DynamicField.Predicate);
-    }
-
-    function permit(Order calldata order) internal pure returns(bytes calldata) {
-        return _get(order, DynamicField.Permit);
-    }
-
-    function preInteraction(Order calldata order) internal pure returns(bytes calldata) {
-        return _get(order, DynamicField.PreInteraction);
-    }
-
-    function postInteraction(Order calldata order) internal pure returns(bytes calldata) {
-        return _get(order, DynamicField.PostInteraction);
-    }
-}
+import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
 abstract contract OrderMixin is
@@ -104,7 +27,7 @@ abstract contract OrderMixin is
 {
     using Address for address;
     using ArgumentsDecoder for bytes;
-    using OrderType for OrderType.Order;
+    using OrderLib for OrderLib.Order;
 
     /// @notice Emitted every time order gets filled, including partial fills
     event OrderFilled(
@@ -176,7 +99,7 @@ abstract contract OrderMixin is
     }
 
     /// @notice Cancels order by setting remaining amount to zero
-    function cancelOrder(OrderType.Order calldata order) external {
+    function cancelOrder(OrderLib.Order calldata order) external {
         require(order.maker == msg.sender, "LOP: Access denied");
 
         bytes32 orderHash = hashOrder(order);
@@ -193,7 +116,7 @@ abstract contract OrderMixin is
     /// @param takingAmount Taking amount
     /// @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
     function fillOrder(
-        OrderType.Order calldata order,
+        OrderLib.Order calldata order,
         bytes calldata signature,
         bytes calldata interaction,
         uint256 makingAmount,
@@ -215,7 +138,7 @@ abstract contract OrderMixin is
     /// @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
     /// @dev See tests for examples
     function fillOrderToWithPermit(
-        OrderType.Order calldata order,
+        OrderLib.Order calldata order,
         bytes calldata signature,
         bytes calldata interaction,
         uint256 makingAmount,
@@ -240,7 +163,7 @@ abstract contract OrderMixin is
     /// @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
     /// @param target Address that will receive swap funds
     function fillOrderTo(
-        OrderType.Order calldata order_,
+        OrderLib.Order calldata order_,
         bytes calldata signature,
         bytes calldata interaction,
         uint256 makingAmount,
@@ -251,7 +174,7 @@ abstract contract OrderMixin is
         require(target != address(0), "LOP: zero target is forbidden");
         bytes32 orderHash = hashOrder(order_);
 
-        OrderType.Order calldata order = order_; // Helps with "Stack too deep"
+        OrderLib.Order calldata order = order_; // Helps with "Stack too deep"
 
         {  // Stack too deep
             uint256 remainingMakerAmount = _remaining[orderHash];
@@ -366,28 +289,14 @@ abstract contract OrderMixin is
     }
 
     /// @notice Checks order predicate
-    function checkPredicate(OrderType.Order calldata order) public view returns(bool) {
+    function checkPredicate(OrderLib.Order calldata order) public view returns(bool) {
         bytes memory result = address(this).functionStaticCall(order.predicate(), "LOP: predicate call failed");
         require(result.length == 32, "LOP: invalid predicate return");
         return result.decodeBoolMemory();
     }
 
-    function hashOrder(OrderType.Order calldata order) public view returns(bytes32) {
-        bytes32 typehash = LIMIT_ORDER_TYPEHASH;
-        bytes calldata interactions = order.interactions;
-        bytes32 hash;
-        assembly { // solhint-disable-line no-inline-assembly
-            let ptr := mload(0x40)
-            mstore(0x40, add(ptr, add(0x160, interactions.length)))
-
-            calldatacopy(ptr, interactions.offset, interactions.length)
-            mstore(add(ptr, 0x140), keccak256(ptr, interactions.length))
-            calldatacopy(add(ptr, 0x20), order, 0x120)
-            mstore(ptr, typehash)
-            hash := keccak256(ptr, 0x160)
-        }
-
-        return _hashTypedDataV4(hash);
+    function hashOrder(OrderLib.Order calldata order) public view returns(bytes32) {
+        return _hashTypedDataV4(order.hash(LIMIT_ORDER_TYPEHASH));
     }
 
     function _makeCall(address asset, bytes memory assetData) private {
