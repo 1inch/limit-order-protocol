@@ -2,7 +2,6 @@
 
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -26,7 +25,7 @@ abstract contract OrderMixin is
     PredicateHelper,
     Permitable
 {
-    using Address for address;
+    using Callib for address;
     using ArgumentsDecoder for bytes;
     using OrderLib for OrderLib.Order;
 
@@ -273,7 +272,7 @@ abstract contract OrderMixin is
 
     /// @notice Checks order predicate
     function checkPredicate(OrderLib.Order calldata order) public view returns(bool) {
-        (bool success, uint256 res) = Callib.callReturningUint(address(this), order.predicate());
+        (bool success, uint256 res) = address(this).staticcallForUint(order.predicate());
         return success && res == 1;
     }
 
