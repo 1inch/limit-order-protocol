@@ -9,6 +9,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./helpers/AmountCalculator.sol";
 import "./libraries/Permitable.sol";
 
+import "hardhat/console.sol";
+
 library SafeERC20 {
     error TransferFromFailed();
 
@@ -84,11 +86,25 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
     /// @param takingAmount Taking amount
     function fillOrderRFQ(
         OrderRFQ memory order,
-        bytes calldata signature,
+        bytes memory signature,
         uint256 makingAmount,
         uint256 takingAmount
     ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
+    }
+
+    function fillOrderRFQCompact(
+        OrderRFQ memory order,
+        bytes32 r,
+        bytes32 vs,
+        uint256 makingAmount,
+        uint256 takingAmount
+    ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
+        unchecked {
+            bytes memory signature = abi.encodePacked(r, uint256(vs) & ~uint256(1 << 255), uint8(27 + (uint256(vs) >> 255)));
+            console.logBytes(signature);
+            return fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
+        }
     }
 
     /// @notice Fills Same as `fillOrderRFQ` but calls permit first,
@@ -103,7 +119,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
     /// @dev See tests for examples
     function fillOrderRFQToWithPermit(
         OrderRFQ memory order,
-        bytes calldata signature,
+        bytes memory signature,
         uint256 makingAmount,
         uint256 takingAmount,
         address target,
@@ -121,7 +137,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
     /// @param target Address that will receive swap funds
     function fillOrderRFQTo(
         OrderRFQ memory order,
-        bytes calldata signature,
+        bytes memory signature,
         uint256 makingAmount,
         uint256 takingAmount,
         address target
