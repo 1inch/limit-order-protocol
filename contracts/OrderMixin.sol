@@ -304,9 +304,9 @@ abstract contract OrderMixin is
         } else if (getter.length == 1) {
             // Linear proportion
             if (getter[0] == "m") {
-                return amount * orderExpectedAmount / orderResultAmount;
+                return getMakingAmount(orderResultAmount, orderExpectedAmount, amount);
             } else if (getter[0] == "t") {
-                return (amount * orderResultAmount + orderExpectedAmount - 1) / orderExpectedAmount;
+                return getTakingAmount(orderExpectedAmount, orderResultAmount, amount);
             } else {
                 revert("LOP: wrong getter");
             }
