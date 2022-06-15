@@ -823,7 +823,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-                'LOP: predicate returned false',
+                'LOP: predicate is not true',
             );
         });
 
@@ -928,7 +928,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-                'LOP: predicate returned false',
+                'LOP: predicate is not true',
             );
         });
     });
@@ -981,7 +981,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-                'LOP: predicate returned false',
+                'LOP: predicate is not true',
             );
         });
 

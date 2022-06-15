@@ -186,7 +186,7 @@ abstract contract OrderMixin is
 
             // Check if order is valid
             if (order.predicate().length > 0) {
-                require(checkPredicate(order), "LOP: predicate returned false");
+                require(checkPredicate(order), "LOP: predicate is not true");
             }
 
             // Compute maker and taker assets amount
@@ -239,7 +239,7 @@ abstract contract OrderMixin is
             target,
             makingAmount,
             order.makerAssetData()
-        ), "LOP: transfer from maker to taker failed");
+        ), "LOP: maker to taker failed");
 
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
@@ -256,7 +256,7 @@ abstract contract OrderMixin is
             order.receiver == address(0) ? order.maker : order.receiver,
             takingAmount,
             order.takerAssetData()
-        ), "LOP: transfer from taker to maker failed");
+        ), "LOP: taker to maker failed");
 
         // Maker can handle funds interactively
         if (order.postInteraction().length >= 20) {
