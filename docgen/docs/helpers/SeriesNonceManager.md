@@ -1,7 +1,7 @@
-# NonceManager
+# SeriesNonceManager
 
 
-A helper contract for managing nonce of tx sender
+A helper contract to manage nonce with the series
 
 
 
@@ -10,15 +10,21 @@ A helper contract for managing nonce of tx sender
 ### increaseNonce
 ```solidity
 function increaseNonce(
+  uint8 series
 ) external
 ```
 Advances nonce by one
 
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`series` | uint8 | 
 
 
 ### advanceNonce
 ```solidity
 function advanceNonce(
+  uint8 series,
   uint8 amount
 ) public
 ```
@@ -27,22 +33,25 @@ Advances nonce by specified amount
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
+|`series` | uint8 | 
 |`amount` | uint8 | 
 
 
 ### nonceEquals
 ```solidity
 function nonceEquals(
+  uint8 series,
   address makerAddress,
   uint256 makerNonce
 ) external returns (bool)
 ```
-Checks if `makerAddress` has specified `makerNonce`
+Checks if `makerAddress` has specified `makerNonce` for `series`
 
 
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
+|`series` | uint8 | 
 |`makerAddress` | address | 
 |`makerNonce` | uint256 | 
 
@@ -56,6 +65,7 @@ Checks if `makerAddress` has specified `makerNonce`
 ```solidity
 event NonceIncreased(
   address maker,
+  uint8 series,
   uint256 newNonce
 )
 ```
@@ -65,5 +75,6 @@ event NonceIncreased(
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
 |`maker` | address | 
+|`series` | uint8 | 
 |`newNonce` | uint256 | 
 
