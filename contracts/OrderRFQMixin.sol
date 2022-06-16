@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./helpers/AmountCalculator.sol";
 import "./libraries/Permitable.sol";
+import "./OrderRFQLib.sol";
 
 import "hardhat/console.sol";
 
@@ -37,33 +38,12 @@ library SafeERC20 {
 /// @title RFQ Limit Order mixin
 abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
     using SafeERC20 for IERC20;
+    using OrderRFQLib for OrderRFQLib.OrderRFQ;
 
     /// @notice Emitted when RFQ gets filled
     event OrderFilledRFQ(
         bytes32 orderHash,
         uint256 makingAmount
-    );
-
-    struct OrderRFQ {
-        uint256 info;  // lowest 64 bits is the order id, next 64 bits is the expiration timestamp
-        IERC20 makerAsset;
-        IERC20 takerAsset;
-        address maker;
-        address allowedSender;  // equals to Zero address on public orders
-        uint256 makingAmount;
-        uint256 takingAmount;
-    }
-
-    bytes32 constant public LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
-        "OrderRFQ("
-            "uint256 info,"
-            "address makerAsset,"
-            "address takerAsset,"
-            "address maker,"
-            "address allowedSender,"
-            "uint256 makingAmount,"
-            "uint256 takingAmount"
-        ")"
     );
 
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
@@ -85,8 +65,8 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
     /// @param makingAmount Making amount
     /// @param takingAmount Taking amount
     function fillOrderRFQ(
-        OrderRFQ memory order,
-        bytes memory signature,
+        OrderRFQLib.OrderRFQ memory order,
+        bytes calldata signature,
         uint256 makingAmount,
         uint256 takingAmount
     ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
@@ -94,21 +74,19 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
     }
 
     function fillOrderRFQCompact(
-        OrderRFQ memory order,
+        OrderRFQLib.OrderRFQ memory order,
         bytes32 r,
         bytes32 vs,
         uint256 amount
-    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 /* orderHash */) {
-        unchecked {
-            bytes memory signature = abi.encodePacked(r, uint256(vs) & ~uint256(1 << 255), uint8(27 + (uint256(vs) >> 255)));
-            // console.logBytes(signature);
-            if (amount >> 255 == 0) {
-                makingAmount = amount;
-            } else {
-                takingAmount = amount & ~uint256(1 << 255);
-            }
-            return fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
+    ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+        orderHash = _hashTypedDataV4(order.hash());
+        require(order.maker == ECDSA.recover(orderHash, r, vs), "LOP: bad signature");
+        if (amount >> 255 == 0) {
+            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, amount, 0, msg.sender);
+        } else {
+            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, 0, amount & ~uint256(1 << 255), msg.sender);
         }
+        emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
     /// @notice Fills Same as `fillOrderRFQ` but calls permit first,
@@ -122,8 +100,8 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
     /// @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
     /// @dev See tests for examples
     function fillOrderRFQToWithPermit(
-        OrderRFQ memory order,
-        bytes memory signature,
+        OrderRFQLib.OrderRFQ memory order,
+        bytes calldata signature,
         uint256 makingAmount,
         uint256 takingAmount,
         address target,
@@ -140,20 +118,30 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
     /// @param takingAmount Taking amount
     /// @param target Address that will receive swap funds
     function fillOrderRFQTo(
-        OrderRFQ memory order,
-        bytes memory signature,
+        OrderRFQLib.OrderRFQ memory order,
+        bytes calldata signature,
         uint256 makingAmount,
         uint256 takingAmount,
         address target
-    ) public returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
+    ) public returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+        orderHash = _hashTypedDataV4(order.hash());
+        require(SignatureChecker.isValidSignatureNow(order.maker, orderHash, signature), "LOP: bad signature");
+        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, makingAmount, takingAmount, target);
+        emit OrderFilledRFQ(orderHash, makingAmount);
+    }
+
+    function _fillOrderRFQTo(
+        OrderRFQLib.OrderRFQ memory order,
+        uint256 makingAmount,
+        uint256 takingAmount,
+        address target
+    ) private returns(uint256 /* makingAmount */, uint256 /* takingAmount */) {
         require(target != address(0), "LOP: zero target is forbidden");
 
         address maker = order.maker;
 
         // Validate order
         require(order.allowedSender == address(0) || order.allowedSender == msg.sender, "LOP: private order");
-        bytes32 orderHash = _hashTypedDataV4(keccak256(abi.encode(LIMIT_ORDER_RFQ_TYPEHASH, order)));
-        require(SignatureChecker.isValidSignatureNow(maker, orderHash, signature), "LOP: bad signature");
 
         {  // Stack too deep
             uint256 info = order.info;
@@ -188,11 +176,10 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
         require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
 
         // Maker => Taker, Taker => Maker
-        order.makerAsset.safeTransferFrom(maker, target, makingAmount);
-        order.takerAsset.safeTransferFrom(msg.sender, maker, takingAmount);
+        IERC20(order.makerAsset).safeTransferFrom(maker, target, makingAmount);
+        IERC20(order.takerAsset).safeTransferFrom(msg.sender, maker, takingAmount);
 
-        emit OrderFilledRFQ(orderHash, makingAmount);
-        return (makingAmount, takingAmount, orderHash);
+        return (makingAmount, takingAmount);
     }
 
     function _invalidateOrder(address maker, uint256 orderInfo) private {
