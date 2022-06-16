@@ -52,10 +52,12 @@ function buildOrder (
     } = {}
 ) {
     if (getMakingAmount === '') {
-        getMakingAmount = cutLastArg(exchange.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI());
+        getMakingAmount = '0x6d'; // 'm'
+        // cutLastArg(exchange.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI());
     }
     if (getTakingAmount === '') {
-        getTakingAmount = cutLastArg(exchange.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI());
+        getTakingAmount = '0x74'; // 't'
+        // cutLastArg(exchange.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI());
     }
 
     const allInteractions = [
