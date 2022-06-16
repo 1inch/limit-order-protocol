@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.11;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -158,11 +159,13 @@ abstract contract OrderMixin is
         uint256 takingAmount,
         uint256 thresholdAmount,
         address target
-    ) public returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
+    ) public returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
         require(target != address(0), "LOP: zero target is forbidden");
         orderHash = hashOrder(order_);
 
         OrderLib.Order calldata order = order_; // Helps with "Stack too deep"
+        actualMakingAmount = makingAmount;
+        actualTakingAmount = takingAmount;
 
         {  // Stack too deep
             uint256 remainingMakerAmount = _remaining[orderHash];
@@ -190,34 +193,34 @@ abstract contract OrderMixin is
             }
 
             // Compute maker and taker assets amount
-            if ((takingAmount == 0) == (makingAmount == 0)) {
+            if ((actualTakingAmount == 0) == (actualMakingAmount == 0)) {
                 revert("LOP: only one amount should be 0");
-            } else if (takingAmount == 0) {
-                uint256 requestedMakingAmount = makingAmount;
-                if (makingAmount > remainingMakerAmount) {
-                    makingAmount = remainingMakerAmount;
+            } else if (actualTakingAmount == 0) {
+                uint256 requestedMakingAmount = actualMakingAmount;
+                if (actualMakingAmount > remainingMakerAmount) {
+                    actualMakingAmount = remainingMakerAmount;
                 }
-                takingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, makingAmount, order.takingAmount);
+                actualTakingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
                 // check that actual rate is not worse than what was expected
-                // takingAmount / makingAmount <= thresholdAmount / requestedMakingAmount
-                require(takingAmount * requestedMakingAmount <= thresholdAmount * makingAmount, "LOP: taking amount too high");
+                // takingAmount / actualMakingAmount <= thresholdAmount / requestedMakingAmount
+                require(actualTakingAmount * requestedMakingAmount <= thresholdAmount * actualMakingAmount, "LOP: taking amount too high");
             } else {
-                uint256 requestedTakingAmount = takingAmount;
-                makingAmount = _callGetter(order.getMakingAmount(), order.takingAmount, takingAmount, order.makingAmount);
-                if (makingAmount > remainingMakerAmount) {
-                    makingAmount = remainingMakerAmount;
-                    takingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, makingAmount, order.takingAmount);
+                uint256 requestedTakingAmount = actualTakingAmount;
+                actualMakingAmount = _callGetter(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount);
+                if (actualMakingAmount > remainingMakerAmount) {
+                    actualMakingAmount = remainingMakerAmount;
+                    actualTakingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
                 }
                 // check that actual rate is not worse than what was expected
-                // makingAmount / takingAmount >= thresholdAmount / requestedTakingAmount
-                require(makingAmount * requestedTakingAmount >= thresholdAmount * takingAmount, "LOP: making amount too low");
+                // actualMakingAmount / actualTakingAmount >= thresholdAmount / requestedTakingAmount
+                require(actualMakingAmount * requestedTakingAmount >= thresholdAmount * actualTakingAmount, "LOP: making amount too low");
             }
 
-            require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
+            require(actualMakingAmount > 0 && actualTakingAmount > 0, "LOP: can't swap 0 amount");
 
             // Update remaining amount in storage
             unchecked {
-                remainingMakerAmount = remainingMakerAmount - makingAmount;
+                remainingMakerAmount = remainingMakerAmount - actualMakingAmount;
                 _remaining[orderHash] = remainingMakerAmount + 1;
             }
             emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
@@ -228,7 +231,7 @@ abstract contract OrderMixin is
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.preInteraction().decodeTargetAndCalldata();
             PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                msg.sender, order.makerAsset, order.takerAsset, makingAmount, takingAmount, interactionData
+                msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
             );
         }
 
@@ -237,16 +240,19 @@ abstract contract OrderMixin is
             order.makerAsset,
             order.maker,
             target,
-            makingAmount,
+            actualMakingAmount,
             order.makerAssetData()
         ), "LOP: maker to taker failed");
 
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata();
-            InteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
-                msg.sender, order.makerAsset, order.takerAsset, makingAmount, takingAmount, interactionData
+            uint256 offeredTakingAmount = InteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
+                msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
             );
+            if (offeredTakingAmount > actualTakingAmount && !order.takingAmountIsFrosen()) {
+                actualTakingAmount = offeredTakingAmount;
+            }
         }
 
         // Taker => Maker
@@ -254,7 +260,7 @@ abstract contract OrderMixin is
             order.takerAsset,
             msg.sender,
             order.receiver == address(0) ? order.maker : order.receiver,
-            takingAmount,
+            actualTakingAmount,
             order.takerAssetData()
         ), "LOP: taker to maker failed");
 
@@ -263,11 +269,9 @@ abstract contract OrderMixin is
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.postInteraction().decodeTargetAndCalldata();
             PostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
-                msg.sender, order.makerAsset, order.takerAsset, makingAmount, takingAmount, interactionData
+                msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
             );
         }
-
-        return (makingAmount, takingAmount, orderHash);
     }
 
     /// @notice Checks order predicate

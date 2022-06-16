@@ -78,6 +78,10 @@ library OrderLib {
         return _get(order, DynamicField.GetTakingAmount);
     }
 
+    function takingAmountIsFrosen(Order calldata order) internal pure returns(bool) {
+        return getTakingAmount(order).length == 0;
+    }
+
     function predicate(Order calldata order) internal pure returns(bytes calldata) {
         return _get(order, DynamicField.Predicate);
     }
