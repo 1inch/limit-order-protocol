@@ -3,14 +3,12 @@
 pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
-import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./helpers/AmountCalculator.sol";
 import "./libraries/Permitable.sol";
+import "./libraries/EC.sol";
 import "./OrderRFQLib.sol";
-
-import "hardhat/console.sol";
 
 library SafeERC20 {
     error TransferFromFailed();
@@ -80,7 +78,9 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
         uint256 amount
     ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = _hashTypedDataV4(order.hash());
-        require(order.maker == ECDSA.recover(orderHash, r, vs), "LOP: bad signature");
+        require(order.maker == EC.recover(orderHash, r, vs), "LOP: bad signature");
+        // require(order.maker == ECDSA.recover(orderHash, r, vs), "LOP: bad signature");
+
         if (amount >> 255 == 0) {
             (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, amount, 0, msg.sender);
         } else {
@@ -125,7 +125,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
         address target
     ) public returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = _hashTypedDataV4(order.hash());
-        require(SignatureChecker.isValidSignatureNow(order.maker, orderHash, signature), "LOP: bad signature");
+        require(EC.isValidSignatureNow(order.maker, orderHash, signature), "LOP: bad signature");
         (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, makingAmount, takingAmount, target);
         emit OrderFilledRFQ(orderHash, makingAmount);
     }
