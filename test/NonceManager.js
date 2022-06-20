@@ -1,3 +1,7 @@
+const { expect } = require("chai");
+const { web3 } = require("hardhat");
+const { toBN } = require('./helpers/utils');
+
 const NonceManager = artifacts.require('NonceManager');
 
 describe('NonceManager', async function () {
@@ -37,5 +41,15 @@ describe('NonceManager', async function () {
         await this.nonceManager.advanceNonce(4);
         const isEquals = await this.nonceManager.nonceEquals(currentAddress, 4);
         expect(isEquals).to.equal(true);
+    });
+
+    it('Nonce equals compact - should uses less gas then nonce equals', async function () {
+        const paramCompact = toBN(currentAddress).addn(4 << 160);
+        await this.nonceManager.advanceNonce(4);
+        expect(await this.nonceManager.nonceEquals(currentAddress, 4)).to.equal(true);
+        expect(await this.nonceManager.nonceEqualsCompact(paramCompact)).to.equal(true);
+        const gasUsed = (await this.nonceManager.contract.methods.nonceEquals(currentAddress, 4).send({ from: currentAddress })).gasUsed;
+        const gasUsedCompact = (await this.nonceManager.contract.methods.nonceEqualsCompact(paramCompact).send({ from: currentAddress })).gasUsed;
+        expect(gasUsedCompact).to.lessThan(gasUsed);
     });
 });
