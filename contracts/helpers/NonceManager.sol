@@ -26,4 +26,9 @@ contract NonceManager {
     function nonceEquals(address makerAddress, uint256 makerNonce) external view returns(bool) {
         return nonce[makerAddress] == makerNonce;
     }
+
+    // TODO: check gas is cheaper (even for new calldata gas cost)
+    function nonceEqualsCompact(uint256 nonceAndMakerAddress) external view returns(bool) {
+        return nonce[address(uint160(nonceAndMakerAddress))] == nonceAndMakerAddress >> 160;
+    }
 }

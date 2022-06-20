@@ -63,4 +63,9 @@ contract PredicateHelper {
     function timestampBelow(uint256 time) external view returns(bool) {
         return block.timestamp < time;  // solhint-disable-line not-rely-on-time
     }
+
+    // TODO: check gas is cheaper after trimming zeroes (even for new calldata gas cost)
+    function timestampBelowCompact(bytes4 time) external view returns(bool) {
+        return block.timestamp < (uint256(bytes32(time)) >> 224);  // solhint-disable-line not-rely-on-time
+    }
 }
