@@ -56,7 +56,6 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = _hashTypedDataV4(order.hash());
         require(order.maker == EC.recover(orderHash, r, vs), "LOP: bad signature");
-        // require(order.maker == ECDSA.recover(orderHash, r, vs), "LOP: bad signature");
 
         if (amount >> 255 == 0) {
             (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, amount, 0, msg.sender);

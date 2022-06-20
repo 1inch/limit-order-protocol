@@ -27,19 +27,40 @@ library EC {
             mstore(0x40, add(ptr, 0x80))
 
             mstore(ptr, hash)
-            mstore(add(ptr, 0x20), byte(0, calldataload(add(signature.offset, 0x40))))
-            calldatacopy(add(ptr, 0x40), signature.offset, 0x40)
-            if staticcall(gas(), 0x1, ptr, 0x80, 0, 0x20) {
-                signer := mload(0)
+            switch signature.length
+            case 65 {
+                mstore(add(ptr, 0x20), byte(0, calldataload(add(signature.offset, 0x40))))
+                calldatacopy(add(ptr, 0x40), signature.offset, 0x40)
+            }
+            case 64 {
+                mstore(add(ptr, 0x20), add(27, shr(255, calldataload(add(signature.offset, 0x20)))))
+                mstore(add(ptr, 0x40), calldataload(signature.offset))
+                mstore(add(ptr, 0x60), shr(1, shl(1, calldataload(add(signature.offset, 0x20)))))
+            }
+            default {
+                ptr := 0
+            }
+
+            if gt(mload(add(ptr, 0x60)), 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
+                ptr := 0
+            }
+
+            if ptr {
+                calldatacopy(add(ptr, 0x40), signature.offset, 0x40)
+                if staticcall(gas(), 0x1, ptr, 0x80, 0, 0x20) {
+                    signer := mload(0)
+                }
             }
         }
     }
 
     function isValidSignatureNow(address signer, bytes32 hash, bytes calldata signature) internal view returns(bool success) {
-        if (signature.length == 65 && recover(hash, signature) == signer) {
+        if ((signature.length == 64 || signature.length == 65) && recover(hash, signature) == signer) {
             return true;
         }
 
+        // (bool success, bytes memory data) = signer.staticcall(abi.encodeWithSelector(IERC1271.isValidSignature.selector, hash, signature));
+        // return success && abi.decode(data, (bytes4)) == IERC1271.isValidSignature.selector;
         bytes4 selector = IERC1271.isValidSignature.selector;
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
