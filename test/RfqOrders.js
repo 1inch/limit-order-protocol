@@ -332,7 +332,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
 
             const { r, vs } = compactSignature(signature);
             await expectRevert(
-                this.swap.fillOrderRFQCompact(order, r, vs, toBN('1').shln(255).addn(1)),
+                this.swap.fillOrderRFQCompact(order, r, vs, 1),
                 'LOP: can\'t swap 0 amount',
             );
         });

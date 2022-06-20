@@ -48,6 +48,10 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
     }
 
+    uint256 constant private _MAKER_AMOUNT_FLAG = 1 << 255;
+    uint256 constant private _SIGNER_SMART_CONTRACT_HINT = 1 << 254;
+    uint256 constant private _AMOUNT_MASK = ~uint256(3 << 254);
+
     function fillOrderRFQCompact(
         OrderRFQLib.OrderRFQ memory order,
         bytes32 r,
@@ -55,12 +59,16 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 amount
     ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = _hashTypedDataV4(order.hash());
-        require(order.maker == EC.recover(orderHash, r, vs), "LOP: bad signature");
-
-        if (amount >> 255 == 0) {
-            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, amount, 0, msg.sender);
+        if (amount & _SIGNER_SMART_CONTRACT_HINT == 0) {
+            require(order.maker == EC.recover(orderHash, r, vs), "LOP: bad signature");
         } else {
-            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, 0, amount & ~uint256(1 << 255), msg.sender);
+            require(EC.checkIsValidSignature(order.maker, orderHash, r, vs), "LOP: bad signature");
+        }
+
+        if (amount & _MAKER_AMOUNT_FLAG == 0) {
+            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, 0, amount, msg.sender);
+        } else {
+            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, amount & _AMOUNT_MASK, 0, msg.sender);
         }
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
