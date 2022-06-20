@@ -7,7 +7,7 @@ const TokenMock = artifacts.require('TokenMock');
 const WrappedTokenMock = artifacts.require('WrappedTokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
-const { profileEVM, gasspectEVM } = require('./helpers/profileEVM');
+const { profileEVM } = require('./helpers/profileEVM');
 const { buildOrderRFQ, signOrderRFQ } = require('./helpers/orderUtils');
 const { getPermit } = require('./helpers/eip712');
 const { addr1PrivateKey, toBN } = require('./helpers/utils');
