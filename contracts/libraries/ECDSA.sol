@@ -5,7 +5,7 @@ pragma abicoder v1;
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
-library EC {
+library ECDSA {
     function recover(bytes32 hash, bytes32 r, bytes32 vs) internal view returns(address signer) {
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)

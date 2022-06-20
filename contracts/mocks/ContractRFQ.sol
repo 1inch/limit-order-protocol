@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../LimitOrderProtocol.sol";
 import "../libraries/ArgumentsDecoder.sol";
 import "../OrderRFQLib.sol";
-import "./EIP712Alien.sol";
+import { EIP712Alien } from "./EIP712Alien.sol";
 
 contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     using SafeERC20 for IERC20;
