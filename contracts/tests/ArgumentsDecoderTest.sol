@@ -4,7 +4,6 @@ pragma solidity 0.8.11;
 pragma abicoder v1;
 
 import "../libraries/ArgumentsDecoder.sol";
-import "hardhat/console.sol";
 
 contract ArgumentsDecoderTest {
     using ArgumentsDecoder for bytes;
@@ -26,7 +25,6 @@ contract ArgumentsDecoderTest {
         uint256 gasNative = gasleft();
         abi.decode(result, (bool));
         gasNative = gasNative - gasleft();
-        console.log(gasCustom, gasNative);
     }
 
     function testDecodeUint() external view {
@@ -38,6 +36,5 @@ contract ArgumentsDecoderTest {
         uint256 gasNative = gasleft();
         abi.decode(result, (uint256));
         gasNative = gasNative - gasleft();
-        console.log(gasCustom, gasNative);
     }
 }
