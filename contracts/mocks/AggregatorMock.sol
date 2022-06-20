@@ -7,6 +7,8 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 
 /// @title Mock oracle that always returns specified token price
 contract AggregatorMock is AggregatorV2V3Interface {
+    error NoDataPresent();
+
     int256 private immutable _answer;
 
     constructor(int256 answer) {
@@ -36,7 +38,7 @@ contract AggregatorMock is AggregatorV2V3Interface {
             uint80 answeredInRound
         )
     {
-        require(_roundId == 0, "No data present");
+        if(_roundId != 0) revert NoDataPresent();
         return latestRoundData();
     }
 
@@ -69,12 +71,12 @@ contract AggregatorMock is AggregatorV2V3Interface {
     }
 
     function getAnswer(uint256 roundId) external view returns (int256) {
-        require(roundId == 0, "No data present");
+        if(roundId != 0) revert NoDataPresent();
         return latestAnswer();
     }
 
     function getTimestamp(uint256 roundId) external view returns (uint256) {
-        require(roundId == 0, "No data present");
+        if(roundId != 0) revert NoDataPresent();
         return latestTimestamp();
     }
 }

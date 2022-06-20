@@ -8,10 +8,12 @@ import "../libraries/Callib.sol";
 contract PredicateHelper {
     using Callib for address;
 
+    error InputArraySizeMismatch();
+
     /// @notice Calls every target with corresponding data
     /// @return Result True if call to any target returned True. Otherwise, false
     function or(address[] calldata targets, bytes[] calldata data) external view returns(bool) {
-        require(targets.length == data.length, "PH: input array size mismatch");
+        if(targets.length != data.length) revert InputArraySizeMismatch();
         for (uint256 i = 0; i < targets.length; i++) {
             (bool success, uint256 res) = targets[i].staticcallForUint(data[i]);
             if (success && res == 1) {
@@ -24,7 +26,7 @@ contract PredicateHelper {
     /// @notice Calls every target with corresponding data
     /// @return Result True if calls to all targets returned True. Otherwise, false
     function and(address[] calldata targets, bytes[] calldata data) external view returns(bool) {
-        require(targets.length == data.length, "PH: input array size mismatch");
+        if(targets.length != data.length) revert InputArraySizeMismatch();
         for (uint256 i = 0; i < targets.length; i++) {
             (bool success, uint256 res) = targets[i].staticcallForUint(data[i]);
             if (!success || res != 1) {

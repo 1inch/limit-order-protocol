@@ -8,6 +8,8 @@ import "../libraries/ArgumentsDecoder.sol";
 contract CallsSimulator {
     using ArgumentsDecoder for bytes;
 
+    error ArraySizeMismatch();
+
     /**
      * @notice Calls every target with corresponding data. Then reverts with CALL_RESULTS_0101011 where zeroes and ones
      * denote failure or success of the corresponding call
@@ -15,7 +17,7 @@ contract CallsSimulator {
      * @param data Array of data that will be passed to each call
      */
     function simulateCalls(address[] calldata targets, bytes[] calldata data) external {
-        require(targets.length == data.length, "LOP: array size mismatch");
+        if(targets.length != data.length) revert ArraySizeMismatch();
         bytes memory reason = new bytes(targets.length);
         for (uint256 i = 0; i < targets.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls

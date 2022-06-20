@@ -13,6 +13,9 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     using SafeERC20 for IERC20;
     using ArgumentsDecoder for bytes;
 
+    error NotAllowedToken();
+    error BadPrice();
+
     bytes32 constant public LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
         "OrderRFQ("
             "uint256 info,"
@@ -64,7 +67,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     }
 
     function depositFor(IERC20 token, uint256 amount, address to) public {
-        require(token == token0 || token == token1, "ContractRFQ: not allowed token");
+        if(token != token0 && token != token1) revert NotAllowedToken();
 
         _mint(to, amount * fee2 / 1e18);
         token.safeTransferFrom(msg.sender, address(this), amount);
@@ -75,7 +78,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     }
 
     function withdrawFor(IERC20 token, uint256 amount, address to) public {
-        require(token == token0 || token == token1, "ContractRFQ: not allowed token");
+        if(token != token0 && token != token1) revert NotAllowedToken();
 
         _burn(msg.sender, amount);
         token.safeTransfer(to, amount * fee2 / 1e18);
@@ -84,16 +87,15 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns(bytes4) {
         OrderRFQMixin.OrderRFQ memory order = abi.decode(signature, (OrderRFQMixin.OrderRFQ));
 
-        require(
+        if(
             (
-                (order.makerAsset == token0 && order.takerAsset == token1) ||
-                (order.makerAsset == token1 && order.takerAsset == token0)
-            ) &&
-            order.makingAmount * fee <= order.takingAmount * 1e18 &&
-            order.maker == address(this) && // TODO: remove redundant check
-            _hash(order) == hash,
-            "ContractRFQ: bad price"
-        );
+                (order.makerAsset != token0 || order.takerAsset != token1) &&
+                (order.makerAsset != token1 || order.takerAsset != token0)
+            ) ||
+            order.makingAmount * fee > order.takingAmount * 1e18 ||
+            order.maker != address(this) || // TODO: remove redundant check
+            _hash(order) != hash
+        ) revert BadPrice();
 
         return this.isValidSignature.selector;
     }

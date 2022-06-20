@@ -163,7 +163,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrderRFQ(order, signature, 1, 0),
-                'LOP: invalidated order',
+                'InvalidatedOrder()',
             );
         });
     });
@@ -226,7 +226,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrderRFQ(order, signature, 0, 1),
-                'LOP: can\'t swap 0 amount',
+                'SwapWithZeroAmount()',
             );
         });
 
@@ -236,7 +236,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrderRFQ(order, signature, 1, 0),
-                'LOP: order expired',
+                'OrderExpired()',
             );
         });
     });

@@ -74,7 +74,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(sentOrder, signature, '0x', 1, 0, 1),
-                'LOP: bad signature',
+                'BadSignature()',
             );
         });
 
@@ -93,7 +93,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 1, 1, 1),
-                'LOP: only one amount should be 0',
+                'OnlyOneAmountShouldBeZero()',
             );
         });
 
@@ -112,7 +112,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 2, 0, 1),
-                'LOP: taking amount too high',
+                'TakingAmountTooHigh()',
             );
         });
 
@@ -131,7 +131,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 0, 2, 3),
-                'LOP: making amount too low',
+                'MakingAmountTooLow()',
             );
         });
 
@@ -150,7 +150,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 0, 0, 0),
-                'LOP: only one amount should be 0',
+                'OnlyOneAmountShouldBeZero()',
             );
         });
 
@@ -269,7 +269,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 0, 4, 0),
-                'LOP: can\'t swap 0 amount',
+                'SwapWithZeroAmount()',
             );
         });
 
@@ -490,7 +490,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 5, 0, 5),
-                'LOP: wrong amount',
+                'WrongAmount()',
             );
         });
 
@@ -534,7 +534,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 0, 5, 5),
-                'LOP: wrong amount',
+                'WrongAmount()',
             );
         });
     });
@@ -562,7 +562,7 @@ describe('LimitOrderProtocol', async function () {
         it('should not cancel foreign order', async function () {
             await expectRevert(
                 this.swap.cancelOrder(this.order),
-                'LOP: Access denied',
+                'AccessDenied()',
             );
         });
 
@@ -573,7 +573,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(this.order, signature, '0x', 1, 0, 1),
-                'LOP: remaining amount is 0',
+                'RemainingAmountIsZero()',
             );
         });
     });
@@ -618,7 +618,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-                'LOP: private order',
+                'PrivateOrder()',
             );
         });
     });
@@ -696,7 +696,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-                'LOP: predicate is not true',
+                'PredicateIsNotTrue()',
             );
         });
 
@@ -801,7 +801,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-                'LOP: predicate is not true',
+                'PredicateIsNotTrue()',
             );
         });
     });
@@ -854,7 +854,7 @@ describe('LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-                'LOP: predicate is not true',
+                'PredicateIsNotTrue()',
             );
         });
 
