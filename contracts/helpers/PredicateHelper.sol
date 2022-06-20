@@ -15,7 +15,7 @@ contract PredicateHelper {
     function or(uint256 offsets, bytes calldata data) external view returns(bool) {
         uint256 current;
         uint256 previous;
-        for (uint256 i = 0; (current = uint32(offsets >> (i * 32))) != 0; i++) {
+        for (uint256 i = 0; (current = uint32(offsets >> (i << 5))) != 0; i++) {
             bytes calldata slice = data[previous:current];
             (address target, bytes calldata input) = slice.decodeTargetAndCalldata();
             (bool success, uint256 res) = target.staticcallForUint(input);
@@ -32,7 +32,7 @@ contract PredicateHelper {
     function and(uint256 offsets, bytes calldata data) external view returns(bool) {
         uint256 current;
         uint256 previous;
-        for (uint256 i = 0; (current = uint32(offsets >> (i * 32))) != 0; i++) {
+        for (uint256 i = 0; (current = uint32(offsets >> (i << 5))) != 0; i++) {
             bytes calldata slice = data[previous:current];
             (address target, bytes calldata input) = slice.decodeTargetAndCalldata();
             (bool success, uint256 res) = target.staticcallForUint(input);
