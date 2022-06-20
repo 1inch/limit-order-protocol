@@ -10,7 +10,8 @@ import "./helpers/AmountCalculator.sol";
 import "./libraries/Permitable.sol";
 
 library SafeERC20 {
-    error TransferFromFailed();
+    error SafeTransferFailed();
+    error SafeTransferFromFailed();
 
     function safeTransferFrom(IERC20 token, address from, address to, uint value) internal {
         bytes4 selector = IERC20.transferFrom.selector;
@@ -27,7 +28,33 @@ library SafeERC20 {
             success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
         }
         if (!success) {
-            revert TransferFromFailed();
+            revert SafeTransferFromFailed();
+        }
+    }
+
+    // Ensures method do not revert or return boolean `true`, admits call to non-smart-contract
+    function safeTransfer(IERC20 token, address to, uint256 value) internal {
+        if (!_makeCall(token, token.transfer.selector, to, value)) {
+            revert SafeTransferFailed();
+        }
+    }
+
+    function _makeCall(IERC20 token, bytes4 selector, address to, uint256 amount) private returns(bool done) {
+        assembly { // solhint-disable-line no-inline-assembly
+            let data := mload(0x40)
+            mstore(0x40, add(data, 68))
+
+            mstore(data, selector)
+            mstore(add(data, 0x04), to)
+            mstore(add(data, 0x24), amount)
+            let success := call(gas(), token, 0, data, 68, 0x0, 0x20)
+            done := and(
+                success,
+                or(
+                    iszero(returndatasize()),
+                    and(gt(returndatasize(), 31), eq(mload(0), 1))
+                )
+            )
         }
     }
 }

@@ -4,19 +4,25 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../LimitOrderProtocol.sol";
 import "../libraries/ArgumentsDecoder.sol";
 import "./EIP712Alien.sol";
-
 
 contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     using SafeERC20 for IERC20;
     using ArgumentsDecoder for bytes;
 
     bytes32 constant public LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
-        "OrderRFQ(uint256 info,address makerAsset,address takerAsset,bytes makerAssetData,bytes takerAssetData)"
+        "OrderRFQ("
+            "uint256 info,"
+            "address makerAsset,"
+            "address takerAsset,"
+            "address maker,"
+            "address allowedSender,"
+            "uint256 makingAmount,"
+            "uint256 takingAmount"
+        ")"
     );
 
     uint256 constant private _FROM_INDEX = 0;
@@ -37,7 +43,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
         string memory name,
         string memory symbol
     )
-        EIP712Alien(_protocol, "1inch Limit Order Protocol", "1")
+        EIP712Alien(_protocol, "1inch Limit Order Protocol", "3")
         ERC20(name, symbol)
     {
         protocol = _protocol;
@@ -75,53 +81,27 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
         token.safeTransfer(to, amount * fee2 / 1e18);
     }
 
-    function isValidSignature(bytes32 hash, bytes memory signature) public view override returns(bytes4) {
-        //LimitOrderProtocol.OrderRFQ memory order = abi.decode(signature, (LimitOrderProtocol.OrderRFQ));
-        uint256 info;
-        address makerAsset;
-        address takerAsset;
-        bytes memory makerAssetData;
-        bytes memory takerAssetData;
-        assembly {  // solhint-disable-line no-inline-assembly
-            info := mload(add(signature, 0x40))
-            makerAsset := mload(add(signature, 0x60))
-            takerAsset := mload(add(signature, 0x80))
-            makerAssetData := add(add(signature, 0x40), mload(add(signature, 0xA0)))
-            takerAssetData := add(add(signature, 0x40), mload(add(signature, 0xC0)))
-        }
+    function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns(bytes4) {
+        OrderRFQMixin.OrderRFQ memory order = abi.decode(signature, (OrderRFQMixin.OrderRFQ));
 
         require(
             (
-                (makerAsset == address(token0) && takerAsset == address(token1)) ||
-                (makerAsset == address(token1) && takerAsset == address(token0))
+                (order.makerAsset == token0 && order.takerAsset == token1) ||
+                (order.makerAsset == token1 && order.takerAsset == token0)
             ) &&
-            makerAssetData.decodeUint256(_AMOUNT_INDEX) * fee <= takerAssetData.decodeUint256(_AMOUNT_INDEX) * 1e18 &&
-            takerAssetData.decodeAddress(_TO_INDEX) == address(this) &&
-            _hash(info, makerAsset, takerAsset, makerAssetData, takerAssetData) == hash,
+            order.makingAmount * fee <= order.takingAmount * 1e18 &&
+            order.maker == address(this) && // TODO: remove redundant check
+            _hash(order) == hash,
             "ContractRFQ: bad price"
         );
 
         return this.isValidSignature.selector;
     }
 
-    function _hash(
-        uint256 info,
-        address makerAsset,
-        address takerAsset,
-        bytes memory makerAssetData,
-        bytes memory takerAssetData
-    ) internal view returns(bytes32) {
-        return _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    LIMIT_ORDER_RFQ_TYPEHASH,
-                    info,
-                    makerAsset,
-                    takerAsset,
-                    keccak256(makerAssetData),
-                    keccak256(takerAssetData)
-                )
-            )
-        );
+    function _hash(OrderRFQMixin.OrderRFQ memory order) internal view returns(bytes32) {
+        return _hashTypedDataV4(keccak256(abi.encode(
+            LIMIT_ORDER_RFQ_TYPEHASH,
+            order
+        )));
     }
 }
