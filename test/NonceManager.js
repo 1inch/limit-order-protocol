@@ -1,5 +1,5 @@
-const { expect } = require("chai");
-const { web3 } = require("hardhat");
+const { expect } = require('chai');
+const { web3 } = require('hardhat');
 const { toBN } = require('./helpers/utils');
 
 const NonceManager = artifacts.require('NonceManager');
