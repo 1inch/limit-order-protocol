@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
 import "./helpers/AmountCalculator.sol";
-import "./helpers/ChainlinkCalculator.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/NotificationReceiver.sol";
@@ -20,7 +19,6 @@ import "./OrderLib.sol";
 abstract contract OrderMixin is
     EIP712,
     AmountCalculator,
-    ChainlinkCalculator,
     NonceManager,
     PredicateHelper
 {
@@ -311,7 +309,8 @@ abstract contract OrderMixin is
                 revert("LOP: wrong getter");
             }
         } else {
-            (bool success, bytes memory result) = address(this).staticcall(abi.encodePacked(getter, amount));
+            (address target, bytes calldata data) = getter.decodeTargetAndCalldata();
+            (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount));
             require(success && result.length == 32, "LOP: getAmount call failed");
             return result.decodeUint256Memory();
         }
