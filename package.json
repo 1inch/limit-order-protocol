@@ -12,7 +12,7 @@
     "@openzeppelin/contracts": "4.6.0"
   },
   "devDependencies": {
-    "@1inch/solidity-utils": "^2.0.14",
+    "@1inch/solidity-utils": "^2.0.15",
     "@nomiclabs/hardhat-etherscan": "3.0.3",
     "@nomiclabs/hardhat-truffle5": "2.0.6",
     "@nomiclabs/hardhat-web3": "2.0.0",
