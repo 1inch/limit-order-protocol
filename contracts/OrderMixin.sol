@@ -4,6 +4,7 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
 import "./helpers/AmountCalculator.sol";
 import "./helpers/ChainlinkCalculator.sol";
@@ -11,7 +12,6 @@ import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
-import "./libraries/Permitable.sol";
 import "./libraries/Callib.sol";
 import "./libraries/EC.sol";
 import "./OrderLib.sol";
@@ -22,10 +22,10 @@ abstract contract OrderMixin is
     AmountCalculator,
     ChainlinkCalculator,
     NonceManager,
-    PredicateHelper,
-    Permitable
+    PredicateHelper
 {
     using Callib for address;
+    using SafeERC20 for IERC20;
     using ArgumentsDecoder for bytes;
     using OrderLib for OrderLib.Order;
 
@@ -138,7 +138,7 @@ abstract contract OrderMixin is
         require(permit.length >= 20, "LOP: permit length too low");
         {  // Stack too deep
             (address token, bytes calldata permitData) = permit.decodeTargetAndCalldata();
-            _permit(token, permitData);
+            IERC20(token).safePermit(permitData);
         }
         return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, thresholdAmount, target);
     }
@@ -177,7 +177,7 @@ abstract contract OrderMixin is
                 if (permit.length >= 20) {
                     // proceed only if permit length is enough to store address
                     (address token, bytes calldata permitCalldata) = permit.decodeTargetAndCalldata();
-                    _permit(token, permitCalldata);
+                    IERC20(token).safePermit(permitCalldata);
                     require(_remaining[orderHash] == _ORDER_DOES_NOT_EXIST, "LOP: reentrancy detected");
                 }
             } else {
@@ -304,9 +304,9 @@ abstract contract OrderMixin is
         } else if (getter.length == 1) {
             // Linear proportion
             if (getter[0] == "m") {
-                return amount * orderExpectedAmount / orderResultAmount;
+                return getMakingAmount(orderResultAmount, orderExpectedAmount, amount);
             } else if (getter[0] == "t") {
-                return (amount * orderResultAmount + orderExpectedAmount - 1) / orderExpectedAmount;
+                return getTakingAmount(orderExpectedAmount, orderResultAmount, amount);
             } else {
                 revert("LOP: wrong getter");
             }

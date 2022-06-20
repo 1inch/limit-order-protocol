@@ -4,37 +4,14 @@ pragma solidity 0.8.11;
 
 import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
 import "./helpers/AmountCalculator.sol";
-import "./libraries/Permitable.sol";
 import "./libraries/EC.sol";
 import "./OrderRFQLib.sol";
 
-library SafeERC20 {
-    error TransferFromFailed();
-
-    function safeTransferFrom(IERC20 token, address from, address to, uint value) internal {
-        bytes4 selector = IERC20.transferFrom.selector;
-        bool success;
-        assembly { // solhint-disable-line no-inline-assembly
-            let data := mload(0x40)
-            mstore(0x40, add(data, 100))
-
-            mstore(data, selector)
-            mstore(add(data, 0x04), from)
-            mstore(add(data, 0x24), to)
-            mstore(add(data, 0x44), value)
-            let status := call(gas(), token, 0, data, 100, 0x0, 0x20)
-            success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
-        }
-        if (!success) {
-            revert TransferFromFailed();
-        }
-    }
-}
-
 /// @title RFQ Limit Order mixin
-abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
+abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     using SafeERC20 for IERC20;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
 
@@ -107,7 +84,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator, Permitable {
         address target,
         bytes calldata permit
     ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
-        _permit(address(order.takerAsset), permit);
+        IERC20(order.takerAsset).safePermit(permit);
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, target);
     }
 
