@@ -4,19 +4,28 @@
 
 
 
+
+## Derives
+- [ImmutableOwner](helpers/ImmutableOwner.md)
+
 ## Functions
 ### constructor
 ```solidity
 function constructor(
-) internal
+  address _immutableOwner
+) public
 ```
 
 
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`_immutableOwner` | address | 
 
 
-### func_733NCGU
+### func_301JL5R
 ```solidity
-function func_733NCGU(
+function func_301JL5R(
   address from,
   address to,
   uint256 amount,
@@ -25,7 +34,7 @@ function func_733NCGU(
   bytes data
 ) external
 ```
-
+Proxy transfer method for `IERC1155.safeTransferFrom`. Selector must match `IERC20.transferFrom`
 
 #### Parameters:
 | Name | Type | Description                                                          |

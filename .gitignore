@@ -7,3 +7,4 @@ build
 .coverage_contracts
 .coverage_artifacts
 .idea
+.env

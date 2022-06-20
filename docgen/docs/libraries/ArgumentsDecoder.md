@@ -1,45 +1,16 @@
 # ArgumentsDecoder
 
 
+Library with gas efficient alternatives to `abi.decode`
+
 
 
 
 ## Functions
-### decodeSelector
+### decodeUint256Memory
 ```solidity
-function decodeSelector(
+function decodeUint256Memory(
   bytes data
-) internal returns (bytes4 selector)
-```
-
-
-#### Parameters:
-| Name | Type | Description                                                          |
-| :--- | :--- | :------------------------------------------------------------------- |
-|`data` | bytes | 
-
-
-### decodeAddress
-```solidity
-function decodeAddress(
-  bytes data,
-  uint256 argumentIndex
-) internal returns (address account)
-```
-
-
-#### Parameters:
-| Name | Type | Description                                                          |
-| :--- | :--- | :------------------------------------------------------------------- |
-|`data` | bytes | 
-|`argumentIndex` | uint256 | 
-
-
-### decodeUint256
-```solidity
-function decodeUint256(
-  bytes data,
-  uint256 argumentIndex
 ) internal returns (uint256 value)
 ```
 
@@ -48,16 +19,13 @@ function decodeUint256(
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
 |`data` | bytes | 
-|`argumentIndex` | uint256 | 
 
 
-### patchAddress
+### decodeUint256
 ```solidity
-function patchAddress(
-  bytes data,
-  uint256 argumentIndex,
-  address account
-) internal
+function decodeUint256(
+  bytes data
+) internal returns (uint256 value)
 ```
 
 
@@ -65,17 +33,13 @@ function patchAddress(
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
 |`data` | bytes | 
-|`argumentIndex` | uint256 | 
-|`account` | address | 
 
 
-### patchUint256
+### decodeBoolMemory
 ```solidity
-function patchUint256(
-  bytes data,
-  uint256 argumentIndex,
-  uint256 value
-) internal
+function decodeBoolMemory(
+  bytes data
+) internal returns (bool value)
 ```
 
 
@@ -83,7 +47,33 @@ function patchUint256(
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
 |`data` | bytes | 
-|`argumentIndex` | uint256 | 
-|`value` | uint256 | 
+
+
+### decodeBool
+```solidity
+function decodeBool(
+  bytes data
+) internal returns (bool value)
+```
+
+
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`data` | bytes | 
+
+
+### decodeTargetAndCalldata
+```solidity
+function decodeTargetAndCalldata(
+  bytes data
+) internal returns (address target, bytes args)
+```
+
+
+#### Parameters:
+| Name | Type | Description                                                          |
+| :--- | :--- | :------------------------------------------------------------------- |
+|`data` | bytes | 
 
 

@@ -1,0 +1,83 @@
+{
+  "address": "0xA0446D8804611944F1B527eCD37d7dcbE442caba",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "takerAsset",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "takingAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "interactiveData",
+          "type": "bytes"
+        }
+      ],
+      "name": "notifyFillOrder",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "stateMutability": "payable",
+      "type": "receive"
+    }
+  ],
+  "transactionHash": "0x14a6bec71b6c45743fa91939f6ba3dc8cf27ce0ecce6302c3dabd2b19c1797ce",
+  "receipt": {
+    "to": null,
+    "from": "0x11799622F4D98A24514011E8527B969f7488eF47",
+    "contractAddress": "0xA0446D8804611944F1B527eCD37d7dcbE442caba",
+    "transactionIndex": 0,
+    "gasUsed": "156589",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x00016d3700000b21229ec910c5dac2c0001e47495b3d5b88225cf70d6b06494e",
+    "transactionHash": "0x14a6bec71b6c45743fa91939f6ba3dc8cf27ce0ecce6302c3dabd2b19c1797ce",
+    "logs": [],
+    "blockNumber": 33590554,
+    "cumulativeGasUsed": "156589",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "a8c495643c9a610e012d1854b2fd5718",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.11+commit.d7f03943\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"takerAsset\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"takingAmount\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"interactiveData\",\"type\":\"bytes\"}],\"name\":\"notifyFillOrder\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"stateMutability\":\"payable\",\"type\":\"receive\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/WethUnwrapper.sol\":\"WethUnwrapper\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":1000000},\"remappings\":[]},\"sources\":{\"contracts/WethUnwrapper.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n\\npragma solidity 0.8.11;\\npragma abicoder v1;\\n\\nimport \\\"./interfaces/InteractiveNotificationReceiver.sol\\\";\\nimport \\\"./interfaces/IWithdrawable.sol\\\";\\n\\ncontract WethUnwrapper is InteractiveNotificationReceiver {\\n    // solhint-disable-next-line no-empty-blocks\\n    receive() external payable {}\\n\\n    function notifyFillOrder(\\n        address /* taker */,\\n        address /* makerAsset */,\\n        address takerAsset,\\n        uint256 /* makingAmount */,\\n        uint256 takingAmount,\\n        bytes calldata interactiveData\\n    ) external override {\\n        address payable makerAddress;\\n        // solhint-disable-next-line no-inline-assembly\\n        assembly {\\n            makerAddress := shr(96, calldataload(interactiveData.offset))\\n        }\\n        IWithdrawable(takerAsset).withdraw(takingAmount);\\n        makerAddress.transfer(takingAmount);\\n    }\\n}\\n\",\"keccak256\":\"0xb5631460c0f1d3a2e6820239a8e9c3ce7006c2c33b09fc5be466c9a043a01d0a\",\"license\":\"MIT\"},\"contracts/interfaces/IWithdrawable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n\\npragma solidity 0.8.11;\\npragma abicoder v1;\\n\\ninterface IWithdrawable {\\n    function withdraw(uint wad) external;\\n}\\n\",\"keccak256\":\"0x2b5fdc75ec2b00b4f612ab807cbddd83f2538f8329a2e5ed24679fc219006fe5\",\"license\":\"MIT\"},\"contracts/interfaces/InteractiveNotificationReceiver.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n\\npragma solidity 0.8.11;\\npragma abicoder v1;\\n\\n/// @title Interface for interactor which acts between `maker => taker` and `taker => maker` transfers.\\ninterface InteractiveNotificationReceiver {\\n    /// @notice Callback method that gets called after taker transferred funds to maker but before\\n    /// the opposite transfer happened\\n    function notifyFillOrder(\\n        address taker,\\n        address makerAsset,\\n        address takerAsset,\\n        uint256 makingAmount,\\n        uint256 takingAmount,\\n        bytes memory interactiveData\\n    ) external;\\n}\\n\",\"keccak256\":\"0x94dd744e55a6eee1aa944b885d46c9ca5adc49bde5be854e08f8d4c31484a687\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b506101df806100206000396000f3fe6080604052600436106100225760003560e01c8063cf21c7751461002e57600080fd5b3661002957005b600080fd5b34801561003a57600080fd5b506100e5600480360360c081101561005157600080fd5b73ffffffffffffffffffffffffffffffffffffffff8235811692602081013582169260408201359092169160608201359160808101359181019060c0810160a08201356401000000008111156100a657600080fd5b8201836020820111156100b857600080fd5b803590602001918460018302840111640100000000831117156100da57600080fd5b5090925090506100e7565b005b6000823560601c90508573ffffffffffffffffffffffffffffffffffffffff16632e1a7d4d856040518263ffffffff1660e01b815260040180828152602001915050600060405180830381600087803b15801561014357600080fd5b505af1158015610157573d6000803e3d6000fd5b505060405173ffffffffffffffffffffffffffffffffffffffff8416925086156108fc02915086906000818181858888f1935050505015801561019e573d6000803e3d6000fd5b50505050505050505056fea264697066735822122065093997f4c41844a0071925d13e2309832b963b0e64b6745caab24ce387dc4464736f6c634300080b0033",
+  "deployedBytecode": "0x6080604052600436106100225760003560e01c8063cf21c7751461002e57600080fd5b3661002957005b600080fd5b34801561003a57600080fd5b506100e5600480360360c081101561005157600080fd5b73ffffffffffffffffffffffffffffffffffffffff8235811692602081013582169260408201359092169160608201359160808101359181019060c0810160a08201356401000000008111156100a657600080fd5b8201836020820111156100b857600080fd5b803590602001918460018302840111640100000000831117156100da57600080fd5b5090925090506100e7565b005b6000823560601c90508573ffffffffffffffffffffffffffffffffffffffff16632e1a7d4d856040518263ffffffff1660e01b815260040180828152602001915050600060405180830381600087803b15801561014357600080fd5b505af1158015610157573d6000803e3d6000fd5b505060405173ffffffffffffffffffffffffffffffffffffffff8416925086156108fc02915086906000818181858888f1935050505015801561019e573d6000803e3d6000fd5b50505050505050505056fea264697066735822122065093997f4c41844a0071925d13e2309832b963b0e64b6745caab24ce387dc4464736f6c634300080b0033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": null
+  }
+}

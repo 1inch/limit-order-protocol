@@ -1,17 +1,19 @@
 # AmountCalculator
 
+
 A helper contract for calculations related to order amounts
 
 
 
+
 ## Functions
-### getMakerAmount
+### getMakingAmount
 ```solidity
-function getMakerAmount(
+function getMakingAmount(
   uint256 orderMakerAmount,
   uint256 orderTakerAmount,
   uint256 swapTakerAmount
-) external returns (uint256)
+) public returns (uint256)
 ```
 Calculates maker amount
 
@@ -27,13 +29,14 @@ Calculates maker amount
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
 |`Result`| uint256 | Floored maker amount
-### getTakerAmount
+
+### getTakingAmount
 ```solidity
-function getTakerAmount(
+function getTakingAmount(
   uint256 orderMakerAmount,
   uint256 orderTakerAmount,
   uint256 swapMakerAmount
-) external returns (uint256)
+) public returns (uint256)
 ```
 Calculates taker amount
 
@@ -49,6 +52,7 @@ Calculates taker amount
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
 |`Result`| uint256 | Ceiled taker amount
+
 ### arbitraryStaticCall
 ```solidity
 function arbitraryStaticCall(
@@ -68,4 +72,5 @@ Performs an arbitrary call to target with data
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| address | bytes transmuted to uint256
+|`Result`| uint256 | Bytes transmuted to uint256
+

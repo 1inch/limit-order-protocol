@@ -1,6 +1,8 @@
 # ChainlinkCalculator
 
+
 A helper contract for interactions with https://docs.chain.link
+
 
 
 
@@ -13,7 +15,7 @@ function singlePrice(
   uint256 amount
 ) external returns (uint256)
 ```
-Calculates price of token relative to ETH scaled by 1e18
+Calculates price of token relative to oracle unit (ETH or USD)
 
 
 #### Parameters:
@@ -26,13 +28,15 @@ Calculates price of token relative to ETH scaled by 1e18
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| contract AggregatorV3Interface | Token price times amount
+|`Amount`| uint256 | * spread * oracle price
+
 ### doublePrice
 ```solidity
 function doublePrice(
   contract AggregatorV3Interface oracle1,
   contract AggregatorV3Interface oracle2,
   uint256 spread,
+  int256 decimalsScale,
   uint256 amount
 ) external returns (uint256)
 ```
@@ -45,9 +49,11 @@ Calculates price of token A relative to token B. Note that order is important
 |`oracle1` | contract AggregatorV3Interface | 
 |`oracle2` | contract AggregatorV3Interface | 
 |`spread` | uint256 | 
+|`decimalsScale` | int256 | 
 |`amount` | uint256 | 
 
 #### Return Values:
 | Name                           | Type          | Description                                                                  |
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
-|`Result`| contract AggregatorV3Interface | Token A relative price times amount
+|`Result`| uint256 | Token A relative price times amount
+

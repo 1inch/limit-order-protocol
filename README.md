@@ -1,6 +1,7 @@
-<p align="center">
-  <img src="https://app.1inch.io/assets/images/logo.svg" width="200" alt="1inch network" />
-</p>
+<div align="center">
+    <img src="https://github.com/1inch/limit-order-protocol/blob/master/.github/1inch_github_w.svg#gh-light-mode-only">
+    <img src="https://github.com/1inch/limit-order-protocol/blob/master/.github/1inch_github_b.svg#gh-dark-mode-only">
+</div>
 
 # 1inch Limit Order Protocol Smart Contract
 
@@ -9,19 +10,19 @@
 
 ### About
 
-You can find general overview and docs on 1inch limit orders protocol [here](https://docs.1inch.io/limit-order-protocol/).
+You can find general overview and docs on 1inch limit orders protocol [here](https://docs.1inch.io/docs/limit-order-protocol/introduction/).
 
 This repository contains a smart contract for EVM based blockchains (Ethereum, Binance Smart Chain, etc.), this contract is core part of 1inch limit order protocol.
 
 Contract allows users to place limit orders, that later could be filled on-chain. Limit order itself is a data structure created off-chain and signed according to EIP-712.
 
-Ket features of the protocol is **extreme flexibility** and **high gas efficiency** that achieved by using following order types.
+Key features of the protocol is **extreme flexibility** and **high gas efficiency** that achieved by using following order types.
 
 ### Limit Order
 Extremely **flexible** limit order, can be configured with:
 1) Order execution predicate.
     - Typical usage is checking that certain time stamp or block number. With this you can set certain expiration time.
-    - You can specify construct any predicate that you want, for example check that certain price is higher than oracle price, to implement stop loss or take profit stategies 
+    - You can specify construct any predicate that you want, for example check that certain price is higher than oracle price, to implement stop loss or take profit strategies 
 2) Helper function for asset price evaluation.
     - Function that will allow to extract assets price from arbitrary on-chain source
 3) Callback, for to notify maker on order execution.
@@ -31,7 +32,7 @@ Extremely **flexible** limit order, can be configured with:
 **Gas optimized order** with restricted capabilities suitable **for market makers**
 
 - Support expiration time
-- Support cancelation by order id
+- Support cancellation by order id
 - RFQ Order could be filled only once
 - Partial Fill is possible (once)
 
@@ -43,10 +44,25 @@ Extremely **flexible** limit order, can be configured with:
 
 ### Deployments & audits:
 You can find 1inch limit order protocol deployments here: 
-- Ethereum mainnet: [0x3ef51736315F52d568D6D2cf289419b9CfffE782](https://etherscan.io/address/0x3ef51736315f52d568d6d2cf289419b9cfffe782)
-- BSC mainnet: [0xe3456f4Ee65E745A44EC3bcB83D0f2529D1b84Eb](https://bscscan.com/address/0xe3456f4ee65e745a44ec3bcb83d0f2529d1b84eb)
-- Polygon mainnet: [0xb707d89D29c189421163515c59E42147371D6857](https://polygonscan.com/address/0xb707d89D29c189421163515c59E42147371D6857)
-- Kovan testnet: [0x94Bc2a1C732BcAd7343B25af48385Fe76E08734f](https://kovan.etherscan.io/address/0x94bc2a1c732bcad7343b25af48385fe76e08734f)
+
+**Ethereum mainnet:** [0x119c71D3BbAC22029622cbaEc24854d3D32D2828](https://etherscan.io/address/0x119c71D3BbAC22029622cbaEc24854d3D32D2828)
+
+**BSC mainnet:** [0x1e38Eff998DF9d3669E32f4ff400031385Bf6362](https://bscscan.com/address/0x1e38Eff998DF9d3669E32f4ff400031385Bf6362#code)
+
+**Polygon mainnet:** [0x94Bc2a1C732BcAd7343B25af48385Fe76E08734f](https://polygonscan.com/address/0x94Bc2a1C732BcAd7343B25af48385Fe76E08734f#code)
+
+**Optimism Mainnet:** [0x11431a89893025D2a48dCA4EddC396f8C8117187](https://optimistic.etherscan.io/address/0x11431a89893025D2a48dCA4EddC396f8C8117187)
+
+**Arbitrun One:** [0x7F069df72b7A39bCE9806e3AfaF579E54D8CF2b9](https://arbiscan.io/address/0x7F069df72b7A39bCE9806e3AfaF579E54D8CF2b9)
+
+**Gnosis Chain:** [0x54431918cEC22932fCF97E54769F4E00f646690F](https://blockscout.com/xdai/mainnet/address/0x54431918cEC22932fCF97E54769F4E00f646690F/transactions)
+
+**Avalanche:** [0x0F85A912448279111694F4Ba4F85dC641c54b594](https://snowtrace.io/address/0x0F85A912448279111694F4Ba4F85dC641c54b594#code)
+
+**Kovan Testnet:** [0xa218543cc21ee9388Fa1E509F950FD127Ca82155](https://kovan.etherscan.io/address/0xa218543cc21ee9388Fa1E509F950FD127Ca82155)
+
+**Fantom Opera:** [0x11DEE30E710B8d4a8630392781Cc3c0046365d4c](https://ftmscan.com/address/0x11DEE30E710B8d4a8630392781Cc3c0046365d4c)
+
 
 You can find audit reports on etherscan and in the separate [audit repository](https://github.com/1inch/1inch-audits/tree/master/Limit%20Order%20Protocol). 
 
