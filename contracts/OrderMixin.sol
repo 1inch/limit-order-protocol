@@ -14,7 +14,6 @@ import "./helpers/PredicateHelper.sol";
 import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Callib.sol";
-import "./libraries/Errors.sol";
 import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
@@ -29,6 +28,26 @@ abstract contract OrderMixin is
     using SafeERC20 for IERC20;
     using ArgumentsDecoder for bytes;
     using OrderLib for OrderLib.Order;
+
+    error UnknownOrder();
+    error AccessDenied();
+    error AlreadyFilled();
+    error PermitLengthTooLow();
+    error ZeroTargetIsForbidden();
+    error RemainingAmountIsZero();
+    error PrivateOrder();
+    error BadSignature();
+    error ReentrancyDetected();
+    error PredicateIsNotTrue();
+    error OnlyOneAmountShouldBeZero();
+    error TakingAmountTooHigh();
+    error MakingAmountTooLow();
+    error SwapWithZeroAmount();
+    error TransferFromMakerToTakerFailed();
+    error TransferFromTakerToMakerFailed();
+    error WrongAmount();
+    error WrongGetter();
+    error getAmountCallFailed();
 
     /// @notice Emitted every time order gets filled, including partial fills
     event OrderFilled(

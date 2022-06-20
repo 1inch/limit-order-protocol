@@ -8,11 +8,20 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
 import "./helpers/AmountCalculator.sol";
-import "./libraries/Errors.sol";
 
 /// @title RFQ Limit Order mixin
 abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     using SafeERC20 for IERC20;
+
+    error RFQZeroTargetIsForbidden();
+    error RFQPrivateOrder();
+    error RFQBadSignature();
+    error OrderExpired();
+    error MakingAmountExceeded();
+    error TakingAmountExceeded();
+    error BothAmountsAreNonZero();
+    error RFQSwapWithZeroAmount();
+    error InvalidatedOrder();
 
     /// @notice Emitted when RFQ gets filled
     event OrderFilledRFQ(
@@ -104,14 +113,14 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 takingAmount,
         address target
     ) public returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
-        if(target == address(0)) revert ZeroTargetIsForbidden();
+        if(target == address(0)) revert RFQZeroTargetIsForbidden();
 
         address maker = order.maker;
 
         // Validate order
-        if(order.allowedSender != address(0) && order.allowedSender != msg.sender) revert PrivateOrder();
+        if(order.allowedSender != address(0) && order.allowedSender != msg.sender) revert RFQPrivateOrder();
         bytes32 orderHash = _hashTypedDataV4(keccak256(abi.encode(LIMIT_ORDER_RFQ_TYPEHASH, order)));
-        if(!SignatureChecker.isValidSignatureNow(maker, orderHash, signature)) revert BadSignature();
+        if(!SignatureChecker.isValidSignatureNow(maker, orderHash, signature)) revert RFQBadSignature();
 
         {  // Stack too deep
             uint256 info = order.info;
@@ -143,7 +152,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
             }
         }
 
-        if(makingAmount == 0 || takingAmount == 0) revert SwapWithZeroAmount();
+        if(makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
 
         // Maker => Taker, Taker => Maker
         order.makerAsset.safeTransferFrom(maker, target, makingAmount);
