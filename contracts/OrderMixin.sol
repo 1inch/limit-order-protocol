@@ -170,7 +170,7 @@ abstract contract OrderMixin is
             require(order.allowedSender == address(0) || order.allowedSender == msg.sender, "LOP: private order");
             if (remainingMakerAmount == _ORDER_DOES_NOT_EXIST) {
                 // First fill: validate order and permit maker asset
-                require(ECDSA.isValidSignatureNow(order.maker, orderHash, signature), "LOP: bad signature");
+                require(ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature), "LOP: bad signature");
                 remainingMakerAmount = order.makingAmount;
 
                 bytes calldata permit = order.permit(); // Helps with "Stack too deep"

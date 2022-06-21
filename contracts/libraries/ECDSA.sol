@@ -54,11 +54,21 @@ library ECDSA {
         }
     }
 
-    function isValidSignatureNow(address signer, bytes32 hash, bytes calldata signature) internal view returns(bool success) {
+    function recoverOrIsValidSignature(address signer, bytes32 hash, bytes calldata signature) internal view returns(bool success) {
         if ((signature.length == 64 || signature.length == 65) && recover(hash, signature) == signer) {
             return true;
         }
+        return isValidSignature(signer, hash, signature);
+    }
 
+    function recoverOrIsValidSignature(address signer, bytes32 hash, bytes32 r, bytes32 vs) internal view returns(bool success) {
+        if (recover(hash, r, vs) == signer) {
+            return true;
+        }
+        return isValidSignature(signer, hash, r, vs);
+    }
+
+    function isValidSignature(address signer, bytes32 hash, bytes calldata signature) internal view returns(bool success) {
         // (bool success, bytes memory data) = signer.staticcall(abi.encodeWithSelector(IERC1271.isValidSignature.selector, hash, signature));
         // return success && abi.decode(data, (bytes4)) == IERC1271.isValidSignature.selector;
         bytes4 selector = IERC1271.isValidSignature.selector;
@@ -79,7 +89,7 @@ library ECDSA {
         }
     }
 
-    function checkIsValidSignature(address signer, bytes32 hash, bytes32 r, bytes32 vs) internal view returns(bool success) {
+    function isValidSignature(address signer, bytes32 hash, bytes32 r, bytes32 vs) internal view returns(bool success) {
         // (bool success, bytes memory data) = signer.staticcall(abi.encodeWithSelector(IERC1271.isValidSignature.selector, hash, abi.encodePacked(r, vs)));
         // return success && abi.decode(data, (bytes4)) == IERC1271.isValidSignature.selector;
         bytes4 selector = IERC1271.isValidSignature.selector;
