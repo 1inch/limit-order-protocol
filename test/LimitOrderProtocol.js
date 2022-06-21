@@ -13,7 +13,7 @@ const ERC721Proxy = artifacts.require('ERC721Proxy');
 const { profileEVM } = require('./helpers/profileEVM');
 const { buildOrder, buildOrderData, signOrder } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
-const { addr1PrivateKey } = require('./helpers/utils');
+const { addr1PrivateKey, joinStaticCalls } = require('./helpers/utils');
 
 describe('LimitOrderProtocol', async function () {
     let addr1, wallet;
@@ -625,23 +625,25 @@ describe('LimitOrderProtocol', async function () {
 
     describe('Predicate', async function () {
         it('benchmark gas', async function () {
-            const ts1 = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
+            const tsBelow = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
-            const gtCall = this.swap.contract.methods.gt('100000', this.dai.address, balanceCall).encodeABI();
-            await this.swap.contract.methods.or(
+            const gtBalance = this.swap.contract.methods.gt('100000', this.dai.address + balanceCall.substring(2)).encodeABI();
+            const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [ts1, gtCall],
-            ).send({ from: wallet });
+                [tsBelow, gtBalance]
+            );
+            await this.swap.contract.methods.or(offsets, data).send({ from: wallet });
         });
 
         it('`or` should pass', async function () {
-            const ts1 = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
+            const tsBelow = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
-            const gtCall = this.swap.contract.methods.gt('100000', this.dai.address, balanceCall).encodeABI();
-            const predicate = this.swap.contract.methods.or(
+            const gtBalance = this.swap.contract.methods.gt('100000', this.dai.address + balanceCall.substring(2)).encodeABI();
+            const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [ts1, gtCall],
-            ).encodeABI();
+                [tsBelow, gtBalance]
+            );
+            const predicate = this.swap.contract.methods.or(offsets, data).encodeABI();
 
             const order = buildOrder(
                 {
@@ -672,13 +674,14 @@ describe('LimitOrderProtocol', async function () {
         });
 
         it('`or` should fail', async function () {
-            const ts1 = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
+            const tsBelow = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
-            const gtCall = this.swap.contract.methods.lt('100000', this.dai.address, balanceCall).encodeABI();
-            const predicate = this.swap.contract.methods.or(
+            const gtBalance = this.swap.contract.methods.lt('100000', this.dai.address + balanceCall.substring(2)).encodeABI();
+            const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [ts1, gtCall],
-            ).encodeABI();
+                [tsBelow, gtBalance]
+            );
+            const predicate = this.swap.contract.methods.or(offsets, data).encodeABI();
             const order = buildOrder(
                 {
                     exchange: this.swap,
@@ -701,13 +704,14 @@ describe('LimitOrderProtocol', async function () {
         });
 
         it('`and` should pass', async function () {
-            const ts1 = this.swap.contract.methods.timestampBelow(0xff000000).encodeABI();
+            const tsBelow = this.swap.contract.methods.timestampBelow(0xff000000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
-            const gtCall = this.swap.contract.methods.eq('1000000', this.dai.address, balanceCall).encodeABI();
-            const predicate = this.swap.contract.methods.and(
+            const gtBalance = this.swap.contract.methods.eq('1000000', this.dai.address + balanceCall.substring(2)).encodeABI();
+            const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [ts1, gtCall],
-            ).encodeABI();
+                [tsBelow, gtBalance]
+            );
+            const predicate = this.swap.contract.methods.and(offsets, data).encodeABI();
             const order = buildOrder(
                 {
                     exchange: this.swap,
@@ -737,12 +741,13 @@ describe('LimitOrderProtocol', async function () {
         });
 
         it('nonce + ts example', async function () {
-            const ts1 = this.swap.contract.methods.timestampBelow(0xff000000).encodeABI();
+            const tsBelow = this.swap.contract.methods.timestampBelow(0xff000000).encodeABI();
             const nonceCall = this.swap.contract.methods.nonceEquals(wallet, 0).encodeABI();
-            const predicate = this.swap.contract.methods.and(
+            const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [ts1, nonceCall],
-            ).encodeABI();
+                [tsBelow, nonceCall]
+            );
+            const predicate = this.swap.contract.methods.and(offsets, data).encodeABI();
             const order = buildOrder(
                 {
                     exchange: this.swap,
@@ -777,13 +782,14 @@ describe('LimitOrderProtocol', async function () {
         });
 
         it('`and` should fail', async function () {
-            const ts1 = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
+            const tsBelow = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
-            const gtCall = this.swap.contract.methods.gt('100000', this.dai.address, balanceCall).encodeABI();
-            const predicate = this.swap.contract.methods.and(
+            const gtBalance = this.swap.contract.methods.gt('100000', this.dai.address + balanceCall.substring(2)).encodeABI();
+            const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [ts1, gtCall],
-            ).encodeABI();
+                [tsBelow, gtBalance]
+            );
+            const predicate = this.swap.contract.methods.and(offsets, data).encodeABI();
             const order = buildOrder(
                 {
                     exchange: this.swap,
