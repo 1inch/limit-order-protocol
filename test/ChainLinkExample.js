@@ -1,3 +1,4 @@
+const { trim0x } = require('@1inch/solidity-utils');
 const { ether, expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 const { web3 } = require('hardhat');
@@ -9,7 +10,7 @@ const AggregatorMock = artifacts.require('AggregatorMock');
 const ChainlinkCalculator = artifacts.require('ChainlinkCalculator');
 
 const { buildOrder, signOrder } = require('./helpers/orderUtils');
-const { toBN, cutLastArg } = require('./helpers/utils');
+const { toBN, cutLastArg, composeCalldataForOptionalTarget, composeCalldataForDefaultTarget, composeCalldataForTarget } = require('./helpers/utils');
 
 describe('ChainLinkExample', async function () {
     let _, wallet;
@@ -20,12 +21,20 @@ describe('ChainLinkExample', async function () {
         return toBN(spread).setn(255, inverse).toString();
     }
 
-    function buildSinglePriceGetter (chainlink, oracle, inverse, spread, amount = '0') {
-        return chainlink.address + chainlink.contract.methods.singlePrice(oracle.address, buildInverseWithSpread(inverse, spread), amount).encodeABI().substring(2);
+    function buildSinglePriceGetter (chainlink, swap, oracle, inverse, spread, amount = '0') {
+        return composeCalldataForOptionalTarget(
+            chainlink.address,
+            swap.address,
+            chainlink.contract.methods.singlePrice(oracle.address, buildInverseWithSpread(inverse, spread), amount).encodeABI()
+        );
     }
 
-    function buildDoublePriceGetter (chainlink, oracle1, oracle2, spread, amount = '0') {
-        return chainlink.address + chainlink.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount).encodeABI().substring(2);
+    function buildDoublePriceGetter (chainlink, swap, oracle1, oracle2, spread, amount = '0') {
+        return composeCalldataForOptionalTarget(
+            chainlink.address,
+            swap.address,
+            chainlink.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount).encodeABI()
+        );
     }
 
     before(async function () {
@@ -71,8 +80,8 @@ describe('ChainLinkExample', async function () {
                 from: wallet,
             },
             {
-                getMakingAmount: cutLastArg(buildSinglePriceGetter(this.chainlink, this.daiOracle, false, '990000000')), // maker offset is 0.99
-                getTakingAmount: cutLastArg(buildSinglePriceGetter(this.chainlink, this.daiOracle, true, '1010000000')), // taker offset is 1.01
+                getMakingAmount: cutLastArg(buildSinglePriceGetter(this.chainlink, this.swap, this.daiOracle, false, '990000000')), // maker offset is 0.99
+                getTakingAmount: cutLastArg(buildSinglePriceGetter(this.chainlink, this.swap, this.daiOracle, true, '1010000000')), // taker offset is 1.01
             },
         );
 
@@ -94,7 +103,7 @@ describe('ChainLinkExample', async function () {
     it('dai -> 1inch stop loss order', async function () {
         const makingAmount = ether('100');
         const takingAmount = ether('631');
-        const priceCall = buildDoublePriceGetter(this.chainlink, this.inchOracle, this.daiOracle, '1000000000', ether('1'));
+        const priceCall = buildDoublePriceGetter(this.chainlink, this.swap, this.inchOracle, this.daiOracle, '1000000000', ether('1'));
 
         const order = buildOrder(
             {
@@ -105,9 +114,9 @@ describe('ChainLinkExample', async function () {
                 takingAmount,
                 from: wallet,
             }, {
-                getMakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
-                getTakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
-                predicate: this.swap.contract.methods.lt(ether('6.32'), priceCall).encodeABI(),
+                getMakingAmount: composeCalldataForDefaultTarget(cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI())),
+                getTakingAmount: composeCalldataForDefaultTarget(cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI())),
+                predicate: composeCalldataForDefaultTarget(this.swap.contract.methods.lt(ether('6.32'), priceCall).encodeABI()),
             },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
@@ -128,7 +137,7 @@ describe('ChainLinkExample', async function () {
     it('dai -> 1inch stop loss order predicate is invalid', async function () {
         const makingAmount = ether('100');
         const takingAmount = ether('631');
-        const priceCall = buildDoublePriceGetter(this.chainlink, this.inchOracle, this.daiOracle, '1000000000', ether('1'));
+        const priceCall = buildDoublePriceGetter(this.chainlink, this.swap, this.inchOracle, this.daiOracle, '1000000000', ether('1'));
 
         const order = buildOrder(
             {
@@ -140,9 +149,9 @@ describe('ChainLinkExample', async function () {
                 from: wallet,
             },
             {
-                getMakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
-                getTakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
-                predicate: this.swap.contract.methods.lt(ether('6.31'), priceCall).encodeABI(),
+                getMakingAmount: composeCalldataForDefaultTarget(cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI())),
+                getTakingAmount: composeCalldataForDefaultTarget(cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI())),
+                predicate: composeCalldataForDefaultTarget(this.swap.contract.methods.lt(ether('6.31'), priceCall).encodeABI()),
             },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
@@ -156,7 +165,6 @@ describe('ChainLinkExample', async function () {
     it('eth -> dai stop loss order', async function () {
         const makingAmount = ether('1');
         const takingAmount = ether('4000');
-        const latestAnswerCall = this.daiOracle.contract.methods.latestAnswer().encodeABI();
 
         const order = buildOrder(
             {
@@ -168,9 +176,17 @@ describe('ChainLinkExample', async function () {
                 from: wallet,
             },
             {
-                getMakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
-                getTakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
-                predicate: this.swap.contract.methods.lt(ether('0.0002501'), this.daiOracle.address + latestAnswerCall.substring(2)).encodeABI(),
+                getMakingAmount: composeCalldataForDefaultTarget(cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI())),
+                getTakingAmount: composeCalldataForDefaultTarget(cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI())),
+                predicate: composeCalldataForDefaultTarget(
+                    this.swap.contract.methods.lt(
+                        ether('0.0002501'),
+                        composeCalldataForTarget(
+                            this.daiOracle.address,
+                            this.daiOracle.contract.methods.latestAnswer().encodeABI()
+                        )
+                    ).encodeABI()
+                ),
             },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());

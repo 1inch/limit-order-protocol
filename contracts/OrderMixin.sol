@@ -135,8 +135,9 @@ abstract contract OrderMixin is
     ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
         require(permit.length >= 20, "LOP: permit length too low");
         {  // Stack too deep
-            (address token, bytes calldata permitData) = permit.decodeTargetAndCalldata();
-            IERC20(token).safePermit(permitData);
+            address token;
+            (token, permit) = permit.decodeTargetAndCalldata(order.takerAsset);
+            IERC20(token).safePermit(permit);
         }
         return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, thresholdAmount, target);
     }
@@ -174,7 +175,7 @@ abstract contract OrderMixin is
                 bytes calldata permit = order.permit(); // Helps with "Stack too deep"
                 if (permit.length >= 20) {
                     // proceed only if permit length is enough to store address
-                    (address token, bytes calldata permitCalldata) = permit.decodeTargetAndCalldata();
+                    (address token, bytes calldata permitCalldata) = permit.decodeTargetAndCalldata(order.makerAsset);
                     IERC20(token).safePermit(permitCalldata);
                     require(_remaining[orderHash] == _ORDER_DOES_NOT_EXIST, "LOP: reentrancy detected");
                 }
@@ -224,7 +225,7 @@ abstract contract OrderMixin is
         // Maker can handle funds interactively
         if (order.preInteraction().length >= 20) {
             // proceed only if interaction length is enough to store address
-            (address interactionTarget, bytes calldata interactionData) = order.preInteraction().decodeTargetAndCalldata();
+            (address interactionTarget, bytes calldata interactionData) = order.preInteraction().decodeTargetAndCalldata(order.maker);
             PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
                 msg.sender, order.makerAsset, order.takerAsset, makingAmount, takingAmount, interactionData
             );
@@ -241,7 +242,7 @@ abstract contract OrderMixin is
 
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
-            (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata();
+            (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata(msg.sender);
             InteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
                 msg.sender, order.makerAsset, order.takerAsset, makingAmount, takingAmount, interactionData
             );
@@ -259,7 +260,7 @@ abstract contract OrderMixin is
         // Maker can handle funds interactively
         if (order.postInteraction().length >= 20) {
             // proceed only if interaction length is enough to store address
-            (address interactionTarget, bytes calldata interactionData) = order.postInteraction().decodeTargetAndCalldata();
+            (address interactionTarget, bytes calldata interactionData) = order.postInteraction().decodeTargetAndCalldata(order.receiver == address(0) ? order.maker : order.receiver);
             PostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
                 msg.sender, order.makerAsset, order.takerAsset, makingAmount, takingAmount, interactionData
             );
@@ -270,7 +271,8 @@ abstract contract OrderMixin is
 
     /// @notice Checks order predicate
     function checkPredicate(OrderLib.Order calldata order) public view returns(bool) {
-        (bool success, uint256 res) = address(this).staticcallForUint(order.predicate());
+        (address target, bytes calldata data) = order.predicate().decodeTargetAndCalldata(address(this));
+        (bool success, uint256 res) = target.staticcallForUint(data);
         return success && res == 1;
     }
 
@@ -309,7 +311,7 @@ abstract contract OrderMixin is
                 revert("LOP: wrong getter");
             }
         } else {
-            (address target, bytes calldata data) = getter.decodeTargetAndCalldata();
+            (address target, bytes calldata data) = getter.decodeTargetAndCalldata(address(this));
             (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount));
             require(success && result.length == 32, "LOP: getAmount call failed");
             return result.decodeUint256Memory();

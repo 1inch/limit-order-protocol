@@ -1,3 +1,4 @@
+const { trim0x } = require('@1inch/solidity-utils');
 const { expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 
@@ -11,6 +12,7 @@ const WhitelistRegistryMock = artifacts.require('WhitelistRegistryMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
 const { buildOrder, signOrder } = require('./helpers/orderUtils');
+const { composeCalldataForDefaultTarget, composeCalldataForTarget } = require('./helpers/utils');
 
 describe('Interactions', async function () {
     let addr1, wallet;
@@ -59,8 +61,8 @@ describe('Interactions', async function () {
                 receiver: this.notificationReceiver.address,
             },
             {
-                predicate: this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(),
-                postInteraction: this.notificationReceiver.address + wallet.substring(2),
+                predicate: composeCalldataForDefaultTarget(this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI()),
+                postInteraction: composeCalldataForTarget(this.notificationReceiver.address, wallet),
             },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
@@ -95,9 +97,9 @@ describe('Interactions', async function () {
                 receiver: this.notificationReceiver.address,
             },
             {
-                predicate: this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(),
-                preInteraction: this.whitelistChecker.address,
-                postInteraction: this.notificationReceiver.address + wallet.substring(2),
+                predicate: composeCalldataForDefaultTarget(this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI()),
+                preInteraction: composeCalldataForTarget(this.whitelistChecker.address, '0x'),
+                postInteraction: composeCalldataForTarget(this.notificationReceiver.address, wallet),
             },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
@@ -122,8 +124,6 @@ describe('Interactions', async function () {
         const amount = web3.utils.toWei('1', 'ether');
         await web3.eth.sendTransaction({ from: wallet, to: this.weth.address, value: amount });
 
-        const preInteraction = this.whitelistChecker.address;
-
         const order = buildOrder(
             {
                 exchange: this.swap,
@@ -134,8 +134,8 @@ describe('Interactions', async function () {
                 from: wallet,
             },
             {
-                predicate: this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(),
-                preInteraction,
+                predicate: composeCalldataForDefaultTarget(this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI()),
+                preInteraction: composeCalldataForTarget(this.whitelistChecker.address, '0x'),
             },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());

@@ -12,8 +12,9 @@ const ERC721Proxy = artifacts.require('ERC721Proxy');
 
 const { profileEVM } = require('./helpers/profileEVM');
 const { buildOrder, buildOrderData, signOrder } = require('./helpers/orderUtils');
-const { getPermit, withTarget } = require('./helpers/eip712');
-const { addr1PrivateKey, joinStaticCalls } = require('./helpers/utils');
+const { getPermit, bundlePermitForTaker } = require('./helpers/eip712');
+const { addr1PrivateKey, joinStaticCalls, composeCalldataForDefaultTarget, composeCalldataForTarget, composeCalldataForOptionalTarget } = require('./helpers/utils');
+const { trim0x } = require('@1inch/solidity-utils');
 
 describe('LimitOrderProtocol', async function () {
     let addr1, wallet;
@@ -357,7 +358,7 @@ describe('LimitOrderProtocol', async function () {
                 const signature = signOrder(order, this.chainId, swap.address, account.getPrivateKey());
 
                 const permit = await getPermit(addr1, addr1PrivateKey, this.weth, '1', this.chainId, swap.address, '1');
-                const targetPermitPair = withTarget(this.weth.address, permit);
+                const targetPermitPair = composeCalldataForOptionalTarget(this.weth.address, order.takerAsset, permit, order);
 
                 const makerDai = await this.dai.balanceOf(wallet);
                 const takerDai = await this.dai.balanceOf(addr1);
@@ -390,7 +391,7 @@ describe('LimitOrderProtocol', async function () {
                 const signature = signOrder(order, this.chainId, swap.address, account.getPrivateKey());
 
                 const permit = await getPermit(addr1, addr1PrivateKey, this.weth, '1', this.chainId, swap.address, '1');
-                const targetPermitPair = withTarget(this.weth.address, permit);
+                const targetPermitPair = composeCalldataForOptionalTarget(this.weth.address, order.takerAsset, permit, order);
                 const requestFunc = () => swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr1, targetPermitPair);
                 await requestFunc();
                 await expectRevert(
@@ -416,10 +417,9 @@ describe('LimitOrderProtocol', async function () {
 
                 const otherWallet = Wallet.generate();
                 const permit = await getPermit(addr1, otherWallet.getPrivateKey(), this.weth, '1', this.chainId, swap.address, '1');
-                const targetPermitPair = withTarget(this.weth.address, permit);
-                const requestFunc = () => swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr1, targetPermitPair);
+                const targetPermitPair = composeCalldataForOptionalTarget(this.weth.address, order.takerAsset, permit, order);
                 await expectRevert(
-                    requestFunc(), // TODO: why we need requestFunc? O_o
+                    swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr1, targetPermitPair),
                     'ERC20Permit: invalid signature',
                 );
             });
@@ -439,10 +439,9 @@ describe('LimitOrderProtocol', async function () {
                 const signature = signOrder(order, this.chainId, swap.address, account.getPrivateKey());
 
                 const permit = await getPermit(addr1, addr1PrivateKey, this.weth, '1', this.chainId, swap.address, '1', deadline);
-                const targetPermitPair = withTarget(this.weth.address, permit);
-                const requestFunc = () => swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr1, targetPermitPair);
+                const targetPermitPair = composeCalldataForOptionalTarget(this.weth.address, order.takerAsset, permit, order);
                 await expectRevert(
-                    requestFunc(), // TODO: Why we need requestFunc? O_o
+                    swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr1, targetPermitPair),
                     'expired deadline',
                 );
             });
@@ -630,7 +629,8 @@ describe('LimitOrderProtocol', async function () {
             const gtBalance = this.swap.contract.methods.gt('100000', this.dai.address + balanceCall.substring(2)).encodeABI();
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [tsBelow, gtBalance]
+                [tsBelow, gtBalance],
+                this.swap.address
             );
             await this.swap.contract.methods.or(offsets, data).send({ from: wallet });
         });
@@ -638,12 +638,12 @@ describe('LimitOrderProtocol', async function () {
         it('`or` should pass', async function () {
             const tsBelow = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
-            const gtBalance = this.swap.contract.methods.gt('100000', this.dai.address + balanceCall.substring(2)).encodeABI();
+            const gtBalance = this.swap.contract.methods.gt('100000', composeCalldataForTarget(this.dai.address, balanceCall)).encodeABI();
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [tsBelow, gtBalance]
+                [tsBelow, gtBalance],
+                this.swap.address
             );
-            const predicate = this.swap.contract.methods.or(offsets, data).encodeABI();
 
             const order = buildOrder(
                 {
@@ -655,7 +655,7 @@ describe('LimitOrderProtocol', async function () {
                     from: wallet,
                 },
                 {
-                    predicate,
+                    predicate: composeCalldataForDefaultTarget(this.swap.contract.methods.or(offsets, data).encodeABI()),
                 },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
@@ -676,10 +676,11 @@ describe('LimitOrderProtocol', async function () {
         it('`or` should fail', async function () {
             const tsBelow = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
-            const gtBalance = this.swap.contract.methods.lt('100000', this.dai.address + balanceCall.substring(2)).encodeABI();
+            const gtBalance = this.swap.contract.methods.lt('100000', composeCalldataForTarget(this.dai.address, balanceCall)).encodeABI();
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [tsBelow, gtBalance]
+                [tsBelow, gtBalance],
+                this.swap.address
             );
             const predicate = this.swap.contract.methods.or(offsets, data).encodeABI();
             const order = buildOrder(
@@ -706,12 +707,13 @@ describe('LimitOrderProtocol', async function () {
         it('`and` should pass', async function () {
             const tsBelow = this.swap.contract.methods.timestampBelow(0xff000000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(wallet).encodeABI();
-            const gtBalance = this.swap.contract.methods.eq('1000000', this.dai.address + balanceCall.substring(2)).encodeABI();
+            const gtBalance = this.swap.contract.methods.eq('1000000', composeCalldataForTarget(this.dai.address, balanceCall)).encodeABI();
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [tsBelow, gtBalance]
+                [tsBelow, gtBalance],
+                this.swap.address
             );
-            const predicate = this.swap.contract.methods.and(offsets, data).encodeABI();
+
             const order = buildOrder(
                 {
                     exchange: this.swap,
@@ -722,7 +724,7 @@ describe('LimitOrderProtocol', async function () {
                     from: wallet,
                 },
                 {
-                    predicate,
+                    predicate: composeCalldataForDefaultTarget(this.swap.contract.methods.and(offsets, data).encodeABI()),
                 },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
@@ -745,9 +747,10 @@ describe('LimitOrderProtocol', async function () {
             const nonceCall = this.swap.contract.methods.nonceEquals(wallet, 0).encodeABI();
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [tsBelow, nonceCall]
+                [tsBelow, nonceCall],
+                this.swap.address
             );
-            const predicate = this.swap.contract.methods.and(offsets, data).encodeABI();
+
             const order = buildOrder(
                 {
                     exchange: this.swap,
@@ -758,7 +761,7 @@ describe('LimitOrderProtocol', async function () {
                     from: wallet,
                 },
                 {
-                    predicate,
+                    predicate: composeCalldataForDefaultTarget(this.swap.contract.methods.and(offsets, data).encodeABI()),
                 },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
@@ -787,7 +790,8 @@ describe('LimitOrderProtocol', async function () {
             const gtBalance = this.swap.contract.methods.gt('100000', this.dai.address + balanceCall.substring(2)).encodeABI();
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [tsBelow, gtBalance]
+                [tsBelow, gtBalance],
+                this.swap.address
             );
             const predicate = this.swap.contract.methods.and(offsets, data).encodeABI();
             const order = buildOrder(
@@ -824,7 +828,7 @@ describe('LimitOrderProtocol', async function () {
                     from: wallet,
                 },
                 {
-                    predicate: this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(),
+                    predicate: composeCalldataForDefaultTarget(this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI()),
                 },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
@@ -853,7 +857,7 @@ describe('LimitOrderProtocol', async function () {
                     from: wallet,
                 },
                 {
-                    predicate: this.swap.contract.methods.timestampBelow(0xff0000).encodeABI(),
+                    predicate: composeCalldataForDefaultTarget(this.swap.contract.methods.timestampBelow(0xff0000).encodeABI()),
                 },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());

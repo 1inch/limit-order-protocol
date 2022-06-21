@@ -147,9 +147,8 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
 
                 const otherWallet = Wallet.generate();
                 const permit = await getPermit(addr1, otherWallet.getPrivateKey(), this.weth, '1', this.chainId, swap.address, '1');
-                const requestFunc = () => swap.fillOrderRFQToWithPermit(order, signature, 0, 1, addr1, permit);
                 await expectRevert(
-                    requestFunc(),
+                    swap.fillOrderRFQToWithPermit(order, signature, 0, 1, addr1, permit),
                     'ERC20Permit: invalid signature',
                 );
             });
@@ -162,9 +161,8 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
                 const signature = signOrderRFQ(order, this.chainId, swap.address, account.getPrivateKey());
 
                 const permit = await getPermit(addr1, addr1PrivateKey, this.weth, '1', this.chainId, swap.address, '1', deadline);
-                const requestFunc = () => swap.fillOrderRFQToWithPermit(order, signature, 0, 1, addr1, permit);
                 await expectRevert(
-                    requestFunc(),
+                    swap.fillOrderRFQToWithPermit(order, signature, 0, 1, addr1, permit),
                     'expired deadline',
                 );
             });

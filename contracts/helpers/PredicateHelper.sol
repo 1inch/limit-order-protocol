@@ -17,7 +17,7 @@ contract PredicateHelper {
         uint256 previous;
         for (uint256 i = 0; (current = uint32(offsets >> (i << 5))) != 0; i++) {
             bytes calldata slice = data[previous:current];
-            (address target, bytes calldata input) = slice.decodeTargetAndCalldata();
+            (address target, bytes calldata input) = slice.decodeTargetAndCalldata(address(this));
             (bool success, uint256 res) = target.staticcallForUint(input);
             if (success && res == 1) {
                 return true;
@@ -34,7 +34,7 @@ contract PredicateHelper {
         uint256 previous;
         for (uint256 i = 0; (current = uint32(offsets >> (i << 5))) != 0; i++) {
             bytes calldata slice = data[previous:current];
-            (address target, bytes calldata input) = slice.decodeTargetAndCalldata();
+            (address target, bytes calldata input) = slice.decodeTargetAndCalldata(address(this));
             (bool success, uint256 res) = target.staticcallForUint(input);
             if (!success || res != 1) {
                 return false;
@@ -48,7 +48,7 @@ contract PredicateHelper {
     /// @param value Value to test
     /// @return Result True if call to target returns the same value as `value`. Otherwise, false
     function eq(uint256 value, bytes calldata data) external view returns(bool) {
-        (address target, bytes calldata input) = data.decodeTargetAndCalldata();
+        (address target, bytes calldata input) = data.decodeTargetAndCalldata(address(this));
         (bool success, uint256 res) = target.staticcallForUint(input);
         return success && res == value;
     }
@@ -57,7 +57,7 @@ contract PredicateHelper {
     /// @param value Value to test
     /// @return Result True if call to target returns value which is lower than `value`. Otherwise, false
     function lt(uint256 value, bytes calldata data) external view returns(bool) {
-        (address target, bytes calldata input) = data.decodeTargetAndCalldata();
+        (address target, bytes calldata input) = data.decodeTargetAndCalldata(address(this));
         (bool success, uint256 res) = target.staticcallForUint(input);
         return success && res < value;
     }
@@ -66,7 +66,7 @@ contract PredicateHelper {
     /// @param value Value to test
     /// @return Result True if call to target returns value which is bigger than `value`. Otherwise, false
     function gt(uint256 value, bytes calldata data) external view returns(bool) {
-        (address target, bytes calldata input) = data.decodeTargetAndCalldata();
+        (address target, bytes calldata input) = data.decodeTargetAndCalldata(address(this));
         (bool success, uint256 res) = target.staticcallForUint(input);
         return success && res > value;
     }

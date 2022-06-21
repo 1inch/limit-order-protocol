@@ -29,10 +29,15 @@ library ArgumentsDecoder {
         }
     }
 
-    function decodeTargetAndCalldata(bytes calldata data) internal pure returns(address target, bytes calldata args) {
-        assembly {  // solhint-disable-line no-inline-assembly
-            target := shr(96, calldataload(data.offset))
+    function decodeTargetAndCalldata(bytes calldata data, address defaultValue) internal pure returns(address target, bytes calldata args) {
+        if (data[0] == "d") {
+            target = defaultValue;
+            args = data[1:]; // reverts if data.length < 1
+        } else {
+            assembly {  // solhint-disable-line no-inline-assembly
+                target := shr(96, shl(8, calldataload(data.offset)))
+            }
+            args = data[21:]; // reverts if data.length < 21
         }
-        args = data[20:];
     }
 }

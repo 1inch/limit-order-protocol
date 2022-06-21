@@ -1,8 +1,9 @@
+const { trim0x } = require('@1inch/solidity-utils');
 const { BN } = require('@openzeppelin/test-helpers');
 const ethSigUtil = require('eth-sig-util');
 const { fromRpcSig } = require('ethereumjs-util');
 const ERC20Permit = artifacts.require('@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol:ERC20Permit');
-const { cutSelector, trim0x } = require('./utils.js');
+const { cutSelector, composeCalldataForDefaultTarget, composeCalldataForTarget } = require('./utils.js');
 
 const EIP712Domain = [
     { name: 'name', type: 'string' },
@@ -49,14 +50,9 @@ async function getPermit (owner, ownerPrivateKey, token, tokenVersion, chainId, 
     return cutSelector(permitCall);
 }
 
-function withTarget(target, data) {
-    return target.toString() + trim0x(data);
-}
-
 module.exports = {
     EIP712Domain,
     Permit,
     domainSeparator,
     getPermit,
-    withTarget
 };

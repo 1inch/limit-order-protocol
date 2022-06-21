@@ -29,7 +29,7 @@ contract WhitelistChecker is PreInteractionNotificationReceiver {
         if (whitelistRegistry.status(taker) != 1) revert TakerIsNotWhitelisted();
 
         if (nextInteractiveData.length != 0) {
-            (address interactionTarget, bytes calldata interactionData) = nextInteractiveData.decodeTargetAndCalldata();
+            (address interactionTarget, bytes calldata interactionData) = nextInteractiveData.decodeTargetAndCalldata(address(0));
 
             PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
                 taker, makerAsset, takerAsset, makingAmount, takingAmount, interactionData
