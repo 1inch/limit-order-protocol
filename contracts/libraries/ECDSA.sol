@@ -24,31 +24,41 @@ library ECDSA {
     function recover(bytes32 hash, bytes calldata signature) internal view returns(address signer) {
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
-            mstore(0x40, add(ptr, 0x80))
 
-            mstore(ptr, hash)
+            // memory[ptr:ptr+0x80] = (hash, v, r, s)
             switch signature.length
             case 65 {
+                mstore(0x40, add(ptr, 0x80))
+
+                // memory[ptr+0x20:ptr+0x80] = (v, r, s)
                 mstore(add(ptr, 0x20), byte(0, calldataload(add(signature.offset, 0x40))))
                 calldatacopy(add(ptr, 0x40), signature.offset, 0x40)
             }
             case 64 {
-                mstore(add(ptr, 0x20), add(27, shr(255, calldataload(add(signature.offset, 0x20)))))
-                mstore(add(ptr, 0x40), calldataload(signature.offset))
-                mstore(add(ptr, 0x60), shr(1, shl(1, calldataload(add(signature.offset, 0x20)))))
+                mstore(0x40, add(ptr, 0x80))
+
+                // memory[ptr+0x20:ptr+0x80] = (v, r, s)
+                let vs := calldataload(add(signature.offset, 0x20))
+                mstore(add(ptr, 0x20), add(27, shr(255, vs)))
+                calldatacopy(add(ptr, 0x40), signature.offset, 0x20)
+                mstore(add(ptr, 0x60), shr(1, shl(1, vs)))
             }
             default {
                 ptr := 0
             }
 
-            if gt(mload(add(ptr, 0x60)), 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
-                ptr := 0
-            }
-
             if ptr {
-                calldatacopy(add(ptr, 0x40), signature.offset, 0x40)
-                if staticcall(gas(), 0x1, ptr, 0x80, 0, 0x20) {
-                    signer := mload(0)
+                if gt(mload(add(ptr, 0x60)), 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {
+                    ptr := 0
+                }
+
+                if ptr {
+                    // memory[ptr:ptr+0x20] = (hash)
+                    mstore(ptr, hash)
+
+                    if staticcall(gas(), 0x1, ptr, 0x80, 0, 0x20) {
+                        signer := mload(0)
+                    }
                 }
             }
         }
