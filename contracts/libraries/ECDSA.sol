@@ -80,7 +80,7 @@ library ECDSA {
 
     function isValidSignature(address signer, bytes32 hash, bytes calldata signature) internal view returns(bool success) {
         // (bool success, bytes memory data) = signer.staticcall(abi.encodeWithSelector(IERC1271.isValidSignature.selector, hash, signature));
-        // return success && abi.decode(data, (bytes4)) == IERC1271.isValidSignature.selector;
+        // return success && data.length >= 4 && abi.decode(data, (bytes4)) == IERC1271.isValidSignature.selector;
         bytes4 selector = IERC1271.isValidSignature.selector;
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
@@ -101,7 +101,7 @@ library ECDSA {
 
     function isValidSignature(address signer, bytes32 hash, bytes32 r, bytes32 vs) internal view returns(bool success) {
         // (bool success, bytes memory data) = signer.staticcall(abi.encodeWithSelector(IERC1271.isValidSignature.selector, hash, abi.encodePacked(r, vs)));
-        // return success && abi.decode(data, (bytes4)) == IERC1271.isValidSignature.selector;
+        // return success && data.length >= 4 && abi.decode(data, (bytes4)) == IERC1271.isValidSignature.selector;
         bytes4 selector = IERC1271.isValidSignature.selector;
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
