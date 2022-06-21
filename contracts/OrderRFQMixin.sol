@@ -119,7 +119,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 makingAmount,
         uint256 takingAmount,
         address target
-    ) private returns(uint256 /* makingAmount */, uint256 /* takingAmount */) {
+    ) private returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */) {
         require(target != address(0), "LOP: zero target is forbidden");
 
         address maker = order.maker;
@@ -135,7 +135,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
             _invalidateOrder(maker, info);
         }
 
-        {  // stack too deep
+        {  // Stack too deep
             uint256 orderMakingAmount = order.makingAmount;
             uint256 orderTakingAmount = order.takingAmount;
             // Compute partial fill if needed
