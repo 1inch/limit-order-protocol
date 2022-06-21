@@ -5,7 +5,6 @@ const TokenMock = artifacts.require('TokenMock');
 const ContractRFQ = artifacts.require('ContractRFQ');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
-const { gasspectEVM } = require('./helpers/profileEVM');
 const { ABIOrderRFQ, buildOrderRFQ } = require('./helpers/orderUtils');
 
 describe('ContractRFQ', async function () {
@@ -48,8 +47,6 @@ describe('ContractRFQ', async function () {
 
         const order2 = buildOrderRFQ('2', this.usdc.address, this.usdt.address, 1000000000, 1000700000, this.rfq.address);
         const signature2 = web3.eth.abi.encodeParameter(ABIOrderRFQ, order2);
-        const receipt = await this.swap.fillOrderRFQ(order2, signature2, 1000000, 0);
-
-        await gasspectEVM(receipt.tx);
+        await this.swap.fillOrderRFQ(order2, signature2, 1000000, 0);
     });
 });

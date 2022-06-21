@@ -6,8 +6,8 @@ function price (val) {
     return ether(val).toString();
 }
 
-function toBN (num) {
-    return new BN(num);
+function toBN (num, base) {
+    return new BN(num, base === 'hex' ? 16 : base);
 }
 
 function trim0x (bigNumber) {

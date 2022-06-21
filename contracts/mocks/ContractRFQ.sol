@@ -7,30 +7,16 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "../LimitOrderProtocol.sol";
 import "../libraries/ArgumentsDecoder.sol";
-import "./EIP712Alien.sol";
+import "../OrderRFQLib.sol";
+import { EIP712Alien } from "./EIP712Alien.sol";
 
 contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     using SafeERC20 for IERC20;
     using ArgumentsDecoder for bytes;
+    using OrderRFQLib for OrderRFQLib.OrderRFQ;
 
     error NotAllowedToken();
     error BadPrice();
-
-    bytes32 constant public LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
-        "OrderRFQ("
-            "uint256 info,"
-            "address makerAsset,"
-            "address takerAsset,"
-            "address maker,"
-            "address allowedSender,"
-            "uint256 makingAmount,"
-            "uint256 takingAmount"
-        ")"
-    );
-
-    uint256 constant private _FROM_INDEX = 0;
-    uint256 constant private _TO_INDEX = 1;
-    uint256 constant private _AMOUNT_INDEX = 2;
 
     address immutable public protocol;
     IERC20 immutable public token0;
@@ -85,12 +71,12 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     }
 
     function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns(bytes4) {
-        OrderRFQMixin.OrderRFQ memory order = abi.decode(signature, (OrderRFQMixin.OrderRFQ));
+        OrderRFQLib.OrderRFQ memory order = abi.decode(signature, (OrderRFQLib.OrderRFQ));
 
         if(
             (
-                (order.makerAsset != token0 || order.takerAsset != token1) &&
-                (order.makerAsset != token1 || order.takerAsset != token0)
+                (order.makerAsset != address(token0) || order.takerAsset != address(token1)) &&
+                (order.makerAsset != address(token1) || order.takerAsset != address(token0))
             ) ||
             order.makingAmount * fee > order.takingAmount * 1e18 ||
             order.maker != address(this) || // TODO: remove redundant check
@@ -100,10 +86,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
         return this.isValidSignature.selector;
     }
 
-    function _hash(OrderRFQMixin.OrderRFQ memory order) internal view returns(bytes32) {
-        return _hashTypedDataV4(keccak256(abi.encode(
-            LIMIT_ORDER_RFQ_TYPEHASH,
-            order
-        )));
+    function _hash(OrderRFQLib.OrderRFQ memory order) internal view returns(bytes32) {
+        return _hashTypedDataV4(order.hash());
     }
 }

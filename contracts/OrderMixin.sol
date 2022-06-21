@@ -2,8 +2,7 @@
 
 pragma solidity 0.8.11;
 
-import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
-import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
@@ -14,6 +13,7 @@ import "./helpers/PredicateHelper.sol";
 import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Callib.sol";
+import "./libraries/ECDSA.sol";
 import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
@@ -190,7 +190,7 @@ abstract contract OrderMixin is
             if(order.allowedSender != address(0) && order.allowedSender != msg.sender) revert PrivateOrder();
             if (remainingMakerAmount == _ORDER_DOES_NOT_EXIST) {
                 // First fill: validate order and permit maker asset
-                if(!SignatureChecker.isValidSignatureNow(order.maker, orderHash, signature)) revert BadSignature();
+                if(!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert BadSignature();
                 remainingMakerAmount = order.makingAmount;
 
                 bytes calldata permit = order.permit(); // Helps with "Stack too deep"
