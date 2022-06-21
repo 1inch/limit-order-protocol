@@ -20,12 +20,4 @@ contract AmountCalculator {
     function getTakingAmount(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapMakerAmount) public pure returns(uint256) {
         return (swapMakerAmount * orderTakerAmount + orderMakerAmount - 1) / orderMakerAmount;
     }
-
-    /// @notice Performs an arbitrary call to target with data
-    /// @return Result Bytes transmuted to uint256
-    function arbitraryStaticCall(address target, bytes calldata data) external view returns(uint256) {
-        (bool success, uint256 res) = target.staticcallForUint(data);
-        require(success, "AC: arbitraryStaticCall");
-        return res;
-    }
 }

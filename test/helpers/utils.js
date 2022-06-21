@@ -1,5 +1,6 @@
 const { trim0x } = require('@1inch/solidity-utils');
 const { BN, ether } = require('@openzeppelin/test-helpers');
+const { assert, expect } = require('chai');
 
 const addr1PrivateKey = 'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 
@@ -27,11 +28,38 @@ function composeCalldataForOptionalTarget (target, defaultTarget, calldata) {
 }
 
 function composeCalldataForDefaultTarget (calldata) {
-    return '0x64' + trim0x(calldata); // 0x64 == "d", which means DEFAULT
+    // Top bit 0 means target is default
+    // Other bits 127 mean dyncam calldata offset and size are not missing
+    return '0x7F' + trim0x(calldata);
 }
 
 function composeCalldataForTarget (target, calldata) {
-    return '0x00' + trim0x(target) + trim0x(calldata);
+    // Top bit 1 means target is NOT default
+    // Other bits 127 mean dyncam calldata offset and size are not missing
+    return '0xFF' + trim0x(target) + trim0x(calldata);
+}
+
+function compactABI (argumentsCount, data) {
+    const fixedLength = 4 + argumentsCount * 32;
+
+    if (trim0x(data).length / 2 === fixedLength) {
+        console.log('n', argumentsCount, fixedLength, data);
+        return '0x' + argumentsCount.toString(16).padStart(2, '0') + trim0x(data);
+    }
+
+    console.log('y', argumentsCount, fixedLength, trim0x(data).length, data);
+
+    expect(trim0x(data).substring(fixedLength * 2, fixedLength * 2 + 64))
+        .to.be.equal(toBN((argumentsCount + 1) * 32).toString('hex').padStart(64, '0'));
+    expect(
+        toBN(trim0x(data).substring(fixedLength * 2 + 64, fixedLength * 2 + 128), 'hex')
+            .sub(toBN(trim0x(data).length / 2 - fixedLength - 64))
+    ).to.be.bignumber.lt(toBN(32));
+
+    return '0x' +
+        argumentsCount.toString(16).padStart(2, '0') +
+        trim0x(data.substring(0, fixedLength)) +
+        trim0x(data.substring(fixedLength + 64, data.length));
 }
 
 function joinStaticCalls (targets, calldatas, defaultTarget) {
@@ -56,4 +84,5 @@ module.exports = {
     toBN,
     cutSelector,
     cutLastArg,
+    compactABI,
 };

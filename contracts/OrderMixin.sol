@@ -271,8 +271,7 @@ abstract contract OrderMixin is
 
     /// @notice Checks order predicate
     function checkPredicate(OrderLib.Order calldata order) public view returns(bool) {
-        (address target, bytes calldata data) = order.predicate().decodeTargetAndCalldata(address(this));
-        (bool success, uint256 res) = target.staticcallForUint(data);
+        (bool success, uint256 res) = Callib.compactStaticcallForUint(address(this), order.predicate());
         return success && res == 1;
     }
 

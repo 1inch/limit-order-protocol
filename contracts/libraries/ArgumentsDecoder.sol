@@ -32,7 +32,7 @@ library ArgumentsDecoder {
     function decodeTargetAndCalldata(bytes calldata data, address defaultValue) internal pure returns(address target, bytes calldata args) {
         assembly {  // solhint-disable-line no-inline-assembly
             switch byte(0, calldataload(data.offset))
-            case 0x64 {
+            case 0xFF {
                 target := defaultValue
                 args.offset := add(data.offset, 1)
                 args.length := sub(data.length, 1)
