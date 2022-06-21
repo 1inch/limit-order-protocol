@@ -10,8 +10,6 @@ contract PredicateHelper {
     using Callib for address;
     using ArgumentsDecoder for bytes;
 
-    error InputArraySizeMismatch();
-
     /// @notice Calls every target with corresponding data
     /// @return Result True if call to any target returned True. Otherwise, false
     function or(uint256 offsets, bytes calldata data) external view returns(bool) {
