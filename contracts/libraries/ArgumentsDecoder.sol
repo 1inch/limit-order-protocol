@@ -30,14 +30,18 @@ library ArgumentsDecoder {
     }
 
     function decodeTargetAndCalldata(bytes calldata data, address defaultValue) internal pure returns(address target, bytes calldata args) {
-        if (data[0] == "d") {
-            target = defaultValue;
-            args = data[1:]; // reverts if data.length < 1
-        } else {
-            assembly {  // solhint-disable-line no-inline-assembly
-                target := shr(96, shl(8, calldataload(data.offset)))
+        assembly {  // solhint-disable-line no-inline-assembly
+            switch byte(0, calldataload(data.offset))
+            case 0x64 {
+                target := defaultValue
+                args.offset := add(data.offset, 1)
+                args.length := sub(data.length, 1)
             }
-            args = data[21:]; // reverts if data.length < 21
+            default {
+                target := shr(96, shl(8, calldataload(data.offset)))
+                args.offset := add(data.offset, 21)
+                args.length := sub(data.length, 21)
+            }
         }
     }
 }
