@@ -78,6 +78,13 @@ library ECDSA {
         return isValidSignature(signer, hash, r, vs);
     }
 
+    function recoverOrIsValidSignature65(address signer, bytes32 hash, bytes32 r, bytes32 vs) internal view returns(bool success) {
+        if (recover(hash, r, vs) == signer) {
+            return true;
+        }
+        return isValidSignature65(signer, hash, r, vs);
+    }
+
     function isValidSignature(address signer, bytes32 hash, bytes calldata signature) internal view returns(bool success) {
         // (bool success, bytes memory data) = signer.staticcall(abi.encodeWithSelector(IERC1271.isValidSignature.selector, hash, signature));
         // return success && data.length >= 4 && abi.decode(data, (bytes4)) == IERC1271.isValidSignature.selector;
@@ -114,6 +121,29 @@ library ECDSA {
             mstore(add(ptr, 0x44), 64)
             mstore(add(ptr, 0x64), r)
             mstore(add(ptr, 0x84), vs)
+            mstore(0, 0)
+            if staticcall(gas(), signer, ptr, len, 0, 0x20) {
+                success := eq(selector, mload(0))
+            }
+        }
+    }
+
+    function isValidSignature65(address signer, bytes32 hash, bytes32 r, bytes32 vs) internal view returns(bool success) {
+        // (bool success, bytes memory data) = signer.staticcall(abi.encodeWithSelector(IERC1271.isValidSignature.selector, hash, abi.encodePacked(r, vs & ~uint256(1 << 255), uint8(vs >> 255))));
+        // return success && data.length >= 4 && abi.decode(data, (bytes4)) == IERC1271.isValidSignature.selector;
+        bytes4 selector = IERC1271.isValidSignature.selector;
+        assembly { // solhint-disable-line no-inline-assembly
+            let ptr := mload(0x40)
+            let len := add(0x64, 65)
+            mstore(0x40, add(ptr, len))
+
+            mstore(ptr, selector)
+            mstore(add(ptr, 0x04), hash)
+            mstore(add(ptr, 0x24), 0x40)
+            mstore(add(ptr, 0x44), 65)
+            mstore(add(ptr, 0x64), r)
+            mstore(add(ptr, 0x84), shr(1, shl(1, vs)))
+            mstore8(add(ptr, 0xa4), add(27, shr(255, vs)))
             mstore(0, 0)
             if staticcall(gas(), signer, ptr, len, 0, 0x20) {
                 success := eq(selector, mload(0))

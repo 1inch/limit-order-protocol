@@ -50,7 +50,12 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
 
     uint256 constant private _MAKER_AMOUNT_FLAG = 1 << 255;
     uint256 constant private _SIGNER_SMART_CONTRACT_HINT = 1 << 254;
-    uint256 constant private _AMOUNT_MASK = ~uint256(3 << 254);
+    uint256 constant private _IS_VALID_SIGNATURE_65_BYTES = 1 << 253;
+    uint256 constant private _AMOUNT_MASK = ~uint256(
+        _MAKER_AMOUNT_FLAG |
+        _SIGNER_SMART_CONTRACT_HINT |
+        _IS_VALID_SIGNATURE_65_BYTES
+    );
 
     function fillOrderRFQCompact(
         OrderRFQLib.OrderRFQ memory order,
@@ -59,16 +64,20 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 amount
     ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = _hashTypedDataV4(order.hash());
-        if (amount & _SIGNER_SMART_CONTRACT_HINT == 0) {
-            require(ECDSA.recoverOrIsValidSignature(order.maker, orderHash, r, vs), "LOP: bad signature");
+        if (amount & _SIGNER_SMART_CONTRACT_HINT != 0) {
+            if (amount & _IS_VALID_SIGNATURE_65_BYTES != 0) {
+                require(ECDSA.isValidSignature65(order.maker, orderHash, r, vs), "LOP: bad signature");
+            } else {
+                require(ECDSA.isValidSignature(order.maker, orderHash, r, vs), "LOP: bad signature");
+            }
         } else {
-            require(ECDSA.isValidSignature(order.maker, orderHash, r, vs), "LOP: bad signature");
+            require(ECDSA.recoverOrIsValidSignature(order.maker, orderHash, r, vs), "LOP: bad signature");
         }
 
-        if (amount & _MAKER_AMOUNT_FLAG == 0) {
-            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, 0, amount, msg.sender);
-        } else {
+        if (amount & _MAKER_AMOUNT_FLAG != 0) {
             (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, amount & _AMOUNT_MASK, 0, msg.sender);
+        } else {
+            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, 0, amount, msg.sender);
         }
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
