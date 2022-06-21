@@ -1,4 +1,4 @@
-const { constants, singletons } = require('@openzeppelin/test-helpers');
+const { constants } = require('@openzeppelin/test-helpers');
 const ethSigUtil = require('eth-sig-util');
 const { EIP712Domain } = require('./eip712');
 const { toBN, cutLastArg } = require('./utils');
@@ -150,9 +150,9 @@ function signOrderRFQ (order, chainId, target, privateKey) {
 }
 
 function compactSignature (signature) {
-    const r = toBN(Buffer.from(signature.substring(2, 66), 'hex'));
-    const s = toBN(Buffer.from(signature.substring(66, 130), 'hex'));
-    const v = toBN(Buffer.from(signature.substring(130, 132), 'hex'));
+    const r = toBN(signature.substring(2, 66), 'hex');
+    const s = toBN(signature.substring(66, 130), 'hex');
+    const v = toBN(signature.substring(130, 132), 'hex');
     return {
         r: '0x' + r.toString('hex').padStart(64, '0'),
         vs: '0x' + v.subn(27).shln(255).add(s).toString('hex').padStart(64, '0'),
