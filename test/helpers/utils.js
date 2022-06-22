@@ -21,56 +21,61 @@ function cutLastArg (data, padding=0) {
     return data.substring(0, data.length - 64 - padding);
 }
 
-function composeCalldataForOptionalTarget (target, defaultTarget, calldata) {
+function composeCalldataForOptionalTarget (argumentsCount, target, defaultTarget, calldata) {
     return target.toLowerCase() === defaultTarget.toLowerCase()
-        ? composeCalldataForDefaultTarget(calldata)
-        : composeCalldataForTarget(target, calldata);
+        ? composeCalldataForDefaultTarget(argumentsCount, calldata)
+        : composeCalldataForTarget(argumentsCount, target, calldata);
 }
 
-function composeCalldataForDefaultTarget (calldata) {
+function composeCalldataForDefaultTarget (argumentsCount, calldata) {
     // Top bit 0 means target is default
     // Other bits 127 mean dyncam calldata offset and size are not missing
-    return '0x7F' + trim0x(calldata);
+    const compact = trimOffsetAndLength(argumentsCount, trim0x(calldata));
+    return '0x' + argumentsCount.toString(16).padStart(2, '0') + trim0x(compact);
 }
 
-function composeCalldataForTarget (target, calldata) {
+function concatHex (arr) {
+    return arr.map(trim0x).join('');
+}
+
+function composeCalldataForTarget (argumentsCount, target, calldata) {
     // Top bit 1 means target is NOT default
     // Other bits 127 mean dyncam calldata offset and size are not missing
-    return '0xFF' + trim0x(target) + trim0x(calldata);
+    const compact = trimOffsetAndLength(argumentsCount, trim0x(calldata));
+    return '0x' + (128 + argumentsCount).toString(16).padStart(2, '0') + concatHex([target, compact]);
 }
 
-function compactABI (argumentsCount, data) {
+function trimOffsetAndLength (argumentsCount, data) {
+    const trimmed = trim0x(data);
     const fixedLength = 4 + argumentsCount * 32;
 
-    if (trim0x(data).length / 2 === fixedLength) {
-        console.log('n', argumentsCount, fixedLength, data);
-        return '0x' + argumentsCount.toString(16).padStart(2, '0') + trim0x(data);
+    if (trimmed.length / 2 === fixedLength) {
+        return trimmed;
     }
 
-    console.log('y', argumentsCount, fixedLength, trim0x(data).length, data);
+    const actualOffset = toBN(trimmed.substring(fixedLength * 2, fixedLength * 2 + 64), 'hex').toNumber();
+    const expectedOffset = (argumentsCount + 1) * 32;
+    expect(actualOffset).to.be.equal(expectedOffset);
 
-    expect(trim0x(data).substring(fixedLength * 2, fixedLength * 2 + 64))
-        .to.be.equal(toBN((argumentsCount + 1) * 32).toString('hex').padStart(64, '0'));
-    expect(
-        toBN(trim0x(data).substring(fixedLength * 2 + 64, fixedLength * 2 + 128), 'hex')
-            .sub(toBN(trim0x(data).length / 2 - fixedLength - 64))
-    ).to.be.bignumber.lt(toBN(32));
+    const dynamicLength = toBN(trimmed.substring(fixedLength * 2 + 64, fixedLength * 2 + 128), 'hex').toNumber();
+    const paddedLength = trimmed.length / 2 - fixedLength - 64;
+    expect(paddedLength - dynamicLength).to.be.gte(0).and.lt(32);
 
-    return '0x' +
-        argumentsCount.toString(16).padStart(2, '0') +
-        trim0x(data.substring(0, fixedLength)) +
-        trim0x(data.substring(fixedLength + 64, data.length));
+    return '0x' + concatHex([
+        trimmed.substring(0, fixedLength * 2),
+        trimmed.substring(fixedLength * 2 + 128, fixedLength * 2 + 128 + dynamicLength * 2),
+    ]);
 }
 
-function joinStaticCalls (targets, calldatas, defaultTarget) {
-    const data = calldatas.map((cd, i) => trim0x(composeCalldataForOptionalTarget(targets[i], defaultTarget, cd)));
+function joinStaticCalls (calldatas) {
     const cumulativeSum = (sum => value => sum += value)(0);
     return {
-        offsets: data
+        offsets: calldatas
+            .map(trim0x)
             .map(d => d.length / 2)
             .map(cumulativeSum)
             .reduce((acc, val, i) => acc.or(toBN(val).shln(32 * i)), toBN('0')),
-        data: '0x' + data.join('')
+        data: '0x' + calldatas.map(trim0x).join('')
     }
 }
 
@@ -84,5 +89,4 @@ module.exports = {
     toBN,
     cutSelector,
     cutLastArg,
-    compactABI,
 };

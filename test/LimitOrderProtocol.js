@@ -13,8 +13,7 @@ const ERC721Proxy = artifacts.require('ERC721Proxy');
 const { profileEVM } = require('./helpers/profileEVM');
 const { buildOrder, buildOrderData, signOrder } = require('./helpers/orderUtils');
 const { getPermit, bundlePermitForTaker } = require('./helpers/eip712');
-const { addr1PrivateKey, joinStaticCalls, composeCalldataForDefaultTarget, composeCalldataForTarget, composeCalldataForOptionalTarget, compactABI } = require('./helpers/utils');
-const { trim0x } = require('@1inch/solidity-utils');
+const { addr1PrivateKey, joinStaticCalls, composeCalldataForDefaultTarget, composeCalldataForTarget, composeCalldataForOptionalTarget } = require('./helpers/utils');
 
 describe('LimitOrderProtocol', async function () {
     let addr1, wallet;
@@ -636,17 +635,10 @@ describe('LimitOrderProtocol', async function () {
         });
 
         it.only('`or` should pass', async function () {
-            const tsBelow = compactABI(1, this.swap.contract.methods.timestampBelow(0xff0000).encodeABI());
-            const balanceCall = compactABI(1, this.dai.contract.methods.balanceOf(wallet).encodeABI());
-            const gtBalance = compactABI(1, this.swap.contract.methods.gt('100000', composeCalldataForTarget(this.dai.address, balanceCall)).encodeABI());
-            const { offsets, data } = joinStaticCalls(
-                [this.swap.address, this.swap.address],
-                [tsBelow, gtBalance],
-                this.swap.address
-            );
-
-            console.log('offsets', offsets.toString('hex'));
-            console.log('data', data.toString());
+            const tsBelow = composeCalldataForDefaultTarget(1, this.swap.contract.methods.timestampBelow(0xff0000).encodeABI());
+            const balanceCall = composeCalldataForTarget(1, this.dai.address, this.dai.contract.methods.balanceOf(wallet).encodeABI());
+            const gtBalance = composeCalldataForDefaultTarget(1, this.swap.contract.methods.gt('100000', balanceCall).encodeABI());
+            const { offsets, data } = joinStaticCalls([tsBelow, gtBalance]);
 
             const order = buildOrder(
                 {
@@ -658,9 +650,7 @@ describe('LimitOrderProtocol', async function () {
                     from: wallet,
                 },
                 {
-                    predicate: composeCalldataForDefaultTarget(
-                        compactABI(1, this.swap.contract.methods.or(offsets, data).encodeABI())
-                    ),
+                    predicate: composeCalldataForDefaultTarget(1, this.swap.contract.methods.or(offsets, data).encodeABI()),
                 },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());

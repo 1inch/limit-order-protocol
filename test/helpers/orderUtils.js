@@ -1,3 +1,4 @@
+const { trim0x } = require('@1inch/solidity-utils');
 const { constants } = require('@openzeppelin/test-helpers');
 const ethSigUtil = require('eth-sig-util');
 const { EIP712Domain } = require('./eip712');
@@ -48,7 +49,7 @@ function buildOrder (
         from: maker = constants.ZERO_ADDRESS,
     },
     {
-        makerAssetData = constants.ZERO_ADDRESS,
+        makerAssetData = '0x',
         takerAssetData = '0x',
         getMakingAmount = '',
         getTakingAmount = '',
@@ -78,12 +79,12 @@ function buildOrder (
         postInteraction,
     ];
 
-    const interactions = '0x' + allInteractions.map(a => a.substring(2)).join('');
+    const trimmed = allInteractions.map(trim0x);
 
     // https://stackoverflow.com/a/55261098/440168
     const cumulativeSum = (sum => value => sum += value)(0);
-    const offsets = allInteractions
-        .map(a => a.length / 2 - 1)
+    const offsets = trimmed
+        .map(a => a.length / 2)
         .map(cumulativeSum)
         .reduce((acc, a, i) => acc.add(toBN(a).shln(32 * i)), toBN('0'));
 
@@ -97,7 +98,7 @@ function buildOrder (
         makingAmount: makingAmount.toString(),
         takingAmount: takingAmount.toString(),
         offsets: offsets.toString(),
-        interactions,
+        interactions: '0x' + trimmed.join(''),
     };
 }
 
