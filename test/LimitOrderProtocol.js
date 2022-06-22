@@ -630,7 +630,7 @@ describe('LimitOrderProtocol', async function () {
             const gtBalance = this.swap.contract.methods.gt('100000', this.dai.address + balanceCall.substring(2)).encodeABI();
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [tsBelow, gtBalance]
+                [tsBelow, gtBalance],
             );
             await this.swap.contract.methods.or(offsets, data).send({ from: wallet });
         });
@@ -641,7 +641,7 @@ describe('LimitOrderProtocol', async function () {
             const gtBalance = this.swap.contract.methods.gt('100000', this.dai.address + balanceCall.substring(2)).encodeABI();
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [tsBelow, gtBalance]
+                [tsBelow, gtBalance],
             );
             const predicate = this.swap.contract.methods.or(offsets, data).encodeABI();
 
@@ -679,7 +679,7 @@ describe('LimitOrderProtocol', async function () {
             const gtBalance = this.swap.contract.methods.lt('100000', this.dai.address + balanceCall.substring(2)).encodeABI();
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [tsBelow, gtBalance]
+                [tsBelow, gtBalance],
             );
             const predicate = this.swap.contract.methods.or(offsets, data).encodeABI();
             const order = buildOrder(
@@ -709,7 +709,7 @@ describe('LimitOrderProtocol', async function () {
             const gtBalance = this.swap.contract.methods.eq('1000000', this.dai.address + balanceCall.substring(2)).encodeABI();
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [tsBelow, gtBalance]
+                [tsBelow, gtBalance],
             );
             const predicate = this.swap.contract.methods.and(offsets, data).encodeABI();
             const order = buildOrder(
@@ -745,7 +745,7 @@ describe('LimitOrderProtocol', async function () {
             const nonceCall = this.swap.contract.methods.nonceEquals(wallet, 0).encodeABI();
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [tsBelow, nonceCall]
+                [tsBelow, nonceCall],
             );
             const predicate = this.swap.contract.methods.and(offsets, data).encodeABI();
             const order = buildOrder(
@@ -787,7 +787,7 @@ describe('LimitOrderProtocol', async function () {
             const gtBalance = this.swap.contract.methods.gt('100000', this.dai.address + balanceCall.substring(2)).encodeABI();
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
-                [tsBelow, gtBalance]
+                [tsBelow, gtBalance],
             );
             const predicate = this.swap.contract.methods.and(offsets, data).encodeABI();
             const order = buildOrder(
