@@ -69,4 +69,10 @@ contract PredicateHelper {
     function timestampBelow(uint256 time) external view returns(bool) {
         return block.timestamp < time;  // solhint-disable-line not-rely-on-time
     }
+
+    function help(uint256 a) external view returns(bool success) {
+        (success, ) = address(this).staticcall(
+            abi.encodePacked(msg.data[36:40], a, uint256(0x40), msg.data.length - 40, msg.data[40:])
+        );
+    }
 }
