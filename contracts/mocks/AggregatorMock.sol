@@ -38,7 +38,7 @@ contract AggregatorMock is AggregatorV2V3Interface {
             uint80 answeredInRound
         )
     {
-        if(_roundId != 0) revert NoDataPresent();
+        if (_roundId != 0) revert NoDataPresent();
         return latestRoundData();
     }
 
@@ -71,12 +71,12 @@ contract AggregatorMock is AggregatorV2V3Interface {
     }
 
     function getAnswer(uint256 roundId) external view returns (int256) {
-        if(roundId != 0) revert NoDataPresent();
+        if (roundId != 0) revert NoDataPresent();
         return latestAnswer();
     }
 
     function getTimestamp(uint256 roundId) external view returns (uint256) {
-        if(roundId != 0) revert NoDataPresent();
+        if (roundId != 0) revert NoDataPresent();
         return latestTimestamp();
     }
 }

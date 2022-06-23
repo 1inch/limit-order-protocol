@@ -27,7 +27,7 @@ contract AmountCalculator {
     /// @return Result Bytes transmuted to uint256
     function arbitraryStaticCall(address target, bytes calldata data) external view returns(uint256) {
         (bool success, uint256 res) = target.staticcallForUint(data);
-        if(!success) revert ArbitraryStaticCallFailed();
+        if (!success) revert ArbitraryStaticCallFailed();
         return res;
     }
 }

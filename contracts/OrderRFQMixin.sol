@@ -128,7 +128,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         address target
     ) public returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = _hashTypedDataV4(order.hash());
-        if(!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
+        if (!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
         (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, makingAmount, takingAmount, target);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
@@ -139,18 +139,18 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 takingAmount,
         address target
     ) private returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */) {
-        if(target == address(0)) revert RFQZeroTargetIsForbidden();
+        if (target == address(0)) revert RFQZeroTargetIsForbidden();
 
         address maker = order.maker;
 
         // Validate order
-        if(order.allowedSender != address(0) && order.allowedSender != msg.sender) revert RFQPrivateOrder();
+        if (order.allowedSender != address(0) && order.allowedSender != msg.sender) revert RFQPrivateOrder();
 
         {  // Stack too deep
             uint256 info = order.info;
             // Check time expiration
             uint256 expiration = uint128(info) >> 64;
-            if(expiration != 0 && block.timestamp > expiration) revert OrderExpired(); // solhint-disable-line not-rely-on-time
+            if (expiration != 0 && block.timestamp > expiration) revert OrderExpired(); // solhint-disable-line not-rely-on-time
             _invalidateOrder(maker, info);
         }
 
@@ -164,11 +164,11 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
                 takingAmount = orderTakingAmount;
             }
             else if (takingAmount == 0) {
-                if(makingAmount > orderMakingAmount) revert MakingAmountExceeded();
+                if (makingAmount > orderMakingAmount) revert MakingAmountExceeded();
                 takingAmount = getTakingAmount(orderMakingAmount, orderTakingAmount, makingAmount);
             }
             else if (makingAmount == 0) {
-                if(takingAmount > orderTakingAmount) revert TakingAmountExceeded();
+                if (takingAmount > orderTakingAmount) revert TakingAmountExceeded();
                 makingAmount = getMakingAmount(orderMakingAmount, orderTakingAmount, takingAmount);
             }
             else {
@@ -176,7 +176,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
             }
         }
 
-        if(makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
+        if (makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
 
         // Maker => Taker, Taker => Maker
         IERC20(order.makerAsset).safeTransferFrom(maker, target, makingAmount);
@@ -190,7 +190,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 invalidatorBit = 1 << uint8(orderInfo);
         mapping(uint256 => uint256) storage invalidatorStorage = _invalidator[maker];
         uint256 invalidator = invalidatorStorage[invalidatorSlot];
-        if(invalidator & invalidatorBit != 0) revert InvalidatedOrder();
+        if (invalidator & invalidatorBit != 0) revert InvalidatedOrder();
         invalidatorStorage[invalidatorSlot] = invalidator | invalidatorBit;
     }
 }

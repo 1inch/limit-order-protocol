@@ -71,7 +71,7 @@ abstract contract OrderMixin is
     /// @notice Returns unfilled amount for order. Throws if order does not exist
     function remaining(bytes32 orderHash) external view returns(uint256) {
         uint256 amount = _remaining[orderHash];
-        if(amount == _ORDER_DOES_NOT_EXIST) revert UnknownOrder();
+        if (amount == _ORDER_DOES_NOT_EXIST) revert UnknownOrder();
         unchecked { amount -= 1; }
         return amount;
     }
@@ -106,11 +106,11 @@ abstract contract OrderMixin is
 
     /// @notice Cancels order by setting remaining amount to zero
     function cancelOrder(OrderLib.Order calldata order) external returns(uint256 orderRemaining, bytes32 orderHash) {
-        if(order.maker != msg.sender) revert AccessDenied();
+        if (order.maker != msg.sender) revert AccessDenied();
 
         orderHash = hashOrder(order);
         orderRemaining = _remaining[orderHash];
-        if(orderRemaining == _ORDER_FILLED) revert AlreadyFilled();
+        if (orderRemaining == _ORDER_FILLED) revert AlreadyFilled();
         emit OrderCanceled(msg.sender, orderHash, orderRemaining);
         _remaining[orderHash] = _ORDER_FILLED;
     }
@@ -153,7 +153,7 @@ abstract contract OrderMixin is
         address target,
         bytes calldata permit
     ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
-        if(permit.length < 20) revert PermitLengthTooLow();
+        if (permit.length < 20) revert PermitLengthTooLow();
         {  // Stack too deep
             (address token, bytes calldata permitData) = permit.decodeTargetAndCalldata();
             IERC20(token).safePermit(permitData);
@@ -177,18 +177,18 @@ abstract contract OrderMixin is
         uint256 thresholdAmount,
         address target
     ) public returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
-        if(target == address(0)) revert ZeroTargetIsForbidden();
+        if (target == address(0)) revert ZeroTargetIsForbidden();
         orderHash = hashOrder(order_);
 
         OrderLib.Order calldata order = order_; // Helps with "Stack too deep"
 
         {  // Stack too deep
             uint256 remainingMakerAmount = _remaining[orderHash];
-            if(remainingMakerAmount == _ORDER_FILLED) revert RemainingAmountIsZero();
-            if(order.allowedSender != address(0) && order.allowedSender != msg.sender) revert PrivateOrder();
+            if (remainingMakerAmount == _ORDER_FILLED) revert RemainingAmountIsZero();
+            if (order.allowedSender != address(0) && order.allowedSender != msg.sender) revert PrivateOrder();
             if (remainingMakerAmount == _ORDER_DOES_NOT_EXIST) {
                 // First fill: validate order and permit maker asset
-                if(!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert BadSignature();
+                if (!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert BadSignature();
                 remainingMakerAmount = order.makingAmount;
 
                 bytes calldata permit = order.permit(); // Helps with "Stack too deep"
@@ -196,7 +196,7 @@ abstract contract OrderMixin is
                     // proceed only if permit length is enough to store address
                     (address token, bytes calldata permitCalldata) = permit.decodeTargetAndCalldata();
                     IERC20(token).safePermit(permitCalldata);
-                    if(_remaining[orderHash] != _ORDER_DOES_NOT_EXIST) revert ReentrancyDetected();
+                    if (_remaining[orderHash] != _ORDER_DOES_NOT_EXIST) revert ReentrancyDetected();
                 }
             } else {
                 unchecked { remainingMakerAmount -= 1; }
@@ -204,7 +204,7 @@ abstract contract OrderMixin is
 
             // Check if order is valid
             if (order.predicate().length > 0) {
-                if(!checkPredicate(order)) revert PredicateIsNotTrue();
+                if (!checkPredicate(order)) revert PredicateIsNotTrue();
             }
 
             // Compute maker and taker assets amount
@@ -218,7 +218,7 @@ abstract contract OrderMixin is
                 takingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, makingAmount, order.takingAmount);
                 // check that actual rate is not worse than what was expected
                 // takingAmount / makingAmount <= thresholdAmount / requestedMakingAmount
-                if(takingAmount * requestedMakingAmount > thresholdAmount * makingAmount) revert TakingAmountTooHigh();
+                if (takingAmount * requestedMakingAmount > thresholdAmount * makingAmount) revert TakingAmountTooHigh();
             } else {
                 uint256 requestedTakingAmount = takingAmount;
                 makingAmount = _callGetter(order.getMakingAmount(), order.takingAmount, takingAmount, order.makingAmount);
@@ -228,10 +228,10 @@ abstract contract OrderMixin is
                 }
                 // check that actual rate is not worse than what was expected
                 // makingAmount / takingAmount >= thresholdAmount / requestedTakingAmount
-                if(makingAmount * requestedTakingAmount < thresholdAmount * takingAmount) revert MakingAmountTooLow();
+                if (makingAmount * requestedTakingAmount < thresholdAmount * takingAmount) revert MakingAmountTooLow();
             }
 
-            if(makingAmount == 0 || takingAmount == 0) revert SwapWithZeroAmount();
+            if (makingAmount == 0 || takingAmount == 0) revert SwapWithZeroAmount();
 
             // Update remaining amount in storage
             unchecked {
@@ -251,7 +251,7 @@ abstract contract OrderMixin is
         }
 
         // Maker => Taker
-        if(!_callTransferFrom(
+        if (!_callTransferFrom(
             order.makerAsset,
             order.maker,
             target,
@@ -268,7 +268,7 @@ abstract contract OrderMixin is
         }
 
         // Taker => Maker
-        if(!_callTransferFrom(
+        if (!_callTransferFrom(
             order.takerAsset,
             msg.sender,
             order.receiver == address(0) ? order.maker : order.receiver,
@@ -317,7 +317,7 @@ abstract contract OrderMixin is
     function _callGetter(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
         if (getter.length == 0) {
             // On empty getter calldata only exact amount is allowed
-            if(amount != orderExpectedAmount) revert WrongAmount();
+            if (amount != orderExpectedAmount) revert WrongAmount();
             return orderResultAmount;
         } else if (getter.length == 1) {
             // Linear proportion
@@ -331,7 +331,7 @@ abstract contract OrderMixin is
         } else {
             (address target, bytes calldata data) = getter.decodeTargetAndCalldata();
             (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount));
-            if(!success || result.length != 32) revert getAmountCallFailed();
+            if (!success || result.length != 32) revert getAmountCallFailed();
             return result.decodeUint256Memory();
         }
     }

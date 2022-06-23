@@ -10,7 +10,7 @@ contract ImmutableOwner {
     address public immutable immutableOwner;
 
     modifier onlyImmutableOwner {
-        if(msg.sender != immutableOwner) revert IOAccessDenied();
+        if (msg.sender != immutableOwner) revert IOAccessDenied();
         _;
     }
 

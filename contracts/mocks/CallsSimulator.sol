@@ -17,7 +17,7 @@ contract CallsSimulator {
      * @param data Array of data that will be passed to each call
      */
     function simulateCalls(address[] calldata targets, bytes[] calldata data) external {
-        if(targets.length != data.length) revert ArraySizeMismatch();
+        if (targets.length != data.length) revert ArraySizeMismatch();
         bytes memory reason = new bytes(targets.length);
         for (uint256 i = 0; i < targets.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls

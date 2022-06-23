@@ -39,7 +39,7 @@ contract WrappedTokenMock is ERC20Permit, Ownable, IWithdrawable {
     }
 
     function withdraw(uint wad) public {
-        if(balanceOf(msg.sender) < wad) revert NotEnoughBalance();
+        if (balanceOf(msg.sender) < wad) revert NotEnoughBalance();
         _burn(msg.sender, wad);
         payable(msg.sender).transfer(wad);
         emit Withdrawal(msg.sender, wad);

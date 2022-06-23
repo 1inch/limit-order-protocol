@@ -15,7 +15,7 @@ contract ERC1155Proxy is ImmutableOwner {
     error ERC1155ProxyBadSelector();
 
     constructor(address _immutableOwner) ImmutableOwner(_immutableOwner) {
-        if(ERC1155Proxy.func_301JL5R.selector != IERC20.transferFrom.selector) revert ERC1155ProxyBadSelector();
+        if (ERC1155Proxy.func_301JL5R.selector != IERC20.transferFrom.selector) revert ERC1155ProxyBadSelector();
     }
 
     /// @notice Proxy transfer method for `IERC1155.safeTransferFrom`. Selector must match `IERC20.transferFrom`

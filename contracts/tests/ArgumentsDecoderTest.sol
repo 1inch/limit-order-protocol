@@ -21,7 +21,7 @@ contract ArgumentsDecoderTest {
 
     function testDecodeBool() external view {
         (bool success, bytes memory result) = address(this).staticcall(abi.encodePacked(this.fBool.selector));
-        if(!success) revert fBoolCallFailed();
+        if (!success) revert fBoolCallFailed();
         uint256 gasCustom = gasleft();
         result.decodeBoolMemory();
         gasCustom = gasCustom - gasleft();
@@ -32,7 +32,7 @@ contract ArgumentsDecoderTest {
 
     function testDecodeUint() external view {
         (bool success, bytes memory result) = address(this).staticcall(abi.encodePacked(this.fUint.selector));
-        if(!success) revert fUintCallFailed();
+        if (!success) revert fUintCallFailed();
         uint256 gasCustom = gasleft();
         result.decodeUint256Memory();
         gasCustom = gasCustom - gasleft();

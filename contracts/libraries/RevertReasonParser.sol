@@ -40,7 +40,7 @@ library RevertReasonParser {
                     because of that we can't check for equality and instead check
                     that offset + string length + extra 36 bytes is less than overall data length
                 */
-                if(data.length < 36 + offset + reason.length) revert InvalidRevertReason();
+                if (data.length < 36 + offset + reason.length) revert InvalidRevertReason();
                 return string(abi.encodePacked(prefix, "Error(", reason, ")"));
             }
             // 36 = 4-byte selector + 32 bytes integer

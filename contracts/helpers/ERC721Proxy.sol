@@ -15,7 +15,7 @@ contract ERC721Proxy is ImmutableOwner {
     error ERC721ProxyBadSelector();
 
     constructor(address _immutableOwner) ImmutableOwner(_immutableOwner) {
-        if(ERC721Proxy.func_60iHVgK.selector != IERC20.transferFrom.selector) revert ERC721ProxyBadSelector();
+        if (ERC721Proxy.func_60iHVgK.selector != IERC20.transferFrom.selector) revert ERC721ProxyBadSelector();
     }
 
     /// @notice Proxy transfer method for `IERC721.transferFrom`. Selector must match `IERC20.transferFrom`.
