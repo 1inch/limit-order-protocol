@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.11;
+pragma solidity 0.8.15;
 
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -176,11 +176,13 @@ abstract contract OrderMixin is
         uint256 takingAmount,
         uint256 thresholdAmount,
         address target
-    ) public returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
+    ) public returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
         if (target == address(0)) revert ZeroTargetIsForbidden();
         orderHash = hashOrder(order_);
 
         OrderLib.Order calldata order = order_; // Helps with "Stack too deep"
+        actualMakingAmount = makingAmount;
+        actualTakingAmount = takingAmount;
 
         {  // Stack too deep
             uint256 remainingMakerAmount = _remaining[orderHash];
@@ -208,34 +210,32 @@ abstract contract OrderMixin is
             }
 
             // Compute maker and taker assets amount
-            if ((takingAmount == 0) == (makingAmount == 0)) {
+            if ((actualTakingAmount == 0) == (actualMakingAmount == 0)) {
                 revert OnlyOneAmountShouldBeZero();
-            } else if (takingAmount == 0) {
-                uint256 requestedMakingAmount = makingAmount;
-                if (makingAmount > remainingMakerAmount) {
-                    makingAmount = remainingMakerAmount;
+            } else if (actualTakingAmount == 0) {
+                if (actualMakingAmount > remainingMakerAmount) {
+                    actualMakingAmount = remainingMakerAmount;
                 }
-                takingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, makingAmount, order.takingAmount);
+                actualTakingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
                 // check that actual rate is not worse than what was expected
-                // takingAmount / makingAmount <= thresholdAmount / requestedMakingAmount
-                if (takingAmount * requestedMakingAmount > thresholdAmount * makingAmount) revert TakingAmountTooHigh();
+                // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
+                if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
             } else {
-                uint256 requestedTakingAmount = takingAmount;
-                makingAmount = _callGetter(order.getMakingAmount(), order.takingAmount, takingAmount, order.makingAmount);
-                if (makingAmount > remainingMakerAmount) {
-                    makingAmount = remainingMakerAmount;
-                    takingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, makingAmount, order.takingAmount);
+                actualMakingAmount = _callGetter(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount);
+                if (actualMakingAmount > remainingMakerAmount) {
+                    actualMakingAmount = remainingMakerAmount;
+                    actualTakingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
                 }
                 // check that actual rate is not worse than what was expected
-                // makingAmount / takingAmount >= thresholdAmount / requestedTakingAmount
-                if (makingAmount * requestedTakingAmount < thresholdAmount * takingAmount) revert MakingAmountTooLow();
+                // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
+                if (actualMakingAmount * takingAmount < thresholdAmount * actualTakingAmount) revert MakingAmountTooLow();
             }
 
-            if (makingAmount == 0 || takingAmount == 0) revert SwapWithZeroAmount();
+            if (actualMakingAmount == 0 || actualTakingAmount == 0) revert SwapWithZeroAmount();
 
             // Update remaining amount in storage
             unchecked {
-                remainingMakerAmount = remainingMakerAmount - makingAmount;
+                remainingMakerAmount = remainingMakerAmount - actualMakingAmount;
                 _remaining[orderHash] = remainingMakerAmount + 1;
             }
             emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
@@ -246,7 +246,7 @@ abstract contract OrderMixin is
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.preInteraction().decodeTargetAndCalldata();
             PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                msg.sender, order.makerAsset, order.takerAsset, makingAmount, takingAmount, interactionData
+                msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
             );
         }
 
@@ -255,16 +255,19 @@ abstract contract OrderMixin is
             order.makerAsset,
             order.maker,
             target,
-            makingAmount,
+            actualMakingAmount,
             order.makerAssetData()
         )) revert TransferFromMakerToTakerFailed();
 
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata();
-            InteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
-                msg.sender, order.makerAsset, order.takerAsset, makingAmount, takingAmount, interactionData
+            uint256 offeredTakingAmount = InteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
+                msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
             );
+            if (offeredTakingAmount > actualTakingAmount && !order.takingAmountIsFrosen()) {
+                actualTakingAmount = offeredTakingAmount;
+            }
         }
 
         // Taker => Maker
@@ -272,7 +275,7 @@ abstract contract OrderMixin is
             order.takerAsset,
             msg.sender,
             order.receiver == address(0) ? order.maker : order.receiver,
-            takingAmount,
+            actualTakingAmount,
             order.takerAssetData()
         )) revert TransferFromTakerToMakerFailed();
 
@@ -281,11 +284,9 @@ abstract contract OrderMixin is
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.postInteraction().decodeTargetAndCalldata();
             PostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
-                msg.sender, order.makerAsset, order.takerAsset, makingAmount, takingAmount, interactionData
+                msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
             );
         }
-
-        return (makingAmount, takingAmount, orderHash);
     }
 
     /// @notice Checks order predicate
