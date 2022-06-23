@@ -27,6 +27,26 @@ abstract contract OrderMixin is
     using ArgumentsDecoder for bytes;
     using OrderLib for OrderLib.Order;
 
+    error UnknownOrder();
+    error AccessDenied();
+    error AlreadyFilled();
+    error PermitLengthTooLow();
+    error ZeroTargetIsForbidden();
+    error RemainingAmountIsZero();
+    error PrivateOrder();
+    error BadSignature();
+    error ReentrancyDetected();
+    error PredicateIsNotTrue();
+    error OnlyOneAmountShouldBeZero();
+    error TakingAmountTooHigh();
+    error MakingAmountTooLow();
+    error SwapWithZeroAmount();
+    error TransferFromMakerToTakerFailed();
+    error TransferFromTakerToMakerFailed();
+    error WrongAmount();
+    error WrongGetter();
+    error getAmountCallFailed();
+
     /// @notice Emitted every time order gets filled, including partial fills
     event OrderFilled(
         address indexed maker,
@@ -51,7 +71,7 @@ abstract contract OrderMixin is
     /// @notice Returns unfilled amount for order. Throws if order does not exist
     function remaining(bytes32 orderHash) external view returns(uint256) {
         uint256 amount = _remaining[orderHash];
-        require(amount != _ORDER_DOES_NOT_EXIST, "LOP: Unknown order");
+        if (amount == _ORDER_DOES_NOT_EXIST) revert UnknownOrder();
         unchecked { amount -= 1; }
         return amount;
     }
@@ -86,11 +106,11 @@ abstract contract OrderMixin is
 
     /// @notice Cancels order by setting remaining amount to zero
     function cancelOrder(OrderLib.Order calldata order) external returns(uint256 orderRemaining, bytes32 orderHash) {
-        require(order.maker == msg.sender, "LOP: Access denied");
+        if (order.maker != msg.sender) revert AccessDenied();
 
         orderHash = hashOrder(order);
         orderRemaining = _remaining[orderHash];
-        require(orderRemaining != _ORDER_FILLED, "LOP: already filled");
+        if (orderRemaining == _ORDER_FILLED) revert AlreadyFilled();
         emit OrderCanceled(msg.sender, orderHash, orderRemaining);
         _remaining[orderHash] = _ORDER_FILLED;
     }
@@ -133,7 +153,7 @@ abstract contract OrderMixin is
         address target,
         bytes calldata permit
     ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
-        require(permit.length >= 20, "LOP: permit length too low");
+        if (permit.length < 20) revert PermitLengthTooLow();
         {  // Stack too deep
             (address token, bytes calldata permitData) = permit.decodeTargetAndCalldata();
             IERC20(token).safePermit(permitData);
@@ -157,18 +177,18 @@ abstract contract OrderMixin is
         uint256 thresholdAmount,
         address target
     ) public returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
-        require(target != address(0), "LOP: zero target is forbidden");
+        if (target == address(0)) revert ZeroTargetIsForbidden();
         orderHash = hashOrder(order_);
 
         OrderLib.Order calldata order = order_; // Helps with "Stack too deep"
 
         {  // Stack too deep
             uint256 remainingMakerAmount = _remaining[orderHash];
-            require(remainingMakerAmount != _ORDER_FILLED, "LOP: remaining amount is 0");
-            require(order.allowedSender == address(0) || order.allowedSender == msg.sender, "LOP: private order");
+            if (remainingMakerAmount == _ORDER_FILLED) revert RemainingAmountIsZero();
+            if (order.allowedSender != address(0) && order.allowedSender != msg.sender) revert PrivateOrder();
             if (remainingMakerAmount == _ORDER_DOES_NOT_EXIST) {
                 // First fill: validate order and permit maker asset
-                require(ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature), "LOP: bad signature");
+                if (!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert BadSignature();
                 remainingMakerAmount = order.makingAmount;
 
                 bytes calldata permit = order.permit(); // Helps with "Stack too deep"
@@ -176,7 +196,7 @@ abstract contract OrderMixin is
                     // proceed only if permit length is enough to store address
                     (address token, bytes calldata permitCalldata) = permit.decodeTargetAndCalldata();
                     IERC20(token).safePermit(permitCalldata);
-                    require(_remaining[orderHash] == _ORDER_DOES_NOT_EXIST, "LOP: reentrancy detected");
+                    if (_remaining[orderHash] != _ORDER_DOES_NOT_EXIST) revert ReentrancyDetected();
                 }
             } else {
                 unchecked { remainingMakerAmount -= 1; }
@@ -184,12 +204,12 @@ abstract contract OrderMixin is
 
             // Check if order is valid
             if (order.predicate().length > 0) {
-                require(checkPredicate(order), "LOP: predicate is not true");
+                if (!checkPredicate(order)) revert PredicateIsNotTrue();
             }
 
             // Compute maker and taker assets amount
             if ((takingAmount == 0) == (makingAmount == 0)) {
-                revert("LOP: only one amount should be 0");
+                revert OnlyOneAmountShouldBeZero();
             } else if (takingAmount == 0) {
                 uint256 requestedMakingAmount = makingAmount;
                 if (makingAmount > remainingMakerAmount) {
@@ -198,7 +218,7 @@ abstract contract OrderMixin is
                 takingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, makingAmount, order.takingAmount);
                 // check that actual rate is not worse than what was expected
                 // takingAmount / makingAmount <= thresholdAmount / requestedMakingAmount
-                require(takingAmount * requestedMakingAmount <= thresholdAmount * makingAmount, "LOP: taking amount too high");
+                if (takingAmount * requestedMakingAmount > thresholdAmount * makingAmount) revert TakingAmountTooHigh();
             } else {
                 uint256 requestedTakingAmount = takingAmount;
                 makingAmount = _callGetter(order.getMakingAmount(), order.takingAmount, takingAmount, order.makingAmount);
@@ -208,10 +228,10 @@ abstract contract OrderMixin is
                 }
                 // check that actual rate is not worse than what was expected
                 // makingAmount / takingAmount >= thresholdAmount / requestedTakingAmount
-                require(makingAmount * requestedTakingAmount >= thresholdAmount * takingAmount, "LOP: making amount too low");
+                if (makingAmount * requestedTakingAmount < thresholdAmount * takingAmount) revert MakingAmountTooLow();
             }
 
-            require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
+            if (makingAmount == 0 || takingAmount == 0) revert SwapWithZeroAmount();
 
             // Update remaining amount in storage
             unchecked {
@@ -231,13 +251,13 @@ abstract contract OrderMixin is
         }
 
         // Maker => Taker
-        require(_callTransferFrom(
+        if (!_callTransferFrom(
             order.makerAsset,
             order.maker,
             target,
             makingAmount,
             order.makerAssetData()
-        ), "LOP: maker to taker failed");
+        )) revert TransferFromMakerToTakerFailed();
 
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
@@ -248,13 +268,13 @@ abstract contract OrderMixin is
         }
 
         // Taker => Maker
-        require(_callTransferFrom(
+        if (!_callTransferFrom(
             order.takerAsset,
             msg.sender,
             order.receiver == address(0) ? order.maker : order.receiver,
             takingAmount,
             order.takerAssetData()
-        ), "LOP: taker to maker failed");
+        )) revert TransferFromTakerToMakerFailed();
 
         // Maker can handle funds interactively
         if (order.postInteraction().length >= 20) {
@@ -297,7 +317,7 @@ abstract contract OrderMixin is
     function _callGetter(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
         if (getter.length == 0) {
             // On empty getter calldata only exact amount is allowed
-            require(amount == orderExpectedAmount, "LOP: wrong amount");
+            if (amount != orderExpectedAmount) revert WrongAmount();
             return orderResultAmount;
         } else if (getter.length == 1) {
             // Linear proportion
@@ -306,12 +326,12 @@ abstract contract OrderMixin is
             } else if (getter[0] == "t") {
                 return getTakingAmount(orderExpectedAmount, orderResultAmount, amount);
             } else {
-                revert("LOP: wrong getter");
+                revert WrongGetter();
             }
         } else {
             (address target, bytes calldata data) = getter.decodeTargetAndCalldata();
             (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount));
-            require(success && result.length == 32, "LOP: getAmount call failed");
+            if (!success || result.length != 32) revert getAmountCallFailed();
             return result.decodeUint256Memory();
         }
     }

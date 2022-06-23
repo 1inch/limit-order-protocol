@@ -149,7 +149,7 @@ describe('ChainLinkExample', async function () {
 
         await expectRevert(
             this.swap.fillOrder(order, signature, '0x', makingAmount, 0, takingAmount.add(ether('0.01'))), // taking threshold = exact taker amount + eps
-            'LOP: predicate is not true',
+            'PredicateIsNotTrue()',
         );
     });
 

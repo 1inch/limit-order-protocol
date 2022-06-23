@@ -11,6 +11,8 @@ pragma abicoder v1;
 ///
 /// All unsuccessful parsings get encoded as Unknown(data) string
 library RevertReasonParser {
+    error InvalidRevertReason();
+
     bytes4 constant private _PANIC_SELECTOR = bytes4(keccak256("Panic(uint256)"));
     bytes4 constant private _ERROR_SELECTOR = bytes4(keccak256("Error(string)"));
 
@@ -38,7 +40,7 @@ library RevertReasonParser {
                     because of that we can't check for equality and instead check
                     that offset + string length + extra 36 bytes is less than overall data length
                 */
-                require(data.length >= 36 + offset + reason.length, "Invalid revert reason");
+                if (data.length < 36 + offset + reason.length) revert InvalidRevertReason();
                 return string(abi.encodePacked(prefix, "Error(", reason, ")"));
             }
             // 36 = 4-byte selector + 32 bytes integer

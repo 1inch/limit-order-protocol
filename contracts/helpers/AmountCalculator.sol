@@ -9,6 +9,8 @@ import "../libraries/Callib.sol";
 contract AmountCalculator {
     using Callib for address;
 
+    error ArbitraryStaticCallFailed();
+
     /// @notice Calculates maker amount
     /// @return Result Floored maker amount
     function getMakingAmount(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapTakerAmount) public pure returns(uint256) {
@@ -25,7 +27,7 @@ contract AmountCalculator {
     /// @return Result Bytes transmuted to uint256
     function arbitraryStaticCall(address target, bytes calldata data) external view returns(uint256) {
         (bool success, uint256 res) = target.staticcallForUint(data);
-        require(success, "AC: arbitraryStaticCall");
+        if (!success) revert ArbitraryStaticCallFailed();
         return res;
     }
 }

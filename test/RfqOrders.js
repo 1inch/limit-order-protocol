@@ -192,7 +192,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrderRFQ(order, signature, 1, 0),
-                'LOP: invalidated order',
+                'InvalidatedOrder()',
             );
         });
 
@@ -205,7 +205,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             const { r, vs } = compactSignature(signature);
             await expectRevert(
                 this.swap.fillOrderRFQCompact(order, r, vs, 1),
-                'LOP: invalidated order',
+                'InvalidatedOrder()',
             );
         });
     });
@@ -322,7 +322,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrderRFQ(order, signature, 0, 1),
-                'LOP: can\'t swap 0 amount',
+                'SwapWithZeroAmount()',
             );
         });
 
@@ -333,7 +333,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             const { r, vs } = compactSignature(signature);
             await expectRevert(
                 this.swap.fillOrderRFQCompact(order, r, vs, 1),
-                'LOP: can\'t swap 0 amount',
+                'RFQSwapWithZeroAmount()',
             );
         });
 
@@ -343,7 +343,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
 
             await expectRevert(
                 this.swap.fillOrderRFQ(order, signature, 1, 0),
-                'LOP: order expired',
+                'OrderExpired()',
             );
         });
 
@@ -354,7 +354,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             const { r, vs } = compactSignature(signature);
             await expectRevert(
                 this.swap.fillOrderRFQCompact(order, r, vs, 1),
-                'LOP: order expired',
+                'OrderExpired()',
             );
         });
     });

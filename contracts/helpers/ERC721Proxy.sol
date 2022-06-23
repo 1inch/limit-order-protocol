@@ -12,8 +12,10 @@ import "./ImmutableOwner.sol";
 /* solhint-disable func-name-mixedcase */
 
 contract ERC721Proxy is ImmutableOwner {
+    error ERC721ProxyBadSelector();
+
     constructor(address _immutableOwner) ImmutableOwner(_immutableOwner) {
-        require(ERC721Proxy.func_60iHVgK.selector == IERC20.transferFrom.selector, "ERC721Proxy: bad selector");
+        if (ERC721Proxy.func_60iHVgK.selector != IERC20.transferFrom.selector) revert ERC721ProxyBadSelector();
     }
 
     /// @notice Proxy transfer method for `IERC721.transferFrom`. Selector must match `IERC20.transferFrom`.

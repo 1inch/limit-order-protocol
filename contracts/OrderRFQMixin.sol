@@ -15,6 +15,16 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     using SafeERC20 for IERC20;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
 
+    error RFQZeroTargetIsForbidden();
+    error RFQPrivateOrder();
+    error RFQBadSignature();
+    error OrderExpired();
+    error MakingAmountExceeded();
+    error TakingAmountExceeded();
+    error BothAmountsAreNonZero();
+    error RFQSwapWithZeroAmount();
+    error InvalidatedOrder();
+
     /// @notice Emitted when RFQ gets filled
     event OrderFilledRFQ(
         bytes32 orderHash,
@@ -118,7 +128,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         address target
     ) public returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = _hashTypedDataV4(order.hash());
-        require(ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature), "LOP: bad signature");
+        if (!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
         (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, makingAmount, takingAmount, target);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
@@ -129,18 +139,18 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 takingAmount,
         address target
     ) private returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */) {
-        require(target != address(0), "LOP: zero target is forbidden");
+        if (target == address(0)) revert RFQZeroTargetIsForbidden();
 
         address maker = order.maker;
 
         // Validate order
-        require(order.allowedSender == address(0) || order.allowedSender == msg.sender, "LOP: private order");
+        if (order.allowedSender != address(0) && order.allowedSender != msg.sender) revert RFQPrivateOrder();
 
         {  // Stack too deep
             uint256 info = order.info;
             // Check time expiration
             uint256 expiration = uint128(info) >> 64;
-            require(expiration == 0 || block.timestamp <= expiration, "LOP: order expired");  // solhint-disable-line not-rely-on-time
+            if (expiration != 0 && block.timestamp > expiration) revert OrderExpired(); // solhint-disable-line not-rely-on-time
             _invalidateOrder(maker, info);
         }
 
@@ -154,19 +164,19 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
                 takingAmount = orderTakingAmount;
             }
             else if (takingAmount == 0) {
-                require(makingAmount <= orderMakingAmount, "LOP: making amount exceeded");
+                if (makingAmount > orderMakingAmount) revert MakingAmountExceeded();
                 takingAmount = getTakingAmount(orderMakingAmount, orderTakingAmount, makingAmount);
             }
             else if (makingAmount == 0) {
-                require(takingAmount <= orderTakingAmount, "LOP: taking amount exceeded");
+                if (takingAmount > orderTakingAmount) revert TakingAmountExceeded();
                 makingAmount = getMakingAmount(orderMakingAmount, orderTakingAmount, takingAmount);
             }
             else {
-                revert("LOP: both amounts are non-zero");
+                revert BothAmountsAreNonZero();
             }
         }
 
-        require(makingAmount > 0 && takingAmount > 0, "LOP: can't swap 0 amount");
+        if (makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
 
         // Maker => Taker, Taker => Maker
         IERC20(order.makerAsset).safeTransferFrom(maker, target, makingAmount);
@@ -180,7 +190,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 invalidatorBit = 1 << uint8(orderInfo);
         mapping(uint256 => uint256) storage invalidatorStorage = _invalidator[maker];
         uint256 invalidator = invalidatorStorage[invalidatorSlot];
-        require(invalidator & invalidatorBit == 0, "LOP: invalidated order");
+        if (invalidator & invalidatorBit != 0) revert InvalidatedOrder();
         invalidatorStorage[invalidatorSlot] = invalidator | invalidatorBit;
     }
 }
