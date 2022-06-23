@@ -1,4 +1,4 @@
-const { expect, ether, toBN } = require('@1inch/solidity-utils');
+const { expect, ether, toBN, trim0x } = require('@1inch/solidity-utils');
 const { web3 } = require('hardhat');
 const { buildOrder, signOrder } = require('./helpers/orderUtils');
 const { cutLastArg, addr0Wallet, addr1Wallet } = require('./helpers/utils');
@@ -16,11 +16,11 @@ describe('ChainLinkExample', async function () {
     }
 
     function buildSinglePriceGetter (chainlink, oracle, inverse, spread, amount = '0') {
-        return chainlink.address + chainlink.contract.methods.singlePrice(oracle.address, buildInverseWithSpread(inverse, spread), amount).encodeABI().substring(2);
+        return chainlink.address + trim0x(chainlink.contract.methods.singlePrice(oracle.address, buildInverseWithSpread(inverse, spread), amount).encodeABI());
     }
 
     function buildDoublePriceGetter (chainlink, oracle1, oracle2, spread, amount = '0') {
-        return chainlink.address + chainlink.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount).encodeABI().substring(2);
+        return chainlink.address + trim0x(chainlink.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount).encodeABI());
     }
 
     before(async function () {
@@ -102,8 +102,8 @@ describe('ChainLinkExample', async function () {
                 takingAmount,
                 from: addr1,
             }, {
-                getMakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
-                getTakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
+                getMakingAmount: this.swap.address + trim0x(cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI())),
+                getTakingAmount: this.swap.address + trim0x(cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI())),
                 predicate: this.swap.contract.methods.lt(ether('6.32'), priceCall).encodeABI(),
             },
         );
@@ -137,8 +137,8 @@ describe('ChainLinkExample', async function () {
                 from: addr1,
             },
             {
-                getMakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
-                getTakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
+                getMakingAmount: this.swap.address + trim0x(cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI())),
+                getTakingAmount: this.swap.address + trim0x(cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI())),
                 predicate: this.swap.contract.methods.lt(ether('6.31'), priceCall).encodeABI(),
             },
         );
@@ -167,8 +167,8 @@ describe('ChainLinkExample', async function () {
                 from: addr1,
             },
             {
-                getMakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
-                getTakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
+                getMakingAmount: this.swap.address + trim0x(cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI())),
+                getTakingAmount: this.swap.address + trim0x(cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI())),
                 predicate: this.swap.contract.methods.lt(ether('0.0002501'), latestAnswerCall).encodeABI(),
             },
         );

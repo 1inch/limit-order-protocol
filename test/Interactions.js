@@ -1,4 +1,4 @@
-const { expect } = require('@1inch/solidity-utils');
+const { expect, trim0x } = require('@1inch/solidity-utils');
 const { addr0Wallet, addr1Wallet } = require('./helpers/utils');
 
 const TokenMock = artifacts.require('TokenMock');
@@ -54,7 +54,7 @@ describe('Interactions', async function () {
             },
             {
                 predicate: this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(),
-                postInteraction: this.notificationReceiver.address + addr1.substring(2),
+                postInteraction: this.notificationReceiver.address + trim0x(addr1),
             },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
@@ -91,7 +91,7 @@ describe('Interactions', async function () {
             {
                 predicate: this.swap.contract.methods.timestampBelow(0xff00000000).encodeABI(),
                 preInteraction: this.whitelistChecker.address,
-                postInteraction: this.notificationReceiver.address + addr1.substring(2),
+                postInteraction: this.notificationReceiver.address + trim0x(addr1),
             },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
