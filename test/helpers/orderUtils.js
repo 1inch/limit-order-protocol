@@ -1,4 +1,4 @@
-const { constants, toBN } = require('@1inch/solidity-utils');
+const { constants, toBN, trim0x } = require('@1inch/solidity-utils');
 const ethSigUtil = require('eth-sig-util');
 const { EIP712Domain } = require('./eip712');
 
@@ -77,7 +77,7 @@ function buildOrder (
         postInteraction,
     ];
 
-    const interactions = '0x' + allInteractions.map(a => a.substring(2)).join('');
+    const interactions = '0x' + allInteractions.map(trim0x).join('');
 
     // https://stackoverflow.com/a/55261098/440168
     const cumulativeSum = (sum => value => { sum += value; return sum; })(0);
