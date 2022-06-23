@@ -1,6 +1,8 @@
 const { toBN, ether } = require('@1inch/solidity-utils');
+const Wallet = require('ethereumjs-wallet').default;
 
-const addr1PrivateKey = 'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+const addr0Wallet = Wallet.fromPrivateKey(Buffer.from('ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', 'hex'));
+const addr1Wallet = Wallet.fromPrivateKey(Buffer.from('59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d', 'hex'));
 
 function price (val) {
     return ether(val).toString();
@@ -36,7 +38,8 @@ function joinStaticCalls (targets, datas) {
 }
 
 module.exports = {
-    addr1PrivateKey,
+    addr0Wallet,
+    addr1Wallet,
     joinStaticCalls,
     price,
     cutSelector,
