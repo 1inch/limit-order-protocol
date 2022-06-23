@@ -14,11 +14,11 @@ contract PredicateHelper {
 
     /// @notice Calls every target with corresponding data
     /// @return Result True if call to any target returned True. Otherwise, false
-    function or(uint256 offsets, bytes calldata data) external view returns(bool) {
+    function or(uint256 offsets, bytes calldata data) public view returns(bool) {
         uint256 current;
         uint256 previous;
         for (uint256 i = 0; (current = uint32(offsets >> (i << 5))) != 0; i++) {
-            (bool success, uint256 res) = address(this).staticcallForUint(data[previous:current]);
+            (bool success, uint256 res) = _selfStaticCall(data[previous:current]);
             if (success && res == 1) {
                 return true;
             }
@@ -29,11 +29,11 @@ contract PredicateHelper {
 
     /// @notice Calls every target with corresponding data
     /// @return Result True if calls to all targets returned True. Otherwise, false
-    function and(uint256 offsets, bytes calldata data) external view returns(bool) {
+    function and(uint256 offsets, bytes calldata data) public view returns(bool) {
         uint256 current;
         uint256 previous;
         for (uint256 i = 0; (current = uint32(offsets >> (i << 5))) != 0; i++) {
-            (bool success, uint256 res) = address(this).staticcallForUint(data[previous:current]);
+            (bool success, uint256 res) = _selfStaticCall(data[previous:current]);
             if (!success || res != 1) {
                 return false;
             }
@@ -45,38 +45,81 @@ contract PredicateHelper {
     /// @notice Calls target with specified data and tests if it's equal to the value
     /// @param value Value to test
     /// @return Result True if call to target returns the same value as `value`. Otherwise, false
-    function eq(uint256 value, bytes calldata data) external view returns(bool) {
-        (bool success, uint256 res) = address(this).staticcallForUint(data);
+    function eq(uint256 value, bytes calldata data) public view returns(bool) {
+        (bool success, uint256 res) = _selfStaticCall(data);
         return success && res == value;
     }
 
     /// @notice Calls target with specified data and tests if it's lower than value
     /// @param value Value to test
     /// @return Result True if call to target returns value which is lower than `value`. Otherwise, false
-    function lt(uint256 value, bytes calldata data) external view returns(bool) {
-        (bool success, uint256 res) = address(this).staticcallForUint(data);
+    function lt(uint256 value, bytes calldata data) public view returns(bool) {
+        (bool success, uint256 res) = _selfStaticCall(data);
         return success && res < value;
     }
 
     /// @notice Calls target with specified data and tests if it's bigger than value
     /// @param value Value to test
     /// @return Result True if call to target returns value which is bigger than `value`. Otherwise, false
-    function gt(uint256 value, bytes calldata data) external view returns(bool) {
-        (bool success, uint256 res) = address(this).staticcallForUint(data);
+    function gt(uint256 value, bytes calldata data) public view returns(bool) {
+        (bool success, uint256 res) = _selfStaticCall(data);
         return success && res > value;
     }
 
     /// @notice Checks passed time against block timestamp
     /// @return Result True if current block timestamp is lower than `time`. Otherwise, false
-    function timestampBelow(uint256 time) external view returns(bool) {
+    function timestampBelow(uint256 time) public view returns(bool) {
         return block.timestamp < time;  // solhint-disable-line not-rely-on-time
     }
 
     /// @notice Performs an arbitrary call to target with data
     /// @return Result Bytes transmuted to uint256
-    function arbitraryStaticCall(address target, bytes calldata data) external view returns(uint256) {
+    function arbitraryStaticCall(address target, bytes calldata data) public view returns(uint256) {
         (bool success, uint256 res) = target.staticcallForUint(data);
         if (!success) revert ArbitraryStaticCallFailed();
         return res;
+    }
+
+    function _selfStaticCall(bytes calldata data) internal view returns(bool, uint256) {
+        bytes4 selector;
+        uint256 arg;
+        bytes calldata param;
+        // uint256 index;
+        assembly {  // solhint-disable-line no-inline-assembly
+            selector := calldataload(data.offset)
+            arg := calldataload(add(data.offset, 4))
+            param.offset := add(data.offset, 100)
+            param.length := sub(data.length, 100)
+            // index := mod(mod(xor(shr(224, selector), 117243), 1337), 5)
+        }
+
+        // if (selector == [this.or, this.and, this.eq, this.lt, this.gt][index].selector) {
+        //     return (true, [or, and, eq, lt, gt][index](arg, param) ? 1 : 0);
+        // }
+        if (selector == this.or.selector) {
+            return (true, or(arg, param) ? 1 : 0);
+        }
+        if (selector == this.and.selector) {
+            return (true, and(arg, param) ? 1 : 0);
+        }
+        if (selector == this.eq.selector) {
+            return (true, eq(arg, param) ? 1 : 0);
+        }
+        if (selector == this.lt.selector) {
+            return (true, lt(arg, param) ? 1 : 0);
+        }
+        if (selector == this.gt.selector) {
+            return (true, gt(arg, param) ? 1 : 0);
+        }
+
+        // Other functions
+        if (selector == this.timestampBelow.selector) {
+            return (true, timestampBelow(arg) ? 1 : 0);
+        }
+        if (selector == this.arbitraryStaticCall.selector) {
+            return (true, arbitraryStaticCall(address(uint160(arg)), param));
+        }
+
+        return address(this).staticcallForUint(data);
     }
 }
