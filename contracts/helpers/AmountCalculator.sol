@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.11;
+pragma solidity 0.8.15;
 pragma abicoder v1;
 
 import "../libraries/Callib.sol";
@@ -8,6 +8,8 @@ import "../libraries/Callib.sol";
 /// @title A helper contract for calculations related to order amounts
 contract AmountCalculator {
     using Callib for address;
+
+    error ArbitraryStaticCallFailed();
 
     /// @notice Calculates maker amount
     /// @return Result Floored maker amount
@@ -25,7 +27,7 @@ contract AmountCalculator {
     /// @return Result Bytes transmuted to uint256
     function arbitraryStaticCall(address target, bytes calldata data) external view returns(uint256) {
         (bool success, uint256 res) = target.staticcallForUint(data);
-        require(success, "AC: arbitraryStaticCall");
+        if (!success) revert ArbitraryStaticCallFailed();
         return res;
     }
 }

@@ -6,6 +6,7 @@ const Wallet = require('ethereumjs-wallet').default;
 const TokenMock = artifacts.require('TokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 const AggregatorMock = artifacts.require('AggregatorMock');
+const ChainlinkCalculator = artifacts.require('ChainlinkCalculator');
 
 const { buildOrder, signOrder } = require('./helpers/orderUtils');
 const { toBN, cutLastArg } = require('./helpers/utils');
@@ -19,13 +20,12 @@ describe('ChainLinkExample', async function () {
         return toBN(spread).setn(255, inverse).toString();
     }
 
-    function buildSinglePriceGetter (swap, oracle, inverse, spread, amount = '0') {
-        return swap.contract.methods.singlePrice(oracle.address, buildInverseWithSpread(inverse, spread), amount).encodeABI();
+    function buildSinglePriceGetter (chainlink, oracle, inverse, spread, amount = '0') {
+        return chainlink.address + chainlink.contract.methods.singlePrice(oracle.address, buildInverseWithSpread(inverse, spread), amount).encodeABI().substring(2);
     }
 
-    // eslint-disable-next-line no-unused-vars
-    function buildDoublePriceGetter (swap, oracle1, oracle2, spread, amount = '0') {
-        return swap.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount).encodeABI();
+    function buildDoublePriceGetter (chainlink, oracle1, oracle2, spread, amount = '0') {
+        return chainlink.address + chainlink.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount).encodeABI().substring(2);
     }
 
     before(async function () {
@@ -39,6 +39,7 @@ describe('ChainLinkExample', async function () {
         this.inch = await TokenMock.new('1INCH', '1INCH');
 
         this.swap = await LimitOrderProtocol.new();
+        this.chainlink = await ChainlinkCalculator.new();
 
         await this.dai.mint(wallet, ether('1000000'));
         await this.weth.mint(wallet, ether('1000000'));
@@ -70,8 +71,8 @@ describe('ChainLinkExample', async function () {
                 from: wallet,
             },
             {
-                getMakingAmount: cutLastArg(buildSinglePriceGetter(this.swap, this.daiOracle, false, '990000000')), // maker offset is 0.99
-                getTakingAmount: cutLastArg(buildSinglePriceGetter(this.swap, this.daiOracle, true, '1010000000')), // taker offset is 1.01
+                getMakingAmount: cutLastArg(buildSinglePriceGetter(this.chainlink, this.daiOracle, false, '990000000')), // maker offset is 0.99
+                getTakingAmount: cutLastArg(buildSinglePriceGetter(this.chainlink, this.daiOracle, true, '1010000000')), // taker offset is 1.01
             },
         );
 
@@ -93,7 +94,7 @@ describe('ChainLinkExample', async function () {
     it('dai -> 1inch stop loss order', async function () {
         const makingAmount = ether('100');
         const takingAmount = ether('631');
-        const priceCall = buildDoublePriceGetter(this.swap, this.inchOracle, this.daiOracle, '1000000000', ether('1'));
+        const priceCall = buildDoublePriceGetter(this.chainlink, this.inchOracle, this.daiOracle, '1000000000', ether('1'));
 
         const order = buildOrder(
             {
@@ -104,9 +105,9 @@ describe('ChainLinkExample', async function () {
                 takingAmount,
                 from: wallet,
             }, {
-                getMakingAmount: cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()),
-                getTakingAmount: cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()),
-                predicate: this.swap.contract.methods.lt(ether('6.32'), this.swap.address, priceCall).encodeABI(),
+                getMakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
+                getTakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
+                predicate: this.swap.contract.methods.lt(ether('6.32'), priceCall).encodeABI(),
             },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
@@ -127,7 +128,7 @@ describe('ChainLinkExample', async function () {
     it('dai -> 1inch stop loss order predicate is invalid', async function () {
         const makingAmount = ether('100');
         const takingAmount = ether('631');
-        const priceCall = buildDoublePriceGetter(this.swap, this.inchOracle, this.daiOracle, '1000000000', ether('1'));
+        const priceCall = buildDoublePriceGetter(this.chainlink, this.inchOracle, this.daiOracle, '1000000000', ether('1'));
 
         const order = buildOrder(
             {
@@ -139,16 +140,16 @@ describe('ChainLinkExample', async function () {
                 from: wallet,
             },
             {
-                getMakingAmount: cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()),
-                getTakingAmount: cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()),
-                predicate: this.swap.contract.methods.lt(ether('6.31'), this.swap.address, priceCall).encodeABI(),
+                getMakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
+                getTakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
+                predicate: this.swap.contract.methods.lt(ether('6.31'), priceCall).encodeABI(),
             },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
         await expectRevert(
             this.swap.fillOrder(order, signature, '0x', makingAmount, 0, takingAmount.add(ether('0.01'))), // taking threshold = exact taker amount + eps
-            'LOP: predicate is not true',
+            'PredicateIsNotTrue()',
         );
     });
 
@@ -167,9 +168,9 @@ describe('ChainLinkExample', async function () {
                 from: wallet,
             },
             {
-                getMakingAmount: cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()),
-                getTakingAmount: cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()),
-                predicate: this.swap.contract.methods.lt(ether('0.0002501'), this.daiOracle.address, latestAnswerCall).encodeABI(),
+                getMakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
+                getTakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
+                predicate: this.swap.contract.methods.lt(ether('0.0002501'), this.daiOracle.address + latestAnswerCall.substring(2)).encodeABI(),
             },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
