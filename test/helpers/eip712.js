@@ -1,4 +1,4 @@
-const { BN } = require('@openzeppelin/test-helpers');
+const { toBN } = require('@1inch/solidity-utils');
 const ethSigUtil = require('eth-sig-util');
 const { fromRpcSig } = require('ethereumjs-util');
 const ERC20Permit = artifacts.require('@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol:ERC20Permit');
@@ -27,7 +27,7 @@ function domainSeparator (name, version, chainId, verifyingContract) {
     ).toString('hex');
 }
 
-const defaultDeadline = new BN('18446744073709551615');
+const defaultDeadline = toBN('18446744073709551615');
 
 function buildData (owner, name, version, chainId, verifyingContract, spender, nonce, value, deadline) {
     return {
@@ -49,7 +49,7 @@ async function getPermit (owner, ownerPrivateKey, token, tokenVersion, chainId, 
     return cutSelector(permitCall);
 }
 
-function withTarget(target, data) {
+function withTarget (target, data) {
     return target.toString() + trim0x(data);
 }
 
@@ -58,5 +58,5 @@ module.exports = {
     Permit,
     domainSeparator,
     getPermit,
-    withTarget
+    withTarget,
 };
