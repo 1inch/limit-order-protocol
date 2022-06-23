@@ -1,5 +1,5 @@
-const { ether, expectRevert } = require('@openzeppelin/test-helpers');
-const { expect } = require('chai');
+const { expect, ether, toBN } = require('@1inch/solidity-utils');
+
 const { web3 } = require('hardhat');
 const Wallet = require('ethereumjs-wallet').default;
 
@@ -9,7 +9,7 @@ const AggregatorMock = artifacts.require('AggregatorMock');
 const ChainlinkCalculator = artifacts.require('ChainlinkCalculator');
 
 const { buildOrder, signOrder } = require('./helpers/orderUtils');
-const { toBN, cutLastArg } = require('./helpers/utils');
+const { cutLastArg } = require('./helpers/utils');
 
 describe('ChainLinkExample', async function () {
     let _, wallet;
@@ -147,10 +147,9 @@ describe('ChainLinkExample', async function () {
         );
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
-        await expectRevert(
-            this.swap.fillOrder(order, signature, '0x', makingAmount, 0, takingAmount.add(ether('0.01'))), // taking threshold = exact taker amount + eps
-            'PredicateIsNotTrue()',
-        );
+        await expect(
+            this.swap.fillOrder(order, signature, '0x', makingAmount, 0, takingAmount.add(ether('0.01'))) // taking threshold = exact taker amount + eps
+        ).to.eventually.be.rejectedWith('PredicateIsNotTrue()');
     });
 
     it('eth -> dai stop loss order', async function () {

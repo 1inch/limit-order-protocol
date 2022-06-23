@@ -1,7 +1,6 @@
-const { constants } = require('@openzeppelin/test-helpers');
+const { constants, toBN } = require('@1inch/solidity-utils');
 const ethSigUtil = require('eth-sig-util');
 const { EIP712Domain } = require('./eip712');
-const { toBN, cutLastArg } = require('./utils');
 
 const OrderRFQ = [
     { name: 'info', type: 'uint256' },
@@ -14,7 +13,7 @@ const OrderRFQ = [
 ];
 
 const ABIOrderRFQ = {
-    'OrderRFQ' : OrderRFQ.reduce((obj, item) => {
+    OrderRFQ: OrderRFQ.reduce((obj, item) => {
         obj[item.name] = item.type;
         return obj;
     }, {}),
@@ -56,7 +55,7 @@ function buildOrder (
         permit = '0x',
         preInteraction = '0x',
         postInteraction = '0x',
-    } = {}
+    } = {},
 ) {
     if (getMakingAmount === '') {
         getMakingAmount = '0x6d'; // 'm'
@@ -108,7 +107,7 @@ function buildOrderRFQ (
     makingAmount,
     takingAmount,
     from,
-    allowedSender = constants.ZERO_ADDRESS
+    allowedSender = constants.ZERO_ADDRESS,
 ) {
     return {
         info,
@@ -156,7 +155,7 @@ function compactSignature (signature) {
     return {
         r: '0x' + r.toString('hex').padStart(64, '0'),
         vs: '0x' + v.subn(27).shln(255).add(s).toString('hex').padStart(64, '0'),
-    }
+    };
 }
 
 module.exports = {

@@ -1,5 +1,4 @@
-const { expectRevert, BN, time, constants } = require('@openzeppelin/test-helpers');
-const { expect } = require('chai');
+const { expect, toBN, time, constants, profileEVM } = require('@1inch/solidity-utils');
 
 const { bufferToHex } = require('ethereumjs-util');
 const ethSigUtil = require('eth-sig-util');
@@ -10,7 +9,6 @@ const WrappedTokenMock = artifacts.require('WrappedTokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 const ERC721Proxy = artifacts.require('ERC721Proxy');
 
-const { profileEVM } = require('./helpers/profileEVM');
 const { buildOrder, buildOrderData, signOrder } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { addr1PrivateKey, joinStaticCalls } = require('./helpers/utils');
@@ -72,10 +70,9 @@ describe('LimitOrderProtocol', async function () {
                 },
             );
 
-            await expectRevert(
-                this.swap.fillOrder(sentOrder, signature, '0x', 1, 0, 1),
-                'BadSignature()',
-            );
+            await expect(
+                this.swap.fillOrder(sentOrder, signature, '0x', 1, 0, 1)
+            ).to.eventually.be.rejectedWith('BadSignature()');
         });
 
         it('should not fill (1,1)', async function () {
@@ -91,10 +88,9 @@ describe('LimitOrderProtocol', async function () {
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
-            await expectRevert(
-                this.swap.fillOrder(order, signature, '0x', 1, 1, 1),
-                'OnlyOneAmountShouldBeZero()',
-            );
+            await expect(
+                this.swap.fillOrder(order, signature, '0x', 1, 1, 1)
+            ).to.eventually.be.rejectedWith('OnlyOneAmountShouldBeZero()');
         });
 
         it('should not fill above threshold', async function () {
@@ -110,10 +106,9 @@ describe('LimitOrderProtocol', async function () {
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
-            await expectRevert(
-                this.swap.fillOrder(order, signature, '0x', 2, 0, 1),
-                'TakingAmountTooHigh()',
-            );
+            await expect(
+                this.swap.fillOrder(order, signature, '0x', 2, 0, 1)
+            ).to.eventually.be.rejectedWith('TakingAmountTooHigh()');
         });
 
         it('should not fill below threshold', async function () {
@@ -129,10 +124,9 @@ describe('LimitOrderProtocol', async function () {
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
-            await expectRevert(
-                this.swap.fillOrder(order, signature, '0x', 0, 2, 3),
-                'MakingAmountTooLow()',
-            );
+            await expect(
+                this.swap.fillOrder(order, signature, '0x', 0, 2, 3)
+            ).to.eventually.be.rejectedWith('MakingAmountTooLow()');
         });
 
         it('should fail when both amounts are zero', async function () {
@@ -148,10 +142,9 @@ describe('LimitOrderProtocol', async function () {
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
-            await expectRevert(
+            await expect(
                 this.swap.fillOrder(order, signature, '0x', 0, 0, 0),
-                'OnlyOneAmountShouldBeZero()',
-            );
+            ).to.eventually.be.rejectedWith('OnlyOneAmountShouldBeZero()');
         });
 
         it('should swap fully based on signature', async function () {
@@ -267,10 +260,9 @@ describe('LimitOrderProtocol', async function () {
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
-            await expectRevert(
-                this.swap.fillOrder(order, signature, '0x', 0, 4, 0),
-                'SwapWithZeroAmount()',
-            );
+            await expect(
+                this.swap.fillOrder(order, signature, '0x', 0, 4, 0)
+            ).to.eventually.be.rejectedWith('SwapWithZeroAmount()');
         });
 
         it('should ceil taker amount', async function () {
@@ -371,7 +363,7 @@ describe('LimitOrderProtocol', async function () {
                 expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(takerDai.addn(1));
                 expect(await this.weth.balanceOf(wallet)).to.be.bignumber.equal(makerWeth.addn(1));
                 expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(takerWeth.subn(1));
-                expect(allowance).to.be.bignumber.eq(new BN('0'));
+                expect(allowance).to.be.bignumber.eq(toBN('0'));
             });
 
             it('rejects reused signature', async function () {
@@ -393,10 +385,7 @@ describe('LimitOrderProtocol', async function () {
                 const targetPermitPair = withTarget(this.weth.address, permit);
                 const requestFunc = () => swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr1, targetPermitPair);
                 await requestFunc();
-                await expectRevert(
-                    requestFunc(),
-                    'ERC20Permit: invalid signature',
-                );
+                await expect(requestFunc()).to.eventually.be.rejectedWith('ERC20Permit: invalid signature');
             });
 
             it('rejects other signature', async function () {
@@ -417,11 +406,9 @@ describe('LimitOrderProtocol', async function () {
                 const otherWallet = Wallet.generate();
                 const permit = await getPermit(addr1, otherWallet.getPrivateKey(), this.weth, '1', this.chainId, swap.address, '1');
                 const targetPermitPair = withTarget(this.weth.address, permit);
-                const requestFunc = () => swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr1, targetPermitPair);
-                await expectRevert(
-                    requestFunc(), // TODO: why we need requestFunc? O_o
-                    'ERC20Permit: invalid signature',
-                );
+                await expect(
+                    swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr1, targetPermitPair)
+                ).to.eventually.be.rejectedWith('ERC20Permit: invalid signature');
             });
 
             it('rejects expired permit', async function () {
@@ -440,11 +427,9 @@ describe('LimitOrderProtocol', async function () {
 
                 const permit = await getPermit(addr1, addr1PrivateKey, this.weth, '1', this.chainId, swap.address, '1', deadline);
                 const targetPermitPair = withTarget(this.weth.address, permit);
-                const requestFunc = () => swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr1, targetPermitPair);
-                await expectRevert(
-                    requestFunc(), // TODO: Why we need requestFunc? O_o
-                    'expired deadline',
-                );
+                await expect(
+                    swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr1, targetPermitPair)
+                ).to.eventually.be.rejectedWith('expired deadline');
             });
         });
     });
@@ -488,10 +473,9 @@ describe('LimitOrderProtocol', async function () {
             });
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
-            await expectRevert(
-                this.swap.fillOrder(order, signature, '0x', 5, 0, 5),
-                'WrongAmount()',
-            );
+            await expect(
+                this.swap.fillOrder(order, signature, '0x', 5, 0, 5)
+            ).to.eventually.be.rejectedWith('WrongAmount()');
         });
 
         it('empty getMakingAmount should work on full fill', async function () {
@@ -532,10 +516,9 @@ describe('LimitOrderProtocol', async function () {
             });
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
-            await expectRevert(
-                this.swap.fillOrder(order, signature, '0x', 0, 5, 5),
-                'WrongAmount()',
-            );
+            await expect(
+                this.swap.fillOrder(order, signature, '0x', 0, 5, 5)
+            ).to.eventually.be.rejectedWith('WrongAmount()');
         });
     });
 
@@ -560,10 +543,9 @@ describe('LimitOrderProtocol', async function () {
         });
 
         it('should not cancel foreign order', async function () {
-            await expectRevert(
-                this.swap.cancelOrder(this.order),
-                'AccessDenied()',
-            );
+            await expect(
+                this.swap.cancelOrder(this.order)
+            ).to.eventually.be.rejectedWith('AccessDenied()');
         });
 
         it('should not fill cancelled order', async function () {
@@ -571,10 +553,9 @@ describe('LimitOrderProtocol', async function () {
 
             await this.swap.cancelOrder(this.order, { from: wallet });
 
-            await expectRevert(
-                this.swap.fillOrder(this.order, signature, '0x', 1, 0, 1),
-                'RemainingAmountIsZero()',
-            );
+            await expect(
+                this.swap.fillOrder(this.order, signature, '0x', 1, 0, 1)
+            ).to.eventually.be.rejectedWith('RemainingAmountIsZero()');
         });
     });
 
@@ -616,10 +597,9 @@ describe('LimitOrderProtocol', async function () {
             });
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
-            await expectRevert(
+            await expect(
                 this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-                'PrivateOrder()',
-            );
+            ).to.eventually.be.rejectedWith('PrivateOrder()');
         });
     });
 
@@ -697,10 +677,9 @@ describe('LimitOrderProtocol', async function () {
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
-            await expectRevert(
-                this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-                'PredicateIsNotTrue()',
-            );
+            await expect(
+                this.swap.fillOrder(order, signature, '0x', 1, 0, 1)
+            ).to.eventually.be.rejectedWith('PredicateIsNotTrue()');
         });
 
         it('`and` should pass', async function () {
@@ -805,10 +784,9 @@ describe('LimitOrderProtocol', async function () {
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
-            await expectRevert(
-                this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-                'PredicateIsNotTrue()',
-            );
+            await expect(
+                this.swap.fillOrder(order, signature, '0x', 1, 0, 1)
+            ).to.eventually.be.rejectedWith('PredicateIsNotTrue()');
         });
     });
 
@@ -858,10 +836,9 @@ describe('LimitOrderProtocol', async function () {
             );
             const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
-            await expectRevert(
-                this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-                'PredicateIsNotTrue()',
-            );
+            await expect(
+                this.swap.fillOrder(order, signature, '0x', 1, 0, 1)
+            ).to.eventually.be.rejectedWith('PredicateIsNotTrue()');
         });
 
         it('should fill partially if not enough coins (taker)', async function () {

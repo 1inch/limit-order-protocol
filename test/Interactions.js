@@ -1,5 +1,4 @@
-const { expectRevert } = require('@openzeppelin/test-helpers');
-const { expect } = require('chai');
+const { expect } = require('@1inch/solidity-utils');
 
 const Wallet = require('ethereumjs-wallet').default;
 
@@ -141,9 +140,6 @@ describe('Interactions', async function () {
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());
 
         await this.whitelistRegistryMock.ban();
-        await expectRevert(
-            this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
-            'TakerIsNotWhitelisted()',
-        );
+        await expect(this.swap.fillOrder(order, signature, '0x', 1, 0, 1)).to.eventually.be.rejectedWith('TakerIsNotWhitelisted()');
     });
 });

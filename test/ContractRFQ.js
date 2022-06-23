@@ -1,5 +1,4 @@
-const { ether } = require('@openzeppelin/test-helpers');
-const { expect } = require('chai');
+const { expect, ether } = require('@1inch/solidity-utils');
 
 const TokenMock = artifacts.require('TokenMock');
 const ContractRFQ = artifacts.require('ContractRFQ');
