@@ -65,7 +65,7 @@ describe('LimitOrderProtocol', async function () {
             );
 
             await expect(
-                this.swap.fillOrder(sentOrder, signature, '0x', 1, 0, 1)
+                this.swap.fillOrder(sentOrder, signature, '0x', 1, 0, 1),
             ).to.eventually.be.rejectedWith('BadSignature()');
         });
 
@@ -83,7 +83,7 @@ describe('LimitOrderProtocol', async function () {
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
             await expect(
-                this.swap.fillOrder(order, signature, '0x', 1, 1, 1)
+                this.swap.fillOrder(order, signature, '0x', 1, 1, 1),
             ).to.eventually.be.rejectedWith('OnlyOneAmountShouldBeZero()');
         });
 
@@ -101,7 +101,7 @@ describe('LimitOrderProtocol', async function () {
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
             await expect(
-                this.swap.fillOrder(order, signature, '0x', 2, 0, 1)
+                this.swap.fillOrder(order, signature, '0x', 2, 0, 1),
             ).to.eventually.be.rejectedWith('TakingAmountTooHigh()');
         });
 
@@ -119,7 +119,7 @@ describe('LimitOrderProtocol', async function () {
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
             await expect(
-                this.swap.fillOrder(order, signature, '0x', 0, 2, 3)
+                this.swap.fillOrder(order, signature, '0x', 0, 2, 3),
             ).to.eventually.be.rejectedWith('MakingAmountTooLow()');
         });
 
@@ -255,7 +255,7 @@ describe('LimitOrderProtocol', async function () {
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
             await expect(
-                this.swap.fillOrder(order, signature, '0x', 0, 4, 0)
+                this.swap.fillOrder(order, signature, '0x', 0, 4, 0),
             ).to.eventually.be.rejectedWith('SwapWithZeroAmount()');
         });
 
@@ -401,7 +401,7 @@ describe('LimitOrderProtocol', async function () {
                 const permit = await getPermit(addr0, otherWallet.getPrivateKey(), this.weth, '1', this.chainId, swap.address, '1');
                 const targetPermitPair = withTarget(this.weth.address, permit);
                 await expect(
-                    swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr0, targetPermitPair)
+                    swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr0, targetPermitPair),
                 ).to.eventually.be.rejectedWith('ERC20Permit: invalid signature');
             });
 
@@ -422,7 +422,7 @@ describe('LimitOrderProtocol', async function () {
                 const permit = await getPermit(addr0, addr1Wallet.getPrivateKey(), this.weth, '1', this.chainId, swap.address, '1', deadline);
                 const targetPermitPair = withTarget(this.weth.address, permit);
                 await expect(
-                    swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr0, targetPermitPair)
+                    swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr0, targetPermitPair),
                 ).to.eventually.be.rejectedWith('expired deadline');
             });
         });
@@ -468,7 +468,7 @@ describe('LimitOrderProtocol', async function () {
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
             await expect(
-                this.swap.fillOrder(order, signature, '0x', 5, 0, 5)
+                this.swap.fillOrder(order, signature, '0x', 5, 0, 5),
             ).to.eventually.be.rejectedWith('WrongAmount()');
         });
 
@@ -511,7 +511,7 @@ describe('LimitOrderProtocol', async function () {
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
             await expect(
-                this.swap.fillOrder(order, signature, '0x', 0, 5, 5)
+                this.swap.fillOrder(order, signature, '0x', 0, 5, 5),
             ).to.eventually.be.rejectedWith('WrongAmount()');
         });
     });
@@ -538,7 +538,7 @@ describe('LimitOrderProtocol', async function () {
 
         it('should not cancel foreign order', async function () {
             await expect(
-                this.swap.cancelOrder(this.order)
+                this.swap.cancelOrder(this.order),
             ).to.eventually.be.rejectedWith('AccessDenied()');
         });
 
@@ -548,7 +548,7 @@ describe('LimitOrderProtocol', async function () {
             await this.swap.cancelOrder(this.order, { from: addr1 });
 
             await expect(
-                this.swap.fillOrder(this.order, signature, '0x', 1, 0, 1)
+                this.swap.fillOrder(this.order, signature, '0x', 1, 0, 1),
             ).to.eventually.be.rejectedWith('RemainingAmountIsZero()');
         });
     });
@@ -672,7 +672,7 @@ describe('LimitOrderProtocol', async function () {
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
             await expect(
-                this.swap.fillOrder(order, signature, '0x', 1, 0, 1)
+                this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
             ).to.eventually.be.rejectedWith('PredicateIsNotTrue()');
         });
 
@@ -779,7 +779,7 @@ describe('LimitOrderProtocol', async function () {
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
             await expect(
-                this.swap.fillOrder(order, signature, '0x', 1, 0, 1)
+                this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
             ).to.eventually.be.rejectedWith('PredicateIsNotTrue()');
         });
     });
@@ -831,7 +831,7 @@ describe('LimitOrderProtocol', async function () {
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
             await expect(
-                this.swap.fillOrder(order, signature, '0x', 1, 0, 1)
+                this.swap.fillOrder(order, signature, '0x', 1, 0, 1),
             ).to.eventually.be.rejectedWith('PredicateIsNotTrue()');
         });
 

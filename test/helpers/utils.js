@@ -27,7 +27,7 @@ function cutLastArg (data, padding = 0) {
 
 function joinStaticCalls (targets, datas) {
     const data = datas.map((d, i) => trim0x(targets[i]) + trim0x(d));
-    const cumulativeSum = (sum => value => sum += value)(0);
+    const cumulativeSum = (sum => value => { sum += value; return sum; })(0);
     return {
         offsets: data
             .map(d => d.length / 2)

@@ -142,7 +142,7 @@ describe('ChainLinkExample', async function () {
         const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
         await expect(
-            this.swap.fillOrder(order, signature, '0x', makingAmount, 0, takingAmount.add(ether('0.01'))) // taking threshold = exact taker amount + eps
+            this.swap.fillOrder(order, signature, '0x', makingAmount, 0, takingAmount.add(ether('0.01'))), // taking threshold = exact taker amount + eps
         ).to.eventually.be.rejectedWith('PredicateIsNotTrue()');
     });
 

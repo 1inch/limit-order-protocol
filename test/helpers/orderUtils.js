@@ -80,7 +80,7 @@ function buildOrder (
     const interactions = '0x' + allInteractions.map(a => a.substring(2)).join('');
 
     // https://stackoverflow.com/a/55261098/440168
-    const cumulativeSum = (sum => value => sum += value)(0);
+    const cumulativeSum = (sum => value => { sum += value; return sum; })(0);
     const offsets = allInteractions
         .map(a => a.length / 2 - 1)
         .map(cumulativeSum)

@@ -174,7 +174,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             await this.swap.cancelOrderRFQ('1', { from: addr1 });
 
             await expect(
-                this.swap.fillOrderRFQ(order, signature, 1, 0)
+                this.swap.fillOrderRFQ(order, signature, 1, 0),
             ).to.eventually.be.rejectedWith('InvalidatedOrder()');
         });
 
@@ -186,7 +186,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
 
             const { r, vs } = compactSignature(signature);
             await expect(
-                this.swap.fillOrderRFQCompact(order, r, vs, 1)
+                this.swap.fillOrderRFQCompact(order, r, vs, 1),
             ).to.eventually.be.rejectedWith('InvalidatedOrder()');
         });
     });
@@ -302,7 +302,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
             await expect(
-                this.swap.fillOrderRFQ(order, signature, 0, 1)
+                this.swap.fillOrderRFQ(order, signature, 0, 1),
             ).to.eventually.be.rejectedWith('SwapWithZeroAmount()');
         });
 
@@ -312,7 +312,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
 
             const { r, vs } = compactSignature(signature);
             await expect(
-                this.swap.fillOrderRFQCompact(order, r, vs, 1)
+                this.swap.fillOrderRFQCompact(order, r, vs, 1),
             ).to.eventually.be.rejectedWith('RFQSwapWithZeroAmount()');
         });
 
@@ -321,7 +321,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
             await expect(
-                this.swap.fillOrderRFQ(order, signature, 1, 0)
+                this.swap.fillOrderRFQ(order, signature, 1, 0),
             ).to.eventually.be.rejectedWith('OrderExpired()');
         });
 
@@ -331,7 +331,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
 
             const { r, vs } = compactSignature(signature);
             await expect(
-                this.swap.fillOrderRFQCompact(order, r, vs, 1)
+                this.swap.fillOrderRFQCompact(order, r, vs, 1),
             ).to.eventually.be.rejectedWith('OrderExpired()');
         });
     });
