@@ -1,13 +1,11 @@
-const { BN, ether } = require('@openzeppelin/test-helpers');
+const { toBN, ether } = require('@1inch/solidity-utils');
+const Wallet = require('ethereumjs-wallet').default;
 
-const addr1PrivateKey = 'ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
+const addr0Wallet = Wallet.fromPrivateKey(Buffer.from('ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', 'hex'));
+const addr1Wallet = Wallet.fromPrivateKey(Buffer.from('59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d', 'hex'));
 
 function price (val) {
     return ether(val).toString();
-}
-
-function toBN (num, base) {
-    return new BN(num, base === 'hex' ? 16 : base);
 }
 
 function trim0x (bigNumber) {
@@ -23,27 +21,27 @@ function cutSelector (data) {
     return hexPrefix + data.substring(hexPrefix.length + 8);
 }
 
-function cutLastArg (data, padding=0) {
+function cutLastArg (data, padding = 0) {
     return data.substring(0, data.length - 64 - padding);
 }
 
-function joinStaticCalls (targets, datas) {
-    const data = datas.map((d, i) => trim0x(targets[i]) + trim0x(d));
-    const cumulativeSum = (sum => value => sum += value)(0);
+function joinStaticCalls (dataArray) {
+    const trimmed = dataArray.map(trim0x);
+    const cumulativeSum = (sum => value => { sum += value; return sum; })(0);
     return {
-        offsets: data
+        offsets: trimmed
             .map(d => d.length / 2)
             .map(cumulativeSum)
             .reduce((acc, val, i) => acc.or(toBN(val).shln(32 * i)), toBN('0')),
-        data: '0x' + data.join('')
-    }
+        data: '0x' + trimmed.join(''),
+    };
 }
 
 module.exports = {
-    addr1PrivateKey,
+    addr0Wallet,
+    addr1Wallet,
     joinStaticCalls,
     price,
-    toBN,
     cutSelector,
     cutLastArg,
     trim0x,
