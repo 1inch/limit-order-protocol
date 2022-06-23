@@ -47,7 +47,7 @@ function buildOrder (
         from: maker = constants.ZERO_ADDRESS,
     },
     {
-        makerAssetData = constants.ZERO_ADDRESS,
+        makerAssetData = '0x',
         takerAssetData = '0x',
         getMakingAmount = '',
         getTakingAmount = '',
