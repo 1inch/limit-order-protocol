@@ -6,6 +6,7 @@ pragma abicoder v1;
 /// @title A helper contract to manage nonce with the series
 library Callib {
     function staticcallForUint(address target, bytes calldata input) internal view returns(bool success, uint256 res) {
+        /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
             let data := mload(0x40)
             mstore(0x40, add(data, input.length))

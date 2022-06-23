@@ -280,6 +280,7 @@ abstract contract OrderMixin is
 
     function _callTransferFrom(address asset, address from, address to, uint256 amount, bytes calldata input) private returns(bool success) {
         bytes4 selector = IERC20.transferFrom.selector;
+        /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
             let data := mload(0x40)
             mstore(0x40, add(data, add(100, input.length)))

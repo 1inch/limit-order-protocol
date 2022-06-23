@@ -18,6 +18,7 @@ library RevertReasonParser {
         if (data.length >= 4) {
             bytes4 selector;
 
+            // TODO: set memory-safe-assembly
             assembly {  // solhint-disable-line no-inline-assembly
                 selector := mload(add(data, 0x20))
             }
@@ -26,6 +27,7 @@ library RevertReasonParser {
             if (selector == _ERROR_SELECTOR && data.length >= 68) {
                 uint256 offset;
                 bytes memory reason;
+                // TODO: set memory-safe-assembly
                 assembly {  // solhint-disable-line no-inline-assembly
                     // 36 = 32 bytes data length + 4-byte selector
                     offset := mload(add(data, 36))
@@ -44,6 +46,7 @@ library RevertReasonParser {
             // 36 = 4-byte selector + 32 bytes integer
             else if (selector == _PANIC_SELECTOR && data.length == 36) {
                 uint256 code;
+                // TODO: set memory-safe-assembly
                 assembly {  // solhint-disable-line no-inline-assembly
                     // 36 = 32 bytes data length + 4-byte selector
                     code := mload(add(data, 36))

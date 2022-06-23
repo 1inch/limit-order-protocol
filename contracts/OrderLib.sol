@@ -97,6 +97,7 @@ library OrderLib {
     function hash(Order calldata order) internal pure returns(bytes32 result) {
         bytes calldata interactions = order.interactions;
         bytes32 typehash = _LIMIT_ORDER_TYPEHASH;
+        /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
             mstore(0x40, add(ptr, add(0x160, interactions.length)))
