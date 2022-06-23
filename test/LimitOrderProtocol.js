@@ -632,8 +632,17 @@ describe('LimitOrderProtocol', async function () {
                 '100000',
                 this.swap.contract.methods.arbitraryStaticCall(this.dai.address, balanceCall).encodeABI()
             ).encodeABI();
+
             const { offsets, data } = joinStaticCalls([tsBelow, gtBalance]);
             await this.swap.contract.methods.or(offsets, data).send({ from: wallet });
+        });
+
+        it('benchmark gas real case', async function () {
+            const tsBelow = this.swap.contract.methods.timestampBelow(0x70000000).encodeABI();
+            const eqNonce = this.swap.contract.methods.nonceEquals(wallet, 0).encodeABI();
+
+            const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
+            await this.swap.contract.methods.and(offsets, data).send({ from: wallet });
         });
 
         it('`or` should pass', async function () {
