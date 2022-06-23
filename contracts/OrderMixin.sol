@@ -213,24 +213,22 @@ abstract contract OrderMixin is
             if ((actualTakingAmount == 0) == (actualMakingAmount == 0)) {
                 revert OnlyOneAmountShouldBeZero();
             } else if (actualTakingAmount == 0) {
-                uint256 requestedMakingAmount = actualMakingAmount;
                 if (actualMakingAmount > remainingMakerAmount) {
                     actualMakingAmount = remainingMakerAmount;
                 }
                 actualTakingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
                 // check that actual rate is not worse than what was expected
-                // actualTakingAmount / actualMakingAmount <= thresholdAmount / requestedMakingAmount
-                if (actualTakingAmount * requestedMakingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
+                // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
+                if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
             } else {
-                uint256 requestedTakingAmount = actualTakingAmount;
                 actualMakingAmount = _callGetter(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount);
                 if (actualMakingAmount > remainingMakerAmount) {
                     actualMakingAmount = remainingMakerAmount;
                     actualTakingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
                 }
                 // check that actual rate is not worse than what was expected
-                // actualMakingAmount / actualTakingAmount >= thresholdAmount / requestedTakingAmount
-                if (actualMakingAmount * requestedTakingAmount < thresholdAmount * actualTakingAmount) revert MakingAmountTooLow();
+                // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
+                if (actualMakingAmount * takingAmount < thresholdAmount * actualTakingAmount) revert MakingAmountTooLow();
             }
 
             if (actualMakingAmount == 0 || actualTakingAmount == 0) revert SwapWithZeroAmount();
