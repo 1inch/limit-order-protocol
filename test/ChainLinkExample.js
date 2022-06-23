@@ -94,7 +94,10 @@ describe('ChainLinkExample', async function () {
     it('dai -> 1inch stop loss order', async function () {
         const makingAmount = ether('100');
         const takingAmount = ether('631');
-        const priceCall = buildDoublePriceGetter(this.chainlink, this.inchOracle, this.daiOracle, '1000000000', ether('1'));
+        const priceCall = this.swap.contract.methods.arbitraryStaticCall(
+            this.chainlink.address,
+            this.chainlink.contract.methods.doublePrice(this.inchOracle.address, this.daiOracle.address, buildInverseWithSpread(false, '1000000000'), '0', ether('1')).encodeABI()
+        ).encodeABI();
 
         const order = buildOrder(
             {
@@ -156,7 +159,10 @@ describe('ChainLinkExample', async function () {
     it('eth -> dai stop loss order', async function () {
         const makingAmount = ether('1');
         const takingAmount = ether('4000');
-        const latestAnswerCall = this.daiOracle.contract.methods.latestAnswer().encodeABI();
+        const latestAnswerCall = this.swap.contract.methods.arbitraryStaticCall(
+            this.daiOracle.address,
+            this.daiOracle.contract.methods.latestAnswer().encodeABI()
+        ).encodeABI();
 
         const order = buildOrder(
             {
@@ -170,7 +176,7 @@ describe('ChainLinkExample', async function () {
             {
                 getMakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
                 getTakingAmount: this.swap.address + cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI()).substring(2),
-                predicate: this.swap.contract.methods.lt(ether('0.0002501'), this.daiOracle.address + latestAnswerCall.substring(2)).encodeABI(),
+                predicate: this.swap.contract.methods.lt(ether('0.0002501'), latestAnswerCall).encodeABI(),
             },
         );
         const signature = signOrder(order, this.chainId, this.swap.address, account.getPrivateKey());

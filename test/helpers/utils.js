@@ -27,15 +27,15 @@ function cutLastArg (data, padding=0) {
     return data.substring(0, data.length - 64 - padding);
 }
 
-function joinStaticCalls (targets, datas) {
-    const data = datas.map((d, i) => trim0x(targets[i]) + trim0x(d));
+function joinStaticCalls (dataArray) {
+    const trimmed = dataArray.map(trim0x);
     const cumulativeSum = (sum => value => sum += value)(0);
     return {
-        offsets: data
+        offsets: trimmed
             .map(d => d.length / 2)
             .map(cumulativeSum)
             .reduce((acc, val, i) => acc.or(toBN(val).shln(32 * i)), toBN('0')),
-        data: '0x' + data.join('')
+        data: '0x' + trimmed.join('')
     }
 }
 
