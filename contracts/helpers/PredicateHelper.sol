@@ -12,6 +12,38 @@ contract PredicateHelper is NonceManager {
     using ArgumentsDecoder for bytes;
 
     error ArbitraryStaticCallFailed();
+    error InvalidDispatcher();
+
+    uint256 constant private _MAGIC_SALT = 117243;
+    uint256 constant private _MAGIC_PRIME = 1337;
+    uint256 constant private _DISPACTHER_SELECTORS = 1337;
+
+    constructor() {
+        bytes4 orSelector = this.or.selector;
+        bytes4 andSelector = this.and.selector;
+        bytes4 eqSelector = this.eq.selector;
+        bytes4 ltSelector = this.lt.selector;
+        bytes4 gtSelector = this.gt.selector;
+        bytes4 exception = InvalidDispatcher.selector;
+        assembly {  // solhint-disable-line no-inline-assembly
+            mstore(0, exception)
+            if xor(0, mod(mod(xor(shr(224, orSelector), _MAGIC_SALT), _MAGIC_PRIME), _DISPACTHER_SELECTORS)) {
+                revert(0, 4)
+            }
+            if xor(1, mod(mod(xor(shr(224, andSelector), _MAGIC_SALT), _MAGIC_PRIME), _DISPACTHER_SELECTORS)) {
+                revert(0, 4)
+            }
+            if xor(2, mod(mod(xor(shr(224, eqSelector), _MAGIC_SALT), _MAGIC_PRIME), _DISPACTHER_SELECTORS)) {
+                revert(0, 4)
+            }
+            if xor(3, mod(mod(xor(shr(224, ltSelector), _MAGIC_SALT), _MAGIC_PRIME), _DISPACTHER_SELECTORS)) {
+                revert(0, 4)
+            }
+            if xor(4, mod(mod(xor(shr(224, gtSelector), _MAGIC_SALT), _MAGIC_PRIME), _DISPACTHER_SELECTORS)) {
+                revert(0, 4)
+            }
+        }
+    }
 
     /// @notice Calls every target with corresponding data
     /// @return Result True if call to any target returned True. Otherwise, false
@@ -89,7 +121,7 @@ contract PredicateHelper is NonceManager {
         assembly {  // solhint-disable-line no-inline-assembly
             param.offset := add(data.offset, 100)
             param.length := sub(data.length, 100)
-            index := mod(mod(xor(shr(224, selector), 117243), 1337), 5)
+            index := mod(mod(xor(shr(224, selector), _MAGIC_SALT), _MAGIC_PRIME), _DISPACTHER_SELECTORS)
         }
 
         if (selector == [this.or, this.and, this.eq, this.lt, this.gt][index].selector) {
