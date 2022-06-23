@@ -4,9 +4,10 @@ pragma solidity 0.8.15;
 
 import "../libraries/Callib.sol";
 import "../libraries/ArgumentsDecoder.sol";
+import "./NonceManager.sol";
 
 /// @title A helper contract for executing boolean functions on arbitrary target call results
-contract PredicateHelper {
+contract PredicateHelper is NonceManager {
     using Callib for address;
     using ArgumentsDecoder for bytes;
 
@@ -81,40 +82,42 @@ contract PredicateHelper {
     }
 
     function _selfStaticCall(bytes calldata data) internal view returns(bool, uint256) {
-        bytes4 selector;
-        uint256 arg;
+        bytes4 selector = data.decodeSelector();
+        uint256 arg = data.decodeUint256(4);
         bytes calldata param;
-        // uint256 index;
+        uint256 index;
         assembly {  // solhint-disable-line no-inline-assembly
-            selector := calldataload(data.offset)
-            arg := calldataload(add(data.offset, 4))
             param.offset := add(data.offset, 100)
             param.length := sub(data.length, 100)
-            // index := mod(mod(xor(shr(224, selector), 117243), 1337), 5)
+            index := mod(mod(xor(shr(224, selector), 117243), 1337), 5)
         }
 
-        // if (selector == [this.or, this.and, this.eq, this.lt, this.gt][index].selector) {
-        //     return (true, [or, and, eq, lt, gt][index](arg, param) ? 1 : 0);
+        if (selector == [this.or, this.and, this.eq, this.lt, this.gt][index].selector) {
+            return (true, [or, and, eq, lt, gt][index](arg, param) ? 1 : 0);
+        }
+        // if (selector == this.or.selector) {
+        //     return (true, or(arg, param) ? 1 : 0);
         // }
-        if (selector == this.or.selector) {
-            return (true, or(arg, param) ? 1 : 0);
-        }
-        if (selector == this.and.selector) {
-            return (true, and(arg, param) ? 1 : 0);
-        }
-        if (selector == this.eq.selector) {
-            return (true, eq(arg, param) ? 1 : 0);
-        }
-        if (selector == this.lt.selector) {
-            return (true, lt(arg, param) ? 1 : 0);
-        }
-        if (selector == this.gt.selector) {
-            return (true, gt(arg, param) ? 1 : 0);
-        }
+        // if (selector == this.and.selector) {
+        //     return (true, and(arg, param) ? 1 : 0);
+        // }
+        // if (selector == this.eq.selector) {
+        //     return (true, eq(arg, param) ? 1 : 0);
+        // }
+        // if (selector == this.lt.selector) {
+        //     return (true, lt(arg, param) ? 1 : 0);
+        // }
+        // if (selector == this.gt.selector) {
+        //     return (true, gt(arg, param) ? 1 : 0);
+        // }
 
         // Other functions
         if (selector == this.timestampBelow.selector) {
             return (true, timestampBelow(arg) ? 1 : 0);
+        }
+        if (selector == this.nonceEquals.selector) {
+            uint256 arg2 = data.decodeUint256(0x24);
+            return (true, nonceEquals(address(uint160(arg)), arg2) ? 1 : 0);
         }
         if (selector == this.arbitraryStaticCall.selector) {
             return (true, arbitraryStaticCall(address(uint160(arg)), param));
