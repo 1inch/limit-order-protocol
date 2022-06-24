@@ -19,13 +19,12 @@ contract PredicateHelper is NonceManager {
     uint256 constant private _DISPACTHER_SELECTORS = 5;
 
     constructor() {
-        if (
-            _calculateIndex(PredicateHelper(address(0)).or.selector) != 0 ||
+        if (_calculateIndex(PredicateHelper(address(0)).or.selector) != 0 ||
             _calculateIndex(PredicateHelper(address(0)).and.selector) != 1 ||
             _calculateIndex(PredicateHelper(address(0)).eq.selector) != 2 ||
             _calculateIndex(PredicateHelper(address(0)).lt.selector) != 3 ||
-            _calculateIndex(PredicateHelper(address(0)).gt.selector) != 4
-        ) {
+            _calculateIndex(PredicateHelper(address(0)).gt.selector) != 4)
+        {
             revert InvalidDispatcher();
         }
     }
