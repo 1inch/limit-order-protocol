@@ -17,6 +17,24 @@ library ArgumentsDecoder {
         }
     }
 
+    function decodeUint256(bytes calldata data, uint256 offset) internal pure returns(uint256 value) {
+        assembly { // solhint-disable-line no-inline-assembly
+            value := calldataload(add(data.offset, offset))
+        }
+    }
+
+    function decodeSelector(bytes calldata data) internal pure returns(bytes4 value) {
+        assembly { // solhint-disable-line no-inline-assembly
+            value := calldataload(data.offset)
+        }
+    }
+
+    function decodeSelector(bytes calldata data, uint256 offset) internal pure returns(bytes4 value) {
+        assembly { // solhint-disable-line no-inline-assembly
+            value := calldataload(add(data.offset, offset))
+        }
+    }
+
     function decodeBoolMemory(bytes memory data) internal pure returns(bool value) {
         assembly { // solhint-disable-line no-inline-assembly
             value := eq(mload(add(data, 0x20)), 1)
@@ -26,6 +44,13 @@ library ArgumentsDecoder {
     function decodeBool(bytes calldata data) internal pure returns(bool value) {
         assembly { // solhint-disable-line no-inline-assembly
             value := eq(calldataload(data.offset), 1)
+        }
+    }
+
+    function decodeTailCalldata(bytes calldata data, uint256 tailOffset) internal pure returns(bytes calldata args) {
+        assembly {  // solhint-disable-line no-inline-assembly
+            args.offset := add(data.offset, tailOffset)
+            args.length := sub(data.length, tailOffset)
         }
     }
 
