@@ -35,7 +35,7 @@ contract PredicateHelper is NonceManager {
     function or(uint256 offsets, bytes calldata data) public view returns(bool) {
         uint256 current;
         uint256 previous;
-        for (uint256 i = 0; (current = uint32(offsets >> (i << 5))) != 0; i++) {
+        for (uint256 i = 0; (current = uint32(offsets >> i)) != 0; i += 32) {
             (bool success, uint256 res) = _selfStaticCall(data[previous:current]);
             if (success && res == 1) {
                 return true;
@@ -50,7 +50,7 @@ contract PredicateHelper is NonceManager {
     function and(uint256 offsets, bytes calldata data) public view returns(bool) {
         uint256 current;
         uint256 previous;
-        for (uint256 i = 0; (current = uint32(offsets >> (i << 5))) != 0; i++) {
+        for (uint256 i = 0; (current = uint32(offsets >> i)) != 0; i += 32) {
             (bool success, uint256 res) = _selfStaticCall(data[previous:current]);
             if (!success || res != 1) {
                 return false;
