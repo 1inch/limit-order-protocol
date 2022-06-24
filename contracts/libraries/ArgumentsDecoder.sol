@@ -32,7 +32,8 @@ library ArgumentsDecoder {
     function decodeTargetAndCalldata(bytes calldata data) internal pure returns(address target, bytes calldata args) {
         assembly {  // solhint-disable-line no-inline-assembly
             target := shr(96, calldataload(data.offset))
+            args.offset := add(data.offset, 20)
+            args.length := sub(data.length, 20)
         }
-        args = data[20:];
     }
 }
