@@ -11,6 +11,7 @@ import "./helpers/AmountCalculator.sol";
 import "./helpers/ChainlinkCalculator.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
+import "./interfaces/IOrderMixin.sol";
 import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Callib.sol";
@@ -18,6 +19,7 @@ import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
 abstract contract OrderMixin is
+    IOrderMixin,
     EIP712,
     AmountCalculator,
     ChainlinkCalculator,
@@ -51,7 +53,7 @@ abstract contract OrderMixin is
     mapping(bytes32 => uint256) private _remaining;
 
     /// @notice Returns unfilled amount for order. Throws if order does not exist
-    function remaining(bytes32 orderHash) external view returns(uint256) {
+    function remaining(bytes32 orderHash) external override virtual view returns(uint256) {
         uint256 amount = _remaining[orderHash];
         require(amount != _ORDER_DOES_NOT_EXIST, "LOP: Unknown order");
         unchecked { amount -= 1; }
@@ -60,12 +62,12 @@ abstract contract OrderMixin is
 
     /// @notice Returns unfilled amount for order
     /// @return Result Unfilled amount of order plus one if order exists. Otherwise 0
-    function remainingRaw(bytes32 orderHash) external view returns(uint256) {
+    function remainingRaw(bytes32 orderHash) external override virtual view returns(uint256) {
         return _remaining[orderHash];
     }
 
     /// @notice Same as `remainingRaw` but for multiple orders
-    function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory) {
+    function remainingsRaw(bytes32[] memory orderHashes) external override virtual view returns(uint256[] memory) {
         uint256[] memory results = new uint256[](orderHashes.length);
         for (uint256 i = 0; i < orderHashes.length; i++) {
             results[i] = _remaining[orderHashes[i]];
@@ -80,14 +82,14 @@ abstract contract OrderMixin is
      * @param target Addresses that will be delegated
      * @param data Data that will be passed to delegatee
      */
-    function simulate(address target, bytes calldata data) external {
+    function simulate(address target, bytes calldata data) external override virtual {
         // solhint-disable-next-lineavoid-low-level-calls
         (bool success, bytes memory result) = target.delegatecall(data);
         revert SimulationResults(success, result);
     }
 
     /// @notice Cancels order by setting remaining amount to zero
-    function cancelOrder(OrderLib.Order calldata order) external returns(uint256 orderRemaining, bytes32 orderHash) {
+    function cancelOrder(OrderLib.Order calldata order) external override virtual returns(uint256 orderRemaining, bytes32 orderHash) {
         require(order.maker == msg.sender, "LOP: Access denied");
 
         orderHash = hashOrder(order);
@@ -110,7 +112,7 @@ abstract contract OrderMixin is
         uint256 makingAmount,
         uint256 takingAmount,
         uint256 thresholdAmount
-    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
+    ) external override virtual returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
         return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, thresholdAmount, msg.sender);
     }
 
@@ -134,7 +136,7 @@ abstract contract OrderMixin is
         uint256 thresholdAmount,
         address target,
         bytes calldata permit
-    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
+    ) external override virtual returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
         require(permit.length >= 20, "LOP: permit length too low");
         {  // Stack too deep
             (address token, bytes calldata permitData) = permit.decodeTargetAndCalldata();
@@ -158,7 +160,7 @@ abstract contract OrderMixin is
         uint256 takingAmount,
         uint256 thresholdAmount,
         address target
-    ) public returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
+    ) public override virtual returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
         require(target != address(0), "LOP: zero target is forbidden");
         orderHash = hashOrder(order_);
 
@@ -271,12 +273,12 @@ abstract contract OrderMixin is
     }
 
     /// @notice Checks order predicate
-    function checkPredicate(OrderLib.Order calldata order) public view returns(bool) {
+    function checkPredicate(OrderLib.Order calldata order) public override virtual view returns(bool) {
         (bool success, uint256 res) = address(this).staticcallForUint(order.predicate());
         return success && res == 1;
     }
 
-    function hashOrder(OrderLib.Order calldata order) public view returns(bytes32) {
+    function hashOrder(OrderLib.Order calldata order) public override virtual view returns(bytes32) {
         return _hashTypedDataV4(order.hash());
     }
 
