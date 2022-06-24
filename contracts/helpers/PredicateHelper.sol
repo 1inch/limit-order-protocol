@@ -2,38 +2,36 @@
 
 pragma solidity 0.8.15;
 
-import "../interfaces/IPredicateHelper.sol";
 import "../libraries/Callib.sol";
 import "../libraries/ArgumentsDecoder.sol";
 import "./NonceManager.sol";
 
 /// @title A helper contract for executing boolean functions on arbitrary target call results
-contract PredicateHelper is NonceManager, IPredicateHelper {
+contract PredicateHelper is NonceManager {
     using Callib for address;
     using ArgumentsDecoder for bytes;
 
     error ArbitraryStaticCallFailed();
     error InvalidDispatcher();
 
-    uint256 constant private _MAGIC_SALT = 117243;
+    uint256 constant private _MAGIC_SALT = 117243;  // https://gist.github.com/k06a/5b6c06faa235e656cc391cb444ea71e8
     uint256 constant private _MAGIC_PRIME = 1337;
     uint256 constant private _DISPACTHER_SELECTORS = 5;
 
     constructor() {
         if (
-            _calculateIndex(IPredicateHelper.or.selector) != 0 ||
-            _calculateIndex(IPredicateHelper.and.selector) != 1 ||
-            _calculateIndex(IPredicateHelper.eq.selector) != 2 ||
-            _calculateIndex(IPredicateHelper.lt.selector) != 3 ||
-            _calculateIndex(IPredicateHelper.gt.selector) != 4
+            _calculateIndex(PredicateHelper(address(0)).or.selector) != 0 ||
+            _calculateIndex(PredicateHelper(address(0)).and.selector) != 1 ||
+            _calculateIndex(PredicateHelper(address(0)).eq.selector) != 2 ||
+            _calculateIndex(PredicateHelper(address(0)).lt.selector) != 3 ||
+            _calculateIndex(PredicateHelper(address(0)).gt.selector) != 4
         ) {
             revert InvalidDispatcher();
         }
     }
 
-    /**
-     * @notice See {IPredicateHelper-or}.
-     */
+    /// @notice Calls every target with corresponding data
+    /// @return Result True if call to any target returned True. Otherwise, false
     function or(uint256 offsets, bytes calldata data) public view returns(bool) {
         uint256 current;
         uint256 previous;
@@ -47,9 +45,8 @@ contract PredicateHelper is NonceManager, IPredicateHelper {
         return false;
     }
 
-    /**
-     * @notice See {IPredicateHelper-and}.
-     */
+    /// @notice Calls every target with corresponding data
+    /// @return Result True if calls to all targets returned True. Otherwise, false
     function and(uint256 offsets, bytes calldata data) public view returns(bool) {
         uint256 current;
         uint256 previous;
@@ -63,25 +60,25 @@ contract PredicateHelper is NonceManager, IPredicateHelper {
         return true;
     }
 
-    /**
-     * @notice See {IPredicateHelper-eq}.
-     */
+    /// @notice Calls target with specified data and tests if it's equal to the value
+    /// @param value Value to test
+    /// @return Result True if call to target returns the same value as `value`. Otherwise, false
     function eq(uint256 value, bytes calldata data) public view returns(bool) {
         (bool success, uint256 res) = _selfStaticCall(data);
         return success && res == value;
     }
 
-    /**
-     * @notice See {IPredicateHelper-lt}.
-     */
+    /// @notice Calls target with specified data and tests if it's lower than value
+    /// @param value Value to test
+    /// @return Result True if call to target returns value which is lower than `value`. Otherwise, false
     function lt(uint256 value, bytes calldata data) public view returns(bool) {
         (bool success, uint256 res) = _selfStaticCall(data);
         return success && res < value;
     }
 
-    /**
-     * @notice See {IPredicateHelper-gt}.
-     */
+    /// @notice Calls target with specified data and tests if it's bigger than value
+    /// @param value Value to test
+    /// @return Result True if call to target returns value which is bigger than `value`. Otherwise, false
     function gt(uint256 value, bytes calldata data) public view returns(bool) {
         (bool success, uint256 res) = _selfStaticCall(data);
         return success && res > value;
