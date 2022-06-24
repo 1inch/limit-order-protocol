@@ -2,12 +2,13 @@
 
 pragma solidity 0.8.15;
 
+import "../interfaces/IPredicateHelper.sol";
 import "../libraries/Callib.sol";
 import "../libraries/ArgumentsDecoder.sol";
 import "./NonceManager.sol";
 
 /// @title A helper contract for executing boolean functions on arbitrary target call results
-contract PredicateHelper is NonceManager {
+contract PredicateHelper is NonceManager, IPredicateHelper {
     using Callib for address;
     using ArgumentsDecoder for bytes;
 
@@ -19,11 +20,11 @@ contract PredicateHelper is NonceManager {
     uint256 constant private _DISPACTHER_SELECTORS = 5;
 
     constructor() {
-        bytes4 orSelector = this.or.selector;
-        bytes4 andSelector = this.and.selector;
-        bytes4 eqSelector = this.eq.selector;
-        bytes4 ltSelector = this.lt.selector;
-        bytes4 gtSelector = this.gt.selector;
+        bytes4 orSelector = IPredicateHelper.or.selector;
+        bytes4 andSelector = IPredicateHelper.and.selector;
+        bytes4 eqSelector = IPredicateHelper.eq.selector;
+        bytes4 ltSelector = IPredicateHelper.lt.selector;
+        bytes4 gtSelector = IPredicateHelper.gt.selector;
         bytes4 exception = InvalidDispatcher.selector;
         assembly {  // solhint-disable-line no-inline-assembly
             mstore(0, exception)
@@ -45,8 +46,9 @@ contract PredicateHelper is NonceManager {
         }
     }
 
-    /// @notice Calls every target with corresponding data
-    /// @return Result True if call to any target returned True. Otherwise, false
+    /**
+     * @notice See {IPredicateHelper-or}.
+     */
     function or(uint256 offsets, bytes calldata data) public view returns(bool) {
         uint256 current;
         uint256 previous;
@@ -60,8 +62,9 @@ contract PredicateHelper is NonceManager {
         return false;
     }
 
-    /// @notice Calls every target with corresponding data
-    /// @return Result True if calls to all targets returned True. Otherwise, false
+    /**
+     * @notice See {IPredicateHelper-and}.
+     */
     function and(uint256 offsets, bytes calldata data) public view returns(bool) {
         uint256 current;
         uint256 previous;
@@ -75,25 +78,25 @@ contract PredicateHelper is NonceManager {
         return true;
     }
 
-    /// @notice Calls target with specified data and tests if it's equal to the value
-    /// @param value Value to test
-    /// @return Result True if call to target returns the same value as `value`. Otherwise, false
+    /**
+     * @notice See {IPredicateHelper-eq}.
+     */
     function eq(uint256 value, bytes calldata data) public view returns(bool) {
         (bool success, uint256 res) = _selfStaticCall(data);
         return success && res == value;
     }
 
-    /// @notice Calls target with specified data and tests if it's lower than value
-    /// @param value Value to test
-    /// @return Result True if call to target returns value which is lower than `value`. Otherwise, false
+    /**
+     * @notice See {IPredicateHelper-lt}.
+     */
     function lt(uint256 value, bytes calldata data) public view returns(bool) {
         (bool success, uint256 res) = _selfStaticCall(data);
         return success && res < value;
     }
 
-    /// @notice Calls target with specified data and tests if it's bigger than value
-    /// @param value Value to test
-    /// @return Result True if call to target returns value which is bigger than `value`. Otherwise, false
+    /**
+     * @notice See {IPredicateHelper-gt}.
+     */
     function gt(uint256 value, bytes calldata data) public view returns(bool) {
         (bool success, uint256 res) = _selfStaticCall(data);
         return success && res > value;
