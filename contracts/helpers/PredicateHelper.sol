@@ -126,7 +126,7 @@ contract PredicateHelper is NonceManager {
 
     function _calculateIndex(bytes4 selector) private pure returns(uint256 index) {
         unchecked {
-            index = (((uint256(bytes32(selector)) >> 224) ^ _MAGIC_SALT) % _MAGIC_PRIME) % _DISPACTHER_SELECTORS;
+            index = ((uint32(selector) ^ _MAGIC_SALT) % _MAGIC_PRIME) % _DISPACTHER_SELECTORS;
         }
     }
 }
