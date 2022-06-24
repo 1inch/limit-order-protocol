@@ -20,28 +20,18 @@ contract PredicateHelper is NonceManager, IPredicateHelper {
     uint256 constant private _DISPACTHER_SELECTORS = 5;
 
     constructor() {
-        bytes4 orSelector = IPredicateHelper.or.selector;
-        bytes4 andSelector = IPredicateHelper.and.selector;
-        bytes4 eqSelector = IPredicateHelper.eq.selector;
-        bytes4 ltSelector = IPredicateHelper.lt.selector;
-        bytes4 gtSelector = IPredicateHelper.gt.selector;
-        bytes4 exception = InvalidDispatcher.selector;
-        assembly {  // solhint-disable-line no-inline-assembly
-            mstore(0, exception)
-            if xor(0, mod(mod(xor(shr(224, orSelector), _MAGIC_SALT), _MAGIC_PRIME), _DISPACTHER_SELECTORS)) {
-                revert(0, 4)
-            }
-            if xor(1, mod(mod(xor(shr(224, andSelector), _MAGIC_SALT), _MAGIC_PRIME), _DISPACTHER_SELECTORS)) {
-                revert(0, 4)
-            }
-            if xor(2, mod(mod(xor(shr(224, eqSelector), _MAGIC_SALT), _MAGIC_PRIME), _DISPACTHER_SELECTORS)) {
-                revert(0, 4)
-            }
-            if xor(3, mod(mod(xor(shr(224, ltSelector), _MAGIC_SALT), _MAGIC_PRIME), _DISPACTHER_SELECTORS)) {
-                revert(0, 4)
-            }
-            if xor(4, mod(mod(xor(shr(224, gtSelector), _MAGIC_SALT), _MAGIC_PRIME), _DISPACTHER_SELECTORS)) {
-                revert(0, 4)
+        bytes4[_DISPACTHER_SELECTORS] memory selectors = [
+            IPredicateHelper.or.selector,
+            IPredicateHelper.and.selector,
+            IPredicateHelper.eq.selector,
+            IPredicateHelper.lt.selector,
+            IPredicateHelper.gt.selector
+        ];
+        unchecked {
+            for (uint256 i = 0; i < _DISPACTHER_SELECTORS; i++) {
+                if ((((uint256(bytes32(selectors[i])) >> 224) ^ _MAGIC_SALT) % _MAGIC_PRIME) % _DISPACTHER_SELECTORS != i) {
+                    revert InvalidDispatcher();
+                }
             }
         }
     }
