@@ -16,7 +16,7 @@ contract PredicateHelper is NonceManager {
 
     uint256 constant private _MAGIC_SALT = 117243;
     uint256 constant private _MAGIC_PRIME = 1337;
-    uint256 constant private _DISPACTHER_SELECTORS = 1337;
+    uint256 constant private _DISPACTHER_SELECTORS = 5;
 
     constructor() {
         bytes4 orSelector = this.or.selector;
