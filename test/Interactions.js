@@ -140,7 +140,7 @@ describe('Interactions', async function () {
         await expect(this.swap.fillOrder(order, signature, '0x', 1, 0, 1)).to.eventually.be.rejectedWith('TakerIsNotWhitelisted()');
     });
 
-    it.only('should execute recursive swap', async function () {
+    it('should execute recursive swap', async function () {
         const matcher = await RecursiveMatcher.new();
 
         const order = buildOrder(

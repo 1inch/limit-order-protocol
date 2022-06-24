@@ -33,7 +33,7 @@ const Order = [
 ];
 
 const ABIOrder = {
-    'Order' : Order.reduce((obj, item) => {
+    Order: Order.reduce((obj, item) => {
         obj[item.name] = item.type;
         return obj;
     }, {}),
