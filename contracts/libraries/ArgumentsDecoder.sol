@@ -47,6 +47,13 @@ library ArgumentsDecoder {
         }
     }
 
+    function decodeTailCalldata(bytes calldata data, uint256 tailOffset) internal pure returns(bytes calldata args) {
+        assembly {  // solhint-disable-line no-inline-assembly
+            args.offset := add(data.offset, tailOffset)
+            args.length := sub(data.length, tailOffset)
+        }
+    }
+
     function decodeTargetAndCalldata(bytes calldata data) internal pure returns(address target, bytes calldata args) {
         assembly {  // solhint-disable-line no-inline-assembly
             target := shr(96, calldataload(data.offset))

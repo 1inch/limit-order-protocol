@@ -20,19 +20,14 @@ contract PredicateHelper is NonceManager, IPredicateHelper {
     uint256 constant private _DISPACTHER_SELECTORS = 5;
 
     constructor() {
-        bytes4[_DISPACTHER_SELECTORS] memory selectors = [
-            IPredicateHelper.or.selector,
-            IPredicateHelper.and.selector,
-            IPredicateHelper.eq.selector,
-            IPredicateHelper.lt.selector,
-            IPredicateHelper.gt.selector
-        ];
-        unchecked {
-            for (uint256 i = 0; i < _DISPACTHER_SELECTORS; i++) {
-                if ((((uint256(bytes32(selectors[i])) >> 224) ^ _MAGIC_SALT) % _MAGIC_PRIME) % _DISPACTHER_SELECTORS != i) {
-                    revert InvalidDispatcher();
-                }
-            }
+        if (
+            _calculateIndex(IPredicateHelper.or.selector) != 0 ||
+            _calculateIndex(IPredicateHelper.and.selector) != 1 ||
+            _calculateIndex(IPredicateHelper.eq.selector) != 2 ||
+            _calculateIndex(IPredicateHelper.lt.selector) != 3 ||
+            _calculateIndex(IPredicateHelper.gt.selector) != 4
+        ) {
+            revert InvalidDispatcher();
         }
     }
 
@@ -108,33 +103,13 @@ contract PredicateHelper is NonceManager, IPredicateHelper {
 
     function _selfStaticCall(bytes calldata data) internal view returns(bool, uint256) {
         bytes4 selector = data.decodeSelector();
+        uint256 index = _calculateIndex(selector);
         uint256 arg = data.decodeUint256(4);
-        bytes calldata param;
-        uint256 index;
-        assembly {  // solhint-disable-line no-inline-assembly
-            param.offset := add(data.offset, 100)
-            param.length := sub(data.length, 100)
-            index := mod(mod(xor(shr(224, selector), _MAGIC_SALT), _MAGIC_PRIME), _DISPACTHER_SELECTORS)
-        }
 
         if (selector == [this.or, this.and, this.eq, this.lt, this.gt][index].selector) {
+            bytes calldata param = data.decodeTailCalldata(100);
             return (true, [or, and, eq, lt, gt][index](arg, param) ? 1 : 0);
         }
-        // if (selector == this.or.selector) {
-        //     return (true, or(arg, param) ? 1 : 0);
-        // }
-        // if (selector == this.and.selector) {
-        //     return (true, and(arg, param) ? 1 : 0);
-        // }
-        // if (selector == this.eq.selector) {
-        //     return (true, eq(arg, param) ? 1 : 0);
-        // }
-        // if (selector == this.lt.selector) {
-        //     return (true, lt(arg, param) ? 1 : 0);
-        // }
-        // if (selector == this.gt.selector) {
-        //     return (true, gt(arg, param) ? 1 : 0);
-        // }
 
         // Other functions
         if (selector == this.timestampBelow.selector) {
@@ -145,9 +120,16 @@ contract PredicateHelper is NonceManager, IPredicateHelper {
             return (true, nonceEquals(address(uint160(arg)), arg2) ? 1 : 0);
         }
         if (selector == this.arbitraryStaticCall.selector) {
+            bytes calldata param = data.decodeTailCalldata(100);
             return (true, arbitraryStaticCall(address(uint160(arg)), param));
         }
 
         return address(this).staticcallForUint(data);
+    }
+
+    function _calculateIndex(bytes4 selector) private pure returns(uint256 index) {
+        unchecked {
+            index = (((uint256(bytes32(selector)) >> 224) ^ _MAGIC_SALT) % _MAGIC_PRIME) % _DISPACTHER_SELECTORS;
+        }
     }
 }
