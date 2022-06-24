@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.11;
+pragma solidity 0.8.15;
 pragma abicoder v1;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -12,8 +12,10 @@ import "./ImmutableOwner.sol";
 /* solhint-disable func-name-mixedcase */
 
 contract ERC1155Proxy is ImmutableOwner {
+    error ERC1155ProxyBadSelector();
+
     constructor(address _immutableOwner) ImmutableOwner(_immutableOwner) {
-        require(ERC1155Proxy.func_301JL5R.selector == IERC20.transferFrom.selector, "ERC1155Proxy: bad selector");
+        if (ERC1155Proxy.func_301JL5R.selector != IERC20.transferFrom.selector) revert ERC1155ProxyBadSelector();
     }
 
     /// @notice Proxy transfer method for `IERC1155.safeTransferFrom`. Selector must match `IERC20.transferFrom`

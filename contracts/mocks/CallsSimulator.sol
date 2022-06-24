@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.11;
+pragma solidity 0.8.15;
 
 import "../libraries/ArgumentsDecoder.sol";
 
 /// @title Tool to be used inside `LOP.simulate()` call
 contract CallsSimulator {
     using ArgumentsDecoder for bytes;
+
+    error ArraySizeMismatch();
 
     /**
      * @notice Calls every target with corresponding data. Then reverts with CALL_RESULTS_0101011 where zeroes and ones
@@ -15,7 +17,7 @@ contract CallsSimulator {
      * @param data Array of data that will be passed to each call
      */
     function simulateCalls(address[] calldata targets, bytes[] calldata data) external {
-        require(targets.length == data.length, "LOP: array size mismatch");
+        if (targets.length != data.length) revert ArraySizeMismatch();
         bytes memory reason = new bytes(targets.length);
         for (uint256 i = 0; i < targets.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls

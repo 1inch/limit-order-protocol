@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.11;
+pragma solidity 0.8.15;
 pragma abicoder v1;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -10,6 +10,8 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 /// @title A helper contract for interactions with https://docs.chain.link
 contract ChainlinkCalculator {
     using SafeCast for int256;
+
+    error DifferentOracleDecimals();
 
     uint256 private constant _SPREAD_DENOMINATOR = 1e9;
     uint256 private constant _INVERSE_MASK = 1 << 255;
@@ -35,7 +37,7 @@ contract ChainlinkCalculator {
     /// @notice Calculates price of token A relative to token B. Note that order is important
     /// @return Result Token A relative price times amount
     function doublePrice(AggregatorV3Interface oracle1, AggregatorV3Interface oracle2, uint256 spread, int256 decimalsScale, uint256 amount) external view returns(uint256) {
-        require(oracle1.decimals() == oracle2.decimals(), "CC: oracle decimals don't match");
+        if (oracle1.decimals() != oracle2.decimals()) revert DifferentOracleDecimals();
         (, int256 latestAnswer1,,,) = oracle1.latestRoundData();
         (, int256 latestAnswer2,,,) = oracle2.latestRoundData();
         if (decimalsScale > 0) {

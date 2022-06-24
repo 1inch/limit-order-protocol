@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.11;
+pragma solidity 0.8.15;
 pragma abicoder v1;
 
 // TODO: pass order hash, remaining amount, etc to the arguments
@@ -38,5 +38,5 @@ interface InteractionNotificationReceiver {
         uint256 makingAmount,
         uint256 takingAmount,
         bytes memory interactiveData
-    ) external;
+    ) external returns(uint256 offeredMakingAmount);
 }

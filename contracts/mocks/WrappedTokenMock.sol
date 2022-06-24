@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.11;
+pragma solidity 0.8.15;
 pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -9,6 +9,8 @@ import "../interfaces/IWithdrawable.sol";
 
 /// @title Generic token for testing purposes with deposit/withdraw capabilities
 contract WrappedTokenMock is ERC20Permit, Ownable, IWithdrawable {
+    error NotEnoughBalance();
+
     event Deposit(address indexed dst, uint wad);
     event Withdrawal(address indexed src, uint wad);
 
@@ -37,7 +39,7 @@ contract WrappedTokenMock is ERC20Permit, Ownable, IWithdrawable {
     }
 
     function withdraw(uint wad) public {
-        require(balanceOf(msg.sender) >= wad, "WTM: not enough balance");
+        if (balanceOf(msg.sender) < wad) revert NotEnoughBalance();
         _burn(msg.sender, wad);
         payable(msg.sender).transfer(wad);
         emit Withdrawal(msg.sender, wad);

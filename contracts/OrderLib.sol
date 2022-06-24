@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.11;
+pragma solidity 0.8.15;
 
 library OrderLib {
     struct Order {
@@ -76,6 +76,10 @@ library OrderLib {
 
     function getTakingAmount(Order calldata order) internal pure returns(bytes calldata) {
         return _get(order, DynamicField.GetTakingAmount);
+    }
+
+    function takingAmountIsFrosen(Order calldata order) internal pure returns(bool) {
+        return getTakingAmount(order).length == 0;
     }
 
     function predicate(Order calldata order) internal pure returns(bytes calldata) {
