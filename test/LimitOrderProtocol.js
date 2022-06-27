@@ -320,7 +320,7 @@ describe('LimitOrderProtocol', async function () {
             });
 
             it('DAI => WETH', async function () {
-                await this.dai.approve(swap.address, '1000000', { from: addr1Wallet.getAddressString() });
+                await this.dai.approve(this.swap.address, '1000000', { from: addr1Wallet.getAddressString() });
                 const order = buildOrder(
                     {
                         makerAsset: this.dai.address,
@@ -330,16 +330,16 @@ describe('LimitOrderProtocol', async function () {
                         from: addr1,
                     },
                 );
-                const signature = signOrder(order, this.chainId, swap.address, addr1Wallet.getPrivateKey());
+                const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
-                const permit = await getPermit(addr0, addr0Wallet.getPrivateKey(), this.weth, '1', this.chainId, swap.address, '1');
+                const permit = await getPermit(addr0, addr0Wallet.getPrivateKey(), this.weth, '1', this.chainId, this.swap.address, '1');
                 const targetPermitPair = withTarget(this.weth.address, permit);
 
                 const makerDai = await this.dai.balanceOf(addr1);
                 const takerDai = await this.dai.balanceOf(addr0);
                 const makerWeth = await this.weth.balanceOf(addr1);
                 const takerWeth = await this.weth.balanceOf(addr0);
-                const allowance = await this.weth.allowance(addr1Wallet.getAddressString(), swap.address);
+                const allowance = await this.weth.allowance(addr1Wallet.getAddressString(), this.swap.address);
 
                 await this.swap.fillOrderToWithPermit(order, signature, '0x', 1, 0, 1, addr0, targetPermitPair);
 
@@ -351,7 +351,7 @@ describe('LimitOrderProtocol', async function () {
             });
 
             it('rejects reused signature', async function () {
-                await this.dai.approve(swap.address, '1000000', { from: addr1Wallet.getAddressString() });
+                await this.dai.approve(this.swap.address, '1000000', { from: addr1Wallet.getAddressString() });
                 const order = buildOrder(
                     {
                         makerAsset: this.dai.address,
@@ -361,9 +361,9 @@ describe('LimitOrderProtocol', async function () {
                         from: addr1,
                     },
                 );
-                const signature = signOrder(order, this.chainId, swap.address, addr1Wallet.getPrivateKey());
+                const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
-                const permit = await getPermit(addr0, addr0Wallet.getPrivateKey(), this.weth, '1', this.chainId, swap.address, '1');
+                const permit = await getPermit(addr0, addr0Wallet.getPrivateKey(), this.weth, '1', this.chainId, this.swap.address, '1');
                 const targetPermitPair = withTarget(this.weth.address, permit);
                 const requestFunc = () => this.swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr0, targetPermitPair);
                 await requestFunc();
@@ -371,7 +371,7 @@ describe('LimitOrderProtocol', async function () {
             });
 
             it('rejects other signature', async function () {
-                await this.dai.approve(swap.address, '1000000', { from: addr1Wallet.getAddressString() });
+                await this.dai.approve(this.swap.address, '1000000', { from: addr1Wallet.getAddressString() });
                 const order = buildOrder(
                     {
                         makerAsset: this.dai.address,
@@ -381,10 +381,10 @@ describe('LimitOrderProtocol', async function () {
                         from: addr1,
                     },
                 );
-                const signature = signOrder(order, this.chainId, swap.address, addr1Wallet.getPrivateKey());
+                const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
                 const otherWallet = Wallet.generate();
-                const permit = await getPermit(addr0, otherWallet.getPrivateKey(), this.weth, '1', this.chainId, swap.address, '1');
+                const permit = await getPermit(addr0, otherWallet.getPrivateKey(), this.weth, '1', this.chainId, this.swap.address, '1');
                 const targetPermitPair = withTarget(this.weth.address, permit);
                 await expect(
                     this.swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr0, targetPermitPair),
@@ -393,7 +393,7 @@ describe('LimitOrderProtocol', async function () {
 
             it('rejects expired permit', async function () {
                 const deadline = (await time.latest()) - time.duration.weeks(1);
-                await this.dai.approve(swap.address, '1000000', { from: addr1Wallet.getAddressString() });
+                await this.dai.approve(this.swap.address, '1000000', { from: addr1Wallet.getAddressString() });
                 const order = buildOrder({
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
@@ -401,9 +401,9 @@ describe('LimitOrderProtocol', async function () {
                     takingAmount: 1,
                     from: addr1,
                 });
-                const signature = signOrder(order, this.chainId, swap.address, addr1Wallet.getPrivateKey());
+                const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
-                const permit = await getPermit(addr0, addr1Wallet.getPrivateKey(), this.weth, '1', this.chainId, swap.address, '1', deadline);
+                const permit = await getPermit(addr0, addr1Wallet.getPrivateKey(), this.weth, '1', this.chainId, this.swap.address, '1', deadline);
                 const targetPermitPair = withTarget(this.weth.address, permit);
                 await expect(
                     this.swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr0, targetPermitPair),
