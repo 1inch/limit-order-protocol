@@ -57,7 +57,7 @@ library OrderLib {
 
         uint256 bitShift = uint256(field) << 5; // field * 32
         return order.interactions[
-            uint32(order.offsets >> (bitShift - 32)):
+            uint32((order.offsets << 32) >> bitShift):
             uint32(order.offsets >> bitShift)
         ];
     }

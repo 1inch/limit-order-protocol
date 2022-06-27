@@ -283,7 +283,7 @@ abstract contract OrderMixin is
 
     /// @notice Checks order predicate
     function checkPredicate(OrderLib.Order calldata order) public override virtual view returns(bool) {
-        (bool success, uint256 res) = address(this).staticcallForUint(order.predicate());
+        (bool success, uint256 res) = _selfStaticCall(order.predicate());
         return success && res == 1;
     }
 
