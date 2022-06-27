@@ -9,8 +9,8 @@ import "../interfaces/IOrderMixin.sol";
 contract RecursiveMatcher is InteractionNotificationReceiver {
     bytes1 private constant _FINALIZE_INTERACTION = 0x01;
 
-    error incorrectCalldataParams();
-    error failedExternalCall();
+    error IncorrectCalldataParams();
+    error FailedExternalCall();
 
     function matchOrders(
         IOrderMixin orderMixin,
@@ -36,20 +36,20 @@ contract RecursiveMatcher is InteractionNotificationReceiver {
         address /* makerAsset */ ,
         address /* takerAsset */,
         uint256 /* makingAmount */,
-        uint256 takingAmount,
+        uint256 /* takingAmount */,
         bytes calldata interactiveData
-    ) external override returns(uint256 offeredMakingAmount) {
+    ) external returns(uint256) {
         if(interactiveData[0] == _FINALIZE_INTERACTION) {
             (
                 address[] memory targets,
                 bytes[] memory calldatas
             ) = abi.decode(interactiveData[1:], (address[], bytes[]));
 
-            if(targets.length != calldatas.length) revert incorrectCalldataParams();
+            if(targets.length != calldatas.length) revert IncorrectCalldataParams();
             for(uint256 i = 0; i < targets.length; i++) {
                 // solhint-disable-next-line avoid-low-level-calls
                 (bool success, ) = targets[i].call(calldatas[i]);
-                if(!success) revert failedExternalCall();
+                if(!success) revert FailedExternalCall();
             }
         } else {
             (
@@ -70,6 +70,6 @@ contract RecursiveMatcher is InteractionNotificationReceiver {
                 thresholdAmount
             );
         }
-        offeredMakingAmount = takingAmount; // TODO: can we calculate that?
+        return 0;
     }
 }
