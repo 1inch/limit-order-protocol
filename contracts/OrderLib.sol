@@ -103,6 +103,7 @@ library OrderLib {
         bytes32 typehash = _LIMIT_ORDER_TYPEHASH;
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
+            // we use add(0x160, interactions.length) instead of max(0x160, interactions.length) as it is cheaper
             mstore(0x40, add(ptr, add(0x160, interactions.length)))
 
             calldatacopy(ptr, interactions.offset, interactions.length)
