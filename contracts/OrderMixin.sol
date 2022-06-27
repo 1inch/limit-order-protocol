@@ -73,7 +73,7 @@ abstract contract OrderMixin is
     /**
      * @notice See {IOrderMixin-remaining}.
      */
-    function remaining(bytes32 orderHash) external override virtual view returns(uint256) {
+    function remaining(bytes32 orderHash) external view returns(uint256) {
         uint256 amount = _remaining[orderHash];
         if (amount == _ORDER_DOES_NOT_EXIST) revert UnknownOrder();
         unchecked { amount -= 1; }
@@ -83,14 +83,14 @@ abstract contract OrderMixin is
     /**
      * @notice See {IOrderMixin-remainingRaw}.
      */
-    function remainingRaw(bytes32 orderHash) external override virtual view returns(uint256) {
+    function remainingRaw(bytes32 orderHash) external view returns(uint256) {
         return _remaining[orderHash];
     }
 
     /**
      * @notice See {IOrderMixin-remainingsRaw}.
      */
-    function remainingsRaw(bytes32[] memory orderHashes) external override virtual view returns(uint256[] memory) {
+    function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory) {
         uint256[] memory results = new uint256[](orderHashes.length);
         for (uint256 i = 0; i < orderHashes.length; i++) {
             results[i] = _remaining[orderHashes[i]];
@@ -103,7 +103,7 @@ abstract contract OrderMixin is
     /**
      * @notice See {IOrderMixin-simulate}.
      */
-    function simulate(address target, bytes calldata data) external override virtual {
+    function simulate(address target, bytes calldata data) external {
         // solhint-disable-next-lineavoid-low-level-calls
         (bool success, bytes memory result) = target.delegatecall(data);
         revert SimulationResults(success, result);
@@ -112,7 +112,7 @@ abstract contract OrderMixin is
     /**
      * @notice See {IOrderMixin-cancelOrder}.
      */
-    function cancelOrder(OrderLib.Order calldata order) external  override virtual returns(uint256 orderRemaining, bytes32 orderHash) {
+    function cancelOrder(OrderLib.Order calldata order) external returns(uint256 orderRemaining, bytes32 orderHash) {
         if (order.maker != msg.sender) revert AccessDenied();
 
         orderHash = hashOrder(order);
@@ -132,7 +132,7 @@ abstract contract OrderMixin is
         uint256 makingAmount,
         uint256 takingAmount,
         uint256 thresholdAmount
-    ) external override virtual returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
+    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
         return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, thresholdAmount, msg.sender);
     }
 
@@ -148,7 +148,7 @@ abstract contract OrderMixin is
         uint256 thresholdAmount,
         address target,
         bytes calldata permit
-    ) external override virtual returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
+    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
         if (permit.length < 20) revert PermitLengthTooLow();
         {  // Stack too deep
             (address token, bytes calldata permitData) = permit.decodeTargetAndCalldata();
@@ -168,7 +168,7 @@ abstract contract OrderMixin is
         uint256 takingAmount,
         uint256 thresholdAmount,
         address target
-    ) public override virtual returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
+    ) public returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
         if (target == address(0)) revert ZeroTargetIsForbidden();
         orderHash = hashOrder(order_);
 
@@ -282,12 +282,12 @@ abstract contract OrderMixin is
     }
 
     /// @notice Checks order predicate
-    function checkPredicate(OrderLib.Order calldata order) public override virtual view returns(bool) {
+    function checkPredicate(OrderLib.Order calldata order) public view returns(bool) {
         (bool success, uint256 res) = _selfStaticCall(order.predicate());
         return success && res == 1;
     }
 
-    function hashOrder(OrderLib.Order calldata order) public override virtual view returns(bytes32) {
+    function hashOrder(OrderLib.Order calldata order) public view returns(bytes32) {
         return _hashTypedDataV4(order.hash());
     }
 

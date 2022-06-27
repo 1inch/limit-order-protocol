@@ -1,5 +1,4 @@
-const { expect, trim0x } = require('@1inch/solidity-utils');
-const { ether } = require('@openzeppelin/test-helpers');
+const { expect, trim0x, ether } = require('@1inch/solidity-utils');
 const { addr0Wallet, addr1Wallet } = require('./helpers/utils');
 
 const TokenMock = artifacts.require('TokenMock');

@@ -47,7 +47,7 @@ contract RecursiveMatcher is InteractionNotificationReceiver {
 
             if(targets.length != calldatas.length) revert incorrectCalldataParams();
             for(uint256 i = 0; i < targets.length; i++) {
-                // solhint-disable-next-lineavoid-low-level-calls
+                // solhint-disable-next-line avoid-low-level-calls
                 (bool success, ) = targets[i].call(calldatas[i]);
                 if(!success) revert failedExternalCall();
             }
