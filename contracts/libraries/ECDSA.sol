@@ -150,4 +150,99 @@ library ECDSA {
             }
         }
     }
+
+    // EIP1271 Mutable Extension:
+
+    function recoverOrIsValidSignatureAndApprove(address signer, bytes32 hash, bytes calldata signature, address token, uint256 amount) internal returns(bool success) {
+        if ((signature.length == 64 || signature.length == 65) && recover(hash, signature) == signer) {
+            return true;
+        }
+        return isValidSignatureAndApprove(signer, hash, signature, token, amount);
+    }
+
+    function recoverOrIsValidSignatureAndApprove(address signer, bytes32 hash, bytes32 r, bytes32 vs, address token, uint256 amount) internal returns(bool success) {
+        if (recover(hash, r, vs) == signer) {
+            return true;
+        }
+        return isValidSignatureAndApprove(signer, hash, r, vs, token, amount);
+    }
+
+    function recoverOrIsValidSignatureAndApprove65(address signer, bytes32 hash, bytes32 r, bytes32 vs, address token, uint256 amount) internal returns(bool success) {
+        if (recover(hash, r, vs) == signer) {
+            return true;
+        }
+        return isValidSignatureAndApprove65(signer, hash, r, vs, token, amount);
+    }
+
+    function isValidSignatureAndApprove(address signer, bytes32 hash, bytes calldata signature, address token, uint256 amount) internal returns(bool success) {
+        // (bool success, bytes memory data) = signer.call(abi.encodePacked(IERC1271.isValidSignature.selector, abi.encode(hash, signature, token, amount)));
+        // return success && data.length >= 4 && abi.decode(data, (bytes4)) == IERC1271.isValidSignature.selector;
+        bytes4 selector = IERC1271.isValidSignature.selector;
+        assembly { // solhint-disable-line no-inline-assembly
+            let ptr := mload(0x40)
+            let len := add(0xa4, signature.length)
+            mstore(0x40, add(ptr, len))
+
+            mstore(ptr, selector)
+            mstore(add(ptr, 0x04), hash)
+            mstore(add(ptr, 0x24), 0x80)
+            mstore(add(ptr, 0x44), token)
+            mstore(add(ptr, 0x64), amount)
+            mstore(add(ptr, 0x84), signature.length)
+            calldatacopy(add(ptr, 0xa4), signature.offset, signature.length)
+            mstore(0, 0)
+            if call(gas(), signer, 0, ptr, len, 0, 0x20) {
+                success := eq(selector, mload(0))
+            }
+        }
+    }
+
+    function isValidSignatureAndApprove(address signer, bytes32 hash, bytes32 r, bytes32 vs, address token, uint256 amount) internal returns(bool success) {
+        // (bool success, bytes memory data) = signer.call(abi.encodePacked(IERC1271.isValidSignature.selector, abi.encode(hash, abi.encodePacked(r, vs), token, amount)));
+        // return success && data.length >= 4 && abi.decode(data, (bytes4)) == IERC1271.isValidSignature.selector;
+        bytes4 selector = IERC1271.isValidSignature.selector;
+        assembly { // solhint-disable-line no-inline-assembly
+            let ptr := mload(0x40)
+            let len := add(0x84, 64)
+            mstore(0x40, add(ptr, len))
+
+            mstore(ptr, selector)
+            mstore(add(ptr, 0x04), hash)
+            mstore(add(ptr, 0x24), 0x80)
+            mstore(add(ptr, 0x44), token)
+            mstore(add(ptr, 0x64), amount)
+            mstore(add(ptr, 0x84), 64)
+            mstore(add(ptr, 0xa4), r)
+            mstore(add(ptr, 0xc4), vs)
+            mstore(0, 0)
+            if call(gas(), signer, 0, ptr, len, 0, 0x20) {
+                success := eq(selector, mload(0))
+            }
+        }
+    }
+
+    function isValidSignatureAndApprove65(address signer, bytes32 hash, bytes32 r, bytes32 vs, address token, uint256 amount) internal returns(bool success) {
+        // (bool success, bytes memory data) = signer.call(abi.encodePacked(IERC1271.isValidSignature.selector, abi.encode(hash, abi.encodePacked(r, vs & ~uint256(1 << 255), uint8(vs >> 255)), token, amount)));
+        // return success && data.length >= 4 && abi.decode(data, (bytes4)) == IERC1271.isValidSignature.selector;
+        bytes4 selector = IERC1271.isValidSignature.selector;
+        assembly { // solhint-disable-line no-inline-assembly
+            let ptr := mload(0x40)
+            let len := add(0xa4, 65)
+            mstore(0x40, add(ptr, len))
+
+            mstore(ptr, selector)
+            mstore(add(ptr, 0x04), hash)
+            mstore(add(ptr, 0x24), 0x80)
+            mstore(add(ptr, 0x44), token)
+            mstore(add(ptr, 0x64), amount)
+            mstore(add(ptr, 0x84), 65)
+            mstore(add(ptr, 0xa4), r)
+            mstore(add(ptr, 0xc4), shr(1, shl(1, vs)))
+            mstore8(add(ptr, 0xe4), add(27, shr(255, vs)))
+            mstore(0, 0)
+            if call(gas(), signer, 0, ptr, len, 0, 0x20) {
+                success := eq(selector, mload(0))
+            }
+        }
+    }
 }

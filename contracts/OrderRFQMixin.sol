@@ -78,22 +78,24 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         bytes32 vs,
         uint256 amount
     ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+        if (amount & _MAKER_AMOUNT_FLAG != 0) {
+            (filledMakingAmount, filledTakingAmount) = _computeAmounts(order, amount & _AMOUNT_MASK, 0);
+        } else {
+            (filledMakingAmount, filledTakingAmount) = _computeAmounts(order, 0, amount);
+        }
+
         orderHash = _hashTypedDataV4(order.hash());
         if (amount & _SIGNER_SMART_CONTRACT_HINT != 0) {
             if (amount & _IS_VALID_SIGNATURE_65_BYTES != 0) {
-                require(ECDSA.isValidSignature65(order.maker, orderHash, r, vs), "LOP: bad signature");
+                require(ECDSA.isValidSignatureAndApprove65(order.maker, orderHash, r, vs, order.makerAsset, filledMakingAmount), "LOP: bad signature");
             } else {
-                require(ECDSA.isValidSignature(order.maker, orderHash, r, vs), "LOP: bad signature");
+                require(ECDSA.isValidSignatureAndApprove(order.maker, orderHash, r, vs, order.makerAsset, filledMakingAmount), "LOP: bad signature");
             }
         } else {
-            require(ECDSA.recoverOrIsValidSignature(order.maker, orderHash, r, vs), "LOP: bad signature");
+            require(ECDSA.recoverOrIsValidSignatureAndApprove(order.maker, orderHash, r, vs, order.makerAsset, filledMakingAmount), "LOP: bad signature");
         }
 
-        if (amount & _MAKER_AMOUNT_FLAG != 0) {
-            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, amount & _AMOUNT_MASK, 0, msg.sender);
-        } else {
-            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, 0, amount, msg.sender);
-        }
+        _fillOrderRFQTo(order, filledMakingAmount, filledTakingAmount, msg.sender);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
@@ -114,7 +116,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 takingAmount,
         address target,
         bytes calldata permit
-    ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
+    ) external returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
         IERC20(order.takerAsset).safePermit(permit);
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, target);
     }
@@ -132,9 +134,12 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 takingAmount,
         address target
     ) public returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+        (filledMakingAmount, filledTakingAmount) = _computeAmounts(order, makingAmount, takingAmount);
         orderHash = _hashTypedDataV4(order.hash());
-        if (!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
-        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, makingAmount, takingAmount, target);
+
+        if (!ECDSA.recoverOrIsValidSignatureAndApprove(order.maker, orderHash, signature, order.makerAsset, filledMakingAmount)) revert RFQBadSignature();
+
+        _fillOrderRFQTo(order, filledMakingAmount, filledTakingAmount, target);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
@@ -143,7 +148,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 makingAmount,
         uint256 takingAmount,
         address target
-    ) private returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */) {
+    ) private {
         if (target == address(0)) revert RFQZeroTargetIsForbidden();
 
         address maker = order.maker;
@@ -159,33 +164,37 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
             _invalidateOrder(maker, info, 0);
         }
 
-        {  // Stack too deep
-            uint256 orderMakingAmount = order.makingAmount;
-            uint256 orderTakingAmount = order.takingAmount;
-            // Compute partial fill if needed
-            if (takingAmount == 0 && makingAmount == 0) {
-                // Two zeros means whole order
-                makingAmount = orderMakingAmount;
-                takingAmount = orderTakingAmount;
-            }
-            else if (takingAmount == 0) {
-                if (makingAmount > orderMakingAmount) revert MakingAmountExceeded();
-                takingAmount = getTakingAmount(orderMakingAmount, orderTakingAmount, makingAmount);
-            }
-            else if (makingAmount == 0) {
-                if (takingAmount > orderTakingAmount) revert TakingAmountExceeded();
-                makingAmount = getMakingAmount(orderMakingAmount, orderTakingAmount, takingAmount);
-            }
-            else {
-                revert BothAmountsAreNonZero();
-            }
-        }
-
         if (makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
 
         // Maker => Taker, Taker => Maker
         IERC20(order.makerAsset).safeTransferFrom(maker, target, makingAmount);
         IERC20(order.takerAsset).safeTransferFrom(msg.sender, maker, takingAmount);
+    }
+
+    function _computeAmounts(
+        OrderRFQLib.OrderRFQ memory order,
+        uint256 makingAmount,
+        uint256 takingAmount
+    ) private pure returns(uint256 /* makingAmount */, uint256 /* takingAmount */) {
+        uint256 orderMakingAmount = order.makingAmount;
+        uint256 orderTakingAmount = order.takingAmount;
+        // Compute partial fill if needed
+        if (takingAmount == 0 && makingAmount == 0) {
+            // Two zeros means whole order
+            makingAmount = orderMakingAmount;
+            takingAmount = orderTakingAmount;
+        }
+        else if (takingAmount == 0) {
+            if (makingAmount > orderMakingAmount) revert MakingAmountExceeded();
+            takingAmount = getTakingAmount(orderMakingAmount, orderTakingAmount, makingAmount);
+        }
+        else if (makingAmount == 0) {
+            if (takingAmount > orderTakingAmount) revert TakingAmountExceeded();
+            makingAmount = getMakingAmount(orderMakingAmount, orderTakingAmount, takingAmount);
+        }
+        else {
+            revert BothAmountsAreNonZero();
+        }
 
         return (makingAmount, takingAmount);
     }
