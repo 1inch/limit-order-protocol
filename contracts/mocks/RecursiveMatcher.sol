@@ -35,8 +35,8 @@ contract RecursiveMatcher is InteractionNotificationReceiver {
         address /* taker */,
         address /* makerAsset */ ,
         address /* takerAsset */,
-        uint256 makingAmount,
-        uint256 /* takingAmount */,
+        uint256 /* makingAmount */,
+        uint256 takingAmount,
         bytes calldata interactiveData
     ) external override returns(uint256 offeredMakingAmount) {
         if(interactiveData[0] == _FINALIZE_INTERACTION) {
@@ -51,8 +51,6 @@ contract RecursiveMatcher is InteractionNotificationReceiver {
                 (bool success, ) = targets[i].call(calldatas[i]);
                 if(!success) revert failedExternalCall();
             }
-
-            offeredMakingAmount = makingAmount; // TODO: can we calculate that?
         } else {
             (
                 OrderLib.Order memory order,
@@ -63,7 +61,7 @@ contract RecursiveMatcher is InteractionNotificationReceiver {
                 uint256 thresholdAmount
             ) = abi.decode(interactiveData[1:], (OrderLib.Order, bytes, bytes, uint256, uint256, uint256));
 
-            (offeredMakingAmount,,) = IOrderMixin(msg.sender).fillOrder(
+            IOrderMixin(msg.sender).fillOrder(
                 order,
                 signature,
                 interaction,
@@ -72,5 +70,6 @@ contract RecursiveMatcher is InteractionNotificationReceiver {
                 thresholdAmount
             );
         }
+        offeredMakingAmount = takingAmount; // TODO: can we calculate that?
     }
 }
