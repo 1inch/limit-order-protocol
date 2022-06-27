@@ -295,7 +295,6 @@ abstract contract OrderMixin is
         bytes4 selector = IERC20.transferFrom.selector;
         assembly { // solhint-disable-line no-inline-assembly
             let data := mload(0x40)
-            mstore(0x40, add(data, add(100, input.length)))
 
             mstore(data, selector)
             mstore(add(data, 0x04), from)
