@@ -313,9 +313,9 @@ describe('LimitOrderProtocol', async function () {
         });
     });
 
-    describe('Permit', function () {
-        describe('fillOrderToWithPermit', function () {
-            beforeEach(function () {
+    describe('Permit', async function () {
+        describe('fillOrderToWithPermit', async function () {
+            beforeEach(async function () {
                 this.swap = await LimitOrderProtocol.new();
             });
 

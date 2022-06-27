@@ -91,8 +91,8 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
         });
     });
 
-    describe('Permit', function () {
-        describe('fillOrderRFQToWithPermit', function () {
+    describe('Permit', async function () {
+        describe('fillOrderRFQToWithPermit', async function () {
             it('DAI => WETH', async function () {
                 const swap = await LimitOrderProtocol.new();
                 await this.dai.approve(swap.address, '1000000', { from: addr1 });
