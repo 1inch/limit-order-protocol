@@ -32,6 +32,13 @@ const Order = [
     { name: 'interactions', type: 'bytes' },
 ];
 
+const ABIOrder = {
+    Order: Order.reduce((obj, item) => {
+        obj[item.name] = item.type;
+        return obj;
+    }, {}),
+};
+
 const name = '1inch Limit Order Protocol';
 const version = '3';
 
@@ -160,6 +167,7 @@ function compactSignature (signature) {
 
 module.exports = {
     ABIOrderRFQ,
+    ABIOrder,
     buildOrder,
     buildOrderRFQ,
     buildOrderData,

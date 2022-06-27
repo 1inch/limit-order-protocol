@@ -38,5 +38,5 @@ interface InteractionNotificationReceiver {
         uint256 makingAmount,
         uint256 takingAmount,
         bytes memory interactiveData
-    ) external returns(uint256 offeredMakingAmount);
+    ) external returns(uint256 offeredTakingAmount);
 }

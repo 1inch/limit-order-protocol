@@ -9,6 +9,7 @@ import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "./helpers/AmountCalculator.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
+import "./interfaces/IOrderMixin.sol";
 import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Callib.sol";
@@ -17,6 +18,7 @@ import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
 abstract contract OrderMixin is
+    IOrderMixin,
     EIP712,
     AmountCalculator,
     NonceManager,
@@ -68,7 +70,9 @@ abstract contract OrderMixin is
     /// Therefore 0 means order doesn't exist and 1 means order was filled
     mapping(bytes32 => uint256) private _remaining;
 
-    /// @notice Returns unfilled amount for order. Throws if order does not exist
+    /**
+     * @notice See {IOrderMixin-remaining}.
+     */
     function remaining(bytes32 orderHash) external view returns(uint256) {
         uint256 amount = _remaining[orderHash];
         if (amount == _ORDER_DOES_NOT_EXIST) revert UnknownOrder();
@@ -76,13 +80,16 @@ abstract contract OrderMixin is
         return amount;
     }
 
-    /// @notice Returns unfilled amount for order
-    /// @return Result Unfilled amount of order plus one if order exists. Otherwise 0
+    /**
+     * @notice See {IOrderMixin-remainingRaw}.
+     */
     function remainingRaw(bytes32 orderHash) external view returns(uint256) {
         return _remaining[orderHash];
     }
 
-    /// @notice Same as `remainingRaw` but for multiple orders
+    /**
+     * @notice See {IOrderMixin-remainingsRaw}.
+     */
     function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory) {
         uint256[] memory results = new uint256[](orderHashes.length);
         for (uint256 i = 0; i < orderHashes.length; i++) {
@@ -94,9 +101,7 @@ abstract contract OrderMixin is
     error SimulationResults(bool success, bytes res);
 
     /**
-     * @notice Delegates execution to custom implementation. Could be used to validate if `transferFrom` works properly
-     * @param target Addresses that will be delegated
-     * @param data Data that will be passed to delegatee
+     * @notice See {IOrderMixin-simulate}.
      */
     function simulate(address target, bytes calldata data) external {
         // solhint-disable-next-lineavoid-low-level-calls
@@ -104,7 +109,9 @@ abstract contract OrderMixin is
         revert SimulationResults(success, result);
     }
 
-    /// @notice Cancels order by setting remaining amount to zero
+    /**
+     * @notice See {IOrderMixin-cancelOrder}.
+     */
     function cancelOrder(OrderLib.Order calldata order) external returns(uint256 orderRemaining, bytes32 orderHash) {
         if (order.maker != msg.sender) revert AccessDenied();
 
@@ -115,12 +122,9 @@ abstract contract OrderMixin is
         _remaining[orderHash] = _ORDER_FILLED;
     }
 
-    /// @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
-    /// @param order Order quote to fill
-    /// @param signature Signature to confirm quote ownership
-    /// @param makingAmount Making amount
-    /// @param takingAmount Taking amount
-    /// @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
+    /**
+     * @notice See {IOrderMixin-fillOrder}.
+     */
     function fillOrder(
         OrderLib.Order calldata order,
         bytes calldata signature,
@@ -132,17 +136,9 @@ abstract contract OrderMixin is
         return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, thresholdAmount, msg.sender);
     }
 
-    /// @notice Same as `fillOrder` but calls permit first,
-    /// allowing to approve token spending and make a swap in one transaction.
-    /// Also allows to specify funds destination instead of `msg.sender`
-    /// @param order Order quote to fill
-    /// @param signature Signature to confirm quote ownership
-    /// @param makingAmount Making amount
-    /// @param takingAmount Taking amount
-    /// @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
-    /// @param target Address that will receive swap funds
-    /// @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
-    /// @dev See tests for examples
+    /**
+     * @notice See {IOrderMixin-fillOrderToWithPermit}.
+     */
     function fillOrderToWithPermit(
         OrderLib.Order calldata order,
         bytes calldata signature,
@@ -161,13 +157,9 @@ abstract contract OrderMixin is
         return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, thresholdAmount, target);
     }
 
-    /// @notice Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
-    /// @param order_ Order quote to fill
-    /// @param signature Signature to confirm quote ownership
-    /// @param makingAmount Making amount
-    /// @param takingAmount Taking amount
-    /// @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
-    /// @param target Address that will receive swap funds
+    /**
+     * @notice See {IOrderMixin-fillOrderTo}.
+     */
     function fillOrderTo(
         OrderLib.Order calldata order_,
         bytes calldata signature,
