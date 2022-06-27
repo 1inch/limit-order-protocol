@@ -44,7 +44,6 @@ const version = '3';
 
 function buildOrder (
     {
-        exchange,
         makerAsset,
         takerAsset,
         makingAmount,

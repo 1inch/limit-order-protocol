@@ -48,7 +48,6 @@ describe('Interactions', async function () {
 
             const order = buildOrder(
                 {
-                    exchange: this.swap.address,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -84,7 +83,6 @@ describe('Interactions', async function () {
 
             const order = buildOrder(
                 {
-                    exchange: this.swap.address,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -124,7 +122,6 @@ describe('Interactions', async function () {
 
             const order = buildOrder(
                 {
-                    exchange: this.swap.address,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -151,7 +148,6 @@ describe('Interactions', async function () {
         it('opposite direction recursive swap', async function () {
             const order = buildOrder(
                 {
-                    exchange: this.swap.address,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: ether('100'),
@@ -165,7 +161,6 @@ describe('Interactions', async function () {
 
             const backOrder = buildOrder(
                 {
-                    exchange: this.swap.address,
                     makerAsset: this.weth.address,
                     takerAsset: this.dai.address,
                     makingAmount: ether('0.1'),
@@ -219,7 +214,6 @@ describe('Interactions', async function () {
         it('unidirectional recursive swap', async function () {
             const order = buildOrder(
                 {
-                    exchange: this.swap.address,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: ether('10'),
@@ -233,7 +227,6 @@ describe('Interactions', async function () {
 
             const backOrder = buildOrder(
                 {
-                    exchange: this.swap.address,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: ether('15'),
@@ -290,7 +283,6 @@ describe('Interactions', async function () {
         it('triple recursive swap', async function () {
             const order1 = buildOrder(
                 {
-                    exchange: this.swap.address,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: ether('10'),
@@ -304,7 +296,6 @@ describe('Interactions', async function () {
 
             const order2 = buildOrder(
                 {
-                    exchange: this.swap.address,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: ether('15'),
@@ -318,7 +309,6 @@ describe('Interactions', async function () {
 
             const backOrder = buildOrder(
                 {
-                    exchange: this.swap.address,
                     makerAsset: this.weth.address,
                     takerAsset: this.dai.address,
                     makingAmount: ether('0.025'),

@@ -44,7 +44,6 @@ describe('LimitOrderProtocol', async function () {
         it('should not swap with bad signature', async function () {
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -55,7 +54,6 @@ describe('LimitOrderProtocol', async function () {
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
             const sentOrder = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -72,7 +70,6 @@ describe('LimitOrderProtocol', async function () {
         it('should not fill (1,1)', async function () {
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -90,7 +87,6 @@ describe('LimitOrderProtocol', async function () {
         it('should not fill above threshold', async function () {
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 2,
@@ -108,7 +104,6 @@ describe('LimitOrderProtocol', async function () {
         it('should not fill below threshold', async function () {
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 2,
@@ -126,7 +121,6 @@ describe('LimitOrderProtocol', async function () {
         it('should fail when both amounts are zero', async function () {
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 100,
@@ -147,7 +141,6 @@ describe('LimitOrderProtocol', async function () {
 
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -180,7 +173,6 @@ describe('LimitOrderProtocol', async function () {
 
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 2,
@@ -215,7 +207,6 @@ describe('LimitOrderProtocol', async function () {
 
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 2,
@@ -244,7 +235,6 @@ describe('LimitOrderProtocol', async function () {
 
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 2,
@@ -265,7 +255,6 @@ describe('LimitOrderProtocol', async function () {
 
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 10,
@@ -287,52 +276,53 @@ describe('LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth.addn(1));
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
-    });
 
-    it('ERC721Proxy should work', async function () {
-        const erc721proxy = await ERC721Proxy.new(this.swap.address);
+        it('ERC721Proxy should work', async function () {
+            const erc721proxy = await ERC721Proxy.new(this.swap.address);
 
-        await this.dai.approve(erc721proxy.address, '10', { from: addr1 });
-        await this.weth.approve(erc721proxy.address, '10');
+            await this.dai.approve(erc721proxy.address, '10', { from: addr1 });
+            await this.weth.approve(erc721proxy.address, '10');
 
-        const order = buildOrder(
-            {
-                exchange: this.swap,
-                makerAsset: erc721proxy.address,
-                takerAsset: erc721proxy.address,
-                makingAmount: 10,
-                takingAmount: 10,
-                from: addr1,
-            },
-            {
-                makerAssetData: '0x' + erc721proxy.contract.methods.func_60iHVgK(addr1, constants.ZERO_ADDRESS, 0, 10, this.dai.address).encodeABI().substring(202),
-                takerAssetData: '0x' + erc721proxy.contract.methods.func_60iHVgK(constants.ZERO_ADDRESS, addr1, 0, 10, this.weth.address).encodeABI().substring(202),
-            },
-        );
+            const order = buildOrder(
+                {
+                    makerAsset: erc721proxy.address,
+                    takerAsset: erc721proxy.address,
+                    makingAmount: 10,
+                    takingAmount: 10,
+                    from: addr1,
+                },
+                {
+                    makerAssetData: '0x' + erc721proxy.contract.methods.func_60iHVgK(addr1, constants.ZERO_ADDRESS, 0, 10, this.dai.address).encodeABI().substring(202),
+                    takerAssetData: '0x' + erc721proxy.contract.methods.func_60iHVgK(constants.ZERO_ADDRESS, addr1, 0, 10, this.weth.address).encodeABI().substring(202),
+                },
+            );
 
-        const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
+            const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
-        const makerDai = await this.dai.balanceOf(addr1);
-        const takerDai = await this.dai.balanceOf(addr0);
-        const makerWeth = await this.weth.balanceOf(addr1);
-        const takerWeth = await this.weth.balanceOf(addr0);
+            const makerDai = await this.dai.balanceOf(addr1);
+            const takerDai = await this.dai.balanceOf(addr0);
+            const makerWeth = await this.weth.balanceOf(addr1);
+            const takerWeth = await this.weth.balanceOf(addr0);
 
-        await this.swap.fillOrder(order, signature, '0x', 10, 0, 10);
+            await this.swap.fillOrder(order, signature, '0x', 10, 0, 10);
 
-        expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.subn(10));
-        expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.addn(10));
-        expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth.addn(10));
-        expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(10));
+            expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.subn(10));
+            expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.addn(10));
+            expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth.addn(10));
+            expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(10));
+        });
     });
 
     describe('Permit', function () {
         describe('fillOrderToWithPermit', function () {
+            beforeEach(function () {
+                this.swap = await LimitOrderProtocol.new();
+            });
+
             it('DAI => WETH', async function () {
-                const swap = await LimitOrderProtocol.new();
                 await this.dai.approve(swap.address, '1000000', { from: addr1Wallet.getAddressString() });
                 const order = buildOrder(
                     {
-                        exchange: swap,
                         makerAsset: this.dai.address,
                         takerAsset: this.weth.address,
                         makingAmount: 1,
@@ -351,7 +341,7 @@ describe('LimitOrderProtocol', async function () {
                 const takerWeth = await this.weth.balanceOf(addr0);
                 const allowance = await this.weth.allowance(addr1Wallet.getAddressString(), swap.address);
 
-                await swap.fillOrderToWithPermit(order, signature, '0x', 1, 0, 1, addr0, targetPermitPair);
+                await this.swap.fillOrderToWithPermit(order, signature, '0x', 1, 0, 1, addr0, targetPermitPair);
 
                 expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.subn(1));
                 expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.addn(1));
@@ -361,11 +351,9 @@ describe('LimitOrderProtocol', async function () {
             });
 
             it('rejects reused signature', async function () {
-                const swap = await LimitOrderProtocol.new();
                 await this.dai.approve(swap.address, '1000000', { from: addr1Wallet.getAddressString() });
                 const order = buildOrder(
                     {
-                        exchange: swap,
                         makerAsset: this.dai.address,
                         takerAsset: this.weth.address,
                         makingAmount: 1,
@@ -377,17 +365,15 @@ describe('LimitOrderProtocol', async function () {
 
                 const permit = await getPermit(addr0, addr0Wallet.getPrivateKey(), this.weth, '1', this.chainId, swap.address, '1');
                 const targetPermitPair = withTarget(this.weth.address, permit);
-                const requestFunc = () => swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr0, targetPermitPair);
+                const requestFunc = () => this.swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr0, targetPermitPair);
                 await requestFunc();
                 await expect(requestFunc()).to.eventually.be.rejectedWith('ERC20Permit: invalid signature');
             });
 
             it('rejects other signature', async function () {
-                const swap = await LimitOrderProtocol.new();
                 await this.dai.approve(swap.address, '1000000', { from: addr1Wallet.getAddressString() });
                 const order = buildOrder(
                     {
-                        exchange: swap,
                         makerAsset: this.dai.address,
                         takerAsset: this.weth.address,
                         makingAmount: 1,
@@ -401,16 +387,14 @@ describe('LimitOrderProtocol', async function () {
                 const permit = await getPermit(addr0, otherWallet.getPrivateKey(), this.weth, '1', this.chainId, swap.address, '1');
                 const targetPermitPair = withTarget(this.weth.address, permit);
                 await expect(
-                    swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr0, targetPermitPair),
+                    this.swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr0, targetPermitPair),
                 ).to.eventually.be.rejectedWith('ERC20Permit: invalid signature');
             });
 
             it('rejects expired permit', async function () {
                 const deadline = (await time.latest()) - time.duration.weeks(1);
-                const swap = await LimitOrderProtocol.new();
                 await this.dai.approve(swap.address, '1000000', { from: addr1Wallet.getAddressString() });
                 const order = buildOrder({
-                    exchange: swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -422,7 +406,7 @@ describe('LimitOrderProtocol', async function () {
                 const permit = await getPermit(addr0, addr1Wallet.getPrivateKey(), this.weth, '1', this.chainId, swap.address, '1', deadline);
                 const targetPermitPair = withTarget(this.weth.address, permit);
                 await expect(
-                    swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr0, targetPermitPair),
+                    this.swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr0, targetPermitPair),
                 ).to.eventually.be.rejectedWith('expired deadline');
             });
         });
@@ -431,7 +415,6 @@ describe('LimitOrderProtocol', async function () {
     describe('Amount Calculator', async function () {
         it('empty getTakingAmount should work on full fill', async function () {
             const order = buildOrder({
-                exchange: this.swap,
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
                 makingAmount: 10,
@@ -456,7 +439,6 @@ describe('LimitOrderProtocol', async function () {
 
         it('empty getTakingAmount should not work on partial fill', async function () {
             const order = buildOrder({
-                exchange: this.swap,
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
                 makingAmount: 10,
@@ -474,7 +456,6 @@ describe('LimitOrderProtocol', async function () {
 
         it('empty getMakingAmount should work on full fill', async function () {
             const order = buildOrder({
-                exchange: this.swap,
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
                 makingAmount: 10,
@@ -499,7 +480,6 @@ describe('LimitOrderProtocol', async function () {
 
         it('empty getMakingAmount should not work on partial fill', async function () {
             const order = buildOrder({
-                exchange: this.swap,
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
                 makingAmount: 10,
@@ -519,7 +499,6 @@ describe('LimitOrderProtocol', async function () {
     describe('Order Cancelation', async function () {
         beforeEach(async function () {
             this.order = buildOrder({
-                exchange: this.swap,
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
                 makingAmount: 1,
@@ -556,7 +535,6 @@ describe('LimitOrderProtocol', async function () {
     describe('Private Orders', async function () {
         it('should fill with correct taker', async function () {
             const order = buildOrder({
-                exchange: this.swap,
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
                 makingAmount: 1,
@@ -581,7 +559,6 @@ describe('LimitOrderProtocol', async function () {
 
         it('should not fill with incorrect taker', async function () {
             const order = buildOrder({
-                exchange: this.swap,
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
                 makingAmount: 1,
@@ -630,7 +607,6 @@ describe('LimitOrderProtocol', async function () {
 
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -667,7 +643,6 @@ describe('LimitOrderProtocol', async function () {
             const predicate = this.swap.contract.methods.or(offsets, data).encodeABI();
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -696,7 +671,6 @@ describe('LimitOrderProtocol', async function () {
             const predicate = this.swap.contract.methods.and(offsets, data).encodeABI();
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -729,7 +703,6 @@ describe('LimitOrderProtocol', async function () {
             const predicate = this.swap.contract.methods.and(offsets, data).encodeABI();
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -771,7 +744,6 @@ describe('LimitOrderProtocol', async function () {
             const predicate = this.swap.contract.methods.and(offsets, data).encodeABI();
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -794,7 +766,6 @@ describe('LimitOrderProtocol', async function () {
         it('should fill when not expired', async function () {
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -823,7 +794,6 @@ describe('LimitOrderProtocol', async function () {
         it('should not fill when expired', async function () {
             const order = buildOrder(
                 {
-                    exchange: this.swap,
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
                     makingAmount: 1,
@@ -843,7 +813,6 @@ describe('LimitOrderProtocol', async function () {
 
         it('should fill partially if not enough coins (taker)', async function () {
             const order = buildOrder({
-                exchange: this.swap,
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
                 makingAmount: 2,
@@ -867,7 +836,6 @@ describe('LimitOrderProtocol', async function () {
 
         it('should fill partially if not enough coins (maker)', async function () {
             const order = buildOrder({
-                exchange: this.swap,
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
                 makingAmount: 2,

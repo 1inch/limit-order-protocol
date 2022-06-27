@@ -57,7 +57,6 @@ describe('ChainLinkExample', async function () {
         // chainlink rate is 1 eth = 4000 dai
         const order = buildOrder(
             {
-                exchange: this.swap,
                 makerAsset: this.weth.address,
                 takerAsset: this.dai.address,
                 makingAmount: ether('1').toString(),
@@ -95,7 +94,6 @@ describe('ChainLinkExample', async function () {
 
         const order = buildOrder(
             {
-                exchange: this.swap,
                 makerAsset: this.inch.address,
                 takerAsset: this.dai.address,
                 makingAmount,
@@ -129,7 +127,6 @@ describe('ChainLinkExample', async function () {
 
         const order = buildOrder(
             {
-                exchange: this.swap,
                 makerAsset: this.inch.address,
                 takerAsset: this.dai.address,
                 makingAmount,
@@ -159,7 +156,6 @@ describe('ChainLinkExample', async function () {
 
         const order = buildOrder(
             {
-                exchange: this.swap,
                 makerAsset: this.weth.address,
                 takerAsset: this.dai.address,
                 makingAmount,
