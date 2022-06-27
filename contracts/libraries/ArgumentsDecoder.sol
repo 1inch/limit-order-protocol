@@ -13,7 +13,7 @@ library ArgumentsDecoder {
     }
 
     function decodeUint256(bytes calldata data) internal pure returns(uint256 value) {
-        /// @solidity memory-safe-assembly
+        // no memory ops inside so this insertion is automatically memory safe
         assembly { // solhint-disable-line no-inline-assembly
             value := calldataload(data.offset)
         }
@@ -27,14 +27,14 @@ library ArgumentsDecoder {
     }
 
     function decodeBool(bytes calldata data) internal pure returns(bool value) {
-        /// @solidity memory-safe-assembly
+        // no memory ops inside so this insertion is automatically memory safe
         assembly { // solhint-disable-line no-inline-assembly
             value := eq(calldataload(data.offset), 1)
         }
     }
 
     function decodeTargetAndCalldata(bytes calldata data) internal pure returns(address target, bytes calldata args) {
-        /// @solidity memory-safe-assembly
+        // no memory ops inside so this insertion is automatically memory safe
         assembly {  // solhint-disable-line no-inline-assembly
             target := shr(96, calldataload(data.offset))
         }
