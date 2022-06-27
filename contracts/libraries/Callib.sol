@@ -3,7 +3,7 @@
 pragma solidity 0.8.15;
 pragma abicoder v1;
 
-/// @title A helper contract to manage nonce with the series
+/// @title A helper contract to execute static calls expecting single uint256 as output
 library Callib {
     function staticcallForUint(address target, bytes calldata input) internal view returns(bool success, uint256 res) {
         assembly { // solhint-disable-line no-inline-assembly
