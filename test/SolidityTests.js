@@ -1,5 +1,5 @@
-const { expect, ether } = require("@1inch/solidity-utils");
-const { web3 } = require("hardhat");
+const { expect, ether } = require('@1inch/solidity-utils');
+const { web3 } = require('hardhat');
 
 const ArgumentsDecoderTest = artifacts.require('ArgumentsDecoderTest');
 
@@ -10,22 +10,14 @@ describe('SolidityTests', async function () {
 
             this.offset = 12;
             this.uint256Data = web3.eth.abi.encodeParameter('uint256', ether('1234'));
-            this.uint256DataWithOffset = this.uint256Data + web3.eth.abi.encodeParameter('uint256', ether('5678')).slice(-this.offset*2);
+            this.uint256DataWithOffset = this.uint256Data + web3.eth.abi.encodeParameter('uint256', ether('5678')).slice(-this.offset * 2);
             this.selectorData = web3.eth.abi.encodeFunctionSignature('test(uint256,string)');
-            this.selectorDataWithOffset = '0x' + this.uint256Data.slice(-this.offset*2) + web3.eth.abi.encodeFunctionSignature('test(uint256,string)').slice(2);
+            this.selectorDataWithOffset = '0x' + this.uint256Data.slice(-this.offset * 2) + web3.eth.abi.encodeFunctionSignature('test(uint256,string)').slice(2);
             this.boolData = web3.eth.abi.encodeParameter('bool', true);
         });
 
         beforeEach(async () => {
             this.argumentsDecoderTest = await ArgumentsDecoderTest.new();
-        });
-
-        it('testDecodeBool', async () => {
-            await this.argumentsDecoderTest.testDecodeBool();
-        });
-
-        it('testDecodeUint', async () => {
-            await this.argumentsDecoderTest.testDecodeUint();
         });
 
         describe('testDecodeUint256Memory', async () => {
@@ -39,8 +31,7 @@ describe('SolidityTests', async function () {
                 ).to.eventually.be.rejectedWith('IncorrectDataLength()');
             });
 
-            it.skip('should be cheaper than standart method', async () => {
-                // TODO: remove method from lib
+            it('should be cheaper than standart method @skip-on-coverage', async () => {
                 const result = await this.argumentsDecoderTest.testUint256MemoryGas(this.uint256Data);
                 expect(result.gasLib).to.be.bignumber.lt(result.gasAbiDecode);
             });
@@ -57,8 +48,7 @@ describe('SolidityTests', async function () {
                 ).to.eventually.be.rejectedWith('IncorrectDataLength()');
             });
 
-            it.skip('should be cheaper than standart method', async () => {
-                // TODO: remove method from lib
+            it('should be cheaper than standart method @skip-on-coverage', async () => {
                 const result = await this.argumentsDecoderTest.testUint256CalldataGas(this.uint256Data);
                 expect(result.gasLib).to.be.bignumber.lt(result.gasAbiDecode);
             });
@@ -70,7 +60,7 @@ describe('SolidityTests', async function () {
                     await this.argumentsDecoderTest.testDecodeUint256(this.uint256DataWithOffset, i);
                 }
                 await expect(
-                    this.argumentsDecoderTest.testDecodeUint256(this.uint256DataWithOffset, this.offset+1),
+                    this.argumentsDecoderTest.testDecodeUint256(this.uint256DataWithOffset, this.offset + 1),
                 ).to.eventually.be.rejectedWith('IncorrectDataLength()');
             });
 
@@ -104,7 +94,7 @@ describe('SolidityTests', async function () {
                     await this.argumentsDecoderTest.contract.methods.testDecodeSelector(this.selectorDataWithOffset, i).call();
                 }
                 await expect(
-                    this.argumentsDecoderTest.contract.methods.testDecodeSelector(this.selectorDataWithOffset, this.offset+1).call(),
+                    this.argumentsDecoderTest.contract.methods.testDecodeSelector(this.selectorDataWithOffset, this.offset + 1).call(),
                 ).to.eventually.be.rejectedWith('IncorrectDataLength()');
             });
 
@@ -126,29 +116,8 @@ describe('SolidityTests', async function () {
                 ).to.eventually.be.rejectedWith('IncorrectDataLength()');
             });
 
-            it.skip('should be cheaper than standart method', async () => {
-                // TODO: remove method from lib
+            it('should be cheaper than standart method @skip-on-coverage', async () => {
                 const result = await this.argumentsDecoderTest.testBoolMemoryGas(this.boolData);
-                expect(result.gasLib).to.be.bignumber.lt(result.gasAbiDecode);
-            });
-        });
-
-        describe('testDecodeBool', async () => {
-            it('should decode', async () => {
-                // TODO: remove .contract.methods + .call()
-                await this.argumentsDecoderTest.contract.methods.testDecodeBool(this.boolData).call();
-            });
-
-            it('should not decode with incorrect data length', async () => {
-                // TODO: remove .contract.methods + .call()
-                await expect(
-                    this.argumentsDecoderTest.contract.methods.testDecodeBool(this.boolData.slice(0, -2)).call(),
-                ).to.eventually.be.rejectedWith('IncorrectDataLength()');
-            });
-
-            it.skip('should be cheaper than standart method', async () => {
-                // TODO: remove method from lib
-                const result = await this.argumentsDecoderTest.testBoolCalldataGas(this.boolData);
                 expect(result.gasLib).to.be.bignumber.lt(result.gasAbiDecode);
             });
         });
@@ -177,7 +146,7 @@ describe('SolidityTests', async function () {
 
             it('should not decode with incorrect data length', async () => {
                 await expect(
-                    this.argumentsDecoderTest.testDecodeTargetAndCalldata(this.uint256Data.slice(0, 18*2)),
+                    this.argumentsDecoderTest.testDecodeTargetAndCalldata(this.uint256Data.slice(0, 18 * 2)),
                 ).to.eventually.be.rejectedWith('IncorrectDataLength()');
             });
 
