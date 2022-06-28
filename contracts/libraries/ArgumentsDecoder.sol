@@ -26,14 +26,6 @@ library ArgumentsDecoder {
         }
     }
 
-    function decodeSelector(bytes calldata data, uint256 offset) internal pure returns(bytes4 value) {
-        if (data.length < offset + 4) revert IncorrectDataLength();
-        /// @solidity memory-safe-assembly
-        assembly { // solhint-disable-line no-inline-assembly
-            value := calldataload(add(data.offset, offset))
-        }
-    }
-
     /// gas ineffective from contract with abicoder v1
     function decodeBoolMemory(bytes memory data) internal pure returns(bool value) {
         if (data.length < 32) revert IncorrectDataLength();

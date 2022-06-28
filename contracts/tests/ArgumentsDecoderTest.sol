@@ -51,27 +51,6 @@ contract ArgumentsDecoderTest {
         return (g1 - g2, g2 - g3);
     }
 
-    function testDecodeSelector(bytes calldata data, uint256 offset) external pure returns(bytes4) {
-        return data.decodeSelector(offset);
-    }
-
-    function testSelectorOffsetGas(bytes calldata data, uint256 offset) external view returns(uint256 gasAbiDecode, uint256 gasLib) {
-        uint256 g1;
-        uint256 g2;
-        uint256 g3;
-        bytes4 a;
-        bytes4 b;
-
-        g1 = gasleft();
-        a = bytes4(data[offset:]);
-        g2 = gasleft();
-        b = data.decodeSelector(offset);
-        g3 = gasleft();
-
-        if (a != b) revert InvalidResult();
-        return (g1 - g2, g2 - g3);
-    }
-
     function testDecodeBoolMemory(bytes memory data) external pure returns(bool) {
         return data.decodeBoolMemory();
     }

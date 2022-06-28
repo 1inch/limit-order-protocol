@@ -53,24 +53,6 @@ describe('SolidityTests', async function () {
             });
         });
 
-        describe('testDecodeSelector with offset', async () => {
-            it('should decode while data length and offset correct', async () => {
-                // TODO: remove .contract.methods + .call()
-                for (let i = 0; i < this.offset; i++) {
-                    await this.argumentsDecoderTest.contract.methods.testDecodeSelector(this.selectorDataWithOffset, i).call();
-                }
-                await expect(
-                    this.argumentsDecoderTest.contract.methods.testDecodeSelector(this.selectorDataWithOffset, this.offset + 1).call(),
-                ).to.eventually.be.rejectedWith('IncorrectDataLength()');
-            });
-
-            it('should be cheaper than standart method @skip-on-coverage', async () => {
-                // TODO: remove .contract.methods + .call()
-                const result = await this.argumentsDecoderTest.testSelectorOffsetGas(this.selectorDataWithOffset, this.offset);
-                expect(result.gasLib).to.be.bignumber.lt(result.gasAbiDecode);
-            });
-        });
-
         describe('testDecodeBoolMemory', async () => {
             it('should decode', async () => {
                 await this.argumentsDecoderTest.testDecodeBoolMemory(this.boolData);
