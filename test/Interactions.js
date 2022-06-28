@@ -43,9 +43,6 @@ describe('Interactions', async () => {
         });
 
         it('should fill and unwrap token', async () => {
-            const amount = web3.utils.toWei('1', 'ether');
-            await web3.eth.sendTransaction({ from: addr1, to: this.weth.address, value: amount });
-
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -78,9 +75,6 @@ describe('Interactions', async () => {
         });
 
         it('should check whitelist and fill and unwrap token', async () => {
-            const amount = web3.utils.toWei('1', 'ether');
-            await web3.eth.sendTransaction({ from: addr1, to: this.weth.address, value: amount });
-
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -115,9 +109,6 @@ describe('Interactions', async () => {
         });
 
         it('should revert transaction when address is not allowed by whitelist', async () => {
-            const amount = web3.utils.toWei('1', 'ether');
-            await web3.eth.sendTransaction({ from: addr1, to: this.weth.address, value: amount });
-
             const preInteraction = this.whitelistChecker.address;
 
             const order = buildOrder(
