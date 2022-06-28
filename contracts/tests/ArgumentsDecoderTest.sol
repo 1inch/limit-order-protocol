@@ -51,27 +51,6 @@ contract ArgumentsDecoderTest {
         return (g1 - g2, g2 - g3);
     }
 
-    function testDecodeBoolMemory(bytes memory data) external pure returns(bool) {
-        return data.decodeBoolMemory();
-    }
-
-    function testBoolMemoryGas(bytes memory data) external view returns(uint256 gasAbiDecode, uint256 gasLib) {
-        uint256 g1;
-        uint256 g2;
-        uint256 g3;
-        bool a;
-        bool b;
-
-        g1 = gasleft();
-        a = abi.decode(data, (bool));
-        g2 = gasleft();
-        b = data.decodeBoolMemory();
-        g3 = gasleft();
-
-        if (a != b) revert InvalidResult();
-        return (g1 - g2, g2 - g3);
-    }
-
     function testDecodeTailCalldata(bytes calldata data, uint256 tailOffset) external pure returns(bytes calldata) {
         return data.decodeTailCalldata(tailOffset);
     }

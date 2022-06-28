@@ -26,15 +26,6 @@ library ArgumentsDecoder {
         }
     }
 
-    /// gas ineffective from contract with abicoder v1
-    function decodeBoolMemory(bytes memory data) internal pure returns(bool value) {
-        if (data.length < 32) revert IncorrectDataLength();
-        /// @solidity memory-safe-assembly
-        assembly { // solhint-disable-line no-inline-assembly
-            value := eq(mload(add(data, 0x20)), 1)
-        }
-    }
-
     function decodeTailCalldata(bytes calldata data, uint256 tailOffset) internal pure returns(bytes calldata args) {
         if (data.length < tailOffset) revert IncorrectDataLength();
         /// @solidity memory-safe-assembly

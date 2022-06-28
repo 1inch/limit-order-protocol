@@ -53,23 +53,6 @@ describe('SolidityTests', async function () {
             });
         });
 
-        describe('testDecodeBoolMemory', async () => {
-            it('should decode', async () => {
-                await this.argumentsDecoderTest.testDecodeBoolMemory(this.boolData);
-            });
-
-            it('should not decode with incorrect data length', async () => {
-                await expect(
-                    this.argumentsDecoderTest.testDecodeBoolMemory(this.boolData.slice(0, -2)),
-                ).to.eventually.be.rejectedWith('IncorrectDataLength()');
-            });
-
-            it('should be cheaper than standart method @skip-on-coverage', async () => {
-                const result = await this.argumentsDecoderTest.testBoolMemoryGas(this.boolData);
-                expect(result.gasLib).to.be.bignumber.lt(result.gasAbiDecode);
-            });
-        });
-
         describe('testDecodeTailCalldata', async () => {
             it('should decode', async () => {
                 await this.argumentsDecoderTest.testDecodeTailCalldata(this.uint256Data, this.offset);
