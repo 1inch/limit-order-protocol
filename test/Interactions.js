@@ -11,14 +11,14 @@ const RecursiveMatcher = artifacts.require('RecursiveMatcher');
 
 const { buildOrder, signOrder } = require('./helpers/orderUtils');
 
-describe('Interactions', async function () {
+describe('Interactions', async () => {
     const [addr0, addr1] = [addr0Wallet.getAddressString(), addr1Wallet.getAddressString()];
 
-    before(async function () {
+    before(async () => {
         this.chainId = await web3.eth.getChainId();
     });
 
-    beforeEach(async function () {
+    beforeEach(async () => {
         this.dai = await TokenMock.new('DAI', 'DAI');
         this.weth = await WrappedTokenMock.new('WETH', 'WETH');
 
@@ -35,14 +35,14 @@ describe('Interactions', async function () {
         await this.weth.approve(this.swap.address, ether('100'), { from: addr1 });
     });
 
-    describe('whitelist', async function () {
-        beforeEach(async function () {
+    describe('whitelist', async () => {
+        beforeEach(async () => {
             this.notificationReceiver = await WethUnwrapper.new();
             this.whitelistRegistryMock = await WhitelistRegistryMock.new();
             this.whitelistChecker = await WhitelistChecker.new(this.whitelistRegistryMock.address);
         });
 
-        it('should fill and unwrap token', async function () {
+        it('should fill and unwrap token', async () => {
             const amount = web3.utils.toWei('1', 'ether');
             await web3.eth.sendTransaction({ from: addr1, to: this.weth.address, value: amount });
 
@@ -77,7 +77,7 @@ describe('Interactions', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('should check whitelist and fill and unwrap token', async function () {
+        it('should check whitelist and fill and unwrap token', async () => {
             const amount = web3.utils.toWei('1', 'ether');
             await web3.eth.sendTransaction({ from: addr1, to: this.weth.address, value: amount });
 
@@ -114,7 +114,7 @@ describe('Interactions', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('should revert transaction when address is not allowed by whitelist', async function () {
+        it('should revert transaction when address is not allowed by whitelist', async () => {
             const amount = web3.utils.toWei('1', 'ether');
             await web3.eth.sendTransaction({ from: addr1, to: this.weth.address, value: amount });
 
@@ -140,12 +140,12 @@ describe('Interactions', async function () {
         });
     });
 
-    describe('recursive swap', async function () {
-        beforeEach(async function () {
+    describe('recursive swap', async () => {
+        beforeEach(async () => {
             this.matcher = await RecursiveMatcher.new();
         });
 
-        it('opposite direction recursive swap', async function () {
+        it('opposite direction recursive swap', async () => {
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -211,7 +211,7 @@ describe('Interactions', async function () {
             expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(addr1dai.add(ether('100')));
         });
 
-        it('unidirectional recursive swap', async function () {
+        it('unidirectional recursive swap', async () => {
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -280,7 +280,7 @@ describe('Interactions', async function () {
             expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(addr1dai.sub(ether('25')));
         });
 
-        it('triple recursive swap', async function () {
+        it('triple recursive swap', async () => {
             const order1 = buildOrder(
                 {
                     makerAsset: this.dai.address,

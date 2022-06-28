@@ -4,17 +4,17 @@ const { name, version } = require('./helpers/orderUtils');
 const TokenMock = artifacts.require('TokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
-describe('LimitOrderProtocol', async function () {
-    before(async function () {
+describe('LimitOrderProtocol', async () => {
+    before(async () => {
         this.chainId = await web3.eth.getChainId();
     });
 
-    beforeEach(async function () {
+    beforeEach(async () => {
         this.dai = await TokenMock.new('DAI', 'DAI');
         this.swap = await LimitOrderProtocol.new();
     });
 
-    it('domain separator', async function () {
+    it('domain separator', async () => {
         expect(
             await this.swap.DOMAIN_SEPARATOR(),
         ).to.equal(

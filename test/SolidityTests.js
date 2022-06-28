@@ -1,13 +1,13 @@
 const ArgumentsDecoderTest = artifacts.require('ArgumentsDecoderTest');
 
-describe('SolidityTests', async function () {
-    describe('ArgumentsDecoderTest', async function () {
-        it('testDecodeBool', async function () {
+describe('SolidityTests', async () => {
+    describe('ArgumentsDecoderTest', async () => {
+        it('testDecodeBool', async () => {
             const argumentsDecoderTest = await ArgumentsDecoderTest.new();
             await argumentsDecoderTest.testDecodeBool();
         });
 
-        it('testDecodeUint', async function () {
+        it('testDecodeUint', async () => {
             const argumentsDecoderTest = await ArgumentsDecoderTest.new();
             await argumentsDecoderTest.testDecodeUint();
         });
