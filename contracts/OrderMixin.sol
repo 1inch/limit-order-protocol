@@ -104,7 +104,7 @@ abstract contract OrderMixin is
      * @notice See {IOrderMixin-simulate}.
      */
     function simulate(address target, bytes calldata data) external {
-        // solhint-disable-next-lineavoid-low-level-calls
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = target.delegatecall(data);
         revert SimulationResults(success, result);
     }
