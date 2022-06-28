@@ -11,15 +11,6 @@ library ArgumentsDecoder {
     error IncorrectDataLength();
 
     /// gas ineffective from contract with abicoder v1
-    function decodeUint256Memory(bytes memory data) internal pure returns(uint256 value) {
-        if (data.length < 32) revert IncorrectDataLength();
-        /// @solidity memory-safe-assembly
-        assembly { // solhint-disable-line no-inline-assembly
-            value := mload(add(data, 0x20))
-        }
-    }
-
-    /// gas ineffective from contract with abicoder v1
     function decodeUint256(bytes calldata data) internal pure returns(uint256 value) {
         if (data.length < 32) revert IncorrectDataLength();
         /// @solidity memory-safe-assembly

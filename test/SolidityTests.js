@@ -20,23 +20,6 @@ describe('SolidityTests', async function () {
             this.argumentsDecoderTest = await ArgumentsDecoderTest.new();
         });
 
-        describe('testDecodeUint256Memory', async () => {
-            it('should decode', async () => {
-                await this.argumentsDecoderTest.testDecodeUint256Memory(this.uint256Data);
-            });
-
-            it('should not decode with incorrect data length', async () => {
-                await expect(
-                    this.argumentsDecoderTest.testDecodeUint256Memory(this.uint256Data.slice(0, -2)),
-                ).to.eventually.be.rejectedWith('IncorrectDataLength()');
-            });
-
-            it('should be cheaper than standart method @skip-on-coverage', async () => {
-                const result = await this.argumentsDecoderTest.testUint256MemoryGas(this.uint256Data);
-                expect(result.gasLib).to.be.bignumber.lt(result.gasAbiDecode);
-            });
-        });
-
         describe('testDecodeUint256', async () => {
             it('should decode', async () => {
                 await this.argumentsDecoderTest.testDecodeUint256(this.uint256Data);

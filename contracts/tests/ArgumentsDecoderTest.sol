@@ -9,27 +9,6 @@ contract ArgumentsDecoderTest {
 
     error InvalidResult();
 
-    function testDecodeUint256Memory(bytes memory data) external pure returns(uint256) {
-        return data.decodeUint256Memory();
-    }
-
-    function testUint256MemoryGas(bytes memory data) external view returns(uint256 gasAbiDecode, uint256 gasLib) {
-        uint256 g1;
-        uint256 g2;
-        uint256 g3;
-        uint256 a;
-        uint256 b;
-
-        g1 = gasleft();
-        a = abi.decode(data, (uint256));
-        g2 = gasleft();
-        b = data.decodeUint256Memory();
-        g3 = gasleft();
-
-        if (a != b) revert InvalidResult();
-        return (g1 - g2, g2 - g3);
-    }
-
     function testDecodeUint256(bytes calldata data) external pure returns(uint256) {
         return data.decodeUint256();
     }
