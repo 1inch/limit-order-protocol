@@ -4,8 +4,6 @@ pragma solidity 0.8.15;
 pragma abicoder v1;
 
 /// @title Library with gas efficient alternatives to `abi.decode`
-/// @notice Methods with `gas ineffective from contract with abicoder v1` comment mean
-///     that it's more gas effective to use `abi.decode` in contracts with `pragma abicoder v1`
 library ArgumentsDecoder {
 
     error IncorrectDataLength();
