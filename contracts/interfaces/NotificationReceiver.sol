@@ -32,11 +32,13 @@ interface PostInteractionNotificationReceiver {
 
 interface InteractionNotificationReceiver {
     function fillOrderInteraction(
+        bytes32 orderHash,
         address taker,
         address makerAsset,
         address takerAsset,
         uint256 makingAmount,
         uint256 takingAmount,
+        uint256 remainingAmount,
         bytes memory interactiveData
     ) external returns(uint256 offeredTakingAmount);
 }
