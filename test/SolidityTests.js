@@ -30,7 +30,7 @@ describe('SolidityTests', async function () {
                 ).to.eventually.be.rejectedWith('IncorrectDataLength()');
             });
 
-            it('should be cheaper than standart method', async () => {
+            it('should be cheaper than standart method @skip-on-coverage', async () => {
                 const result = await this.argumentsDecoderTest.testUint256CalldataOffsetGas(this.uint256DataWithOffset, this.offset);
                 expect(result.gasLib).to.be.bignumber.lt(result.gasAbiDecode);
             });
@@ -47,7 +47,7 @@ describe('SolidityTests', async function () {
                 ).to.eventually.be.rejectedWith('IncorrectDataLength()');
             });
 
-            it('should be cheaper than standart method', async () => {
+            it('should be cheaper than standart method @skip-on-coverage', async () => {
                 const result = await this.argumentsDecoderTest.testSelectorGas(this.selectorData);
                 expect(result.gasLib).to.be.bignumber.lt(result.gasAbiDecode);
             });
@@ -64,7 +64,7 @@ describe('SolidityTests', async function () {
                 ).to.eventually.be.rejectedWith('IncorrectDataLength()');
             });
 
-            it('should be cheaper than standart method', async () => {
+            it('should be cheaper than standart method @skip-on-coverage', async () => {
                 // TODO: remove .contract.methods + .call()
                 const result = await this.argumentsDecoderTest.testSelectorOffsetGas(this.selectorDataWithOffset, this.offset);
                 expect(result.gasLib).to.be.bignumber.lt(result.gasAbiDecode);
@@ -82,7 +82,7 @@ describe('SolidityTests', async function () {
                 ).to.eventually.be.rejectedWith('IncorrectDataLength()');
             });
 
-            it('should be cheaper than standart method', async () => {
+            it('should be cheaper than standart method @skip-on-coverage', async () => {
                 const result = await this.argumentsDecoderTest.testDecodeTailCalldataGas(this.uint256Data, this.offset);
                 expect(result.gasLib).to.be.bignumber.lt(result.gasAbiDecode);
             });
@@ -99,7 +99,7 @@ describe('SolidityTests', async function () {
                 ).to.eventually.be.rejectedWith('IncorrectDataLength()');
             });
 
-            it('should be cheaper than standart method', async () => {
+            it('should be cheaper than standart method @skip-on-coverage', async () => {
                 const result = await this.argumentsDecoderTest.testDecodeTargetAndCalldataGas(this.uint256Data);
                 expect(result.gasLib).to.be.bignumber.lt(result.gasAbiDecode);
             });
