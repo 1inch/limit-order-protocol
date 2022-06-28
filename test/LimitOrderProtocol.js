@@ -445,7 +445,7 @@ describe('LimitOrderProtocol', async function () {
                 takingAmount: 10,
                 from: addr1,
             }, {
-                getTakingAmount: '0x',
+                getTakingAmount: '', // <-- empty string turns into "x" to disable partial fill
             });
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -486,7 +486,7 @@ describe('LimitOrderProtocol', async function () {
                 takingAmount: 10,
                 from: addr1,
             }, {
-                getMakingAmount: '0x',
+                getMakingAmount: '', // <-- empty string turns into "x" to disable partial fill
             });
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
