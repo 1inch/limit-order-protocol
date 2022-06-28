@@ -10,15 +10,6 @@ library ArgumentsDecoder {
 
     error IncorrectDataLength();
 
-    /// gas ineffective from contract with abicoder v1
-    function decodeUint256(bytes calldata data) internal pure returns(uint256 value) {
-        if (data.length < 32) revert IncorrectDataLength();
-        /// @solidity memory-safe-assembly
-        assembly { // solhint-disable-line no-inline-assembly
-            value := calldataload(data.offset)
-        }
-    }
-
     function decodeUint256(bytes calldata data, uint256 offset) internal pure returns(uint256 value) {
         if (data.length < offset + 32) revert IncorrectDataLength();
         /// @solidity memory-safe-assembly
