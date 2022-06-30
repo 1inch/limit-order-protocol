@@ -70,7 +70,7 @@ abstract contract OrderMixin is
 
     /**
      * @notice Returns unfilled amount for order. Throws if order does not exist
-     * @param orderHash Order's hash. Obtained by `hashOrder` function
+     * @param orderHash Order's hash. Can be obtained by the `hashOrder` function
      * @return amount Unfilled amount
      */
     function remaining(bytes32 orderHash) external view returns(uint256 /* amount */) {
@@ -82,7 +82,7 @@ abstract contract OrderMixin is
 
     /**
      * @notice Returns unfilled amount for order
-     * @param orderHash Order's hash. Obtained by [Order.hash()](OrderLib.md#hash)
+     * @param orderHash Order's hash. Can be obtained by the `hashOrder` function
      * @return rawAmount Unfilled amount of order plus one if order exists. Otherwise 0
      */
     function remainingRaw(bytes32 orderHash) external view returns(uint256 /* rawAmount */) {
@@ -91,8 +91,8 @@ abstract contract OrderMixin is
 
     /**
      * @notice Same as `remainingRaw` but for multiple orders
-     * @param orderHashes array of hashes
-     * @return rawAmounts array of amounts for each order plus one if order exists or 0 otherwise
+     * @param orderHashes Array of hashes
+     * @return rawAmounts Array of amounts for each order plus one if order exists or 0 otherwise
      */
     function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory /* rawAmounts */) {
         uint256[] memory results = new uint256[](orderHashes.length);
@@ -120,7 +120,7 @@ abstract contract OrderMixin is
      * @dev Order is cancelled by setting remaining amount to _ORDER_FILLED value
      * @param order Order quote to cancel
      * @return orderRemaining Unfilled amount of order before cancellation
-     * @return orderHash Order's hash. Obtained by `hashOrder` function
+     * @return orderHash Hash of the filled order
      */
     function cancelOrder(OrderLib.Order calldata order) external returns(uint256 orderRemaining, bytes32 orderHash) {
         if (order.maker != msg.sender) revert AccessDenied();
@@ -141,7 +141,7 @@ abstract contract OrderMixin is
      * @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
      * @return actualMakingAmount Actual amount transferred from maker to taker
      * @return actualTakingAmount Actual amount transferred from taker to maker
-     * @return orderHash Order's hash. Obtained by [Order.hash()](OrderLib.md#hash)
+     * @return orderHash Hash of the filled order
      */
     function fillOrder(
         OrderLib.Order calldata order,
@@ -168,7 +168,7 @@ abstract contract OrderMixin is
      * @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
      * @return actualMakingAmount Actual amount transferred from maker to taker
      * @return actualTakingAmount Actual amount transferred from taker to maker
-     * @return orderHash Order's hash. Obtained by [Order.hash()](OrderLib.md#hash)
+     * @return orderHash Hash of the filled order
      */
     function fillOrderToWithPermit(
         OrderLib.Order calldata order,
@@ -198,7 +198,7 @@ abstract contract OrderMixin is
      * @param target Address that will receive swap funds
      * @return actualMakingAmount Actual amount transferred from maker to taker
      * @return actualTakingAmount Actual amount transferred from taker to maker
-     * @return orderHash Order's hash. Obtained by [Order.hash()](OrderLib.md#hash)
+     * @return orderHash Hash of the filled order
      */
     function fillOrderTo(
         OrderLib.Order calldata order_,
@@ -321,16 +321,22 @@ abstract contract OrderMixin is
         }
     }
 
-    /// @notice Checks order predicate
-    function checkPredicate(OrderLib.Order calldata order) public view returns(bool) {
+    /**
+     * @notice Checks order predicate
+     * @param order Order to check predicate for
+     * @return result Predicate evaluation result. True if predicate allows to fill the order, false otherwise
+     */
+    function checkPredicate(OrderLib.Order calldata order) public view returns(bool /* result */) {
         (bool success, uint256 res) = address(this).staticcallForUint(order.predicate());
         return success && res == 1;
     }
 
     /**
-     * @notice Кeturns the hash of the fully encoded EIP712 order hash for this domain.
+     * @notice Returns hash for the fully encoded according to EIP712 standart order hash for the domain.
+     * @param order Order to get hash for
+     * @return orderHash Hash of the order
      */
-    function hashOrder(OrderLib.Order calldata order) public view returns(bytes32) {
+    function hashOrder(OrderLib.Order calldata order) public view returns(bytes32 /* orderHash */) {
         return _hashTypedDataV4(order.hash());
     }
 
