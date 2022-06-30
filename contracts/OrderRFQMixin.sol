@@ -24,7 +24,6 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     error BothAmountsAreNonZero();
     error RFQSwapWithZeroAmount();
     error InvalidatedOrder();
-    error BadSignature();
 
     /// @notice Emitted when RFQ gets filled
     event OrderFilledRFQ(
@@ -82,12 +81,12 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         orderHash = _hashTypedDataV4(order.hash());
         if (amount & _SIGNER_SMART_CONTRACT_HINT != 0) {
             if (amount & _IS_VALID_SIGNATURE_65_BYTES != 0) {
-                if (!ECDSA.isValidSignature65(order.maker, orderHash, r, vs)) revert BadSignature();
+                if (!ECDSA.isValidSignature65(order.maker, orderHash, r, vs)) revert RFQBadSignature();
             } else {
-                if (!ECDSA.isValidSignature(order.maker, orderHash, r, vs)) revert BadSignature();
+                if (!ECDSA.isValidSignature(order.maker, orderHash, r, vs)) revert RFQBadSignature();
             }
         } else {
-            if(!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, r, vs)) revert BadSignature();
+            if(!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, r, vs)) revert RFQBadSignature();
         }
 
         if (amount & _MAKER_AMOUNT_FLAG != 0) {
