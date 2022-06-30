@@ -22,10 +22,11 @@ contract CallsSimulator {
         for (uint256 i = 0; i < targets.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory result) = targets[i].call(data[i]);
-            if (success && result.length > 0) {
-                success = result.length == 32 && abi.decode(result, (bool));
+            if (success && result.length == 32 && abi.decode(result, (bool))) {
+                reason[i] = "1";
+            } else {
+                reason[i] = "0";
             }
-            reason[i] = success ? bytes1("1") : bytes1("0");
         }
 
         // Always revert and provide per call results
