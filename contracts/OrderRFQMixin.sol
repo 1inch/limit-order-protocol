@@ -83,6 +83,20 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         _IS_VALID_SIGNATURE_65_BYTES
     );
 
+    /**
+     * @notice Fills order's quote, fully or partially, with compact signuture
+     * @param order Order quote to fill
+     * @param r R component of signature
+     * @param vs VS component of signature
+     * @param amount Amount to fill and flags.
+     * - Bits 0-252 contain the amount to fill
+     * - Bit 253 is used to indicate whether signature is 64-bit (0) or 65-bit (1).
+     * - Bit 254 is used to indicate whether smart contract (0) signed the order
+     * - Bit 255 is used to indicate whether maker (1) or taker amount (0) is given in the amount parameter
+     * @return filledMakingAmount Actual amount transferred from maker to taker
+     * @return filledTakingAmount Actual amount transferred from taker to maker
+     * @return orderHash Hash of the filled order
+     */
     function fillOrderRFQCompact(
         OrderRFQLib.OrderRFQ memory order,
         bytes32 r,
