@@ -17,8 +17,8 @@ library OrderLib {
         // bytes takerAssetData;
         // bytes getMakingAmount; // this.staticcall(abi.encodePacked(bytes, swapTakerAmount)) => (swapMakerAmount)
         // bytes getTakingAmount; // this.staticcall(abi.encodePacked(bytes, swapMakerAmount)) => (swapTakerAmount)
-        // bytes predicate;      // this.staticcall(bytes) => (bool)
-        // bytes permit;         // On first fill: permit.1.call(abi.encodePacked(permit.selector, permit.2))
+        // bytes predicate;       // this.staticcall(bytes) => (bool)
+        // bytes permit;          // On first fill: permit.1.call(abi.encodePacked(permit.selector, permit.2))
         // bytes preInteraction;
         // bytes postInteraction;
         bytes interactions; // concat(makerAssetData, takerAssetData, getMakingAmount, getTakingAmount, predicate, permit, preIntercation, postInteraction)
