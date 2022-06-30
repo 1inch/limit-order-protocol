@@ -8,11 +8,13 @@ pragma abicoder v1;
 /// @title Interface for interactor which acts between `maker => taker` and `taker => maker` transfers.
 interface PreInteractionNotificationReceiver {
     function fillOrderPreInteraction(
+        bytes32 orderHash,
         address taker,
         address makerAsset,
         address takerAsset,
         uint256 makingAmount,
         uint256 takingAmount,
+        uint256 remainingAmount,
         bytes memory interactiveData
     ) external;
 }
@@ -21,17 +23,6 @@ interface PostInteractionNotificationReceiver {
     /// @notice Callback method that gets called after taker transferred funds to maker but before
     /// the opposite transfer happened
     function fillOrderPostInteraction(
-        address taker,
-        address makerAsset,
-        address takerAsset,
-        uint256 makingAmount,
-        uint256 takingAmount,
-        bytes memory interactiveData
-    ) external;
-}
-
-interface InteractionNotificationReceiver {
-    function fillOrderInteraction(
         bytes32 orderHash,
         address taker,
         address makerAsset,
@@ -39,6 +30,17 @@ interface InteractionNotificationReceiver {
         uint256 makingAmount,
         uint256 takingAmount,
         uint256 remainingAmount,
+        bytes memory interactiveData
+    ) external;
+}
+
+interface InteractionNotificationReceiver {
+    function fillOrderInteraction(
+        address taker,
+        address makerAsset,
+        address takerAsset,
+        uint256 makingAmount,
+        uint256 takingAmount,
         bytes memory interactiveData
     ) external returns(uint256 offeredTakingAmount);
 }

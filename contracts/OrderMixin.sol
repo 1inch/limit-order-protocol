@@ -207,15 +207,15 @@ abstract contract OrderMixin is
             if (actualMakingAmount > remainingMakerAmount) {
                 actualMakingAmount = remainingMakerAmount;
             }
-            actualTakingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
+            actualTakingAmount = _callGetter(order.getTakingAmount(), orderHash, order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakerAmount);
             // check that actual rate is not worse than what was expected
             // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
             if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
         } else {
-            actualMakingAmount = _callGetter(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount);
+            actualMakingAmount = _callGetter(order.getMakingAmount(), orderHash, order.takingAmount, actualTakingAmount, order.makingAmount, remainingMakerAmount);
             if (actualMakingAmount > remainingMakerAmount) {
                 actualMakingAmount = remainingMakerAmount;
-                actualTakingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
+                actualTakingAmount = _callGetter(order.getTakingAmount(), orderHash, order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakerAmount);
             }
             // check that actual rate is not worse than what was expected
             // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
@@ -236,7 +236,7 @@ abstract contract OrderMixin is
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.preInteraction().decodeTargetAndCalldata();
             PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
+                orderHash, msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, remainingMakerAmount, interactionData
             );
         }
 
@@ -253,14 +253,7 @@ abstract contract OrderMixin is
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata();
             uint256 offeredTakingAmount = InteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
-                orderHash,
-                msg.sender,
-                order.makerAsset,
-                order.takerAsset,
-                actualMakingAmount,
-                actualTakingAmount,
-                remainingMakerAmount,
-                interactionData
+                msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
             );
             if (offeredTakingAmount > actualTakingAmount && !order.takingAmountIsFrosen()) {
                 actualTakingAmount = offeredTakingAmount;
@@ -281,7 +274,7 @@ abstract contract OrderMixin is
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.postInteraction().decodeTargetAndCalldata();
             PostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
-                msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
+                 orderHash, msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, remainingMakerAmount, interactionData
             );
         }
     }
@@ -312,7 +305,7 @@ abstract contract OrderMixin is
         }
     }
 
-    function _callGetter(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
+    function _callGetter(bytes calldata getter, bytes32 orderHash, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount, uint256 remainingAmount) private view returns(uint256) {
         if (getter.length == 0) {
             // On empty getter calldata only exact amount is allowed
             if (amount != orderExpectedAmount) revert WrongAmount();
@@ -328,7 +321,7 @@ abstract contract OrderMixin is
             }
         } else {
             (address target, bytes calldata data) = getter.decodeTargetAndCalldata();
-            (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount));
+            (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount, remainingAmount, orderHash));
             if (!success || result.length != 32) revert getAmountCallFailed();
             return result.decodeUint256Memory();
         }
