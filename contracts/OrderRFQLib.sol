@@ -13,7 +13,7 @@ library OrderRFQLib {
         uint256 takingAmount;
     }
 
-    bytes32 constant public LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
+    bytes32 constant internal _LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
         "OrderRFQ("
             "uint256 info,"
             "address makerAsset,"
@@ -25,7 +25,21 @@ library OrderRFQLib {
         ")"
     );
 
-    function hash(OrderRFQ memory order) internal pure returns(bytes32) {
-        return keccak256(abi.encode(LIMIT_ORDER_RFQ_TYPEHASH, order));
+    function hash(OrderRFQ memory order) internal pure returns(bytes32 result) {
+        // return keccak256(abi.encode(_LIMIT_ORDER_RFQ_TYPEHASH, order));
+        bytes32 typehash = _LIMIT_ORDER_RFQ_TYPEHASH;
+        assembly { // solhint-disable-line no-inline-assembly
+            let ptr := mload(0x40)
+
+            mstore(ptr, typehash)
+            mstore(add(ptr, 0x20), mload(order))
+            mstore(add(ptr, 0x40), mload(add(order, 0x20)))
+            mstore(add(ptr, 0x60), mload(add(order, 0x40)))
+            mstore(add(ptr, 0x80), mload(add(order, 0x60)))
+            mstore(add(ptr, 0xa0), mload(add(order, 0x80)))
+            mstore(add(ptr, 0xc0), mload(add(order, 0xa0)))
+            mstore(add(ptr, 0xe0), mload(add(order, 0xc0)))
+            result := keccak256(ptr, 0x100)
+        }
     }
 }
