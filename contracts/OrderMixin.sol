@@ -51,7 +51,7 @@ abstract contract OrderMixin is
 
     /// @notice Emitted every time order gets filled, including partial fills
     event OrderFilled(
-        address indexed taker,
+        address indexed maker,
         bytes32 orderHash,
         uint256 remaining
     );
@@ -230,7 +230,7 @@ abstract contract OrderMixin is
                 remainingMakerAmount = remainingMakerAmount - actualMakingAmount;
                 _remaining[orderHash] = remainingMakerAmount + 1;
             }
-            emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
+            emit OrderFilled(order_.maker, orderHash, remainingMakerAmount);
         }
 
         // Maker can handle funds interactively
