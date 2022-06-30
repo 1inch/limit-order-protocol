@@ -68,22 +68,33 @@ abstract contract OrderMixin is
     /// Therefore 0 means order doesn't exist and 1 means order was filled
     mapping(bytes32 => uint256) private _remaining;
 
-    /// @notice Returns unfilled amount for order. Throws if order does not exist
-    function remaining(bytes32 orderHash) external view returns(uint256) {
+    /**
+     * @notice Returns unfilled amount for order. Throws if order does not exist
+     * @param orderHash Order's hash. Obtained by `hashOrder` function
+     * @return amount Unfilled amount
+     */
+    function remaining(bytes32 orderHash) external view returns(uint256 /* amount */) {
         uint256 amount = _remaining[orderHash];
         if (amount == _ORDER_DOES_NOT_EXIST) revert UnknownOrder();
         unchecked { amount -= 1; }
         return amount;
     }
 
-    /// @notice Returns unfilled amount for order
-    /// @return Result Unfilled amount of order plus one if order exists. Otherwise 0
-    function remainingRaw(bytes32 orderHash) external view returns(uint256) {
+    /**
+     * @notice Returns unfilled amount for order
+     * @param orderHash Order's hash. Obtained by [Order.hash()](OrderLib.md#hash)
+     * @return rawAmount Unfilled amount of order plus one if order exists. Otherwise 0
+     */
+    function remainingRaw(bytes32 orderHash) external view returns(uint256 /* rawAmount */) {
         return _remaining[orderHash];
     }
 
-    /// @notice Same as `remainingRaw` but for multiple orders
-    function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory) {
+    /**
+     * @notice Same as `remainingRaw` but for multiple orders
+     * @param orderHashes array of hashes
+     * @return rawAmounts array of amounts for each order plus one if order exists or 0 otherwise
+     */
+    function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory /* rawAmounts */) {
         uint256[] memory results = new uint256[](orderHashes.length);
         for (uint256 i = 0; i < orderHashes.length; i++) {
             results[i] = _remaining[orderHashes[i]];
@@ -104,7 +115,13 @@ abstract contract OrderMixin is
         revert SimulationResults(success, result);
     }
 
-    /// @notice Cancels order by setting remaining amount to zero
+    /**
+     * @notice Cancels order.
+     * @dev Order is cancelled by setting remaining amount to _ORDER_FILLED value
+     * @param order Order quote to cancel
+     * @return orderRemaining Unfilled amount of order before cancellation
+     * @return orderHash Order's hash. Obtained by `hashOrder` function
+     */
     function cancelOrder(OrderLib.Order calldata order) external returns(uint256 orderRemaining, bytes32 orderHash) {
         if (order.maker != msg.sender) revert AccessDenied();
 
@@ -115,12 +132,17 @@ abstract contract OrderMixin is
         _remaining[orderHash] = _ORDER_FILLED;
     }
 
-    /// @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
-    /// @param order Order quote to fill
-    /// @param signature Signature to confirm quote ownership
-    /// @param makingAmount Making amount
-    /// @param takingAmount Taking amount
-    /// @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
+    /**
+     * @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
+     * @param order Order quote to fill
+     * @param signature Signature to confirm quote ownership
+     * @param makingAmount Making amount
+     * @param takingAmount Taking amount
+     * @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
+     * @return actualMakingAmount Actual amount transferred from maker to taker
+     * @return actualTakingAmount Actual amount transferred from taker to maker
+     * @return orderHash Order's hash. Obtained by [Order.hash()](OrderLib.md#hash)
+     */
     function fillOrder(
         OrderLib.Order calldata order,
         bytes calldata signature,
@@ -128,21 +150,26 @@ abstract contract OrderMixin is
         uint256 makingAmount,
         uint256 takingAmount,
         uint256 thresholdAmount
-    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
+    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
         return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, thresholdAmount, msg.sender);
     }
 
-    /// @notice Same as `fillOrder` but calls permit first,
-    /// allowing to approve token spending and make a swap in one transaction.
-    /// Also allows to specify funds destination instead of `msg.sender`
-    /// @param order Order quote to fill
-    /// @param signature Signature to confirm quote ownership
-    /// @param makingAmount Making amount
-    /// @param takingAmount Taking amount
-    /// @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
-    /// @param target Address that will receive swap funds
-    /// @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
-    /// @dev See tests for examples
+    /**
+     * @notice Same as `fillOrder` but calls permit first,
+     * allowing to approve token spending and make a swap in one transaction.
+     * Also allows to specify funds destination instead of `msg.sender`
+     * @dev See tests for examples
+     * @param order Order quote to fill
+     * @param signature Signature to confirm quote ownership
+     * @param makingAmount Making amount
+     * @param takingAmount Taking amount
+     * @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
+     * @param target Address that will receive swap funds
+     * @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
+     * @return actualMakingAmount Actual amount transferred from maker to taker
+     * @return actualTakingAmount Actual amount transferred from taker to maker
+     * @return orderHash Order's hash. Obtained by [Order.hash()](OrderLib.md#hash)
+     */
     function fillOrderToWithPermit(
         OrderLib.Order calldata order,
         bytes calldata signature,
@@ -152,7 +179,7 @@ abstract contract OrderMixin is
         uint256 thresholdAmount,
         address target,
         bytes calldata permit
-    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
+    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
         if (permit.length < 20) revert PermitLengthTooLow();
         {  // Stack too deep
             (address token, bytes calldata permitData) = permit.decodeTargetAndCalldata();
@@ -161,13 +188,18 @@ abstract contract OrderMixin is
         return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, thresholdAmount, target);
     }
 
-    /// @notice Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
-    /// @param order_ Order quote to fill
-    /// @param signature Signature to confirm quote ownership
-    /// @param makingAmount Making amount
-    /// @param takingAmount Taking amount
-    /// @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
-    /// @param target Address that will receive swap funds
+    /**
+     * @notice Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
+     * @param order_ Order quote to fill
+     * @param signature Signature to confirm quote ownership
+     * @param makingAmount Making amount
+     * @param takingAmount Taking amount
+     * @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
+     * @param target Address that will receive swap funds
+     * @return actualMakingAmount Actual amount transferred from maker to taker
+     * @return actualTakingAmount Actual amount transferred from taker to maker
+     * @return orderHash Order's hash. Obtained by [Order.hash()](OrderLib.md#hash)
+     */
     function fillOrderTo(
         OrderLib.Order calldata order_,
         bytes calldata signature,
@@ -295,6 +327,9 @@ abstract contract OrderMixin is
         return success && res == 1;
     }
 
+    /**
+     * @notice Кeturns the hash of the fully encoded EIP712 order hash for this domain.
+     */
     function hashOrder(OrderLib.Order calldata order) public view returns(bytes32) {
         return _hashTypedDataV4(order.hash());
     }
