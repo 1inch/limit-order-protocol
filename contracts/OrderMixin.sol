@@ -51,7 +51,7 @@ abstract contract OrderMixin is
 
     /// @notice Emitted every time order gets filled, including partial fills
     event OrderFilled(
-        address indexed maker,
+        address indexed taker,
         bytes32 orderHash,
         uint256 remaining
     );
