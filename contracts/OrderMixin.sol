@@ -47,7 +47,7 @@ abstract contract OrderMixin is
     error TransferFromTakerToMakerFailed();
     error WrongAmount();
     error WrongGetter();
-    error getAmountCallFailed();
+    error GetAmountCallFailed();
 
     /// @notice Emitted every time order gets filled, including partial fills
     event OrderFilled(
@@ -324,7 +324,7 @@ abstract contract OrderMixin is
         } else {
             (address target, bytes calldata data) = getter.decodeTargetAndCalldata();
             (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount));
-            if (!success || result.length != 32) revert getAmountCallFailed();
+            if (!success || result.length != 32) revert GetAmountCallFailed();
             return abi.decode(result, (uint256));
         }
     }
