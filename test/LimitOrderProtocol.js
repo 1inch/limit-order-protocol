@@ -602,7 +602,7 @@ describe('LimitOrderProtocol', async function () {
             await this.swap.contract.methods.timestampBelowAndNonceEquals(
                 toBN(trim0x(addr1), 'hex')
                     .or(nonce.shln(160))
-                    .or(timestamp.shln(208))
+                    .or(timestamp.shln(208)),
             ).send({ from: addr1 });
         });
 
