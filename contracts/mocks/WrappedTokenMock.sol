@@ -18,7 +18,9 @@ contract WrappedTokenMock is ERC20Permit, Ownable, IWithdrawable {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) ERC20Permit(name) {}
 
     // solhint-disable-next-line no-empty-blocks
-    receive() external payable {}
+    receive() external payable {
+        deposit();
+    }
 
     function mint(address account, uint256 amount) external onlyOwner {
         _mint(account, amount);

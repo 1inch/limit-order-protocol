@@ -3,8 +3,8 @@ const { web3 } = require('hardhat');
 
 const ArgumentsDecoderTest = artifacts.require('ArgumentsDecoderTest');
 
-describe('SolidityTests', async function () {
-    describe('ArgumentsDecoderTest', async function () {
+describe('SolidityTests', async () => {
+    describe('ArgumentsDecoderTest', async () => {
         before(async () => {
             [this.account] = await web3.eth.getAccounts();
 

@@ -8,14 +8,14 @@ const TokenMock = artifacts.require('TokenMock');
 const WrappedTokenMock = artifacts.require('WrappedTokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
-describe('RFQ Orders in LimitOrderProtocol', async function () {
+describe('RFQ Orders in LimitOrderProtocol', async () => {
     const [addr0, addr1] = [addr0Wallet.getAddressString(), addr1Wallet.getAddressString()];
 
-    before(async function () {
+    before(async () => {
         this.chainId = await web3.eth.getChainId();
     });
 
-    beforeEach(async function () {
+    beforeEach(async () => {
         this.dai = await TokenMock.new('DAI', 'DAI');
         this.weth = await WrappedTokenMock.new('WETH', 'WETH');
 
@@ -32,8 +32,8 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
         await this.weth.approve(this.swap.address, '1000000', { from: addr1 });
     });
 
-    describe('wip', async function () {
-        it('should swap fully based on RFQ signature', async function () {
+    describe('wip', async () => {
+        it('should swap fully based on RFQ signature', async () => {
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
 
@@ -61,7 +61,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             }
         });
 
-        it('should swap fully based on RFQ signature (compact)', async function () {
+        it('should swap fully based on RFQ signature (compact)', async () => {
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
 
@@ -91,9 +91,9 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
         });
     });
 
-    describe('Permit', async function () {
-        describe('fillOrderRFQToWithPermit', async function () {
-            it('DAI => WETH', async function () {
+    describe('Permit', async () => {
+        describe('fillOrderRFQToWithPermit', async () => {
+            it('DAI => WETH', async () => {
                 const swap = await LimitOrderProtocol.new();
                 await this.dai.approve(swap.address, '1000000', { from: addr1 });
                 const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 1, 1, addr1);
@@ -116,7 +116,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
                 expect(allowance).to.be.bignumber.eq(toBN('0'));
             });
 
-            it('rejects reused signature', async function () {
+            it('rejects reused signature', async () => {
                 const swap = await LimitOrderProtocol.new();
                 await this.dai.approve(swap.address, '1000000', { from: addr1 });
                 const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 1, 1, addr1);
@@ -128,7 +128,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
                 await expect(requestFunc()).to.eventually.be.rejectedWith('ERC20Permit: invalid signature');
             });
 
-            it('rejects other signature', async function () {
+            it('rejects other signature', async () => {
                 const swap = await LimitOrderProtocol.new();
                 await this.dai.approve(swap.address, '1000000', { from: addr1 });
                 const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 1, 1, addr1);
@@ -140,7 +140,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
                 await expect(requestFunc()).to.eventually.be.rejectedWith('ERC20Permit: invalid signature');
             });
 
-            it('rejects expired permit', async function () {
+            it('rejects expired permit', async () => {
                 const deadline = (await time.latest()) - time.duration.weeks(1);
                 const swap = await LimitOrderProtocol.new();
                 await this.dai.approve(swap.address, '1000000', { from: addr1 });
@@ -154,20 +154,20 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
         });
     });
 
-    describe('OrderRFQ Cancelation', async function () {
-        it('should cancel own order', async function () {
+    describe('OrderRFQ Cancelation', async () => {
+        it('should cancel own order', async () => {
             await this.swap.cancelOrderRFQ('1');
             const invalidator = await this.swap.invalidatorForOrderRFQ(addr0, '0');
             expect(invalidator).to.be.bignumber.equal(toBN('2'));
         });
 
-        it('should cancel own order with huge number', async function () {
+        it('should cancel own order with huge number', async () => {
             await this.swap.cancelOrderRFQ('1023');
             const invalidator = await this.swap.invalidatorForOrderRFQ(addr0, '3');
             expect(invalidator).to.be.bignumber.equal(toBN('1').shln(255));
         });
 
-        it('should not fill cancelled order', async function () {
+        it('should not fill cancelled order', async () => {
             const order = buildOrderRFQ('1', this.dai.address, this.weth.address, 1, 1, addr1);
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -178,7 +178,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             ).to.eventually.be.rejectedWith('InvalidatedOrder()');
         });
 
-        it('should not fill cancelled order (compact)', async function () {
+        it('should not fill cancelled order (compact)', async () => {
             const order = buildOrderRFQ('1', this.dai.address, this.weth.address, 1, 1, addr1);
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -191,8 +191,8 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
         });
     });
 
-    describe('Expiration', async function () {
-        it('should fill RFQ order when not expired', async function () {
+    describe('Expiration', async () => {
+        it('should fill RFQ order when not expired', async () => {
             const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 1, 1, addr1);
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -209,7 +209,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('should fill RFQ order when not expired (compact)', async function () {
+        it('should fill RFQ order when not expired (compact)', async () => {
             const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 1, 1, addr1);
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -227,7 +227,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('should partial fill RFQ order', async function () {
+        it('should partial fill RFQ order', async () => {
             const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 2, 2, addr1);
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -244,7 +244,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('should partial fill RFQ order (compact)', async function () {
+        it('should partial fill RFQ order (compact)', async () => {
             const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 2, 2, addr1);
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -262,7 +262,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('should fully fill RFQ order', async function () {
+        it('should fully fill RFQ order', async () => {
             const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 1, 1, addr1);
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -279,7 +279,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('should fully fill RFQ order wih (compact)', async function () {
+        it('should fully fill RFQ order wih (compact)', async () => {
             const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 1, 1, addr1);
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -297,7 +297,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('should not partial fill RFQ order when 0', async function () {
+        it('should not partial fill RFQ order when 0', async () => {
             const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 5, 10, addr1);
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -306,7 +306,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             ).to.eventually.be.rejectedWith('SwapWithZeroAmount()');
         });
 
-        it('should not partial fill RFQ order when 0 (compact)', async function () {
+        it('should not partial fill RFQ order when 0 (compact)', async () => {
             const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 5, 10, addr1);
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -316,7 +316,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             ).to.eventually.be.rejectedWith('RFQSwapWithZeroAmount()');
         });
 
-        it('should not fill RFQ order when expired', async function () {
+        it('should not fill RFQ order when expired', async () => {
             const order = buildOrderRFQ('308276084001730439550074881', this.dai.address, this.weth.address, 1, 1, addr1);
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -325,7 +325,7 @@ describe('RFQ Orders in LimitOrderProtocol', async function () {
             ).to.eventually.be.rejectedWith('OrderExpired()');
         });
 
-        it('should not fill RFQ order when expired (compact)', async function () {
+        it('should not fill RFQ order when expired (compact)', async () => {
             const order = buildOrderRFQ('308276084001730439550074881', this.dai.address, this.weth.address, 1, 1, addr1);
             const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
