@@ -50,6 +50,10 @@ library OrderLib {
         PostInteraction
     }
 
+    function getterIsFrozen(bytes calldata getter) internal pure returns(bool) {
+        return getter.length == 1 && getter[0] == "x";
+    }
+
     function _get(Order calldata order, DynamicField field) private pure returns(bytes calldata) {
         if (uint256(field) == 0) {
             return order.interactions[0:uint32(order.offsets)];
@@ -76,10 +80,6 @@ library OrderLib {
 
     function getTakingAmount(Order calldata order) internal pure returns(bytes calldata) {
         return _get(order, DynamicField.GetTakingAmount);
-    }
-
-    function takingAmountIsFrosen(Order calldata order) internal pure returns(bool) {
-        return getTakingAmount(order).length == 0;
     }
 
     function predicate(Order calldata order) internal pure returns(bytes calldata) {
