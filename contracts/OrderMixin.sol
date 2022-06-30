@@ -208,15 +208,15 @@ abstract contract OrderMixin is
                 if (actualMakingAmount > remainingMakerAmount) {
                     actualMakingAmount = remainingMakerAmount;
                 }
-                actualTakingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
+                actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
                 // check that actual rate is not worse than what was expected
                 // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
                 if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
             } else {
-                actualMakingAmount = _callGetter(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount);
+                actualMakingAmount = _getMakingAmount(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount);
                 if (actualMakingAmount > remainingMakerAmount) {
                     actualMakingAmount = remainingMakerAmount;
-                    actualTakingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
+                    actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
                 }
                 // check that actual rate is not worse than what was expected
                 // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
@@ -257,7 +257,11 @@ abstract contract OrderMixin is
             uint256 offeredTakingAmount = InteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
                 msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
             );
-            if (offeredTakingAmount > actualTakingAmount && !order.takingAmountIsFrosen()) {
+
+            if (offeredTakingAmount > actualTakingAmount &&
+                !OrderLib.getterIsFrozen(order.getMakingAmount()) &&
+                !OrderLib.getterIsFrozen(order.getTakingAmount()))
+            {
                 actualTakingAmount = offeredTakingAmount;
             }
         }
@@ -295,7 +299,6 @@ abstract contract OrderMixin is
         bytes4 selector = IERC20.transferFrom.selector;
         assembly { // solhint-disable-line no-inline-assembly
             let data := mload(0x40)
-            mstore(0x40, add(data, add(100, input.length)))
 
             mstore(data, selector)
             mstore(add(data, 0x04), from)
@@ -307,17 +310,28 @@ abstract contract OrderMixin is
         }
     }
 
-    function _callGetter(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
+    function _getMakingAmount(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
         if (getter.length == 0) {
-            // On empty getter calldata only exact amount is allowed
-            if (amount != orderExpectedAmount) revert WrongAmount();
-            return orderResultAmount;
-        } else if (getter.length == 1) {
             // Linear proportion
-            if (getter[0] == "m") {
-                return getMakingAmount(orderResultAmount, orderExpectedAmount, amount);
-            } else if (getter[0] == "t") {
-                return getTakingAmount(orderExpectedAmount, orderResultAmount, amount);
+            return getMakingAmount(orderResultAmount, orderExpectedAmount, amount);
+        }
+        return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount);
+    }
+
+    function _getTakingAmount(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
+        if (getter.length == 0) {
+            // Linear proportion
+            return getTakingAmount(orderExpectedAmount, orderResultAmount, amount);
+        }
+        return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount);
+    }
+
+    function _callGetter(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
+        if (getter.length == 1) {
+            if (OrderLib.getterIsFrozen(getter)) {
+                // On "x" getter calldata only exact amount is allowed
+                if (amount != orderExpectedAmount) revert WrongAmount();
+                return orderResultAmount;
             } else {
                 revert WrongGetter();
             }

@@ -1,6 +1,6 @@
 const Wallet = require('ethereumjs-wallet').default;
 const ethSigUtil = require('eth-sig-util');
-const { expect, toBN, time, constants, profileEVM } = require('@1inch/solidity-utils');
+const { expect, toBN, time, constants, profileEVM, trim0x } = require('@1inch/solidity-utils');
 const { bufferToHex } = require('ethereumjs-util');
 const { buildOrder, buildOrderData, signOrder } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
@@ -445,7 +445,7 @@ describe('LimitOrderProtocol', async () => {
                 takingAmount: 10,
                 from: addr1,
             }, {
-                getTakingAmount: '0x',
+                getTakingAmount: '', // <-- empty string turns into "x" to disable partial fill
             });
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -486,7 +486,7 @@ describe('LimitOrderProtocol', async () => {
                 takingAmount: 10,
                 from: addr1,
             }, {
-                getMakingAmount: '0x',
+                getMakingAmount: '', // <-- empty string turns into "x" to disable partial fill
             });
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -593,6 +593,17 @@ describe('LimitOrderProtocol', async () => {
 
             const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
             await this.swap.contract.methods.and(offsets, data).send({ from: addr1 });
+        });
+
+        it('benchmark gas real case (optimized)', async () => {
+            const timestamp = toBN(0x70000000);
+            const nonce = toBN(0);
+
+            await this.swap.contract.methods.timestampBelowAndNonceEquals(
+                toBN(trim0x(addr1), 'hex')
+                    .or(nonce.shln(160))
+                    .or(timestamp.shln(208)),
+            ).send({ from: addr1 });
         });
 
         it('`or` should pass', async () => {

@@ -97,6 +97,13 @@ contract PredicateHelper is NonceManager {
         return res;
     }
 
+    function timestampBelowAndNonceEquals(uint256 timeNonceAccount) public view returns(bool) {
+        uint256 time = uint48(timeNonceAccount >> 208);
+        uint256 nonce = uint48(timeNonceAccount >> 160);
+        address account = address(uint160(timeNonceAccount));
+        return timestampBelow(time) && nonceEquals(account, nonce);
+    }
+
     function _selfStaticCall(bytes calldata data) internal view returns(bool, uint256) {
         bytes4 selector = data.decodeSelector();
         uint256 index = _calculateIndex(selector);
@@ -108,6 +115,9 @@ contract PredicateHelper is NonceManager {
         }
 
         // Other functions
+        if (selector == this.timestampBelowAndNonceEquals.selector) {
+            return (true, timestampBelowAndNonceEquals(arg) ? 1 : 0);
+        }
         if (selector == this.timestampBelow.selector) {
             return (true, timestampBelow(arg) ? 1 : 0);
         }
