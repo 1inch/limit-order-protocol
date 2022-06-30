@@ -8,7 +8,7 @@ library ArgumentsDecoder {
     error IncorrectDataLength();
 
     function decodeUint256(bytes calldata data, uint256 offset) internal pure returns(uint256 value) {
-        if (data.length < offset + 32) revert IncorrectDataLength();
+        unchecked { if (data.length < offset + 32) revert IncorrectDataLength(); }
         // no memory ops inside so this insertion is automatically memory safe
         assembly { // solhint-disable-line no-inline-assembly
             value := calldataload(add(data.offset, offset))
