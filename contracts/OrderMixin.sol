@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
 import "./helpers/AmountCalculator.sol";
+import "./helpers/RangeAmountCalculator.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/IOrderMixin.sol";
@@ -21,6 +22,7 @@ abstract contract OrderMixin is
     IOrderMixin,
     EIP712,
     AmountCalculator,
+    RangeAmountCalculator,
     NonceManager,
     PredicateHelper
 {
@@ -208,15 +210,15 @@ abstract contract OrderMixin is
                 if (actualMakingAmount > remainingMakerAmount) {
                     actualMakingAmount = remainingMakerAmount;
                 }
-                actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
+                actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakerAmount);
                 // check that actual rate is not worse than what was expected
                 // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
                 if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
             } else {
-                actualMakingAmount = _getMakingAmount(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount);
+                actualMakingAmount = _getMakingAmount(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount, remainingMakerAmount);
                 if (actualMakingAmount > remainingMakerAmount) {
                     actualMakingAmount = remainingMakerAmount;
-                    actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
+                    actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakerAmount);
                 }
                 // check that actual rate is not worse than what was expected
                 // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
@@ -310,23 +312,41 @@ abstract contract OrderMixin is
         }
     }
 
-    function _getMakingAmount(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
+    function _getMakingAmount(
+        bytes calldata getter,
+        uint256 orderExpectedAmount,
+        uint256 amount,
+        uint256 orderResultAmount,
+        uint256 remainingMakerAmount
+    ) private view returns(uint256) {
         if (getter.length == 0) {
             // Linear proportion
             return getMakingAmount(orderResultAmount, orderExpectedAmount, amount);
         }
-        return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount);
+        return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount, orderResultAmount - remainingMakerAmount);
     }
 
-    function _getTakingAmount(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
+    function _getTakingAmount(
+        bytes calldata getter,
+        uint256 orderExpectedAmount,
+        uint256 amount,
+        uint256 orderResultAmount,
+        uint256 remainingMakerAmount
+    ) private view returns(uint256) {
         if (getter.length == 0) {
             // Linear proportion
             return getTakingAmount(orderExpectedAmount, orderResultAmount, amount);
         }
-        return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount);
+        return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount, orderExpectedAmount - remainingMakerAmount);
     }
 
-    function _callGetter(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
+    function _callGetter(
+        bytes calldata getter,
+        uint256 orderExpectedAmount,
+        uint256 amount,
+        uint256 orderResultAmount,
+        uint256 alreadyFilledAmount
+    ) private view returns(uint256) {
         if (getter.length == 1) {
             if (OrderLib.getterIsFrozen(getter)) {
                 // On "x" getter calldata only exact amount is allowed
@@ -337,7 +357,8 @@ abstract contract OrderMixin is
             }
         } else {
             (address target, bytes calldata data) = getter.decodeTargetAndCalldata();
-            (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount));
+            (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount, alreadyFilledAmount));
+
             if (!success || result.length != 32) revert getAmountCallFailed();
             return result.decodeUint256Memory();
         }
