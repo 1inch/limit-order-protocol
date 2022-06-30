@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.11;
+pragma solidity 0.8.15;
 pragma abicoder v1;
 
 /// @title A helper contract for managing nonce of tx sender
@@ -23,7 +23,7 @@ contract NonceManager {
 
     /// @notice Checks if `makerAddress` has specified `makerNonce`
     /// @return Result True if `makerAddress` has specified nonce. Otherwise, false
-    function nonceEquals(address makerAddress, uint256 makerNonce) external view returns(bool) {
+    function nonceEquals(address makerAddress, uint256 makerNonce) public view returns(bool) {
         return nonce[makerAddress] == makerNonce;
     }
 }

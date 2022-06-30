@@ -45,7 +45,7 @@ Extremely **flexible** limit order, can be configured with:
 ### Deployments & audits:
 You can find 1inch limit order protocol deployments here: 
 
-**Ethereum mainnet:** [0x119c71D3BbAC22029622cbaEc24854d3D32D2828](https://etherscan.io/address/0x3ef51736315f52d568d6d2cf289419b9cfffe782)
+**Ethereum mainnet:** [0x119c71D3BbAC22029622cbaEc24854d3D32D2828](https://etherscan.io/address/0x119c71D3BbAC22029622cbaEc24854d3D32D2828)
 
 **BSC mainnet:** [0x1e38Eff998DF9d3669E32f4ff400031385Bf6362](https://bscscan.com/address/0x1e38Eff998DF9d3669E32f4ff400031385Bf6362#code)
 

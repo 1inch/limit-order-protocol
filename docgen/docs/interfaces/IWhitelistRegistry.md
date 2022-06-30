@@ -1,21 +1,23 @@
-# IWithdrawable
+# IWhitelistRegistry
+
+
 
 
 
 
 
 ## Functions
-### withdraw
+### status
 ```solidity
-function withdraw(
-  uint256 wad
-) external
+function status(
+  address addr
+) external returns (uint256)
 ```
 
 
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`wad` | uint256 | 
+|`addr` | address | 
 
 
