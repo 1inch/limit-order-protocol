@@ -50,6 +50,10 @@ library OrderLib {
         PostInteraction
     }
 
+    function getterIsFrozen(bytes calldata getter) internal pure returns(bool) {
+        return getter.length == 1 && getter[0] == "x";
+    }
+
     function _get(Order calldata order, DynamicField field) private pure returns(bytes calldata) {
         if (uint256(field) == 0) {
             return order.interactions[0:uint32(order.offsets)];
@@ -57,7 +61,7 @@ library OrderLib {
 
         uint256 bitShift = uint256(field) << 5; // field * 32
         return order.interactions[
-            uint32(order.offsets >> (bitShift - 32)):
+            uint32((order.offsets << 32) >> bitShift):
             uint32(order.offsets >> bitShift)
         ];
     }
@@ -78,10 +82,6 @@ library OrderLib {
         return _get(order, DynamicField.GetTakingAmount);
     }
 
-    function takingAmountIsFrosen(Order calldata order) internal pure returns(bool) {
-        return getTakingAmount(order).length == 0;
-    }
-
     function predicate(Order calldata order) internal pure returns(bytes calldata) {
         return _get(order, DynamicField.Predicate);
     }
@@ -98,18 +98,24 @@ library OrderLib {
         return _get(order, DynamicField.PostInteraction);
     }
 
-    function hash(Order calldata order) internal pure returns(bytes32 result) {
+    function hash(Order calldata order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes calldata interactions = order.interactions;
         bytes32 typehash = _LIMIT_ORDER_TYPEHASH;
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
-            mstore(0x40, add(ptr, add(0x160, interactions.length)))
 
+            // keccak256(abi.encode(_LIMIT_ORDER_TYPEHASH, orderWithoutInteractions, keccak256(order.interactions)));
             calldatacopy(ptr, interactions.offset, interactions.length)
             mstore(add(ptr, 0x140), keccak256(ptr, interactions.length))
             calldatacopy(add(ptr, 0x20), order, 0x120)
             mstore(ptr, typehash)
-            result := keccak256(ptr, 0x160)
+            let orderHash := keccak256(ptr, 0x160)
+
+            // ECDSA.toTypedDataHash(domainSeparator, orderHash)
+            mstore(ptr, 0x1901000000000000000000000000000000000000000000000000000000000000)
+            mstore(add(ptr, 0x02), domainSeparator)
+            mstore(add(ptr, 0x22), orderHash)
+            result := keccak256(ptr, 66)
         }
     }
 }

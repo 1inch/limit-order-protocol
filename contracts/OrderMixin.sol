@@ -9,6 +9,7 @@ import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "./helpers/AmountCalculator.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
+import "./interfaces/IOrderMixin.sol";
 import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Callib.sol";
@@ -17,6 +18,7 @@ import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
 abstract contract OrderMixin is
+    IOrderMixin,
     EIP712,
     AmountCalculator,
     NonceManager,
@@ -45,7 +47,7 @@ abstract contract OrderMixin is
     error TransferFromTakerToMakerFailed();
     error WrongAmount();
     error WrongGetter();
-    error getAmountCallFailed();
+    error GetAmountCallFailed();
 
     /// @notice Emitted every time order gets filled, including partial fills
     event OrderFilled(
@@ -69,9 +71,7 @@ abstract contract OrderMixin is
     mapping(bytes32 => uint256) private _remaining;
 
     /**
-     * @notice Returns unfilled amount for order. Throws if order does not exist
-     * @param orderHash Order's hash. Can be obtained by the `hashOrder` function
-     * @return amount Unfilled amount
+     * @notice See {IOrderMixin-remaining}.
      */
     function remaining(bytes32 orderHash) external view returns(uint256 /* amount */) {
         uint256 amount = _remaining[orderHash];
@@ -81,18 +81,14 @@ abstract contract OrderMixin is
     }
 
     /**
-     * @notice Returns unfilled amount for order
-     * @param orderHash Order's hash. Can be obtained by the `hashOrder` function
-     * @return rawAmount Unfilled amount of order plus one if order exists. Otherwise 0
+     * @notice See {IOrderMixin-remainingRaw}.
      */
     function remainingRaw(bytes32 orderHash) external view returns(uint256 /* rawAmount */) {
         return _remaining[orderHash];
     }
 
     /**
-     * @notice Same as `remainingRaw` but for multiple orders
-     * @param orderHashes Array of hashes
-     * @return rawAmounts Array of amounts for each order plus one if order exists or 0 otherwise
+     * @notice See {IOrderMixin-remainingsRaw}.
      */
     function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory /* rawAmounts */) {
         uint256[] memory results = new uint256[](orderHashes.length);
@@ -105,22 +101,16 @@ abstract contract OrderMixin is
     error SimulationResults(bool success, bytes res);
 
     /**
-     * @notice Delegates execution to custom implementation. Could be used to validate if `transferFrom` works properly
-     * @param target Addresses that will be delegated
-     * @param data Data that will be passed to delegatee
+     * @notice See {IOrderMixin-simulate}.
      */
     function simulate(address target, bytes calldata data) external {
-        // solhint-disable-next-lineavoid-low-level-calls
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = target.delegatecall(data);
         revert SimulationResults(success, result);
     }
 
     /**
-     * @notice Cancels order.
-     * @dev Order is cancelled by setting remaining amount to _ORDER_FILLED value
-     * @param order Order quote to cancel
-     * @return orderRemaining Unfilled amount of order before cancellation
-     * @return orderHash Hash of the filled order
+     * @notice See {IOrderMixin-cancelOrder}.
      */
     function cancelOrder(OrderLib.Order calldata order) external returns(uint256 orderRemaining, bytes32 orderHash) {
         if (order.maker != msg.sender) revert AccessDenied();
@@ -133,15 +123,7 @@ abstract contract OrderMixin is
     }
 
     /**
-     * @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
-     * @param order Order quote to fill
-     * @param signature Signature to confirm quote ownership
-     * @param makingAmount Making amount
-     * @param takingAmount Taking amount
-     * @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
-     * @return actualMakingAmount Actual amount transferred from maker to taker
-     * @return actualTakingAmount Actual amount transferred from taker to maker
-     * @return orderHash Hash of the filled order
+     * @notice See {IOrderMixin-fillOrder}.
      */
     function fillOrder(
         OrderLib.Order calldata order,
@@ -155,20 +137,7 @@ abstract contract OrderMixin is
     }
 
     /**
-     * @notice Same as `fillOrder` but calls permit first,
-     * allowing to approve token spending and make a swap in one transaction.
-     * Also allows to specify funds destination instead of `msg.sender`
-     * @dev See tests for examples
-     * @param order Order quote to fill
-     * @param signature Signature to confirm quote ownership
-     * @param makingAmount Making amount
-     * @param takingAmount Taking amount
-     * @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
-     * @param target Address that will receive swap funds
-     * @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
-     * @return actualMakingAmount Actual amount transferred from maker to taker
-     * @return actualTakingAmount Actual amount transferred from taker to maker
-     * @return orderHash Hash of the filled order
+     * @notice See {IOrderMixin-fillOrderToWithPermit}.
      */
     function fillOrderToWithPermit(
         OrderLib.Order calldata order,
@@ -189,16 +158,7 @@ abstract contract OrderMixin is
     }
 
     /**
-     * @notice Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
-     * @param order_ Order quote to fill
-     * @param signature Signature to confirm quote ownership
-     * @param makingAmount Making amount
-     * @param takingAmount Taking amount
-     * @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
-     * @param target Address that will receive swap funds
-     * @return actualMakingAmount Actual amount transferred from maker to taker
-     * @return actualTakingAmount Actual amount transferred from taker to maker
-     * @return orderHash Hash of the filled order
+     * @notice See {IOrderMixin-fillOrderTo}.
      */
     function fillOrderTo(
         OrderLib.Order calldata order_,
@@ -248,15 +208,15 @@ abstract contract OrderMixin is
                 if (actualMakingAmount > remainingMakerAmount) {
                     actualMakingAmount = remainingMakerAmount;
                 }
-                actualTakingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
+                actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
                 // check that actual rate is not worse than what was expected
                 // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
                 if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
             } else {
-                actualMakingAmount = _callGetter(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount);
+                actualMakingAmount = _getMakingAmount(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount);
                 if (actualMakingAmount > remainingMakerAmount) {
                     actualMakingAmount = remainingMakerAmount;
-                    actualTakingAmount = _callGetter(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
+                    actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount);
                 }
                 // check that actual rate is not worse than what was expected
                 // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
@@ -270,7 +230,7 @@ abstract contract OrderMixin is
                 remainingMakerAmount = remainingMakerAmount - actualMakingAmount;
                 _remaining[orderHash] = remainingMakerAmount + 1;
             }
-            emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
+            emit OrderFilled(order_.maker, orderHash, remainingMakerAmount);
         }
 
         // Maker can handle funds interactively
@@ -297,7 +257,11 @@ abstract contract OrderMixin is
             uint256 offeredTakingAmount = InteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
                 msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
             );
-            if (offeredTakingAmount > actualTakingAmount && !order.takingAmountIsFrosen()) {
+
+            if (offeredTakingAmount > actualTakingAmount &&
+                !OrderLib.getterIsFrozen(order.getMakingAmount()) &&
+                !OrderLib.getterIsFrozen(order.getTakingAmount()))
+            {
                 actualTakingAmount = offeredTakingAmount;
             }
         }
@@ -322,29 +286,24 @@ abstract contract OrderMixin is
     }
 
     /**
-     * @notice Checks order predicate
-     * @param order Order to check predicate for
-     * @return result Predicate evaluation result. True if predicate allows to fill the order, false otherwise
+     * @notice See {IOrderMixin-checkPredicate}.
      */
-    function checkPredicate(OrderLib.Order calldata order) public view returns(bool /* result */) {
-        (bool success, uint256 res) = address(this).staticcallForUint(order.predicate());
+    function checkPredicate(OrderLib.Order calldata order) public view returns(bool) {
+        (bool success, uint256 res) = _selfStaticCall(order.predicate());
         return success && res == 1;
     }
 
     /**
-     * @notice Returns hash for the fully encoded according to EIP712 standart order hash for the domain.
-     * @param order Order to get hash for
-     * @return orderHash Hash of the order
+     * @notice See {IOrderMixin-hashOrder}.
      */
-    function hashOrder(OrderLib.Order calldata order) public view returns(bytes32 /* orderHash */) {
-        return _hashTypedDataV4(order.hash());
+    function hashOrder(OrderLib.Order calldata order) public view returns(bytes32) {
+        return order.hash(_domainSeparatorV4());
     }
 
     function _callTransferFrom(address asset, address from, address to, uint256 amount, bytes calldata input) private returns(bool success) {
         bytes4 selector = IERC20.transferFrom.selector;
         assembly { // solhint-disable-line no-inline-assembly
             let data := mload(0x40)
-            mstore(0x40, add(data, add(100, input.length)))
 
             mstore(data, selector)
             mstore(add(data, 0x04), from)
@@ -356,25 +315,36 @@ abstract contract OrderMixin is
         }
     }
 
-    function _callGetter(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
+    function _getMakingAmount(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
         if (getter.length == 0) {
-            // On empty getter calldata only exact amount is allowed
-            if (amount != orderExpectedAmount) revert WrongAmount();
-            return orderResultAmount;
-        } else if (getter.length == 1) {
             // Linear proportion
-            if (getter[0] == "m") {
-                return getMakingAmount(orderResultAmount, orderExpectedAmount, amount);
-            } else if (getter[0] == "t") {
-                return getTakingAmount(orderExpectedAmount, orderResultAmount, amount);
+            return getMakingAmount(orderResultAmount, orderExpectedAmount, amount);
+        }
+        return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount);
+    }
+
+    function _getTakingAmount(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
+        if (getter.length == 0) {
+            // Linear proportion
+            return getTakingAmount(orderExpectedAmount, orderResultAmount, amount);
+        }
+        return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount);
+    }
+
+    function _callGetter(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount) private view returns(uint256) {
+        if (getter.length == 1) {
+            if (OrderLib.getterIsFrozen(getter)) {
+                // On "x" getter calldata only exact amount is allowed
+                if (amount != orderExpectedAmount) revert WrongAmount();
+                return orderResultAmount;
             } else {
                 revert WrongGetter();
             }
         } else {
             (address target, bytes calldata data) = getter.decodeTargetAndCalldata();
             (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount));
-            if (!success || result.length != 32) revert getAmountCallFailed();
-            return result.decodeUint256Memory();
+            if (!success || result.length != 32) revert GetAmountCallFailed();
+            return abi.decode(result, (uint256));
         }
     }
 }

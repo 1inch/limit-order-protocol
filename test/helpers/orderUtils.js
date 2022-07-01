@@ -32,12 +32,18 @@ const Order = [
     { name: 'interactions', type: 'bytes' },
 ];
 
+const ABIOrder = {
+    Order: Order.reduce((obj, item) => {
+        obj[item.name] = item.type;
+        return obj;
+    }, {}),
+};
+
 const name = '1inch Limit Order Protocol';
 const version = '3';
 
 function buildOrder (
     {
-        exchange,
         makerAsset,
         takerAsset,
         makingAmount,
@@ -49,8 +55,8 @@ function buildOrder (
     {
         makerAssetData = '0x',
         takerAssetData = '0x',
-        getMakingAmount = '',
-        getTakingAmount = '',
+        getMakingAmount = '0x',
+        getTakingAmount = '0x',
         predicate = '0x',
         permit = '0x',
         preInteraction = '0x',
@@ -58,12 +64,10 @@ function buildOrder (
     } = {},
 ) {
     if (getMakingAmount === '') {
-        getMakingAmount = '0x6d'; // 'm'
-        // cutLastArg(exchange.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI());
+        getMakingAmount = '0x78'; // "x"
     }
     if (getTakingAmount === '') {
-        getTakingAmount = '0x74'; // 't'
-        // cutLastArg(exchange.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI());
+        getTakingAmount = '0x78'; // "x"
     }
 
     const allInteractions = [
@@ -160,6 +164,7 @@ function compactSignature (signature) {
 
 module.exports = {
     ABIOrderRFQ,
+    ABIOrder,
     buildOrder,
     buildOrderRFQ,
     buildOrderData,
