@@ -98,7 +98,7 @@ library OrderLib {
         return _get(order, DynamicField.PostInteraction);
     }
 
-    function hash(Order calldata order) internal pure returns(bytes32 result) {
+    function hash(Order calldata order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes calldata interactions = order.interactions;
         bytes32 typehash = _LIMIT_ORDER_TYPEHASH;
         assembly { // solhint-disable-line no-inline-assembly
@@ -109,6 +109,11 @@ library OrderLib {
             calldatacopy(add(ptr, 0x20), order, 0x120)
             mstore(ptr, typehash)
             result := keccak256(ptr, 0x160)
+
+            mstore(ptr, 0x1901000000000000000000000000000000000000000000000000000000000000) // "\x19\x01"
+            mstore(add(ptr, 0x02), domainSeparator)
+            mstore(add(ptr, 0x22), result)
+            result := keccak256(ptr, 66)
         }
     }
 }

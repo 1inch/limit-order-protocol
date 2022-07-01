@@ -81,18 +81,18 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         orderHash = order.hash(_domainSeparatorV4());
         if (amount & _SIGNER_SMART_CONTRACT_HINT != 0) {
             if (amount & _IS_VALID_SIGNATURE_65_BYTES != 0) {
-                require(ECDSA.isValidSignature65(order.maker, orderHash, r, vs), "LOP: bad signature");
+                if (!ECDSA.isValidSignature65(order.maker, orderHash, r, vs)) revert RFQBadSignature();
             } else {
-                require(ECDSA.isValidSignature(order.maker, orderHash, r, vs), "LOP: bad signature");
+                if (!ECDSA.isValidSignature(order.maker, orderHash, r, vs)) revert RFQBadSignature();
             }
         } else {
-            require(ECDSA.recoverOrIsValidSignature(order.maker, orderHash, r, vs), "LOP: bad signature");
+            if(!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, r, vs)) revert RFQBadSignature();
         }
 
         if (amount & _MAKER_AMOUNT_FLAG != 0) {
             (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, amount & _AMOUNT_MASK, 0, msg.sender);
         } else {
-            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, 0, amount, msg.sender);
+            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, 0, amount & _AMOUNT_MASK, msg.sender);
         }
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }

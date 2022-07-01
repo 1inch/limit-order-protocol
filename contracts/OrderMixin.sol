@@ -292,7 +292,7 @@ abstract contract OrderMixin is
     }
 
     function hashOrder(OrderLib.Order calldata order) public view returns(bytes32) {
-        return _hashTypedDataV4(order.hash());
+        return order.hash(_domainSeparatorV4());
     }
 
     function _callTransferFrom(address asset, address from, address to, uint256 amount, bytes calldata input) private returns(bool success) {
