@@ -28,20 +28,16 @@ library OrderRFQLib {
     function hash(OrderRFQ memory order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes32 typehash = _LIMIT_ORDER_RFQ_TYPEHASH;
         assembly { // solhint-disable-line no-inline-assembly
-            let ptr := mload(0x40)
+            let ptr := sub(order, 0x20)
 
             // keccak256(abi.encode(_LIMIT_ORDER_RFQ_TYPEHASH, order));
+            let tmp := mload(ptr)
             mstore(ptr, typehash)
-            mstore(add(ptr, 0x20), mload(order))
-            mstore(add(ptr, 0x40), mload(add(order, 0x20)))
-            mstore(add(ptr, 0x60), mload(add(order, 0x40)))
-            mstore(add(ptr, 0x80), mload(add(order, 0x60)))
-            mstore(add(ptr, 0xa0), mload(add(order, 0x80)))
-            mstore(add(ptr, 0xc0), mload(add(order, 0xa0)))
-            mstore(add(ptr, 0xe0), mload(add(order, 0xc0)))
             let orderHash := keccak256(ptr, 0x100)
+            mstore(ptr, tmp)
 
             // ECDSA.toTypedDataHash(domainSeparator, orderHash)
+            ptr := mload(0x40)
             mstore(ptr, 0x1901000000000000000000000000000000000000000000000000000000000000)
             mstore(add(ptr, 0x02), domainSeparator)
             mstore(add(ptr, 0x22), orderHash)
