@@ -42,7 +42,7 @@ library OrderRFQLib {
             let orderHash := keccak256(ptr, 0x100)
 
             // ECDSA.toTypedDataHash(domainSeparator, orderHash)
-            mstore(ptr, 0x1901000000000000000000000000000000000000000000000000000000000000) // "\x19\x01"
+            mstore(ptr, 0x1901000000000000000000000000000000000000000000000000000000000000)
             mstore(add(ptr, 0x02), domainSeparator)
             mstore(add(ptr, 0x22), orderHash)
             result := keccak256(ptr, 66)
