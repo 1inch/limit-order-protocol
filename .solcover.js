@@ -1,6 +1,7 @@
 module.exports = {
-    skipFiles: [
-        'mocks',
-        'Migrations.sol'
-    ]
+    skipFiles: ['mocks', 'tests', 'interfaces'],
+    mocha: {
+        grep: "@skip-on-coverage",
+        invert: true
+    },
 }

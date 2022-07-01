@@ -11,47 +11,44 @@ const RecursiveMatcher = artifacts.require('RecursiveMatcher');
 
 const { buildOrder, signOrder } = require('./helpers/orderUtils');
 
-describe('Interactions', async function () {
+describe('Interactions', async () => {
     const [addr0, addr1] = [addr0Wallet.getAddressString(), addr1Wallet.getAddressString()];
 
-    before(async function () {
+    before(async () => {
         this.chainId = await web3.eth.getChainId();
     });
 
-    beforeEach(async function () {
+    beforeEach(async () => {
         this.dai = await TokenMock.new('DAI', 'DAI');
         this.weth = await WrappedTokenMock.new('WETH', 'WETH');
 
         this.swap = await LimitOrderProtocol.new();
 
         await this.dai.mint(addr1, ether('100'));
-        await this.weth.mint(addr1, ether('100'));
+        await web3.eth.sendTransaction({ from: addr1, to: this.weth.address, value: ether('1') });
         await this.dai.mint(addr0, ether('100'));
-        await this.weth.mint(addr0, ether('100'));
+        await web3.eth.sendTransaction({ from: addr0, to: this.weth.address, value: ether('1') });
 
         await this.dai.approve(this.swap.address, ether('100'));
-        await this.weth.approve(this.swap.address, ether('100'));
+        await this.weth.approve(this.swap.address, ether('1'));
         await this.dai.approve(this.swap.address, ether('100'), { from: addr1 });
-        await this.weth.approve(this.swap.address, ether('100'), { from: addr1 });
+        await this.weth.approve(this.swap.address, ether('1'), { from: addr1 });
     });
 
-    describe('whitelist', async function () {
-        beforeEach(async function () {
+    describe('whitelist', async () => {
+        beforeEach(async () => {
             this.notificationReceiver = await WethUnwrapper.new();
             this.whitelistRegistryMock = await WhitelistRegistryMock.new();
             this.whitelistChecker = await WhitelistChecker.new(this.whitelistRegistryMock.address);
         });
 
-        it('should fill and unwrap token', async function () {
-            const amount = web3.utils.toWei('1', 'ether');
-            await web3.eth.sendTransaction({ from: addr1, to: this.weth.address, value: amount });
-
+        it('should fill and unwrap token', async () => {
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
-                    makingAmount: 1,
-                    takingAmount: 1,
+                    makingAmount: ether('100'),
+                    takingAmount: ether('0.1'),
                     from: addr1,
                     receiver: this.notificationReceiver.address,
                 },
@@ -68,25 +65,22 @@ describe('Interactions', async function () {
             const takerWeth = await this.weth.balanceOf(addr0);
             const makerEth = await web3.eth.getBalance(addr1);
 
-            await this.swap.fillOrder(order, signature, '0x', 1, 0, 1);
+            await this.swap.fillOrder(order, signature, '0x', ether('100'), 0, ether('0.1'));
 
-            expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.subn(1));
-            expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.addn(1));
+            expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.sub(ether('100')));
+            expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.add(ether('100')));
             expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth);
-            expect(web3.utils.toBN(await web3.eth.getBalance(addr1))).to.be.bignumber.equal(web3.utils.toBN(makerEth).addn(1));
-            expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
+            expect(web3.utils.toBN(await web3.eth.getBalance(addr1))).to.be.bignumber.equal(web3.utils.toBN(makerEth).add(ether('0.1')));
+            expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.sub(ether('0.1')));
         });
 
-        it('should check whitelist and fill and unwrap token', async function () {
-            const amount = web3.utils.toWei('1', 'ether');
-            await web3.eth.sendTransaction({ from: addr1, to: this.weth.address, value: amount });
-
+        it('should check whitelist and fill and unwrap token', async () => {
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
                     takerAsset: this.weth.address,
-                    makingAmount: 1,
-                    takingAmount: 1,
+                    makingAmount: ether('100'),
+                    takingAmount: ether('0.1'),
                     from: addr1,
                     receiver: this.notificationReceiver.address,
                 },
@@ -105,19 +99,16 @@ describe('Interactions', async function () {
             const makerEth = await web3.eth.getBalance(addr1);
 
             await this.whitelistRegistryMock.allow();
-            await this.swap.fillOrder(order, signature, '0x', 1, 0, 1);
+            await this.swap.fillOrder(order, signature, '0x', ether('100'), 0, ether('0.1'));
 
-            expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.subn(1));
-            expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.addn(1));
+            expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.sub(ether('100')));
+            expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.add(ether('100')));
             expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth);
-            expect(web3.utils.toBN(await web3.eth.getBalance(addr1))).to.be.bignumber.equal(web3.utils.toBN(makerEth).addn(1));
-            expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
+            expect(web3.utils.toBN(await web3.eth.getBalance(addr1))).to.be.bignumber.equal(web3.utils.toBN(makerEth).add(ether('0.1')));
+            expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.sub(ether('0.1')));
         });
 
-        it('should revert transaction when address is not allowed by whitelist', async function () {
-            const amount = web3.utils.toWei('1', 'ether');
-            await web3.eth.sendTransaction({ from: addr1, to: this.weth.address, value: amount });
-
+        it('should revert transaction when address is not allowed by whitelist', async () => {
             const preInteraction = this.whitelistChecker.address;
 
             const order = buildOrder(
@@ -140,12 +131,12 @@ describe('Interactions', async function () {
         });
     });
 
-    describe('recursive swap', async function () {
-        beforeEach(async function () {
+    describe('recursive swap', async () => {
+        beforeEach(async () => {
             this.matcher = await RecursiveMatcher.new();
         });
 
-        it('opposite direction recursive swap', async function () {
+        it('opposite direction recursive swap', async () => {
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -211,7 +202,7 @@ describe('Interactions', async function () {
             expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(addr1dai.add(ether('100')));
         });
 
-        it('unidirectional recursive swap', async function () {
+        it('unidirectional recursive swap', async () => {
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -280,7 +271,7 @@ describe('Interactions', async function () {
             expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(addr1dai.sub(ether('25')));
         });
 
-        it('triple recursive swap', async function () {
+        it('triple recursive swap', async () => {
             const order1 = buildOrder(
                 {
                     makerAsset: this.dai.address,

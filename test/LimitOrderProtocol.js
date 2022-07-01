@@ -1,6 +1,6 @@
 const Wallet = require('ethereumjs-wallet').default;
 const ethSigUtil = require('eth-sig-util');
-const { expect, toBN, time, constants, profileEVM } = require('@1inch/solidity-utils');
+const { expect, toBN, time, constants, profileEVM, trim0x } = require('@1inch/solidity-utils');
 const { bufferToHex } = require('ethereumjs-util');
 const { buildOrder, buildOrderData, signOrder } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
@@ -11,14 +11,14 @@ const WrappedTokenMock = artifacts.require('WrappedTokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 const ERC721Proxy = artifacts.require('ERC721Proxy');
 
-describe('LimitOrderProtocol', async function () {
+describe('LimitOrderProtocol', async () => {
     const [addr0, addr1] = [addr0Wallet.getAddressString(), addr1Wallet.getAddressString()];
 
-    before(async function () {
+    before(async () => {
         this.chainId = await web3.eth.getChainId();
     });
 
-    beforeEach(async function () {
+    beforeEach(async () => {
         this.dai = await TokenMock.new('DAI', 'DAI');
         this.weth = await WrappedTokenMock.new('WETH', 'WETH');
 
@@ -35,13 +35,13 @@ describe('LimitOrderProtocol', async function () {
         await this.weth.approve(this.swap.address, '1000000', { from: addr1 });
     });
 
-    describe('wip', async function () {
-        it('transferFrom', async function () {
+    describe('wip', async () => {
+        it('transferFrom', async () => {
             await this.dai.approve(addr0, '2', { from: addr1 });
             await this.dai.transferFrom(addr1, addr0, '1', { from: addr0 });
         });
 
-        it('should not swap with bad signature', async function () {
+        it('should not swap with bad signature', async () => {
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -67,7 +67,7 @@ describe('LimitOrderProtocol', async function () {
             ).to.eventually.be.rejectedWith('BadSignature()');
         });
 
-        it('should not fill (1,1)', async function () {
+        it('should not fill (1,1)', async () => {
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -84,7 +84,7 @@ describe('LimitOrderProtocol', async function () {
             ).to.eventually.be.rejectedWith('OnlyOneAmountShouldBeZero()');
         });
 
-        it('should not fill above threshold', async function () {
+        it('should not fill above threshold', async () => {
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -101,7 +101,7 @@ describe('LimitOrderProtocol', async function () {
             ).to.eventually.be.rejectedWith('TakingAmountTooHigh()');
         });
 
-        it('should not fill below threshold', async function () {
+        it('should not fill below threshold', async () => {
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -118,7 +118,7 @@ describe('LimitOrderProtocol', async function () {
             ).to.eventually.be.rejectedWith('MakingAmountTooLow()');
         });
 
-        it('should fail when both amounts are zero', async function () {
+        it('should fail when both amounts are zero', async () => {
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -135,7 +135,7 @@ describe('LimitOrderProtocol', async function () {
             ).to.eventually.be.rejectedWith('OnlyOneAmountShouldBeZero()');
         });
 
-        it('should swap fully based on signature', async function () {
+        it('should swap fully based on signature', async () => {
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
 
@@ -167,7 +167,7 @@ describe('LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('should swap half based on signature', async function () {
+        it('should swap half based on signature', async () => {
             // Order: 2 DAI => 2 WETH
             // Swap:  1 DAI => 1 WETH
 
@@ -201,7 +201,7 @@ describe('LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('should floor maker amount', async function () {
+        it('should floor maker amount', async () => {
             // Order: 2 DAI => 10 WETH
             // Swap:  9 WETH <= 1 DAI
 
@@ -229,7 +229,7 @@ describe('LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(9));
         });
 
-        it('should fail on floor maker amount = 0', async function () {
+        it('should fail on floor maker amount = 0', async () => {
             // Order: 2 DAI => 10 WETH
             // Swap:  4 WETH <= 0 DAI
 
@@ -249,7 +249,7 @@ describe('LimitOrderProtocol', async function () {
             ).to.eventually.be.rejectedWith('SwapWithZeroAmount()');
         });
 
-        it('should ceil taker amount', async function () {
+        it('should ceil taker amount', async () => {
             // Order: 10 DAI => 2 WETH
             // Swap:  4 DAI => 1 WETH
 
@@ -277,7 +277,7 @@ describe('LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('ERC721Proxy should work', async function () {
+        it('ERC721Proxy should work', async () => {
             const erc721proxy = await ERC721Proxy.new(this.swap.address);
 
             await this.dai.approve(erc721proxy.address, '10', { from: addr1 });
@@ -313,13 +313,13 @@ describe('LimitOrderProtocol', async function () {
         });
     });
 
-    describe('Permit', async function () {
-        describe('fillOrderToWithPermit', async function () {
-            beforeEach(async function () {
+    describe('Permit', async () => {
+        describe('fillOrderToWithPermit', async () => {
+            beforeEach(async () => {
                 this.swap = await LimitOrderProtocol.new();
             });
 
-            it('DAI => WETH', async function () {
+            it('DAI => WETH', async () => {
                 await this.dai.approve(this.swap.address, '1000000', { from: addr1Wallet.getAddressString() });
                 const order = buildOrder(
                     {
@@ -350,7 +350,7 @@ describe('LimitOrderProtocol', async function () {
                 expect(allowance).to.be.bignumber.eq(toBN('0'));
             });
 
-            it('rejects reused signature', async function () {
+            it('rejects reused signature', async () => {
                 await this.dai.approve(this.swap.address, '1000000', { from: addr1Wallet.getAddressString() });
                 const order = buildOrder(
                     {
@@ -370,7 +370,7 @@ describe('LimitOrderProtocol', async function () {
                 await expect(requestFunc()).to.eventually.be.rejectedWith('ERC20Permit: invalid signature');
             });
 
-            it('rejects other signature', async function () {
+            it('rejects other signature', async () => {
                 await this.dai.approve(this.swap.address, '1000000', { from: addr1Wallet.getAddressString() });
                 const order = buildOrder(
                     {
@@ -391,7 +391,7 @@ describe('LimitOrderProtocol', async function () {
                 ).to.eventually.be.rejectedWith('ERC20Permit: invalid signature');
             });
 
-            it('rejects expired permit', async function () {
+            it('rejects expired permit', async () => {
                 const deadline = (await time.latest()) - time.duration.weeks(1);
                 await this.dai.approve(this.swap.address, '1000000', { from: addr1Wallet.getAddressString() });
                 const order = buildOrder({
@@ -412,8 +412,8 @@ describe('LimitOrderProtocol', async function () {
         });
     });
 
-    describe('Amount Calculator', async function () {
-        it('empty getTakingAmount should work on full fill', async function () {
+    describe('Amount Calculator', async () => {
+        it('empty getTakingAmount should work on full fill', async () => {
             const order = buildOrder({
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
@@ -437,7 +437,7 @@ describe('LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(10));
         });
 
-        it('empty getTakingAmount should not work on partial fill', async function () {
+        it('empty getTakingAmount should not work on partial fill', async () => {
             const order = buildOrder({
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
@@ -445,7 +445,7 @@ describe('LimitOrderProtocol', async function () {
                 takingAmount: 10,
                 from: addr1,
             }, {
-                getTakingAmount: '0x',
+                getTakingAmount: '', // <-- empty string turns into "x" to disable partial fill
             });
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -454,7 +454,7 @@ describe('LimitOrderProtocol', async function () {
             ).to.eventually.be.rejectedWith('WrongAmount()');
         });
 
-        it('empty getMakingAmount should work on full fill', async function () {
+        it('empty getMakingAmount should work on full fill', async () => {
             const order = buildOrder({
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
@@ -478,7 +478,7 @@ describe('LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(10));
         });
 
-        it('empty getMakingAmount should not work on partial fill', async function () {
+        it('empty getMakingAmount should not work on partial fill', async () => {
             const order = buildOrder({
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
@@ -486,7 +486,7 @@ describe('LimitOrderProtocol', async function () {
                 takingAmount: 10,
                 from: addr1,
             }, {
-                getMakingAmount: '0x',
+                getMakingAmount: '', // <-- empty string turns into "x" to disable partial fill
             });
             const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
@@ -496,8 +496,8 @@ describe('LimitOrderProtocol', async function () {
         });
     });
 
-    describe('Order Cancelation', async function () {
-        beforeEach(async function () {
+    describe('Order Cancelation', async () => {
+        beforeEach(async () => {
             this.order = buildOrder({
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
@@ -508,20 +508,20 @@ describe('LimitOrderProtocol', async function () {
         });
 
         // TODO: need same test for RFQ
-        it('should cancel own order', async function () {
+        it('should cancel own order', async () => {
             await this.swap.cancelOrder(this.order, { from: addr1 });
             const data = buildOrderData(this.chainId, this.swap.address, this.order);
             const orderHash = bufferToHex(ethSigUtil.TypedDataUtils.sign(data));
             expect(await this.swap.remaining(orderHash)).to.be.bignumber.equal('0');
         });
 
-        it('should not cancel foreign order', async function () {
+        it('should not cancel foreign order', async () => {
             await expect(
                 this.swap.cancelOrder(this.order),
             ).to.eventually.be.rejectedWith('AccessDenied()');
         });
 
-        it('should not fill cancelled order', async function () {
+        it('should not fill cancelled order', async () => {
             const signature = signOrder(this.order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
 
             await this.swap.cancelOrder(this.order, { from: addr1 });
@@ -532,8 +532,8 @@ describe('LimitOrderProtocol', async function () {
         });
     });
 
-    describe('Private Orders', async function () {
-        it('should fill with correct taker', async function () {
+    describe('Private Orders', async () => {
+        it('should fill with correct taker', async () => {
             const order = buildOrder({
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
@@ -557,7 +557,7 @@ describe('LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('should not fill with incorrect taker', async function () {
+        it('should not fill with incorrect taker', async () => {
             const order = buildOrder({
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
@@ -574,8 +574,8 @@ describe('LimitOrderProtocol', async function () {
         });
     });
 
-    describe('Predicate', async function () {
-        it('benchmark gas', async function () {
+    describe('Predicate', async () => {
+        it('benchmark gas', async () => {
             const tsBelow = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(addr1).encodeABI();
             const gtBalance = this.swap.contract.methods.gt(
@@ -587,7 +587,7 @@ describe('LimitOrderProtocol', async function () {
             await this.swap.contract.methods.or(offsets, data).send({ from: addr1 });
         });
 
-        it('benchmark gas real case', async function () {
+        it('benchmark gas real case', async () => {
             const tsBelow = this.swap.contract.methods.timestampBelow(0x70000000).encodeABI();
             const eqNonce = this.swap.contract.methods.nonceEquals(addr1, 0).encodeABI();
 
@@ -595,7 +595,18 @@ describe('LimitOrderProtocol', async function () {
             await this.swap.contract.methods.and(offsets, data).send({ from: addr1 });
         });
 
-        it('`or` should pass', async function () {
+        it('benchmark gas real case (optimized)', async () => {
+            const timestamp = toBN(0x70000000);
+            const nonce = toBN(0);
+
+            await this.swap.contract.methods.timestampBelowAndNonceEquals(
+                toBN(trim0x(addr1), 'hex')
+                    .or(nonce.shln(160))
+                    .or(timestamp.shln(208)),
+            ).send({ from: addr1 });
+        });
+
+        it('`or` should pass', async () => {
             const tsBelow = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
             const balanceCall = this.swap.contract.methods.arbitraryStaticCall(
                 this.dai.address,
@@ -632,7 +643,7 @@ describe('LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('`or` should fail', async function () {
+        it('`or` should fail', async () => {
             const tsBelow = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(addr1).encodeABI();
             const gtBalance = this.swap.contract.methods.lt(
@@ -660,7 +671,7 @@ describe('LimitOrderProtocol', async function () {
             ).to.eventually.be.rejectedWith('PredicateIsNotTrue()');
         });
 
-        it('`and` should pass', async function () {
+        it('`and` should pass', async () => {
             const tsBelow = this.swap.contract.methods.timestampBelow(0xff000000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(addr1).encodeABI();
             const gtBalance = this.swap.contract.methods.eq(
@@ -696,7 +707,7 @@ describe('LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('nonce + ts example', async function () {
+        it('nonce + ts example', async () => {
             const tsBelow = this.swap.contract.methods.timestampBelow(0xff000000).encodeABI();
             const nonceCall = this.swap.contract.methods.nonceEquals(addr1, 0).encodeABI();
             const { offsets, data } = joinStaticCalls([tsBelow, nonceCall]);
@@ -728,12 +739,12 @@ describe('LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('advance nonce', async function () {
+        it('advance nonce', async () => {
             await this.swap.increaseNonce();
             expect(await this.swap.nonce(addr0)).to.be.bignumber.equal('1');
         });
 
-        it('`and` should fail', async function () {
+        it('`and` should fail', async () => {
             const tsBelow = this.swap.contract.methods.timestampBelow(0xff0000).encodeABI();
             const balanceCall = this.dai.contract.methods.balanceOf(addr1).encodeABI();
             const gtBalance = this.swap.contract.methods.gt(
@@ -762,8 +773,8 @@ describe('LimitOrderProtocol', async function () {
         });
     });
 
-    describe('Expiration', async function () {
-        it('should fill when not expired', async function () {
+    describe('Expiration', async () => {
+        it('should fill when not expired', async () => {
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -791,7 +802,7 @@ describe('LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(1));
         });
 
-        it('should not fill when expired', async function () {
+        it('should not fill when expired', async () => {
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -811,7 +822,7 @@ describe('LimitOrderProtocol', async function () {
             ).to.eventually.be.rejectedWith('PredicateIsNotTrue()');
         });
 
-        it('should fill partially if not enough coins (taker)', async function () {
+        it('should fill partially if not enough coins (taker)', async () => {
             const order = buildOrder({
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,
@@ -834,7 +845,7 @@ describe('LimitOrderProtocol', async function () {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(2));
         });
 
-        it('should fill partially if not enough coins (maker)', async function () {
+        it('should fill partially if not enough coins (maker)', async () => {
             const order = buildOrder({
                 makerAsset: this.dai.address,
                 takerAsset: this.weth.address,

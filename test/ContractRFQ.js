@@ -6,14 +6,14 @@ const TokenMock = artifacts.require('TokenMock');
 const ContractRFQ = artifacts.require('ContractRFQ');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 
-describe('ContractRFQ', async function () {
+describe('ContractRFQ', async () => {
     const addr0 = addr0Wallet.getAddressString();
 
-    before(async function () {
+    before(async () => {
         this.chainId = await web3.eth.getChainId();
     });
 
-    beforeEach(async function () {
+    beforeEach(async () => {
         this.swap = await LimitOrderProtocol.new();
         this.usdc = await TokenMock.new('USDC', 'USDC');
         this.usdt = await TokenMock.new('USDT', 'USDT');
@@ -28,7 +28,7 @@ describe('ContractRFQ', async function () {
         await this.usdt.approve(this.swap.address, '1000000000');
     });
 
-    it('should fill contract-signed RFQ order', async function () {
+    it('should fill contract-signed RFQ order', async () => {
         const makerUsdc = await this.usdc.balanceOf(this.rfq.address);
         const takerUsdc = await this.usdc.balanceOf(addr0);
         const makerUsdt = await this.usdt.balanceOf(this.rfq.address);
