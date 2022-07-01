@@ -90,8 +90,8 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
      * @param vs VS component of signature
      * @param amount Amount to fill and flags.
      * - Bits 0-252 contain the amount to fill
-     * - Bit 253 is used to indicate whether signature is 64-bit (0) or 65-bit (1).
-     * - Bit 254 is used to indicate whether smart contract (0) signed the order
+     * - Bit 253 is used to indicate whether signature is 64-bit (0) or 65-bit (1)
+     * - Bit 254 is used to indicate whether smart contract (1) signed the order or not (0)
      * - Bit 255 is used to indicate whether maker (1) or taker amount (0) is given in the amount parameter
      * @return filledMakingAmount Actual amount transferred from maker to taker
      * @return filledTakingAmount Actual amount transferred from taker to maker
