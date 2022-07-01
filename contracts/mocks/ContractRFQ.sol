@@ -80,13 +80,9 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
             ) ||
             order.makingAmount * fee > order.takingAmount * 1e18 ||
             order.maker != address(this) || // TODO: remove redundant check
-            _hash(order) != hash
+            order.hash(_domainSeparatorV4()) != hash
         ) revert BadPrice();
 
         return this.isValidSignature.selector;
-    }
-
-    function _hash(OrderRFQLib.OrderRFQ memory order) internal view returns(bytes32) {
-        return order.hash(_domainSeparatorV4());
     }
 }
