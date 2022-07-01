@@ -25,7 +25,7 @@ library OrderRFQLib {
         ")"
     );
 
-    function hash(OrderRFQ memory order) internal pure returns(bytes32 result) {
+    function hash(OrderRFQ memory order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         // return keccak256(abi.encode(_LIMIT_ORDER_RFQ_TYPEHASH, order));
         bytes32 typehash = _LIMIT_ORDER_RFQ_TYPEHASH;
         assembly { // solhint-disable-line no-inline-assembly
@@ -40,6 +40,11 @@ library OrderRFQLib {
             mstore(add(ptr, 0xc0), mload(add(order, 0xa0)))
             mstore(add(ptr, 0xe0), mload(add(order, 0xc0)))
             result := keccak256(ptr, 0x100)
+
+            mstore(ptr, 0x1901000000000000000000000000000000000000000000000000000000000000) // "\x19\x01"
+            mstore(add(ptr, 0x02), domainSeparator)
+            mstore(add(ptr, 0x22), result)
+            result := keccak256(ptr, 66)
         }
     }
 }
