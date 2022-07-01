@@ -87,6 +87,6 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     }
 
     function _hash(OrderRFQLib.OrderRFQ memory order) internal view returns(bytes32) {
-        return _hashTypedDataV4(order.hash());
+        return order.hash(_domainSeparatorV4());
     }
 }
