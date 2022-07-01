@@ -92,7 +92,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         if (amount & _MAKER_AMOUNT_FLAG != 0) {
             (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, amount & _AMOUNT_MASK, 0, msg.sender);
         } else {
-            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, 0, amount, msg.sender);
+            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, 0, amount & _AMOUNT_MASK, msg.sender);
         }
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
