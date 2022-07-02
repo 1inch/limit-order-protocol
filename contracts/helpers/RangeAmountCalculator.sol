@@ -31,7 +31,7 @@ contract RangeAmountCalculator {
             uint256 amountAfterFill = priceStart * remainingLiquidityAfterFill + priceEnd * filledForAfterFill;
             uint256 price = (amountBeforeFill + amountAfterFill) / totalLiquidity / 2;
 
-            return fillAmount * price;
+            return fillAmount * price / 1e18;
         }
     }
 
@@ -56,7 +56,7 @@ contract RangeAmountCalculator {
                 + 2 * priceStart * priceEnd * filledFor * liquidityRemaining
             );
 
-            return (Math.sqrt(d / 4) - priceStart * liquidityRemaining - priceEnd * filledFor) / priceRangeDiff;
+            return (Math.sqrt(d / 4) - priceStart * liquidityRemaining - priceEnd * filledFor) / priceRangeDiff / 1e18;
         }
     }
 }

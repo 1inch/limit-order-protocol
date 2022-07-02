@@ -1,42 +1,46 @@
 const RangeAmountCalculator = artifacts.require('RangeAmountCalculator');
 
 describe('RangeAmountCalculator', async function () {
+    const fromUnits = (num, decimals) => BigInt(num * 10 ** decimals);
+
     beforeEach(async function () {
         this.rangeAmountCalculator = await RangeAmountCalculator.new();
     });
 
     describe('Fill by maker asset', () => {
         it('Fill limit-order completely', async function () {
-            const priceStart = 3000;
-            const priceEnd = 4000;
-            const totalLiquidity = 10;
-            const fillAmount = 10;
-            const filledFor = 0;
+            const decimals = 18;
+            const priceStart = fromUnits(3000, decimals);
+            const priceEnd = fromUnits(4000, decimals);
+            const totalLiquidity = fromUnits(10, decimals);
+            const fillAmount = fromUnits(10, decimals);
+            const filledFor = fromUnits(0, decimals);
 
             const amount = (await this.rangeAmountCalculator.getRangeTakerAmount(
-                priceStart,
-                priceEnd,
-                totalLiquidity,
-                fillAmount,
-                filledFor,
-            )).toNumber();
+                priceStart.toString(),
+                priceEnd.toString(),
+                totalLiquidity.toString(),
+                fillAmount.toString(),
+                filledFor.toString(),
+            )).toString();
 
-            expect(amount).to.equal(35000); // 3500 * 10
+            expect(amount).to.equal(fromUnits(3500 * 10, decimals).toString()); // 3500 * 10
         });
 
         it('Fill limit-order by half', async function () {
-            const priceStart = 3000;
-            const priceEnd = 4000;
-            const totalLiquidity = 10;
-            const fillAmount = 5;
-            const filledFor = 0;
+            const decimals = 18;
+            const priceStart = fromUnits(3000, decimals);
+            const priceEnd = fromUnits(4000, decimals);
+            const totalLiquidity = fromUnits(10, decimals);
+            const fillAmount = fromUnits(5, decimals);
+            const filledFor = fromUnits(0, decimals);
 
             const amount = (await this.rangeAmountCalculator.getRangeTakerAmount(
-                priceStart,
-                priceEnd,
-                totalLiquidity,
-                fillAmount,
-                filledFor,
+                priceStart.toString(),
+                priceEnd.toString(),
+                totalLiquidity.toString(),
+                fillAmount.toString(),
+                filledFor.toString(),
             )).toNumber();
 
             expect(amount).to.equal(16250); // 3250 * 5

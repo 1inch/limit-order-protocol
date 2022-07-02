@@ -24,15 +24,15 @@ describe('LimitOrderProtocol', async function () {
 
         this.swap = await LimitOrderProtocol.new();
 
-        await this.dai.mint(addr1, '1000000');
-        await this.weth.mint(addr1, '1000000');
-        await this.dai.mint(addr0, '1000000');
-        await this.weth.mint(addr0, '1000000');
+        await this.dai.mint(addr1, '1000000000000000000000000000000');
+        await this.weth.mint(addr1, '1000000000000000000000000000000');
+        await this.dai.mint(addr0, '1000000000000000000000000000000');
+        await this.weth.mint(addr0, '1000000000000000000000000000000');
 
-        await this.dai.approve(this.swap.address, '1000000');
-        await this.weth.approve(this.swap.address, '1000000');
-        await this.dai.approve(this.swap.address, '1000000', { from: addr1 });
-        await this.weth.approve(this.swap.address, '1000000', { from: addr1 });
+        await this.dai.approve(this.swap.address, '1000000000000000000000000000000');
+        await this.weth.approve(this.swap.address, '1000000000000000000000000000000');
+        await this.dai.approve(this.swap.address, '1000000000000000000000000000000', { from: addr1 });
+        await this.weth.approve(this.swap.address, '1000000000000000000000000000000', { from: addr1 });
     });
 
     describe('wip', async function () {
@@ -881,23 +881,27 @@ describe('LimitOrderProtocol', async function () {
     describe('Range limit orders', async function () {
         it('Fill range limit-order by maker asset', async function () {
             // Order: 10 WETH -> 40_000 DAI with price range: 3000 -> 4000 DAI
-            const makingAmount = 10;
-            const takingAmount = 40_000;
+            const fromUnits = (num, decimals) => BigInt(num * 10 ** decimals);
+            const decimals = 18;
+            const makingAmount = fromUnits(10, decimals);
+            const takingAmount = fromUnits(40_000, decimals);
+            const startPrice = fromUnits(3000, decimals);
+            const endPrice = fromUnits(4000, decimals);
             const order = buildOrder(
                 {
                     makerAsset: this.weth.address,
                     takerAsset: this.dai.address,
-                    makingAmount,
-                    takingAmount,
+                    makingAmount: makingAmount.toString(),
+                    takingAmount: takingAmount.toString(),
                     from: addr1,
                 },
                 {
                     getMakingAmount: this.swap.address + trim0x(cutLastArg(
-                        this.swap.contract.methods.getRangeMakerAmount(3000, 4000, makingAmount, 0, 0).encodeABI(),
+                        this.swap.contract.methods.getRangeMakerAmount(startPrice.toString(), endPrice.toString(), makingAmount.toString(), 0, 0).encodeABI(),
                         64,
                     )),
                     getTakingAmount: this.swap.address + trim0x(cutLastArg(
-                        this.swap.contract.methods.getRangeTakerAmount(3000, 4000, makingAmount, 0, 0).encodeABI(),
+                        this.swap.contract.methods.getRangeTakerAmount(startPrice.toString(), endPrice.toString(), makingAmount.toString(), 0, 0).encodeABI(),
                         64,
                     )),
                 },
@@ -912,52 +916,76 @@ describe('LimitOrderProtocol', async function () {
 
             // Buy 2 WETH, price should be 3100 DAI
             // fillOrder(order, signature, interaction, makingAmount, takingAmount, thresholdAmount);
-            await this.swap.fillOrder(order, signature, '0x', 2, 0, 6200);
+            await this.swap.fillOrder(
+                order, signature, '0x',
+                fromUnits(2, decimals).toString(),
+                0,
+                fromUnits(6200, decimals).toString(),
+            );
+
+            const newDaiBalance1 = await this.dai.balanceOf(addr1);
+            const newWethBalance1 = await this.weth.balanceOf(addr1);
+            const newDaiBalance0 = await this.dai.balanceOf(addr0);
+            const newWethBalance0 = await this.weth.balanceOf(addr0);
 
             // After fill, seller got +(2 * 3100) DAI
-            expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.addn(6200), 'dai balanceOf wallet');
+            expect(newDaiBalance1.toString()).equal((BigInt(makerDai) + fromUnits(6200, decimals)).toString(), 'dai balanceOf wallet');
             // After fill, seller gave -2 WETH
-            expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth.subn(2), 'weth balanceOf wallet');
+            expect(newWethBalance1.toString()).equal((BigInt(makerWeth) - fromUnits(2, decimals)).toString(), 'weth balanceOf wallet');
 
             // After fill, buyer gave -(2 * 3100) DAI
-            expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.subn(6200), 'dai balanceOf addr0');
+            expect(newDaiBalance0.toString()).equal((BigInt(takerDai) - fromUnits(6200, decimals)).toString(), 'dai balanceOf addr0');
             // After fill, buyer got +2 WETH
-            expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.addn(2), 'weth balanceOf addr0');
+            expect(newWethBalance0.toString()).equal((BigInt(takerWeth) + fromUnits(2, decimals)).toString(), 'weth balanceOf addr0');
 
             // Buy 2 more WETH, price should be 3300 DAI
             // fillOrder(order, signature, makingAmount, takingAmount, thresholdAmount);
-            await this.swap.fillOrder(order, signature, '0x' , 2, 0, 6600);
+            await this.swap.fillOrder(
+                order, signature, '0x',
+                fromUnits(2, decimals).toString(),
+                0,
+                fromUnits(6600, decimals).toString(),
+            );
+
+            const newDaiBalance11 = await this.dai.balanceOf(addr1);
+            const newWethBalance11 = await this.weth.balanceOf(addr1);
+            const newDaiBalance00 = await this.dai.balanceOf(addr0);
+            const newWethBalance00 = await this.weth.balanceOf(addr0);
 
             // After fill, seller got +(2 * 3100) DAI
-            expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.addn(6200 + 6600), 'dai balanceOf wallet');
+            expect(newDaiBalance11.toString()).equal((BigInt(makerDai) + fromUnits(6200 + 6600, decimals)).toString(), 'dai balanceOf wallet');
             // After fill, seller gave -2 WETH
-            expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth.subn(2 + 2), 'weth balanceOf wallet');
+            expect(newWethBalance11.toString()).equal((BigInt(makerWeth) - fromUnits(2 + 2, decimals)).toString(), 'weth balanceOf wallet');
 
             // After fill, buyer gave -(2 * 3100) DAI
-            expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.subn(6200 + 6600), 'dai balanceOf addr0');
+            expect(newDaiBalance00.toString()).equal((BigInt(takerDai) - fromUnits(6200 + 6600, decimals)).toString(), 'dai balanceOf addr0');
             // After fill, buyer got +2 WETH
-            expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.addn(2 + 2), 'weth balanceOf addr0');
+            expect(newWethBalance00.toString()).equal((BigInt(takerWeth) + fromUnits(2 + 2, decimals)).toString(), 'weth balanceOf addr0');
         });
 
-        it('Fill range limit-order by taker asset', async function () {
+        it.only('Fill range limit-order by taker asset', async function () {
             // Order: 10 WETH -> 40_000 DAI with price range: 3000 -> 4000 DAI
-            const makingAmount = 10;
-            const takingAmount = 40_000;
+            const fromUnits = (num, decimals) => BigInt(num * 10 ** decimals);
+            const decimals = 18;
+            const makingAmount = fromUnits(10, decimals);
+            const takingAmount = fromUnits(40_000, decimals);
+            const startPrice = fromUnits(3000, decimals);
+            const endPrice = fromUnits(4000, decimals);
             const order = buildOrder(
                 {
                     makerAsset: this.weth.address,
                     takerAsset: this.dai.address,
-                    makingAmount,
-                    takingAmount,
+                    makingAmount: makingAmount.toString(),
+                    takingAmount: takingAmount.toString(),
                     from: addr1,
                 },
                 {
                     getMakingAmount: this.swap.address + trim0x(cutLastArg(
-                        this.swap.contract.methods.getRangeMakerAmount(3000, 4000, makingAmount, 0, 0).encodeABI(),
+                        this.swap.contract.methods.getRangeMakerAmount(startPrice.toString(), endPrice.toString(), makingAmount.toString(), 0, 0).encodeABI(),
                         64,
                     )),
                     getTakingAmount: this.swap.address + trim0x(cutLastArg(
-                        this.swap.contract.methods.getRangeTakerAmount(3000, 4000, makingAmount, 0, 0).encodeABI(),
+                        this.swap.contract.methods.getRangeTakerAmount(startPrice.toString(), endPrice.toString(), makingAmount.toString(), 0, 0).encodeABI(),
                         64,
                     )),
                 },
@@ -971,32 +999,52 @@ describe('LimitOrderProtocol', async function () {
             const takerWeth = await this.weth.balanceOf(addr0);
 
             // Buy 2 WETH, price should be 3100 DAI
-            // fillOrder(order, signature, makingAmount, takingAmount, thresholdAmount);
-            await this.swap.fillOrder(order, signature, '0x', 0, 6200, 2);
+            // fillOrder(order, signature, interaction, makingAmount, takingAmount, thresholdAmount);
+            await this.swap.fillOrder(
+                order, signature, '0x',
+                0,
+                fromUnits(6200, decimals).toString(),
+                fromUnits(2, decimals).toString(),
+            );
+
+            const newDaiBalance1 = await this.dai.balanceOf(addr1);
+            const newWethBalance1 = await this.weth.balanceOf(addr1);
+            const newDaiBalance0 = await this.dai.balanceOf(addr0);
+            const newWethBalance0 = await this.weth.balanceOf(addr0);
 
             // After fill, seller got +(2 * 3100) DAI
-            expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.addn(6200), 'dai balanceOf wallet');
+            expect(newDaiBalance1.toString()).equal((BigInt(makerDai) + fromUnits(6200, decimals)).toString(), 'dai balanceOf wallet');
             // After fill, seller gave -2 WETH
-            expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth.subn(2), 'weth balanceOf wallet');
+            expect(newWethBalance1.toString()).equal((BigInt(makerWeth) - fromUnits(2, decimals)).toString(), 'weth balanceOf wallet');
 
             // After fill, buyer gave -(2 * 3100) DAI
-            expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.subn(6200), 'dai balanceOf addr0');
+            expect(newDaiBalance0.toString()).equal((BigInt(takerDai) - fromUnits(6200, decimals)).toString(), 'dai balanceOf addr0');
             // After fill, buyer got +2 WETH
-            expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.addn(2), 'weth balanceOf addr0');
+            expect(newWethBalance0.toString()).equal((BigInt(takerWeth) + fromUnits(2, decimals)).toString(), 'weth balanceOf addr0');
 
             // Buy 2 more WETH, price should be 3300 DAI
             // fillOrder(order, signature, makingAmount, takingAmount, thresholdAmount);
-            await this.swap.fillOrder(order, signature, '0x', 0, 6600, 2);
+            await this.swap.fillOrder(
+                order, signature, '0x',
+                0,
+                fromUnits(6600, decimals).toString(),
+                fromUnits(2, decimals).toString(),
+            );
+
+            const newDaiBalance11 = await this.dai.balanceOf(addr1);
+            const newWethBalance11 = await this.weth.balanceOf(addr1);
+            const newDaiBalance00 = await this.dai.balanceOf(addr0);
+            const newWethBalance00 = await this.weth.balanceOf(addr0);
 
             // After fill, seller got +(2 * 3100) DAI
-            expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.addn(6200 + 6600), 'dai balanceOf wallet');
+            expect(newDaiBalance11.toString()).equal((BigInt(makerDai) + fromUnits(6200 + 6600, decimals)).toString(), 'dai balanceOf wallet');
             // After fill, seller gave -2 WETH
-            expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth.subn(2 + 2), 'weth balanceOf wallet');
+            expect(newWethBalance11.toString()).equal((BigInt(makerWeth) - fromUnits(2 + 2, decimals)).toString(), 'weth balanceOf wallet');
 
             // After fill, buyer gave -(2 * 3100) DAI
-            expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.subn(6200 + 6600), 'dai balanceOf addr0');
+            expect(newDaiBalance00.toString()).equal((BigInt(takerDai) - fromUnits(6200 + 6600, decimals)).toString(), 'dai balanceOf addr0');
             // After fill, buyer got +2 WETH
-            expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.addn(2 + 2), 'weth balanceOf addr0');
+            expect(newWethBalance00.toString()).equal((BigInt(takerWeth) + fromUnits(2 + 2, decimals)).toString(), 'weth balanceOf addr0');
         });
     });
 });
