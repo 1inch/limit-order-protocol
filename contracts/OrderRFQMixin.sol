@@ -41,7 +41,12 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
 
     /// @notice Cancels order's quote
     function cancelOrderRFQ(uint256 orderInfo) external {
-        _invalidateOrder(msg.sender, orderInfo);
+        _invalidateOrder(msg.sender, orderInfo, 0);
+    }
+
+    /// @notice Cancels multiple order's quotes
+    function cancelOrderRFQ(uint256 orderInfo, uint256 additionalMask) public {
+        _invalidateOrder(msg.sender, orderInfo, additionalMask);
     }
 
     /// @notice Fills order's quote, fully or partially (whichever is possible)
@@ -73,21 +78,21 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         bytes32 vs,
         uint256 amount
     ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
-        orderHash = _hashTypedDataV4(order.hash());
+        orderHash = order.hash(_domainSeparatorV4());
         if (amount & _SIGNER_SMART_CONTRACT_HINT != 0) {
             if (amount & _IS_VALID_SIGNATURE_65_BYTES != 0) {
-                require(ECDSA.isValidSignature65(order.maker, orderHash, r, vs), "LOP: bad signature");
+                if (!ECDSA.isValidSignature65(order.maker, orderHash, r, vs)) revert RFQBadSignature();
             } else {
-                require(ECDSA.isValidSignature(order.maker, orderHash, r, vs), "LOP: bad signature");
+                if (!ECDSA.isValidSignature(order.maker, orderHash, r, vs)) revert RFQBadSignature();
             }
         } else {
-            require(ECDSA.recoverOrIsValidSignature(order.maker, orderHash, r, vs), "LOP: bad signature");
+            if(!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, r, vs)) revert RFQBadSignature();
         }
 
         if (amount & _MAKER_AMOUNT_FLAG != 0) {
             (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, amount & _AMOUNT_MASK, 0, msg.sender);
         } else {
-            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, 0, amount, msg.sender);
+            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, 0, amount & _AMOUNT_MASK, msg.sender);
         }
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
@@ -127,7 +132,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 takingAmount,
         address target
     ) public returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
-        orderHash = _hashTypedDataV4(order.hash());
+        orderHash = order.hash(_domainSeparatorV4());
         if (!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
         (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, makingAmount, takingAmount, target);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
@@ -151,7 +156,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
             // Check time expiration
             uint256 expiration = uint128(info) >> 64;
             if (expiration != 0 && block.timestamp > expiration) revert OrderExpired(); // solhint-disable-line not-rely-on-time
-            _invalidateOrder(maker, info);
+            _invalidateOrder(maker, info, 0);
         }
 
         {  // Stack too deep
@@ -185,12 +190,12 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         return (makingAmount, takingAmount);
     }
 
-    function _invalidateOrder(address maker, uint256 orderInfo) private {
+    function _invalidateOrder(address maker, uint256 orderInfo, uint256 additionalMask) private {
         uint256 invalidatorSlot = uint64(orderInfo) >> 8;
-        uint256 invalidatorBit = 1 << uint8(orderInfo);
+        uint256 invalidatorBits = (1 << uint8(orderInfo)) | additionalMask;
         mapping(uint256 => uint256) storage invalidatorStorage = _invalidator[maker];
         uint256 invalidator = invalidatorStorage[invalidatorSlot];
-        if (invalidator & invalidatorBit != 0) revert InvalidatedOrder();
-        invalidatorStorage[invalidatorSlot] = invalidator | invalidatorBit;
+        if (invalidator & invalidatorBits != 0) revert InvalidatedOrder();
+        invalidatorStorage[invalidatorSlot] = invalidator | invalidatorBits;
     }
 }

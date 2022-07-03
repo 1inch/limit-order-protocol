@@ -8,7 +8,7 @@ const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 const AggregatorMock = artifacts.require('AggregatorMock');
 const ChainlinkCalculator = artifacts.require('ChainlinkCalculator');
 
-describe('ChainLinkExample', async function () {
+describe('ChainLinkExample', async () => {
     const [addr0, addr1] = [addr0Wallet.getAddressString(), addr1Wallet.getAddressString()];
 
     function buildInverseWithSpread (inverse, spread) {
@@ -23,11 +23,11 @@ describe('ChainLinkExample', async function () {
         return chainlink.address + trim0x(chainlink.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount).encodeABI());
     }
 
-    before(async function () {
+    before(async () => {
         this.chainId = await web3.eth.getChainId();
     });
 
-    beforeEach(async function () {
+    beforeEach(async () => {
         this.dai = await TokenMock.new('DAI', 'DAI');
         this.weth = await TokenMock.new('WETH', 'WETH');
         this.inch = await TokenMock.new('1INCH', '1INCH');
@@ -53,11 +53,10 @@ describe('ChainLinkExample', async function () {
         this.inchOracle = await AggregatorMock.new('1577615249227853');
     });
 
-    it('eth -> dai chainlink+eps order', async function () {
+    it('eth -> dai chainlink+eps order', async () => {
         // chainlink rate is 1 eth = 4000 dai
         const order = buildOrder(
             {
-                exchange: this.swap,
                 makerAsset: this.weth.address,
                 takerAsset: this.dai.address,
                 makingAmount: ether('1').toString(),
@@ -85,7 +84,7 @@ describe('ChainLinkExample', async function () {
         expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.add(ether('1')));
     });
 
-    it('dai -> 1inch stop loss order', async function () {
+    it('dai -> 1inch stop loss order', async () => {
         const makingAmount = ether('100');
         const takingAmount = ether('631');
         const priceCall = this.swap.contract.methods.arbitraryStaticCall(
@@ -95,7 +94,6 @@ describe('ChainLinkExample', async function () {
 
         const order = buildOrder(
             {
-                exchange: this.swap,
                 makerAsset: this.inch.address,
                 takerAsset: this.dai.address,
                 makingAmount,
@@ -122,14 +120,13 @@ describe('ChainLinkExample', async function () {
         expect(await this.inch.balanceOf(addr0)).to.be.bignumber.equal(takerInch.add(makingAmount));
     });
 
-    it('dai -> 1inch stop loss order predicate is invalid', async function () {
+    it('dai -> 1inch stop loss order predicate is invalid', async () => {
         const makingAmount = ether('100');
         const takingAmount = ether('631');
         const priceCall = buildDoublePriceGetter(this.chainlink, this.inchOracle, this.daiOracle, '1000000000', ether('1'));
 
         const order = buildOrder(
             {
-                exchange: this.swap,
                 makerAsset: this.inch.address,
                 takerAsset: this.dai.address,
                 makingAmount,
@@ -149,7 +146,7 @@ describe('ChainLinkExample', async function () {
         ).to.eventually.be.rejectedWith('PredicateIsNotTrue()');
     });
 
-    it('eth -> dai stop loss order', async function () {
+    it('eth -> dai stop loss order', async () => {
         const makingAmount = ether('1');
         const takingAmount = ether('4000');
         const latestAnswerCall = this.swap.contract.methods.arbitraryStaticCall(
@@ -159,7 +156,6 @@ describe('ChainLinkExample', async function () {
 
         const order = buildOrder(
             {
-                exchange: this.swap,
                 makerAsset: this.weth.address,
                 takerAsset: this.dai.address,
                 makingAmount,

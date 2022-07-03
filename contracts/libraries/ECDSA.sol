@@ -10,7 +10,6 @@ library ECDSA {
         /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
-            mstore(0x40, add(ptr, 0x80))
 
             mstore(ptr, hash)
             mstore(add(ptr, 0x20), add(27, shr(255, vs)))
@@ -30,15 +29,11 @@ library ECDSA {
             // memory[ptr:ptr+0x80] = (hash, v, r, s)
             switch signature.length
             case 65 {
-                mstore(0x40, add(ptr, 0x80))
-
                 // memory[ptr+0x20:ptr+0x80] = (v, r, s)
                 mstore(add(ptr, 0x20), byte(0, calldataload(add(signature.offset, 0x40))))
                 calldatacopy(add(ptr, 0x40), signature.offset, 0x40)
             }
             case 64 {
-                mstore(0x40, add(ptr, 0x80))
-
                 // memory[ptr+0x20:ptr+0x80] = (v, r, s)
                 let vs := calldataload(add(signature.offset, 0x20))
                 mstore(add(ptr, 0x20), add(27, shr(255, vs)))
@@ -95,7 +90,6 @@ library ECDSA {
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
             let len := add(0x64, signature.length)
-            mstore(0x40, add(ptr, len))
 
             mstore(ptr, selector)
             mstore(add(ptr, 0x04), hash)
@@ -117,7 +111,6 @@ library ECDSA {
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
             let len := add(0x64, 64)
-            mstore(0x40, add(ptr, len))
 
             mstore(ptr, selector)
             mstore(add(ptr, 0x04), hash)
@@ -140,7 +133,6 @@ library ECDSA {
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
             let len := add(0x64, 65)
-            mstore(0x40, add(ptr, len))
 
             mstore(ptr, selector)
             mstore(add(ptr, 0x04), hash)
