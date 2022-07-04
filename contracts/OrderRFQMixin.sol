@@ -25,7 +25,11 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     error RFQSwapWithZeroAmount();
     error InvalidatedOrder();
 
-    /// @notice Emitted when RFQ gets filled
+    /**
+     * @notice Emitted when RFQ gets filled
+     * @param orderHash Hash of the order
+     * @param makingAmount Amount of the maker asset that was transferred from maker to taker
+     */
     event OrderFilledRFQ(
         bytes32 orderHash,
         uint256 makingAmount
@@ -33,13 +37,20 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
 
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
 
-    /// @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
-    /// @return Result Each bit represents whether corresponding was already invalidated
-    function invalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256) {
+    /**
+     * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
+     * @param maker Maker address
+     * @param slot Slot number to return bitmask for
+     * @return result Each bit represents whether corresponding was already invalidated
+     */
+    function invalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256 /* result */) {
         return _invalidator[maker][slot];
     }
 
-    /// @notice Cancels order's quote
+    /**
+     * @notice Cancels order's quote
+     * @param orderInfo Order info (only order id in lowest 64 bits is used)
+     */
     function cancelOrderRFQ(uint256 orderInfo) external {
         _invalidateOrder(msg.sender, orderInfo, 0);
     }
@@ -49,17 +60,22 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         _invalidateOrder(msg.sender, orderInfo, additionalMask);
     }
 
-    /// @notice Fills order's quote, fully or partially (whichever is possible)
-    /// @param order Order quote to fill
-    /// @param signature Signature to confirm quote ownership
-    /// @param makingAmount Making amount
-    /// @param takingAmount Taking amount
+    /**
+     * @notice Fills order's quote, fully or partially (whichever is possible)
+     * @param order Order quote to fill
+     * @param signature Signature to confirm quote ownership
+     * @param makingAmount Making amount
+     * @param takingAmount Taking amount
+     * @return filledMakingAmount Actual amount transferred from maker to taker
+     * @return filledTakingAmount Actual amount transferred from taker to maker
+     * @return orderHash Hash of the filled order
+     */
     function fillOrderRFQ(
         OrderRFQLib.OrderRFQ memory order,
         bytes calldata signature,
         uint256 makingAmount,
         uint256 takingAmount
-    ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
+    ) external returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
     }
 
@@ -72,6 +88,20 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         _IS_VALID_SIGNATURE_65_BYTES
     );
 
+    /**
+     * @notice Fills order's quote, fully or partially, with compact signuture
+     * @param order Order quote to fill
+     * @param r R component of signature
+     * @param vs VS component of signature
+     * @param amount Amount to fill and flags.
+     * - Bits 0-252 contain the amount to fill
+     * - Bit 253 is used to indicate whether signature is 64-bit (0) or 65-bit (1)
+     * - Bit 254 is used to indicate whether smart contract (1) signed the order or not (0)
+     * - Bit 255 is used to indicate whether maker (1) or taker amount (0) is given in the amount parameter
+     * @return filledMakingAmount Actual amount transferred from maker to taker
+     * @return filledTakingAmount Actual amount transferred from taker to maker
+     * @return orderHash Hash of the filled order
+     */
     function fillOrderRFQCompact(
         OrderRFQLib.OrderRFQ memory order,
         bytes32 r,
@@ -97,16 +127,21 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
-    /// @notice Fills Same as `fillOrderRFQ` but calls permit first,
-    /// allowing to approve token spending and make a swap in one transaction.
-    /// Also allows to specify funds destination instead of `msg.sender`
-    /// @param order Order quote to fill
-    /// @param signature Signature to confirm quote ownership
-    /// @param makingAmount Making amount
-    /// @param takingAmount Taking amount
-    /// @param target Address that will receive swap funds
-    /// @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
-    /// @dev See tests for examples
+    /**
+     * @notice Fills Same as `fillOrderRFQ` but calls permit first.
+     * It allows to approve token spending and make a swap in one transaction.
+     * Also allows to specify funds destination instead of `msg.sender`
+     * @param order Order quote to fill
+     * @param signature Signature to confirm quote ownership
+     * @param makingAmount Making amount
+     * @param takingAmount Taking amount
+     * @param target Address that will receive swap funds
+     * @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
+     * @return filledMakingAmount Actual amount transferred from maker to taker
+     * @return filledTakingAmount Actual amount transferred from taker to maker
+     * @return orderHash Hash of the filled order
+     * @dev See tests for examples
+     */
     function fillOrderRFQToWithPermit(
         OrderRFQLib.OrderRFQ memory order,
         bytes calldata signature,
@@ -114,17 +149,22 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 takingAmount,
         address target,
         bytes calldata permit
-    ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
+    ) external returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
         IERC20(order.takerAsset).safePermit(permit);
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, target);
     }
 
-    /// @notice Same as `fillOrderRFQ` but allows to specify funds destination instead of `msg.sender`
-    /// @param order Order quote to fill
-    /// @param signature Signature to confirm quote ownership
-    /// @param makingAmount Making amount
-    /// @param takingAmount Taking amount
-    /// @param target Address that will receive swap funds
+    /**
+     * @notice Same as `fillOrderRFQ` but allows to specify funds destination instead of `msg.sender`
+     * @param order Order quote to fill
+     * @param signature Signature to confirm quote ownership
+     * @param makingAmount Making amount
+     * @param takingAmount Taking amount
+     * @param target Address that will receive swap funds
+     * @return filledMakingAmount Actual amount transferred from maker to taker
+     * @return filledTakingAmount Actual amount transferred from taker to maker
+     * @return orderHash Hash of the filled order
+     */
     function fillOrderRFQTo(
         OrderRFQLib.OrderRFQ memory order,
         bytes calldata signature,
