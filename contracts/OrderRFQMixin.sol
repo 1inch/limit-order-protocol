@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
 import "./helpers/AmountCalculator.sol";
-import "./libraries/ECDSA.sol";
 import "./OrderRFQLib.sol";
 
 /// @title RFQ Limit Order mixin

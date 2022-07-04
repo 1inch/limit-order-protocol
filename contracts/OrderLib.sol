@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.15;
 
+import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
+
 library OrderLib {
     struct Order {
         uint256 salt;
@@ -110,13 +112,8 @@ library OrderLib {
             mstore(add(ptr, 0x140), keccak256(ptr, interactions.length))
             calldatacopy(add(ptr, 0x20), order, 0x120)
             mstore(ptr, typehash)
-            let orderHash := keccak256(ptr, 0x160)
-
-            // ECDSA.toTypedDataHash(domainSeparator, orderHash)
-            mstore(ptr, 0x1901000000000000000000000000000000000000000000000000000000000000)
-            mstore(add(ptr, 0x02), domainSeparator)
-            mstore(add(ptr, 0x22), orderHash)
-            result := keccak256(ptr, 66)
+            result := keccak256(ptr, 0x160)
         }
+        result = ECDSA.toTypedDataHash(domainSeparator, result);
     }
 }

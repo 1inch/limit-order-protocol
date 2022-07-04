@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@1inch/solidity-utils@2.0.19":
-  version "2.0.19"
-  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-2.0.19.tgz#5898085c7bf994642b61271922af30b6bc320c01"
-  integrity sha512-J8YY+iEZzfzChQ435pTQy+2JbjcZjWLJdfrdiwn3RGORi+oEVeNRrHrIBZ1hv+NnklzkFk0kOrKuz/W71bY2mg==
+"@1inch/solidity-utils@2.0.20":
+  version "2.0.20"
+  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-2.0.20.tgz#94c1cf1f89036422775a844146fd998f8ffa3eb4"
+  integrity sha512-yW/DuG673W1sztAZ+hxHloZmZpG/XYOZOQkCcnCK0nNoUs8X0FlrnU4RjJnjhNhKFu6oh0X0arRRVr5OBtr93g==
   dependencies:
     "@metamask/eth-sig-util" "4.0.1"
     "@openzeppelin/contracts" "4.6.0"
