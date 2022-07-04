@@ -2,20 +2,30 @@
 
 pragma solidity 0.8.15;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/NotificationReceiver.sol";
-import "../interfaces/IWhitelistRegistry.sol";
 import "../libraries/ArgumentsDecoder.sol";
+import "../OrderLib.sol";
 
-// TODO: why WL checker is in interaction, but not in predicate?
-contract WhitelistChecker is PreInteractionNotificationReceiver {
+
+contract HashChecker is PreInteractionNotificationReceiver, Ownable {
+    using OrderLib for OrderLib.Order;
     using ArgumentsDecoder for bytes;
 
-    error TakerIsNotWhitelisted();
+    error IncorrectOrderHash();
 
-    IWhitelistRegistry public immutable whitelistRegistry;
+    bytes32 public immutable limitOrderProtocolDomainSeparator;
+    mapping(bytes32 => bool) public hashes;
 
-    constructor(IWhitelistRegistry _whitelistRegistry) {
-        whitelistRegistry = _whitelistRegistry;
+    constructor (address limitOrderProtocol) {
+        // solhint-disable-next-line avoid-low-level-calls
+        (, bytes memory data) = limitOrderProtocol.call(abi.encodeWithSignature("DOMAIN_SEPARATOR()"));
+        limitOrderProtocolDomainSeparator = abi.decode(data, (bytes32));
+    }
+
+    function setHashOrderStatus(OrderLib.Order calldata order, bool status) external onlyOwner {
+        bytes32 orderHash = order.hash(limitOrderProtocolDomainSeparator);
+        hashes[orderHash] = status;
     }
 
     function fillOrderPreInteraction(
@@ -28,7 +38,7 @@ contract WhitelistChecker is PreInteractionNotificationReceiver {
         uint256 remainingMakerAmount,
         bytes calldata nextInteractiveData
     ) external override {
-        if (whitelistRegistry.status(taker) != 1) revert TakerIsNotWhitelisted();
+        if (hashes[orderHash] == false) revert IncorrectOrderHash();
 
         if (nextInteractiveData.length != 0) {
             (address interactionTarget, bytes calldata interactionData) = nextInteractiveData.decodeTargetAndCalldata();

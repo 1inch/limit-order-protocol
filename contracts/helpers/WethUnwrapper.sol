@@ -11,11 +11,13 @@ contract WethUnwrapper is PostInteractionNotificationReceiver {
     receive() external payable {}
 
     function fillOrderPostInteraction(
+        bytes32 /* orderHash */,
         address /* taker */,
         address /* makerAsset */,
         address takerAsset,
         uint256 /* makingAmount */,
         uint256 takingAmount,
+        uint256 /* remainingMakerAmount */,
         bytes calldata interactiveData
     ) external override {
         address payable makerAddress;
