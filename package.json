@@ -9,6 +9,7 @@
   "license": "MIT",
   "dependencies": {
     "@chainlink/contracts": "0.4.1",
+    "@metamask/eth-sig-util": "^4.0.1",
     "@openzeppelin/contracts": "4.6.0"
   },
   "devDependencies": {
@@ -23,7 +24,6 @@
     "eslint-plugin-import": "2.26.0",
     "eslint-plugin-n": "15.2.3",
     "eslint-plugin-promise": "6.0.0",
-    "eth-sig-util": "3.0.1",
     "ethereumjs-util": "7.1.5",
     "ethereumjs-wallet": "1.0.2",
     "hardhat": "2.9.9",
