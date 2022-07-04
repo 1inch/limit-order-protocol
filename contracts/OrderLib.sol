@@ -103,7 +103,6 @@ library OrderLib {
     function hash(Order calldata order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes calldata interactions = order.interactions;
         bytes32 typehash = _LIMIT_ORDER_TYPEHASH;
-        bytes32 orderHash;
         /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
@@ -113,8 +112,8 @@ library OrderLib {
             mstore(add(ptr, 0x140), keccak256(ptr, interactions.length))
             calldatacopy(add(ptr, 0x20), order, 0x120)
             mstore(ptr, typehash)
-            orderHash := keccak256(ptr, 0x160)
+            result := keccak256(ptr, 0x160)
         }
-        return ECDSA.toTypedDataHash(domainSeparator, orderHash);
+        result = ECDSA.toTypedDataHash(domainSeparator, result);
     }
 }
