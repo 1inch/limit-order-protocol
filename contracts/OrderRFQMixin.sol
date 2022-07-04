@@ -70,7 +70,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
      * @return orderHash Hash of the filled order
      */
     function fillOrderRFQ(
-        OrderRFQLib.OrderRFQ memory order,
+        OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
         uint256 makingAmount,
         uint256 takingAmount
@@ -102,7 +102,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
      * @return orderHash Hash of the filled order
      */
     function fillOrderRFQCompact(
-        OrderRFQLib.OrderRFQ memory order,
+        OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount
@@ -142,7 +142,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
      * @dev See tests for examples
      */
     function fillOrderRFQToWithPermit(
-        OrderRFQLib.OrderRFQ memory order,
+        OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
         uint256 makingAmount,
         uint256 takingAmount,
@@ -165,7 +165,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
      * @return orderHash Hash of the filled order
      */
     function fillOrderRFQTo(
-        OrderRFQLib.OrderRFQ memory order,
+        OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
         uint256 makingAmount,
         uint256 takingAmount,
@@ -178,7 +178,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     }
 
     function _fillOrderRFQTo(
-        OrderRFQLib.OrderRFQ memory order,
+        OrderRFQLib.OrderRFQ calldata order,
         uint256 makingAmount,
         uint256 takingAmount,
         address target
