@@ -19,8 +19,8 @@ contract WethUnwrapper is PostInteractionNotificationReceiver {
         bytes calldata interactiveData
     ) external override {
         address payable makerAddress;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
+        // no memory ops inside so this insertion is automatically memory safe
+        assembly { // solhint-disable-line no-inline-assembly
             makerAddress := shr(96, calldataload(interactiveData.offset))
         }
         IWithdrawable(takerAsset).withdraw(takingAmount);
