@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.15;
 
+import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
+
 library OrderRFQLib {
     struct OrderRFQ {
         uint256 info;  // lowest 64 bits is the order id, next 64 bits is the expiration timestamp
@@ -27,6 +29,7 @@ library OrderRFQLib {
 
     function hash(OrderRFQ memory order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes32 typehash = _LIMIT_ORDER_RFQ_TYPEHASH;
+        bytes32 orderHash;
         // this assembly is memory unsafe :(
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := sub(order, 0x20)
@@ -34,15 +37,9 @@ library OrderRFQLib {
             // keccak256(abi.encode(_LIMIT_ORDER_RFQ_TYPEHASH, order));
             let tmp := mload(ptr)
             mstore(ptr, typehash)
-            let orderHash := keccak256(ptr, 0x100)
+            orderHash := keccak256(ptr, 0x100)
             mstore(ptr, tmp)
-
-            // ECDSA.toTypedDataHash(domainSeparator, orderHash)
-            ptr := mload(0x40)
-            mstore(ptr, 0x1901000000000000000000000000000000000000000000000000000000000000)
-            mstore(add(ptr, 0x02), domainSeparator)
-            mstore(add(ptr, 0x22), orderHash)
-            result := keccak256(ptr, 66)
         }
+        return ECDSA.toTypedDataHash(domainSeparator, orderHash);
     }
 }
