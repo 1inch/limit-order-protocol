@@ -27,7 +27,7 @@ library OrderRFQLib {
 
     function hash(OrderRFQ memory order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes32 typehash = _LIMIT_ORDER_RFQ_TYPEHASH;
-        /// @solidity memory-safe-assembly
+        // this assembly is memory unsafe :(
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := sub(order, 0x20)
 
