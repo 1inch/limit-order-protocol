@@ -6,7 +6,6 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
-import "@1inch/solidity-utils/contracts/EthReceiver.sol";
 
 import "./helpers/AmountCalculator.sol";
 import "./helpers/NonceManager.sol";
@@ -20,7 +19,7 @@ import "./libraries/Errors.sol";
 import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
-abstract contract OrderMixin is IOrderMixin, EthReceiver, EIP712, AmountCalculator, NonceManager, PredicateHelper {
+abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceManager, PredicateHelper {
     using Callib for address;
     using SafeERC20 for IERC20;
     using ArgumentsDecoder for bytes;
