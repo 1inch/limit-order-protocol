@@ -116,8 +116,8 @@ abstract contract OrderRFQMixin is EthReceiver, EIP712, AmountCalculator {
         uint256 flagsAndAmount
     ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
-        if (flagsAndAmount & _SIGNER_SMART_CONTRACT_HINT > 0) {
-            if (flagsAndAmount & _IS_VALID_SIGNATURE_65_BYTES > 0) {
+        if (flagsAndAmount & _SIGNER_SMART_CONTRACT_HINT != 0) {
+            if (flagsAndAmount & _IS_VALID_SIGNATURE_65_BYTES != 0) {
                 if (!ECDSA.isValidSignature65(order.maker, orderHash, r, vs)) revert RFQBadSignature();
             } else {
                 if (!ECDSA.isValidSignature(order.maker, orderHash, r, vs)) revert RFQBadSignature();
@@ -172,8 +172,8 @@ abstract contract OrderRFQMixin is EthReceiver, EIP712, AmountCalculator {
         address target
     ) public payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
-        if (flagsAndAmount & _SIGNER_SMART_CONTRACT_HINT > 0) {
-            if (flagsAndAmount & _IS_VALID_SIGNATURE_65_BYTES > 0 && signature.length != 65) revert RFQBadSignature();
+        if (flagsAndAmount & _SIGNER_SMART_CONTRACT_HINT != 0) {
+            if (flagsAndAmount & _IS_VALID_SIGNATURE_65_BYTES != 0 && signature.length != 65) revert RFQBadSignature();
             if (!ECDSA.isValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
         } else {
             if(!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
@@ -190,7 +190,7 @@ abstract contract OrderRFQMixin is EthReceiver, EIP712, AmountCalculator {
         if (target == address(0)) revert RFQZeroTargetIsForbidden();
 
         address maker = order.maker;
-        bool unwrapWETH = (flagsAndAmount & _UNWRAP_WETH_FLAG) > 0;
+        bool unwrapWETH = (flagsAndAmount & _UNWRAP_WETH_FLAG) != 0;
 
         // Validate order
         if (order.allowedSender != address(0) && order.allowedSender != msg.sender) revert RFQPrivateOrder();
@@ -213,7 +213,7 @@ abstract contract OrderRFQMixin is EthReceiver, EIP712, AmountCalculator {
                 makingAmount = orderMakingAmount;
                 takingAmount = orderTakingAmount;
             }
-            else if (flagsAndAmount & _MAKER_AMOUNT_FLAG > 0) {
+            else if (flagsAndAmount & _MAKER_AMOUNT_FLAG != 0) {
                 if (amount > orderMakingAmount) revert MakingAmountExceeded();
                 makingAmount = amount;
                 takingAmount = getTakingAmount(orderMakingAmount, orderTakingAmount, makingAmount);
