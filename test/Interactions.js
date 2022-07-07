@@ -38,7 +38,7 @@ describe('Interactions', async () => {
 
     describe('whitelist', async () => {
         beforeEach(async () => {
-            this.notificationReceiver = await WethUnwrapper.new();
+            this.notificationReceiver = await WethUnwrapper.new(this.weth.address);
             this.whitelistRegistryMock = await WhitelistRegistryMock.new();
             this.whitelistChecker = await WhitelistChecker.new(this.whitelistRegistryMock.address);
         });

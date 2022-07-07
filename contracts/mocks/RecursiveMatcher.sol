@@ -33,8 +33,6 @@ contract RecursiveMatcher is InteractionNotificationReceiver {
 
     function fillOrderInteraction(
         address /* taker */,
-        address /* makerAsset */ ,
-        address /* takerAsset */,
         uint256 /* makingAmount */,
         uint256 /* takingAmount */,
         bytes calldata interactiveData

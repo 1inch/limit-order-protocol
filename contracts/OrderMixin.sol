@@ -4,6 +4,7 @@ pragma solidity 0.8.15;
 
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 
@@ -11,7 +12,6 @@ import "./helpers/AmountCalculator.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/IOrderMixin.sol";
-import "./interfaces/IWETH.sol";
 import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Callib.sol";
@@ -237,7 +237,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.preInteraction().decodeTargetAndCalldata();
             PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                orderHash, msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, remainingMakerAmount, interactionData
+                orderHash, order.maker, msg.sender, actualMakingAmount, actualTakingAmount, remainingMakerAmount, interactionData
             );
         }
 
@@ -254,7 +254,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata();
             uint256 offeredTakingAmount = InteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
-                msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
+                msg.sender, actualMakingAmount, actualTakingAmount, interactionData
             );
 
             if (offeredTakingAmount > actualTakingAmount &&
@@ -286,7 +286,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.postInteraction().decodeTargetAndCalldata();
             PostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
-                 orderHash, msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, remainingMakerAmount, interactionData
+                 orderHash, order.maker, msg.sender, actualMakingAmount, actualTakingAmount, remainingMakerAmount, interactionData
             );
         }
     }
