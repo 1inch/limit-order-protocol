@@ -22,7 +22,6 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     error OrderExpired();
     error MakingAmountExceeded();
     error TakingAmountExceeded();
-    error BothAmountsAreNonZero();
     error RFQSwapWithZeroAmount();
     error InvalidatedOrder();
     error ETHTransferFailed();
@@ -71,8 +70,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
      * @notice Fills order's quote, fully or partially (whichever is possible)
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
-     * @param makingAmount Making amount
-     * @param takingAmount Taking amount
+     * @param flagsAndAmount Fill configuration flags with amount packed in one slot
      * @return filledMakingAmount Actual amount transferred from maker to taker
      * @return filledTakingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -80,20 +78,20 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     function fillOrderRFQ(
         OrderRFQLib.OrderRFQ memory order,
         bytes calldata signature,
-        uint256 makingAmount,
-        uint256 takingAmount
-    ) external returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
-        return fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
+        uint256 flagsAndAmount
+    ) external payable returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
+        return fillOrderRFQTo(order, signature, flagsAndAmount, msg.sender);
     }
 
-    uint256 constant private _UNWRAP_WETH_MASK = 1 << 255;
     uint256 constant private _MAKER_AMOUNT_FLAG = 1 << 255;
     uint256 constant private _SIGNER_SMART_CONTRACT_HINT = 1 << 254;
     uint256 constant private _IS_VALID_SIGNATURE_65_BYTES = 1 << 253;
-    uint256 constant private _AMOUNT_MASK = ~uint256(
+    uint256 constant private _UNWRAP_WETH_FLAG = 1 << 252;
+    uint256 constant private _AMOUNT_MASK = ~(
         _MAKER_AMOUNT_FLAG |
         _SIGNER_SMART_CONTRACT_HINT |
-        _IS_VALID_SIGNATURE_65_BYTES
+        _IS_VALID_SIGNATURE_65_BYTES |
+        _UNWRAP_WETH_FLAG
     );
 
     /**
@@ -101,7 +99,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
      * @param order Order quote to fill
      * @param r R component of signature
      * @param vs VS component of signature
-     * @param amount Amount to fill and flags.
+     * @param flagsAndAmount Fill configuration flags with amount packed in one slot
      * - Bits 0-252 contain the amount to fill
      * - Bit 253 is used to indicate whether signature is 64-bit (0) or 65-bit (1)
      * - Bit 254 is used to indicate whether smart contract (1) signed the order or not (0)
@@ -114,11 +112,11 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         OrderRFQLib.OrderRFQ memory order,
         bytes32 r,
         bytes32 vs,
-        uint256 amount
+        uint256 flagsAndAmount
     ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
-        if (amount & _SIGNER_SMART_CONTRACT_HINT != 0) {
-            if (amount & _IS_VALID_SIGNATURE_65_BYTES != 0) {
+        if (flagsAndAmount & _SIGNER_SMART_CONTRACT_HINT > 0) {
+            if (flagsAndAmount & _IS_VALID_SIGNATURE_65_BYTES > 0) {
                 if (!ECDSA.isValidSignature65(order.maker, orderHash, r, vs)) revert RFQBadSignature();
             } else {
                 if (!ECDSA.isValidSignature(order.maker, orderHash, r, vs)) revert RFQBadSignature();
@@ -127,11 +125,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
             if(!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, r, vs)) revert RFQBadSignature();
         }
 
-        if (amount & _MAKER_AMOUNT_FLAG != 0) {
-            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, amount & _AMOUNT_MASK, 0, msg.sender);
-        } else {
-            (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, 0, amount & _AMOUNT_MASK, msg.sender);
-        }
+        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, flagsAndAmount, msg.sender);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
@@ -141,8 +135,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
      * Also allows to specify funds destination instead of `msg.sender`
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
-     * @param makingAmount Making amount
-     * @param takingAmount Taking amount
+     * @param flagsAndAmount Fill configuration flags with amount packed in one slot
      * @param target Address that will receive swap funds
      * @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
      * @return filledMakingAmount Actual amount transferred from maker to taker
@@ -153,21 +146,19 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     function fillOrderRFQToWithPermit(
         OrderRFQLib.OrderRFQ memory order,
         bytes calldata signature,
-        uint256 makingAmount,
-        uint256 takingAmount,
+        uint256 flagsAndAmount,
         address target,
         bytes calldata permit
     ) external returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
         IERC20(order.takerAsset).safePermit(permit);
-        return fillOrderRFQTo(order, signature, makingAmount, takingAmount, target);
+        return fillOrderRFQTo(order, signature, flagsAndAmount, target);
     }
 
     /**
      * @notice Same as `fillOrderRFQ` but allows to specify funds destination instead of `msg.sender`
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
-     * @param makingAmount Making amount
-     * @param takingAmount Taking amount
+     * @param flagsAndAmount Fill configuration flags with amount packed in one slot
      * @param target Address that will receive swap funds
      * @return filledMakingAmount Actual amount transferred from maker to taker
      * @return filledTakingAmount Actual amount transferred from taker to maker
@@ -176,26 +167,32 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     function fillOrderRFQTo(
         OrderRFQLib.OrderRFQ memory order,
         bytes calldata signature,
-        uint256 makingAmount,
-        uint256 takingAmount,
+        uint256 flagsAndAmount,
         address target
     ) public payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
-        if (!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
-        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, makingAmount, takingAmount, target);
+        if (flagsAndAmount & _SIGNER_SMART_CONTRACT_HINT > 0) {
+            if (flagsAndAmount & _IS_VALID_SIGNATURE_65_BYTES > 0) {
+                revert RFQBadSignature();
+            } else {
+                if (!ECDSA.isValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
+            }
+        } else {
+            if(!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
+        }
+        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, flagsAndAmount, target);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
     function _fillOrderRFQTo(
         OrderRFQLib.OrderRFQ memory order,
-        uint256 makingAmount,
-        uint256 takingAmount,
+        uint256 flagsAndAmount,
         address target
-    ) private returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */) {
+    ) private returns(uint256 makingAmount, uint256 takingAmount) {
         if (target == address(0)) revert RFQZeroTargetIsForbidden();
 
         address maker = order.maker;
-        bool unwrapWETH = (order.info & _UNWRAP_WETH_MASK) > 0;
+        bool unwrapWETH = (flagsAndAmount & _UNWRAP_WETH_FLAG) > 0;
 
         // Validate order
         if (order.allowedSender != address(0) && order.allowedSender != msg.sender) revert RFQPrivateOrder();
@@ -211,22 +208,22 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         {  // Stack too deep
             uint256 orderMakingAmount = order.makingAmount;
             uint256 orderTakingAmount = order.takingAmount;
+            uint256 amount = flagsAndAmount & _AMOUNT_MASK;
             // Compute partial fill if needed
-            if (takingAmount == 0 && makingAmount == 0) {
-                // Two zeros means whole order
+            if (amount == 0) {
+                // zero amount means whole order
                 makingAmount = orderMakingAmount;
                 takingAmount = orderTakingAmount;
             }
-            else if (takingAmount == 0) {
-                if (makingAmount > orderMakingAmount) revert MakingAmountExceeded();
+            else if (flagsAndAmount & _MAKER_AMOUNT_FLAG > 0) {
+                if (amount > orderMakingAmount) revert MakingAmountExceeded();
+                makingAmount = amount;
                 takingAmount = getTakingAmount(orderMakingAmount, orderTakingAmount, makingAmount);
             }
-            else if (makingAmount == 0) {
-                if (takingAmount > orderTakingAmount) revert TakingAmountExceeded();
-                makingAmount = getMakingAmount(orderMakingAmount, orderTakingAmount, takingAmount);
-            }
             else {
-                revert BothAmountsAreNonZero();
+                if (amount > orderTakingAmount) revert TakingAmountExceeded();
+                takingAmount = amount;
+                makingAmount = getMakingAmount(orderMakingAmount, orderTakingAmount, takingAmount);
             }
         }
 
@@ -241,6 +238,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         } else {
             IERC20(order.makerAsset).safeTransferFrom(maker, target, makingAmount);
         }
+
         // Taker => Maker
         if (order.takerAsset == address(_WETH) && msg.value > 0) {
             if (msg.value != takingAmount) revert InvalidMsgValue();
@@ -250,8 +248,6 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
             if (msg.value != 0) revert InvalidMsgValue();
             IERC20(order.takerAsset).safeTransferFrom(msg.sender, maker, takingAmount);
         }
-
-        return (makingAmount, takingAmount);
     }
 
     function _invalidateOrder(address maker, uint256 orderInfo, uint256 additionalMask) private {

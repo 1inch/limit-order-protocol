@@ -162,6 +162,14 @@ function compactSignature (signature) {
     };
 }
 
+function makingAmount(amount) {
+    return toBN(amount).setn(255, 1).toString();
+}
+
+function takingAmount(amount) {
+    return toBN(amount).toString();
+}
+
 module.exports = {
     ABIOrderRFQ,
     ABIOrder,
@@ -172,6 +180,8 @@ module.exports = {
     signOrder,
     signOrderRFQ,
     compactSignature,
+    makingAmount,
+    takingAmount,
     name,
     version,
 };
