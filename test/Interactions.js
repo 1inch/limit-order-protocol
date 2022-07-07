@@ -27,8 +27,8 @@ describe('Interactions', async () => {
 
         await this.dai.mint(addr0, ether('100'));
         await this.dai.mint(addr1, ether('100'));
-        await this.weth.deposit({from: addr0, value: ether('1')});
-        await this.weth.deposit({from: addr1, value: ether('1')});
+        await this.weth.deposit({ from: addr0, value: ether('1') });
+        await this.weth.deposit({ from: addr1, value: ether('1') });
 
         await this.dai.approve(this.swap.address, ether('100'));
         await this.dai.approve(this.swap.address, ether('100'), { from: addr1 });

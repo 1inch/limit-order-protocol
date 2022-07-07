@@ -23,8 +23,8 @@ describe('RFQ Orders in LimitOrderProtocol', async () => {
 
         await this.dai.mint(addr0, '1000000');
         await this.dai.mint(addr1, '1000000');
-        await this.weth.deposit({from: addr0, value: '1000000'});
-        await this.weth.deposit({from: addr1, value: '1000000'});
+        await this.weth.deposit({ from: addr0, value: '1000000' });
+        await this.weth.deposit({ from: addr1, value: '1000000' });
 
         await this.dai.approve(this.swap.address, '1000000');
         await this.weth.approve(this.swap.address, '1000000');
@@ -346,7 +346,7 @@ describe('RFQ Orders in LimitOrderProtocol', async () => {
             const makerWeth = await this.weth.balanceOf(addr1);
             const takerWeth = await this.weth.balanceOf(addr0);
 
-            await this.swap.fillOrderRFQ(order, signature, takingAmount(3), {value: 3});
+            await this.swap.fillOrderRFQ(order, signature, takingAmount(3), { value: 3 });
 
             expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.subn(900));
             expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.addn(900));
