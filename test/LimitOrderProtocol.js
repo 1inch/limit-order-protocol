@@ -900,13 +900,13 @@ describe('LimitOrderProtocol', async () => {
         });
 
         it('should reverted with takerAsset non-WETH and msg.value greater than 0', async () => {
-            const token = await TokenMock.new('Token', 'TMP');
-            await token.mint(addr0, '1000000');
-            await token.approve(this.swap.address, '1000000');
+            const usdc = await TokenMock.new('USDC', 'USDC');
+            await usdc.mint(addr0, '1000000');
+            await usdc.approve(this.swap.address, '1000000');
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
-                    takerAsset: this.dai.address,
+                    takerAsset: usdc.address,
                     makingAmount: 900,
                     takingAmount: 900,
                     from: addr1,
