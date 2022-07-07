@@ -19,7 +19,7 @@ describe('RFQ Orders in LimitOrderProtocol', async () => {
         this.dai = await TokenMock.new('DAI', 'DAI');
         this.weth = await WrappedTokenMock.new('WETH', 'WETH');
 
-        this.swap = await LimitOrderProtocol.new();
+        this.swap = await LimitOrderProtocol.new(this.weth.address);
 
         await this.dai.mint(addr1, '1000000');
         await this.weth.mint(addr1, '1000000');
@@ -94,7 +94,7 @@ describe('RFQ Orders in LimitOrderProtocol', async () => {
     describe('Permit', async () => {
         describe('fillOrderRFQToWithPermit', async () => {
             it('DAI => WETH', async () => {
-                const swap = await LimitOrderProtocol.new();
+                const swap = await LimitOrderProtocol.new(this.weth.address);
                 await this.dai.approve(swap.address, '1000000', { from: addr1 });
                 const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 1, 1, addr1);
                 const signature = signOrderRFQ(order, this.chainId, swap.address, addr1Wallet.getPrivateKey());
@@ -117,7 +117,7 @@ describe('RFQ Orders in LimitOrderProtocol', async () => {
             });
 
             it('rejects reused signature', async () => {
-                const swap = await LimitOrderProtocol.new();
+                const swap = await LimitOrderProtocol.new(this.weth.address);
                 await this.dai.approve(swap.address, '1000000', { from: addr1 });
                 const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 1, 1, addr1);
                 const signature = signOrderRFQ(order, this.chainId, swap.address, addr1Wallet.getPrivateKey());
@@ -129,7 +129,7 @@ describe('RFQ Orders in LimitOrderProtocol', async () => {
             });
 
             it('rejects other signature', async () => {
-                const swap = await LimitOrderProtocol.new();
+                const swap = await LimitOrderProtocol.new(this.weth.address);
                 await this.dai.approve(swap.address, '1000000', { from: addr1 });
                 const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 1, 1, addr1);
                 const signature = signOrderRFQ(order, this.chainId, swap.address, addr1Wallet.getPrivateKey());
@@ -142,7 +142,7 @@ describe('RFQ Orders in LimitOrderProtocol', async () => {
 
             it('rejects expired permit', async () => {
                 const deadline = (await time.latest()) - time.duration.weeks(1);
-                const swap = await LimitOrderProtocol.new();
+                const swap = await LimitOrderProtocol.new(this.weth.address);
                 await this.dai.approve(swap.address, '1000000', { from: addr1 });
                 const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 1, 1, addr1);
                 const signature = signOrderRFQ(order, this.chainId, swap.address, addr1Wallet.getPrivateKey());

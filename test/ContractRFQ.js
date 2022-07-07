@@ -1,4 +1,4 @@
-const { expect, ether } = require('@1inch/solidity-utils');
+const { expect, ether, constants } = require('@1inch/solidity-utils');
 const { ABIOrderRFQ, buildOrderRFQ } = require('./helpers/orderUtils');
 const { addr0Wallet } = require('./helpers/utils');
 
@@ -14,7 +14,7 @@ describe('ContractRFQ', async () => {
     });
 
     beforeEach(async () => {
-        this.swap = await LimitOrderProtocol.new();
+        this.swap = await LimitOrderProtocol.new(constants.ZERO_ADDRESS);
         this.usdc = await TokenMock.new('USDC', 'USDC');
         this.usdt = await TokenMock.new('USDT', 'USDT');
         this.rfq = await ContractRFQ.new(this.swap.address, this.usdc.address, this.usdt.address, ether('0.9993'), 'USDT+USDC', 'USDX');

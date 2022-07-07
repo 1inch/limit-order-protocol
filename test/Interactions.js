@@ -23,7 +23,7 @@ describe('Interactions', async () => {
         this.dai = await TokenMock.new('DAI', 'DAI');
         this.weth = await WrappedTokenMock.new('WETH', 'WETH');
 
-        this.swap = await LimitOrderProtocol.new();
+        this.swap = await LimitOrderProtocol.new(this.weth.address);
 
         await this.dai.mint(addr1, ether('100'));
         await web3.eth.sendTransaction({ from: addr1, to: this.weth.address, value: ether('1') });

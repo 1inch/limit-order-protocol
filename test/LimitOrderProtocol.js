@@ -22,7 +22,7 @@ describe('LimitOrderProtocol', async () => {
         this.dai = await TokenMock.new('DAI', 'DAI');
         this.weth = await WrappedTokenMock.new('WETH', 'WETH');
 
-        this.swap = await LimitOrderProtocol.new();
+        this.swap = await LimitOrderProtocol.new(this.weth.address);
 
         await this.dai.mint(addr1, '1000000');
         await this.weth.mint(addr1, '1000000');
@@ -316,7 +316,7 @@ describe('LimitOrderProtocol', async () => {
     describe('Permit', async () => {
         describe('fillOrderToWithPermit', async () => {
             beforeEach(async () => {
-                this.swap = await LimitOrderProtocol.new();
+                this.swap = await LimitOrderProtocol.new(this.weth.address);
             });
 
             it('DAI => WETH', async () => {

@@ -1,3 +1,4 @@
+const { constants } = require('@1inch/solidity-utils');
 const { domainSeparator } = require('./helpers/eip712');
 const { name, version } = require('./helpers/orderUtils');
 
@@ -11,7 +12,7 @@ describe('LimitOrderProtocol', async () => {
 
     beforeEach(async () => {
         this.dai = await TokenMock.new('DAI', 'DAI');
-        this.swap = await LimitOrderProtocol.new();
+        this.swap = await LimitOrderProtocol.new(constants.ZERO_ADDRESS);
     });
 
     it('domain separator', async () => {

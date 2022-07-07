@@ -6,6 +6,7 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
+import "./interfaces/IWETH.sol";
 import "./helpers/AmountCalculator.sol";
 import "./OrderRFQLib.sol";
 
@@ -23,6 +24,8 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     error BothAmountsAreNonZero();
     error RFQSwapWithZeroAmount();
     error InvalidatedOrder();
+    error ETHTransferFailed();
+    error InvalidMsgValue();
 
     /**
      * @notice Emitted when RFQ gets filled
@@ -34,7 +37,12 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 makingAmount
     );
 
+    IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
+
+    constructor(IWETH weth) {
+        _WETH = weth;
+    }
 
     /**
      * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
@@ -78,6 +86,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         return fillOrderRFQTo(order, signature, makingAmount, takingAmount, msg.sender);
     }
 
+    uint256 constant private _UNWRAP_WETH_MASK = 1 << 255;
     uint256 constant private _MAKER_AMOUNT_FLAG = 1 << 255;
     uint256 constant private _SIGNER_SMART_CONTRACT_HINT = 1 << 254;
     uint256 constant private _IS_VALID_SIGNATURE_65_BYTES = 1 << 253;
@@ -106,7 +115,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         bytes32 r,
         bytes32 vs,
         uint256 amount
-    ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+    ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
         if (amount & _SIGNER_SMART_CONTRACT_HINT != 0) {
             if (amount & _IS_VALID_SIGNATURE_65_BYTES != 0) {
@@ -170,7 +179,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 makingAmount,
         uint256 takingAmount,
         address target
-    ) public returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+    ) public payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
         if (!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
         (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, makingAmount, takingAmount, target);
@@ -186,6 +195,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         if (target == address(0)) revert RFQZeroTargetIsForbidden();
 
         address maker = order.maker;
+        bool unwrapWETH = (order.info & _UNWRAP_WETH_MASK) > 0;
 
         // Validate order
         if (order.allowedSender != address(0) && order.allowedSender != msg.sender) revert RFQPrivateOrder();
@@ -222,9 +232,24 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
 
         if (makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
 
-        // Maker => Taker, Taker => Maker
-        IERC20(order.makerAsset).safeTransferFrom(maker, target, makingAmount);
-        IERC20(order.takerAsset).safeTransferFrom(msg.sender, maker, takingAmount);
+        // Maker => Taker
+        if (order.makerAsset == address(_WETH) && unwrapWETH) {
+            _WETH.transferFrom(maker, address(this), makingAmount);
+            _WETH.withdraw(makingAmount);
+            (bool success, ) = target.call{value: makingAmount}("");  // solhint-disable-line avoid-low-level-calls
+            if (!success) revert ETHTransferFailed();
+        } else {
+            IERC20(order.makerAsset).safeTransferFrom(maker, target, makingAmount);
+        }
+        // Taker => Maker
+        if (order.takerAsset == address(_WETH) && msg.value > 0) {
+            if (msg.value != takingAmount) revert InvalidMsgValue();
+            _WETH.deposit{ value: takingAmount }();
+            _WETH.transfer(maker, takingAmount);
+        } else {
+            if (msg.value != 0) revert InvalidMsgValue();
+            IERC20(order.takerAsset).safeTransferFrom(msg.sender, maker, takingAmount);
+        }
 
         return (makingAmount, takingAmount);
     }
