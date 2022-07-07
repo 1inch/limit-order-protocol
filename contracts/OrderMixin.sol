@@ -237,7 +237,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.preInteraction().decodeTargetAndCalldata();
             PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                orderHash, msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, remainingMakerAmount, interactionData
+                orderHash, order.maker, msg.sender, actualMakingAmount, actualTakingAmount, remainingMakerAmount, interactionData
             );
         }
 
@@ -254,7 +254,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata();
             uint256 offeredTakingAmount = InteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
-                msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
+                msg.sender, actualMakingAmount, actualTakingAmount, interactionData
             );
 
             if (offeredTakingAmount > actualTakingAmount &&
@@ -286,7 +286,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.postInteraction().decodeTargetAndCalldata();
             PostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
-                 orderHash, msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, remainingMakerAmount, interactionData
+                 orderHash, order.maker, msg.sender, actualMakingAmount, actualTakingAmount, remainingMakerAmount, interactionData
             );
         }
     }

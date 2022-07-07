@@ -30,9 +30,8 @@ contract HashChecker is PreInteractionNotificationReceiver, Ownable {
 
     function fillOrderPreInteraction(
         bytes32 orderHash,
+        address maker,
         address taker,
-        address makerAsset,
-        address takerAsset,
         uint256 makingAmount,
         uint256 takingAmount,
         uint256 remainingMakerAmount,
@@ -44,7 +43,7 @@ contract HashChecker is PreInteractionNotificationReceiver, Ownable {
             (address interactionTarget, bytes calldata interactionData) = nextInteractiveData.decodeTargetAndCalldata();
 
             PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                orderHash, taker, makerAsset, takerAsset, makingAmount, takingAmount, remainingMakerAmount, interactionData
+                orderHash, maker, taker, makingAmount, takingAmount, remainingMakerAmount, interactionData
             );
         }
     }
