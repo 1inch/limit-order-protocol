@@ -4,7 +4,7 @@ pragma solidity 0.8.15;
 pragma abicoder v1;
 
 import "../interfaces/NotificationReceiver.sol";
-import "../interfaces/IWithdrawable.sol";
+import "../interfaces/IWETH.sol";
 
 contract WethUnwrapper is PostInteractionNotificationReceiver {
     // solhint-disable-next-line no-empty-blocks
@@ -25,7 +25,7 @@ contract WethUnwrapper is PostInteractionNotificationReceiver {
         assembly { // solhint-disable-line no-inline-assembly
             makerAddress := shr(96, calldataload(interactiveData.offset))
         }
-        IWithdrawable(takerAsset).withdraw(takingAmount);
+        IWETH(takerAsset).withdraw(takingAmount);
         makerAddress.transfer(takingAmount);
     }
 }

@@ -74,7 +74,7 @@ interface IOrderMixin {
         uint256 makingAmount,
         uint256 takingAmount,
         uint256 thresholdAmount
-    ) external returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);
+    ) external payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);
 
     /**
      * @notice Same as `fillOrder` but calls permit first,
@@ -102,7 +102,7 @@ interface IOrderMixin {
         address target,
         bytes calldata permit
     ) external returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);
-    
+
     /**
      * @notice Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
      * @param order_ Order quote to fill
@@ -123,5 +123,5 @@ interface IOrderMixin {
         uint256 takingAmount,
         uint256 thresholdAmount,
         address target
-    ) external returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);
+    ) external payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);
 }
