@@ -878,5 +878,45 @@ describe('LimitOrderProtocol', async () => {
             expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth.addn(3));
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth);
         });
+
+        it('should reverted with takerAsset WETH and incorrect msg.value', async () => {
+            const order = buildOrder(
+                {
+                    makerAsset: this.dai.address,
+                    takerAsset: this.weth.address,
+                    makingAmount: 900,
+                    takingAmount: 3,
+                    from: addr1,
+                },
+            );
+            const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
+
+            await expect(
+                this.swap.fillOrder(order, signature, '0x', 900, 0, 3, { value: 2 }),
+            ).to.eventually.be.rejectedWith('InvalidMsgValue()');
+            await expect(
+                this.swap.fillOrder(order, signature, '0x', 900, 0, 3, { value: 4 }),
+            ).to.eventually.be.rejectedWith('InvalidMsgValue()');
+        });
+
+        it('should reverted with takerAsset non-WETH and msg.value greater than 0', async () => {
+            const token = await TokenMock.new('Token', 'TMP');
+            await token.mint(addr0, '1000000');
+            await token.approve(this.swap.address, '1000000');
+            const order = buildOrder(
+                {
+                    makerAsset: this.dai.address,
+                    takerAsset: this.dai.address,
+                    makingAmount: 900,
+                    takingAmount: 900,
+                    from: addr1,
+                },
+            );
+            const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
+
+            await expect(
+                this.swap.fillOrder(order, signature, '0x', 900, 0, 900, { value: 1 }),
+            ).to.eventually.be.rejectedWith('InvalidMsgValue()');
+        });
     });
 });
