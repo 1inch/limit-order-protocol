@@ -190,7 +190,6 @@ abstract contract OrderRFQMixin is EthReceiver, EIP712, AmountCalculator {
         if (target == address(0)) revert RFQZeroTargetIsForbidden();
 
         address maker = order.maker;
-        bool unwrapWETH = (flagsAndAmount & _UNWRAP_WETH_FLAG) != 0;
 
         // Validate order
         if (order.allowedSender != address(0) && order.allowedSender != msg.sender) revert RFQPrivateOrder();
@@ -228,7 +227,7 @@ abstract contract OrderRFQMixin is EthReceiver, EIP712, AmountCalculator {
         if (makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
 
         // Maker => Taker
-        if (order.makerAsset == address(_WETH) && unwrapWETH) {
+        if (order.makerAsset == address(_WETH) && flagsAndAmount & _UNWRAP_WETH_FLAG != 0) {
             _WETH.transferFrom(maker, address(this), makingAmount);
             _WETH.withdraw(makingAmount);
             (bool success, ) = target.call{value: makingAmount}("");  // solhint-disable-line avoid-low-level-calls
