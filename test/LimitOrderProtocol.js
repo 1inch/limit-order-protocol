@@ -868,4 +868,31 @@ describe('LimitOrderProtocol', async () => {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.subn(2));
         });
     });
+
+    describe('ETH fill', async () => {
+        it('should fill with ETH', async () => {
+            const order = buildOrder(
+                {
+                    makerAsset: this.dai.address,
+                    takerAsset: this.weth.address,
+                    makingAmount: 900,
+                    takingAmount: 3,
+                    from: addr1,
+                },
+            );
+            const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
+
+            const makerDai = await this.dai.balanceOf(addr1);
+            const takerDai = await this.dai.balanceOf(addr0);
+            const makerWeth = await this.weth.balanceOf(addr1);
+            const takerWeth = await this.weth.balanceOf(addr0);
+
+            await this.swap.fillOrder(order, signature, '0x', 900, 0, 3, {value: 3});
+
+            expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.subn(900));
+            expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.addn(900));
+            expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth.addn(3));
+            expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth);
+        });
+    });
 });
