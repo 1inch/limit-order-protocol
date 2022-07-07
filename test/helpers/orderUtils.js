@@ -162,11 +162,11 @@ function compactSignature (signature) {
     };
 }
 
-function makingAmount(amount) {
+function makingAmount (amount) {
     return toBN(amount).setn(255, 1).toString();
 }
 
-function takingAmount(amount) {
+function takingAmount (amount) {
     return toBN(amount).toString();
 }
 
