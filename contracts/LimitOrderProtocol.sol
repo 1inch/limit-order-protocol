@@ -32,7 +32,7 @@ contract LimitOrderProtocol is
     OrderMixin,
     OrderRFQMixin
 {
-    constructor(IWETH _weth) OrderRFQMixin(_weth) {}  // solhint-disable-line no-empty-blocks
+    constructor(IWETH _weth) OrderRFQMixin(_weth) OrderMixin(_weth) {}  // solhint-disable-line no-empty-blocks
 
     /// @dev Returns the domain separator for the current chain (EIP-712)
     // solhint-disable-next-line func-name-mixedcase

@@ -11,6 +11,7 @@ import "./helpers/AmountCalculator.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/IOrderMixin.sol";
+import "./interfaces/IWETH.sol";
 import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Callib.sol";
@@ -48,6 +49,7 @@ abstract contract OrderMixin is
     error WrongAmount();
     error WrongGetter();
     error GetAmountCallFailed();
+    error InvalidMsgValue();
 
     /// @notice Emitted every time order gets filled, including partial fills
     event OrderFilled(
@@ -66,9 +68,14 @@ abstract contract OrderMixin is
     uint256 constant private _ORDER_DOES_NOT_EXIST = 0;
     uint256 constant private _ORDER_FILLED = 1;
 
+    IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     /// @notice Stores unfilled amounts for each order plus one.
     /// Therefore 0 means order doesn't exist and 1 means order was filled
     mapping(bytes32 => uint256) private _remaining;
+
+    constructor(IWETH weth) {
+        _WETH = weth;
+    }
 
     /**
      * @notice See {IOrderMixin-remaining}.
@@ -132,7 +139,7 @@ abstract contract OrderMixin is
         uint256 makingAmount,
         uint256 takingAmount,
         uint256 thresholdAmount
-    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
+    ) external payable returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
         return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, thresholdAmount, msg.sender);
     }
 
@@ -168,7 +175,7 @@ abstract contract OrderMixin is
         uint256 takingAmount,
         uint256 thresholdAmount,
         address target
-    ) public returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
+    ) public payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
         if (target == address(0)) revert ZeroTargetIsForbidden();
         orderHash = hashOrder(order_);
 
@@ -265,13 +272,20 @@ abstract contract OrderMixin is
         }
 
         // Taker => Maker
-        if (!_callTransferFrom(
-            order.takerAsset,
-            msg.sender,
-            order.receiver == address(0) ? order.maker : order.receiver,
-            actualTakingAmount,
-            order.takerAssetData()
-        )) revert TransferFromTakerToMakerFailed();
+        if (order.takerAsset == address(_WETH) && msg.value > 0) {
+            if (msg.value != actualTakingAmount) revert InvalidMsgValue();
+            _WETH.deposit{ value: actualTakingAmount }();
+            _WETH.transfer(order.receiver == address(0) ? order.maker : order.receiver, actualTakingAmount);
+        } else {
+            if (msg.value != 0) revert InvalidMsgValue();
+            if (!_callTransferFrom(
+                order.takerAsset,
+                msg.sender,
+                order.receiver == address(0) ? order.maker : order.receiver,
+                actualTakingAmount,
+                order.takerAssetData()
+            )) revert TransferFromTakerToMakerFailed();
+        }
 
         // Maker can handle funds interactively
         if (order.postInteraction().length >= 20) {
