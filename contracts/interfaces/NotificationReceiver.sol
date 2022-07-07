@@ -9,9 +9,8 @@ pragma abicoder v1;
 interface PreInteractionNotificationReceiver {
     function fillOrderPreInteraction(
         bytes32 orderHash,
+        address maker,
         address taker,
-        address makerAsset,
-        address takerAsset,
         uint256 makingAmount,
         uint256 takingAmount,
         uint256 remainingAmount,
@@ -24,9 +23,8 @@ interface PostInteractionNotificationReceiver {
     /// the opposite transfer happened
     function fillOrderPostInteraction(
         bytes32 orderHash,
+        address maker,
         address taker,
-        address makerAsset,
-        address takerAsset,
         uint256 makingAmount,
         uint256 takingAmount,
         uint256 remainingAmount,
@@ -37,8 +35,6 @@ interface PostInteractionNotificationReceiver {
 interface InteractionNotificationReceiver {
     function fillOrderInteraction(
         address taker,
-        address makerAsset,
-        address takerAsset,
         uint256 makingAmount,
         uint256 takingAmount,
         bytes memory interactiveData
