@@ -162,6 +162,10 @@ function compactSignature (signature) {
     };
 }
 
+function unwrapWeth (amount) {
+    return toBN(amount).setn(252, 1).toString();
+}
+
 function makingAmount (amount) {
     return toBN(amount).setn(255, 1).toString();
 }
@@ -182,6 +186,7 @@ module.exports = {
     compactSignature,
     makingAmount,
     takingAmount,
+    unwrapWeth,
     name,
     version,
 };

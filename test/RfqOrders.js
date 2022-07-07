@@ -1,6 +1,6 @@
 const Wallet = require('ethereumjs-wallet').default;
 const { expect, time, profileEVM, toBN } = require('@1inch/solidity-utils');
-const { buildOrderRFQ, signOrderRFQ, compactSignature, makingAmount, takingAmount } = require('./helpers/orderUtils');
+const { buildOrderRFQ, signOrderRFQ, compactSignature, makingAmount, takingAmount, unwrapWeth } = require('./helpers/orderUtils');
 const { getPermit } = require('./helpers/eip712');
 const { addr0Wallet, addr1Wallet } = require('./helpers/utils');
 
@@ -21,10 +21,10 @@ describe('RFQ Orders in LimitOrderProtocol', async () => {
 
         this.swap = await LimitOrderProtocol.new(this.weth.address);
 
-        await this.dai.mint(addr1, '1000000');
-        await this.weth.mint(addr1, '1000000');
         await this.dai.mint(addr0, '1000000');
-        await this.weth.mint(addr0, '1000000');
+        await this.dai.mint(addr1, '1000000');
+        await this.weth.deposit({from: addr0, value: '1000000'});
+        await this.weth.deposit({from: addr1, value: '1000000'});
 
         await this.dai.approve(this.swap.address, '1000000');
         await this.weth.approve(this.swap.address, '1000000');
@@ -333,6 +333,42 @@ describe('RFQ Orders in LimitOrderProtocol', async () => {
             await expect(
                 this.swap.fillOrderRFQCompact(order, r, vs, takingAmount(1)),
             ).to.eventually.be.rejectedWith('OrderExpired()');
+        });
+    });
+
+    describe('ETH fill', async () => {
+        it('should fill with ETH', async () => {
+            const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 900, 3, addr1);
+            const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
+
+            const makerDai = await this.dai.balanceOf(addr1);
+            const takerDai = await this.dai.balanceOf(addr0);
+            const makerWeth = await this.weth.balanceOf(addr1);
+            const takerWeth = await this.weth.balanceOf(addr0);
+
+            await this.swap.fillOrderRFQ(order, signature, takingAmount(3), {value: 3});
+
+            expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.subn(900));
+            expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.addn(900));
+            expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth.addn(3));
+            expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth);
+        });
+
+        it('should receive ETH after fill', async () => {
+            const order = buildOrderRFQ('0xFF000000000000000000000001', this.weth.address, this.dai.address, 3, 900, addr1);
+            const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
+
+            const makerDai = await this.dai.balanceOf(addr1);
+            const takerDai = await this.dai.balanceOf(addr0);
+            const makerWeth = await this.weth.balanceOf(addr1);
+            const takerWeth = await this.weth.balanceOf(addr0);
+
+            await this.swap.fillOrderRFQ(order, signature, unwrapWeth(makingAmount(3)));
+
+            expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.addn(900));
+            expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.subn(900));
+            expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth.subn(3));
+            expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth);
         });
     });
 });

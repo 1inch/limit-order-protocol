@@ -24,10 +24,10 @@ describe('LimitOrderProtocol', async () => {
 
         this.swap = await LimitOrderProtocol.new(this.weth.address);
 
-        await this.dai.mint(addr1, '1000000');
-        await this.weth.mint(addr1, '1000000');
         await this.dai.mint(addr0, '1000000');
-        await this.weth.mint(addr0, '1000000');
+        await this.dai.mint(addr1, '1000000');
+        await this.weth.deposit({from: addr0, value: '1000000'});
+        await this.weth.deposit({from: addr1, value: '1000000'});
 
         await this.dai.approve(this.swap.address, '1000000');
         await this.weth.approve(this.swap.address, '1000000');

@@ -5,6 +5,7 @@ pragma solidity 0.8.15;
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
+import "@1inch/solidity-utils/contracts/EthReceiver.sol";
 
 import "./interfaces/IWETH.sol";
 import "./helpers/AmountCalculator.sol";
@@ -12,7 +13,7 @@ import "./libraries/Errors.sol";
 import "./OrderRFQLib.sol";
 
 /// @title RFQ Limit Order mixin
-abstract contract OrderRFQMixin is EIP712, AmountCalculator {
+abstract contract OrderRFQMixin is EthReceiver, EIP712, AmountCalculator {
     using SafeERC20 for IERC20;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
 

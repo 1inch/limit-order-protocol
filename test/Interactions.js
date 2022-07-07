@@ -25,14 +25,14 @@ describe('Interactions', async () => {
 
         this.swap = await LimitOrderProtocol.new(this.weth.address);
 
-        await this.dai.mint(addr1, ether('100'));
-        await web3.eth.sendTransaction({ from: addr1, to: this.weth.address, value: ether('1') });
         await this.dai.mint(addr0, ether('100'));
-        await web3.eth.sendTransaction({ from: addr0, to: this.weth.address, value: ether('1') });
+        await this.dai.mint(addr1, ether('100'));
+        await this.weth.deposit({from: addr0, value: ether('1')});
+        await this.weth.deposit({from: addr1, value: ether('1')});
 
         await this.dai.approve(this.swap.address, ether('100'));
-        await this.weth.approve(this.swap.address, ether('1'));
         await this.dai.approve(this.swap.address, ether('100'), { from: addr1 });
+        await this.weth.approve(this.swap.address, ether('1'));
         await this.weth.approve(this.swap.address, ether('1'), { from: addr1 });
     });
 
