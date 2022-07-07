@@ -173,11 +173,8 @@ abstract contract OrderRFQMixin is EthReceiver, EIP712, AmountCalculator {
     ) public payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
         if (flagsAndAmount & _SIGNER_SMART_CONTRACT_HINT > 0) {
-            if (flagsAndAmount & _IS_VALID_SIGNATURE_65_BYTES > 0) {
-                revert RFQBadSignature();
-            } else {
-                if (!ECDSA.isValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
-            }
+            if (flagsAndAmount & _IS_VALID_SIGNATURE_65_BYTES > 0 && signature.length != 65) revert RFQBadSignature();
+            if (!ECDSA.isValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
         } else {
             if(!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
         }
