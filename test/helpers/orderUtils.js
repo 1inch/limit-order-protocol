@@ -1,5 +1,5 @@
-const { constants, toBN, trim0x } = require('@1inch/solidity-utils');
-const ethSigUtil = require('eth-sig-util');
+const { constants, toBN, trim0x, TypedDataVersion } = require('@1inch/solidity-utils');
+const { signTypedData } = require('@metamask/eth-sig-util');
 const { EIP712Domain } = require('./eip712');
 
 const OrderRFQ = [
@@ -144,12 +144,12 @@ function buildOrderRFQData (chainId, verifyingContract, order) {
 
 function signOrder (order, chainId, target, privateKey) {
     const data = buildOrderData(chainId, target, order);
-    return ethSigUtil.signTypedMessage(privateKey, { data });
+    return signTypedData({ privateKey, data, version: TypedDataVersion });
 }
 
 function signOrderRFQ (order, chainId, target, privateKey) {
     const data = buildOrderRFQData(chainId, target, order);
-    return ethSigUtil.signTypedMessage(privateKey, { data });
+    return signTypedData({ privateKey, data, version: TypedDataVersion });
 }
 
 function compactSignature (signature) {

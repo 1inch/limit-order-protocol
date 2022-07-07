@@ -1,6 +1,6 @@
 const Wallet = require('ethereumjs-wallet').default;
-const ethSigUtil = require('eth-sig-util');
-const { expect, toBN, time, constants, profileEVM, trim0x } = require('@1inch/solidity-utils');
+const { TypedDataUtils } = require('@metamask/eth-sig-util');
+const { expect, toBN, time, constants, profileEVM, trim0x, TypedDataVersion } = require('@1inch/solidity-utils');
 const { bufferToHex } = require('ethereumjs-util');
 const { buildOrder, buildOrderData, signOrder } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
@@ -511,7 +511,7 @@ describe('LimitOrderProtocol', async () => {
         it('should cancel own order', async () => {
             await this.swap.cancelOrder(this.order, { from: addr1 });
             const data = buildOrderData(this.chainId, this.swap.address, this.order);
-            const orderHash = bufferToHex(ethSigUtil.TypedDataUtils.sign(data));
+            const orderHash = bufferToHex(TypedDataUtils.eip712Hash(data, TypedDataVersion));
             expect(await this.swap.remaining(orderHash)).to.be.bignumber.equal('0');
         });
 
