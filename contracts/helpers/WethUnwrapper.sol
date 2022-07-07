@@ -6,16 +6,11 @@ pragma abicoder v1;
 import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 
 import "../interfaces/NotificationReceiver.sol";
-import "../interfaces/IWETH.sol";
 
 contract WethUnwrapper is OnlyWethReceiver, PostInteractionNotificationReceiver {
     error ETHTransferFailed();
 
-    IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
-
-    constructor(IWETH weth) OnlyWethReceiver(address(weth)) {
-        _WETH = weth;
-    }
+    constructor(IWETH weth) OnlyWethReceiver(weth) {}  // solhint-disable-line no-empty-blocks
 
     function fillOrderPostInteraction(
         bytes32 /* orderHash */,

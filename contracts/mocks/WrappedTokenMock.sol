@@ -5,7 +5,7 @@ pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
-import "../interfaces/IWETH.sol";
+import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 
 /// @title Generic token for testing purposes with deposit/withdraw capabilities
 contract WrappedTokenMock is ERC20Permit, Ownable, IWETH {
