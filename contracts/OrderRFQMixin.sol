@@ -8,6 +8,7 @@ import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
 import "./interfaces/IWETH.sol";
 import "./helpers/AmountCalculator.sol";
+import "./libraries/Errors.sol";
 import "./OrderRFQLib.sol";
 
 /// @title RFQ Limit Order mixin
@@ -25,7 +26,6 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     error RFQSwapWithZeroAmount();
     error InvalidatedOrder();
     error ETHTransferFailed();
-    error InvalidMsgValue();
 
     /**
      * @notice Emitted when RFQ gets filled

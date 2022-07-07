@@ -15,6 +15,7 @@ import "./interfaces/IWETH.sol";
 import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Callib.sol";
+import "./libraries/Errors.sol";
 import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
@@ -49,7 +50,6 @@ abstract contract OrderMixin is
     error WrongAmount();
     error WrongGetter();
     error GetAmountCallFailed();
-    error InvalidMsgValue();
 
     /// @notice Emitted every time order gets filled, including partial fills
     event OrderFilled(
