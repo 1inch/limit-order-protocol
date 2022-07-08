@@ -370,5 +370,29 @@ describe('RFQ Orders in LimitOrderProtocol', async () => {
             expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth.subn(3));
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth);
         });
+
+        it('should reverted with takerAsset WETH and incorrect msg.value', async () => {
+            const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, this.weth.address, 900, 3, addr1);
+            const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
+
+            await expect(
+                this.swap.fillOrderRFQ(order, signature, makingAmount(900), { value: 2 }),
+            ).to.eventually.be.rejectedWith('InvalidMsgValue()');
+            await expect(
+                this.swap.fillOrderRFQ(order, signature, makingAmount(900), { value: 4 }),
+            ).to.eventually.be.rejectedWith('InvalidMsgValue()');
+        });
+
+        it('should reverted with takerAsset non-WETH and msg.value greater than 0', async () => {
+            const usdc = await TokenMock.new('USDC', 'USDC');
+            await usdc.mint(addr0, '1000000');
+            await usdc.approve(this.swap.address, '1000000');
+            const order = buildOrderRFQ('0xFF000000000000000000000001', this.dai.address, usdc.address, 900, 900, addr1);
+            const signature = signOrderRFQ(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
+
+            await expect(
+                this.swap.fillOrderRFQ(order, signature, makingAmount(900), { value: 1 }),
+            ).to.eventually.be.rejectedWith('InvalidMsgValue()');
+        });
     });
 });
