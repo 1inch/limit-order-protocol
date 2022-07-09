@@ -26,7 +26,7 @@
     "eslint-plugin-promise": "6.0.0",
     "ethereumjs-util": "7.1.5",
     "ethereumjs-wallet": "1.0.2",
-    "hardhat": "2.9.9",
+    "hardhat": "^2.9.9",
     "hardhat-deploy": "0.11.10",
     "hardhat-gas-reporter": "1.0.8",
     "rimraf": "3.0.2",

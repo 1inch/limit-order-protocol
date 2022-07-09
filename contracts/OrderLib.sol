@@ -25,6 +25,21 @@ library OrderLib {
         // bytes postInteraction;
         bytes interactions; // concat(makerAssetData, takerAssetData, getMakingAmount, getTakingAmount, predicate, permit, preIntercation, postInteraction)
     }
+    
+    struct NFTOrder {
+        uint256 salt;
+        address NFTAddress;
+        uint256 tokenID;
+        address offerAsset;
+        address seller;
+        address receiver;
+        address allowedSender;  // equals to Zero address on public orders
+        uint256 offerAmount;
+        uint256 offsets;
+        
+        bytes interactions; // concat(makerAssetData, takerAssetData, getMakingAmount, getTakingAmount, predicate, permit, preIntercation, postInteraction)
+        bytes predicate;       // this.staticcall(bytes) => (bool)
+    }
 
     bytes32 constant internal _LIMIT_ORDER_TYPEHASH = keccak256(
         "Order("
