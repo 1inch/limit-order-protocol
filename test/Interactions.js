@@ -1,4 +1,4 @@
-const { expect, trim0x, ether } = require('@1inch/solidity-utils');
+const { expect, trim0x, ether, time } = require('@1inch/solidity-utils');
 const { addr0Wallet, addr1Wallet } = require('./helpers/utils');
 
 const TokenMock = artifacts.require('TokenMock');
@@ -8,6 +8,7 @@ const WhitelistChecker = artifacts.require('WhitelistChecker');
 const WhitelistRegistryMock = artifacts.require('WhitelistRegistryMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 const RecursiveMatcher = artifacts.require('RecursiveMatcher');
+const DutchAuction = artifacts.require('DutchAuction');
 const HashChecker = artifacts.require('HashChecker');
 
 const { buildOrder, signOrder } = require('./helpers/orderUtils');
@@ -129,6 +130,53 @@ describe('Interactions', async () => {
 
             await this.whitelistRegistryMock.ban();
             await expect(this.swap.fillOrder(order, signature, '0x', 1, 0, 1)).to.eventually.be.rejectedWith('TakerIsNotWhitelisted()');
+        });
+    });
+    describe('dutch auction', async () => {
+        beforeEach(async () => {
+            this.dutchAuction = await DutchAuction.new();
+        });
+
+        it.only('swap with makingAmount', async () => {
+            const ts = await time.latest();
+            const auctionParams = trim0x(web3.eth.abi.encodeParameters(
+                ['uint32', 'uint32', 'uint256', 'uint256'],
+                [
+                    ts,
+                    ts.addn(86400),
+                    ether('100'),
+                    ether('50'),
+                ],
+            ));
+
+            const order = buildOrder(
+                {
+                    makerAsset: this.dai.address,
+                    takerAsset: this.weth.address,
+                    makingAmount: ether('100'),
+                    takingAmount: ether('0.1'),
+                    from: addr0,
+                },
+                {
+                    getMakingAmount: this.dutchAuction.address + trim0x(web3.eth.abi.encodeFunctionSignature('getMakingAmount(bytes,uint256,uint256,bytes32)')) + auctionParams,
+                    getTakingAmount: this.dutchAuction.address + trim0x(web3.eth.abi.encodeFunctionSignature('getTakingAmount(bytes,uint256,uint256,bytes32)')) + auctionParams,
+                },
+            );
+            const signature = signOrder(order, this.chainId, this.swap.address, addr0Wallet.getPrivateKey());
+            const makerDai = await this.dai.balanceOf(addr1);
+            const takerDai = await this.dai.balanceOf(addr0);
+            const makerWeth = await this.weth.balanceOf(addr1);
+            const takerWeth = await this.weth.balanceOf(addr0);
+            const makerEth = await web3.eth.getBalance(addr1);
+
+            await time.increaseTo(ts.addn(43200)); // 50% auction time
+            await this.swap.fillOrder(order, signature, '0x', ether('100'), 0, ether('0.1'));
+
+            expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.sub(ether('100')));
+            expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.add(ether('100')));
+            expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth);
+            expect(web3.utils.toBN(await web3.eth.getBalance(addr1))).to.be.bignumber.equal(web3.utils.toBN(makerEth).add(ether('0.075')));
+            expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.sub(ether('0.075')));
         });
     });
 
