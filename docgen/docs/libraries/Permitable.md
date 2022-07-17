@@ -1,6 +1,8 @@
 # Permitable
 
+
 Base contract with common permit handling logics
+
 
 
 
@@ -8,22 +10,6 @@ Base contract with common permit handling logics
 ### _permit
 ```solidity
 function _permit(
-  address token,
-  bytes permit
-) internal
-```
-
-
-#### Parameters:
-| Name | Type | Description                                                          |
-| :--- | :--- | :------------------------------------------------------------------- |
-|`token` | address | 
-|`permit` | bytes | 
-
-
-### _permitMemory
-```solidity
-function _permitMemory(
   address token,
   bytes permit
 ) internal

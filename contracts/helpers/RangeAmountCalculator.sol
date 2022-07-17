@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.11;
+pragma solidity 0.8.15;
 
 import "../libraries/Math.sol";
 
@@ -52,7 +52,7 @@ contract RangeAmountCalculator {
                 + 2 * priceStart * priceEnd * filledFor * liquidityRemaining
             );
 
-            return (Math.sqrt(d / 4) - priceStart * liquidityRemaining - priceEnd * filledFor) / priceRangeDiff;
+            return (Math.sqrt(d / 4) - priceStart * liquidityRemaining - priceEnd * filledFor) / priceRangeDiff / 1e18;
         }
     }
 }

@@ -1,13 +1,15 @@
 # AmountCalculator
 
+
 A helper contract for calculations related to order amounts
 
 
 
+
 ## Functions
-### getMakerAmount
+### getMakingAmount
 ```solidity
-function getMakerAmount(
+function getMakingAmount(
   uint256 orderMakerAmount,
   uint256 orderTakerAmount,
   uint256 swapTakerAmount
@@ -28,9 +30,9 @@ Calculates maker amount
 | :----------------------------- | :------------ | :--------------------------------------------------------------------------- |
 |`Result`| uint256 | Floored maker amount
 
-### getTakerAmount
+### getTakingAmount
 ```solidity
-function getTakerAmount(
+function getTakingAmount(
   uint256 orderMakerAmount,
   uint256 orderTakerAmount,
   uint256 swapMakerAmount

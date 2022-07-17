@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.11;
+pragma solidity 0.8.15;
 
-import "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "./OrderMixin.sol";
 import "./OrderRFQMixin.sol";
 
 /// @title 1inch Limit Order Protocol v2
 contract LimitOrderProtocol is
-    EIP712("1inch Limit Order Protocol", "2"),
+    EIP712("1inch Limit Order Protocol", "3"),
     OrderMixin,
     OrderRFQMixin
 {
