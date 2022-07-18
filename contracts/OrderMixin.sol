@@ -411,8 +411,8 @@ abstract contract OrderMixin is
             (address target, bytes calldata data) = getter.decodeTargetAndCalldata();
             (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount, remainingAmount));
 
-            if (!success || result.length != 32) revert getAmountCallFailed();
-            return result.decodeUint256Memory();
+            if (!success || result.length != 32) revert GetAmountCallFailed();
+            return abi.decode(result, (uint256));
         }
     }
 }
