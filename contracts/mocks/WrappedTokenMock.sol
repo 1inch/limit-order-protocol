@@ -5,10 +5,10 @@ pragma abicoder v1;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
-import "../interfaces/IWithdrawable.sol";
+import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 
 /// @title Generic token for testing purposes with deposit/withdraw capabilities
-contract WrappedTokenMock is ERC20Permit, Ownable, IWithdrawable {
+contract WrappedTokenMock is ERC20Permit, Ownable, IWETH {
     error NotEnoughBalance();
 
     event Deposit(address indexed dst, uint wad);
@@ -18,7 +18,9 @@ contract WrappedTokenMock is ERC20Permit, Ownable, IWithdrawable {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) ERC20Permit(name) {}
 
     // solhint-disable-next-line no-empty-blocks
-    receive() external payable {}
+    receive() external payable {
+        deposit();
+    }
 
     function mint(address account, uint256 amount) external onlyOwner {
         _mint(account, amount);

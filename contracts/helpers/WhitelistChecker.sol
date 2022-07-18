@@ -19,11 +19,12 @@ contract WhitelistChecker is PreInteractionNotificationReceiver {
     }
 
     function fillOrderPreInteraction(
+        bytes32 orderHash,
+        address maker,
         address taker,
-        address makerAsset,
-        address takerAsset,
         uint256 makingAmount,
         uint256 takingAmount,
+        uint256 remainingMakerAmount,
         bytes calldata nextInteractiveData
     ) external override {
         if (whitelistRegistry.status(taker) != 1) revert TakerIsNotWhitelisted();
@@ -32,7 +33,7 @@ contract WhitelistChecker is PreInteractionNotificationReceiver {
             (address interactionTarget, bytes calldata interactionData) = nextInteractiveData.decodeTargetAndCalldata();
 
             PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                taker, makerAsset, takerAsset, makingAmount, takingAmount, interactionData
+                orderHash, maker, taker, makingAmount, takingAmount, remainingMakerAmount, interactionData
             );
         }
     }

@@ -4,7 +4,9 @@ pragma solidity 0.8.15;
 
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
+import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 
 import "./helpers/AmountCalculator.sol";
 import "./helpers/RangeAmountCalculator.sol";
@@ -14,7 +16,7 @@ import "./interfaces/IOrderMixin.sol";
 import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Callib.sol";
-import "./libraries/ECDSA.sol";
+import "./libraries/Errors.sol";
 import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
@@ -49,7 +51,7 @@ abstract contract OrderMixin is
     error TransferFromTakerToMakerFailed();
     error WrongAmount();
     error WrongGetter();
-    error getAmountCallFailed();
+    error GetAmountCallFailed();
 
     /// @notice Emitted every time order gets filled, including partial fills
     event OrderFilled(
@@ -102,14 +104,19 @@ abstract contract OrderMixin is
     uint256 constant private _ORDER_DOES_NOT_EXIST = 0;
     uint256 constant private _ORDER_FILLED = 1;
 
+    IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     /// @notice Stores unfilled amounts for each order plus one.
     /// Therefore 0 means order doesn't exist and 1 means order was filled
     mapping(bytes32 => uint256) private _remaining;
 
+    constructor(IWETH weth) {
+        _WETH = weth;
+    }
+
     /**
      * @notice See {IOrderMixin-remaining}.
      */
-    function remaining(bytes32 orderHash) external view returns(uint256) {
+    function remaining(bytes32 orderHash) external view returns(uint256 /* amount */) {
         uint256 amount = _remaining[orderHash];
         if (amount == _ORDER_DOES_NOT_EXIST) revert UnknownOrder();
         unchecked { amount -= 1; }
@@ -119,14 +126,14 @@ abstract contract OrderMixin is
     /**
      * @notice See {IOrderMixin-remainingRaw}.
      */
-    function remainingRaw(bytes32 orderHash) external view returns(uint256) {
+    function remainingRaw(bytes32 orderHash) external view returns(uint256 /* rawAmount */) {
         return _remaining[orderHash];
     }
 
     /**
      * @notice See {IOrderMixin-remainingsRaw}.
      */
-    function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory) {
+    function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory /* rawAmounts */) {
         uint256[] memory results = new uint256[](orderHashes.length);
         for (uint256 i = 0; i < orderHashes.length; i++) {
             results[i] = _remaining[orderHashes[i]];
@@ -140,7 +147,7 @@ abstract contract OrderMixin is
      * @notice See {IOrderMixin-simulate}.
      */
     function simulate(address target, bytes calldata data) external {
-        // solhint-disable-next-lineavoid-low-level-calls
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory result) = target.delegatecall(data);
         revert SimulationResults(success, result);
     }
@@ -168,7 +175,7 @@ abstract contract OrderMixin is
         uint256 makingAmount,
         uint256 takingAmount,
         uint256 thresholdAmount
-    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
+    ) external payable returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
         return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, thresholdAmount, msg.sender);
     }
 
@@ -184,7 +191,7 @@ abstract contract OrderMixin is
         uint256 thresholdAmount,
         address target,
         bytes calldata permit
-    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 orderHash) {
+    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
         if (permit.length < 20) revert PermitLengthTooLow();
         {  // Stack too deep
             (address token, bytes calldata permitData) = permit.decodeTargetAndCalldata();
@@ -204,7 +211,7 @@ abstract contract OrderMixin is
         uint256 takingAmount,
         uint256 thresholdAmount,
         address target
-    ) public returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
+    ) public payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
         if (target == address(0)) revert ZeroTargetIsForbidden();
         orderHash = hashOrder(order_);
 
@@ -212,39 +219,60 @@ abstract contract OrderMixin is
         actualMakingAmount = makingAmount;
         actualTakingAmount = takingAmount;
 
-        {  // Stack too deep
-            uint256 remainingMakerAmount = _remaining[orderHash];
-            if (remainingMakerAmount == _ORDER_FILLED) revert RemainingAmountIsZero();
-            if (order.allowedSender != address(0) && order.allowedSender != msg.sender) revert PrivateOrder();
-            if (remainingMakerAmount == _ORDER_DOES_NOT_EXIST) {
-                // First fill: validate order and permit maker asset
-                if (!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert BadSignature();
-                remainingMakerAmount = order.makingAmount;
+        uint256 remainingMakerAmount = _remaining[orderHash];
+        if (remainingMakerAmount == _ORDER_FILLED) revert RemainingAmountIsZero();
+        if (order.allowedSender != address(0) && order.allowedSender != msg.sender) revert PrivateOrder();
+        if (remainingMakerAmount == _ORDER_DOES_NOT_EXIST) {
+            // First fill: validate order and permit maker asset
+            if (!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert BadSignature();
+            remainingMakerAmount = order.makingAmount;
 
-                bytes calldata permit = order.permit(); // Helps with "Stack too deep"
-                if (permit.length >= 20) {
-                    // proceed only if permit length is enough to store address
-                    (address token, bytes calldata permitCalldata) = permit.decodeTargetAndCalldata();
-                    IERC20(token).safePermit(permitCalldata);
-                    if (_remaining[orderHash] != _ORDER_DOES_NOT_EXIST) revert ReentrancyDetected();
-                }
-            } else {
-                unchecked { remainingMakerAmount -= 1; }
+            bytes calldata permit = order.permit(); // Helps with "Stack too deep"
+            if (permit.length >= 20) {
+                // proceed only if permit length is enough to store address
+                (address token, bytes calldata permitCalldata) = permit.decodeTargetAndCalldata();
+                IERC20(token).safePermit(permitCalldata);
+                if (_remaining[orderHash] != _ORDER_DOES_NOT_EXIST) revert ReentrancyDetected();
+            }
+        } else {
+            unchecked { remainingMakerAmount -= 1; }
+        }
+
+        // Check if order is valid
+        if (order.predicate().length > 0) {
+            if (!checkPredicate(order)) revert PredicateIsNotTrue();
+        }
+
+
+        // Compute maker and taker assets amount
+        if ((actualTakingAmount == 0) == (actualMakingAmount == 0)) {
+            revert OnlyOneAmountShouldBeZero();
+        } else if (actualTakingAmount == 0) {
+            if (actualMakingAmount > remainingMakerAmount) {
+                actualMakingAmount = remainingMakerAmount;
             }
 
-            // Check if order is valid
-            if (order.predicate().length > 0) {
-                if (!checkPredicate(order)) revert PredicateIsNotTrue();
-            }
-
-            // Compute maker and taker assets amount
-            if ((actualTakingAmount == 0) == (actualMakingAmount == 0)) {
-                revert OnlyOneAmountShouldBeZero();
-            } else if (actualTakingAmount == 0) {
-                if (actualMakingAmount > remainingMakerAmount) {
-                    actualMakingAmount = remainingMakerAmount;
-                }
-
+            takingAmount = _callGetter(
+                OrderLib.getTakingAmount(order),
+                order.makingAmount,
+                makingAmount,
+                order.takingAmount,
+                remainingMakerAmount
+            );
+            // check that actual rate is not worse than what was expected
+            // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
+            if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
+        } else {
+            // uint256 requestedTakingAmount = takingAmount;
+            makingAmount = _callGetter(
+                OrderLib.getMakingAmount(order),
+                order.takingAmount,
+                takingAmount,
+                order.makingAmount,
+                remainingMakerAmount
+            );
+            if (makingAmount > remainingMakerAmount) {
+                makingAmount = remainingMakerAmount;
                 takingAmount = _callGetter(
                     OrderLib.getTakingAmount(order),
                     order.makingAmount,
@@ -252,49 +280,30 @@ abstract contract OrderMixin is
                     order.takingAmount,
                     remainingMakerAmount
                 );
-                // check that actual rate is not worse than what was expected
-                // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
-                if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
-            } else {
-                // uint256 requestedTakingAmount = takingAmount;
-                makingAmount = _callGetter(
-                    OrderLib.getMakingAmount(order),
-                    order.takingAmount,
-                    takingAmount,
-                    order.makingAmount,
-                    remainingMakerAmount
-                );
-                if (makingAmount > remainingMakerAmount) {
-                    makingAmount = remainingMakerAmount;
-                    takingAmount = _callGetter(
-                        OrderLib.getTakingAmount(order),
-                        order.makingAmount,
-                        makingAmount,
-                        order.takingAmount,
-                        remainingMakerAmount
-                    );
-                }
-                // check that actual rate is not worse than what was expected
-                // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
-                if (actualMakingAmount * takingAmount < thresholdAmount * actualTakingAmount) revert MakingAmountTooLow();
             }
-
-            if (actualMakingAmount == 0 || actualTakingAmount == 0) revert SwapWithZeroAmount();
-
-            // Update remaining amount in storage
-            unchecked {
-                remainingMakerAmount = remainingMakerAmount - actualMakingAmount;
-                _remaining[orderHash] = remainingMakerAmount + 1;
-            }
-            emit OrderFilled(msg.sender, orderHash, remainingMakerAmount);
+            // check that actual rate is not worse than what was expected
+            // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
+            if (actualMakingAmount * takingAmount < thresholdAmount * actualTakingAmount) revert MakingAmountTooLow();
         }
+        // check that actual rate is not worse than what was expected
+        // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
+        if (actualMakingAmount * takingAmount < thresholdAmount * actualTakingAmount) revert MakingAmountTooLow();
+
+        if (actualMakingAmount == 0 || actualTakingAmount == 0) revert SwapWithZeroAmount();
+
+        // Update remaining amount in storage
+        unchecked {
+            remainingMakerAmount = remainingMakerAmount - actualMakingAmount;
+            _remaining[orderHash] = remainingMakerAmount + 1;
+        }
+        emit OrderFilled(order_.maker, orderHash, remainingMakerAmount);
 
         // Maker can handle funds interactively
         if (order.preInteraction().length >= 20) {
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.preInteraction().decodeTargetAndCalldata();
             PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
+                orderHash, order.maker, msg.sender, actualMakingAmount, actualTakingAmount, remainingMakerAmount, interactionData
             );
         }
 
@@ -311,7 +320,7 @@ abstract contract OrderMixin is
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata();
             uint256 offeredTakingAmount = InteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
-                msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
+                msg.sender, actualMakingAmount, actualTakingAmount, interactionData
             );
 
             if (offeredTakingAmount > actualTakingAmount &&
@@ -323,36 +332,49 @@ abstract contract OrderMixin is
         }
 
         // Taker => Maker
-        if (!_callTransferFrom(
-            order.takerAsset,
-            msg.sender,
-            order.receiver == address(0) ? order.maker : order.receiver,
-            actualTakingAmount,
-            order.takerAssetData()
-        )) revert TransferFromTakerToMakerFailed();
+        if (order.takerAsset == address(_WETH) && msg.value > 0) {
+            if (msg.value != actualTakingAmount) revert InvalidMsgValue();
+            _WETH.deposit{ value: actualTakingAmount }();
+            _WETH.transfer(order.receiver == address(0) ? order.maker : order.receiver, actualTakingAmount);
+        } else {
+            if (msg.value != 0) revert InvalidMsgValue();
+            if (!_callTransferFrom(
+                order.takerAsset,
+                msg.sender,
+                order.receiver == address(0) ? order.maker : order.receiver,
+                actualTakingAmount,
+                order.takerAssetData()
+            )) revert TransferFromTakerToMakerFailed();
+        }
 
         // Maker can handle funds interactively
         if (order.postInteraction().length >= 20) {
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.postInteraction().decodeTargetAndCalldata();
             PostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
-                msg.sender, order.makerAsset, order.takerAsset, actualMakingAmount, actualTakingAmount, interactionData
+                 orderHash, order.maker, msg.sender, actualMakingAmount, actualTakingAmount, remainingMakerAmount, interactionData
             );
         }
     }
 
-    /// @notice Checks order predicate
+    /**
+     * @notice See {IOrderMixin-checkPredicate}.
+     */
     function checkPredicate(OrderLib.Order calldata order) public view returns(bool) {
         (bool success, uint256 res) = _selfStaticCall(order.predicate());
         return success && res == 1;
     }
 
+    /**
+     * @notice See {IOrderMixin-hashOrder}.
+     */
     function hashOrder(OrderLib.Order calldata order) public view returns(bytes32) {
-        return _hashTypedDataV4(order.hash());
+        return order.hash(_domainSeparatorV4());
     }
 
     function _callTransferFrom(address asset, address from, address to, uint256 amount, bytes calldata input) private returns(bool success) {
         bytes4 selector = IERC20.transferFrom.selector;
+        /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
             let data := mload(0x40)
 

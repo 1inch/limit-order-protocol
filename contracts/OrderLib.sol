@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.15;
 
+import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
+
 library OrderLib {
     struct Order {
         uint256 salt;
@@ -17,8 +19,8 @@ library OrderLib {
         // bytes takerAssetData;
         // bytes getMakingAmount; // this.staticcall(abi.encodePacked(bytes, swapTakerAmount)) => (swapMakerAmount)
         // bytes getTakingAmount; // this.staticcall(abi.encodePacked(bytes, swapMakerAmount)) => (swapTakerAmount)
-        // bytes predicate;      // this.staticcall(bytes) => (bool)
-        // bytes permit;         // On first fill: permit.1.call(abi.encodePacked(permit.selector, permit.2))
+        // bytes predicate;       // this.staticcall(bytes) => (bool)
+        // bytes permit;          // On first fill: permit.1.call(abi.encodePacked(permit.selector, permit.2))
         // bytes preInteraction;
         // bytes postInteraction;
         bytes interactions; // concat(makerAssetData, takerAssetData, getMakingAmount, getTakingAmount, predicate, permit, preIntercation, postInteraction)
@@ -98,17 +100,20 @@ library OrderLib {
         return _get(order, DynamicField.PostInteraction);
     }
 
-    function hash(Order calldata order) internal pure returns(bytes32 result) {
+    function hash(Order calldata order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes calldata interactions = order.interactions;
         bytes32 typehash = _LIMIT_ORDER_TYPEHASH;
+        /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
 
+            // keccak256(abi.encode(_LIMIT_ORDER_TYPEHASH, orderWithoutInteractions, keccak256(order.interactions)));
             calldatacopy(ptr, interactions.offset, interactions.length)
             mstore(add(ptr, 0x140), keccak256(ptr, interactions.length))
             calldatacopy(add(ptr, 0x20), order, 0x120)
             mstore(ptr, typehash)
             result := keccak256(ptr, 0x160)
         }
+        result = ECDSA.toTypedDataHash(domainSeparator, result);
     }
 }

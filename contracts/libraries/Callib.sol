@@ -6,6 +6,7 @@ pragma abicoder v1;
 /// @title A helper contract to execute static calls expecting single uint256 as output
 library Callib {
     function staticcallForUint(address target, bytes calldata input) internal view returns(bool success, uint256 res) {
+        /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
             let data := mload(0x40)
 
