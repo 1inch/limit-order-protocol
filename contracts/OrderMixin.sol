@@ -65,6 +65,40 @@ abstract contract OrderMixin is
         uint256 remainingRaw
     );
 
+    // Fixed-size order part with core information
+    struct StaticOrder {
+        uint256 salt;
+        address makerAsset;
+        address takerAsset;
+        address maker;
+        address receiver;
+        address allowedSender;  // equals to Zero address on public orders
+        uint256 makingAmount;
+        uint256 takingAmount;
+    }
+
+    // `StaticOrder` extension including variable-sized additional order meta information
+    struct Order {
+        uint256 salt;
+        address makerAsset;
+        address takerAsset;
+        address maker;
+        address receiver;
+        address allowedSender;  // equals to Zero address on public orders
+        uint256 makingAmount;
+        uint256 takingAmount;
+        bytes makerAssetData;
+        bytes takerAssetData;
+        bytes getMakerAmount; // this.staticcall(abi.encodePacked(bytes, swapTakerAmount)) => (swapMakerAmount)
+        bytes getTakerAmount; // this.staticcall(abi.encodePacked(bytes, swapMakerAmount)) => (swapTakerAmount)
+        bytes predicate;      // this.staticcall(bytes) => (bool)
+        bytes permit;         // On first fill: permit.1.call(abi.encodePacked(permit.selector, permit.2))
+        bytes interaction;
+    }
+
+    bytes32 constant public LIMIT_ORDER_TYPEHASH = keccak256(
+        "Order(uint256 salt,address makerAsset,address takerAsset,address maker,address receiver,address allowedSender,uint256 makingAmount,uint256 takingAmount,bytes makerAssetData,bytes takerAssetData,bytes getMakerAmount,bytes getTakerAmount,bytes predicate,bytes permit,bytes interaction)"
+    );
     uint256 constant private _ORDER_DOES_NOT_EXIST = 0;
     uint256 constant private _ORDER_FILLED = 1;
 
@@ -210,15 +244,35 @@ abstract contract OrderMixin is
                 if (actualMakingAmount > remainingMakerAmount) {
                     actualMakingAmount = remainingMakerAmount;
                 }
-                actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakerAmount);
+
+                takingAmount = _callGetter(
+                    OrderLib.getTakingAmount(order),
+                    order.makingAmount,
+                    makingAmount,
+                    order.takingAmount,
+                    remainingMakerAmount
+                );
                 // check that actual rate is not worse than what was expected
                 // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
                 if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
             } else {
-                actualMakingAmount = _getMakingAmount(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount, remainingMakerAmount);
-                if (actualMakingAmount > remainingMakerAmount) {
-                    actualMakingAmount = remainingMakerAmount;
-                    actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakerAmount);
+                // uint256 requestedTakingAmount = takingAmount;
+                makingAmount = _callGetter(
+                    OrderLib.getMakingAmount(order),
+                    order.takingAmount,
+                    takingAmount,
+                    order.makingAmount,
+                    remainingMakerAmount
+                );
+                if (makingAmount > remainingMakerAmount) {
+                    makingAmount = remainingMakerAmount;
+                    takingAmount = _callGetter(
+                        OrderLib.getTakingAmount(order),
+                        order.makingAmount,
+                        makingAmount,
+                        order.takingAmount,
+                        remainingMakerAmount
+                    );
                 }
                 // check that actual rate is not worse than what was expected
                 // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
@@ -326,38 +380,14 @@ abstract contract OrderMixin is
         return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount, orderResultAmount - remainingMakerAmount);
     }
 
-    function _getTakingAmount(
-        bytes calldata getter,
-        uint256 orderExpectedAmount,
-        uint256 amount,
-        uint256 orderResultAmount,
-        uint256 remainingMakerAmount
-    ) private view returns(uint256) {
+    function _callGetter(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount, uint256 remainingAmount) private view returns(uint256) {
         if (getter.length == 0) {
-            // Linear proportion
-            return getTakingAmount(orderExpectedAmount, orderResultAmount, amount);
-        }
-        return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount, orderExpectedAmount - remainingMakerAmount);
-    }
-
-    function _callGetter(
-        bytes calldata getter,
-        uint256 orderExpectedAmount,
-        uint256 amount,
-        uint256 orderResultAmount,
-        uint256 alreadyFilledAmount
-    ) private view returns(uint256) {
-        if (getter.length == 1) {
-            if (OrderLib.getterIsFrozen(getter)) {
-                // On "x" getter calldata only exact amount is allowed
-                if (amount != orderExpectedAmount) revert WrongAmount();
-                return orderResultAmount;
-            } else {
-                revert WrongGetter();
-            }
+            // On empty getter calldata only exact amount is allowed
+            require(amount == orderExpectedAmount, "LOP: wrong amount");
+            return orderResultAmount;
         } else {
             (address target, bytes calldata data) = getter.decodeTargetAndCalldata();
-            (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount, alreadyFilledAmount));
+            (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount, remainingAmount));
 
             if (!success || result.length != 32) revert getAmountCallFailed();
             return result.decodeUint256Memory();
