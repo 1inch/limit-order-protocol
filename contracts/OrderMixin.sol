@@ -246,7 +246,7 @@ abstract contract OrderMixin is
                 }
 
                 takingAmount = _callGetter(
-                    order.getTakerAmount,
+                    OrderLib.getTakingAmount(order),
                     order.makingAmount,
                     makingAmount,
                     order.takingAmount,
@@ -258,7 +258,7 @@ abstract contract OrderMixin is
             } else {
                 uint256 requestedTakingAmount = takingAmount;
                 makingAmount = _callGetter(
-                    order.getMakerAmount,
+                    OrderLib.getMakingAmount(order),
                     order.takingAmount,
                     takingAmount,
                     order.makingAmount,
@@ -267,7 +267,7 @@ abstract contract OrderMixin is
                 if (makingAmount > remainingMakerAmount) {
                     makingAmount = remainingMakerAmount;
                     takingAmount = _callGetter(
-                        order.getTakerAmount,
+                        OrderLib.getTakingAmount(order),
                         order.makingAmount,
                         makingAmount,
                         order.takingAmount,
