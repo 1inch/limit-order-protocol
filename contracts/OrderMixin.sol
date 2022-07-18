@@ -265,10 +265,7 @@ abstract contract OrderMixin is
             // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
             if (actualMakingAmount * takingAmount < thresholdAmount * actualTakingAmount) revert MakingAmountTooLow();
         }
-        // check that actual rate is not worse than what was expected
-        // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
-        if (actualMakingAmount * takingAmount < thresholdAmount * actualTakingAmount) revert MakingAmountTooLow();
-
+        
         if (actualMakingAmount == 0 || actualTakingAmount == 0) revert SwapWithZeroAmount();
 
         // Update remaining amount in storage
