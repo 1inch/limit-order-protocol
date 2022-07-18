@@ -1,5 +1,5 @@
 const { expect, trim0x, ether, time } = require('@1inch/solidity-utils');
-const { addr0Wallet, addr1Wallet } = require('./helpers/utils');
+const { addr0Wallet, addr1Wallet, cutLastArg } = require('./helpers/utils');
 
 const TokenMock = artifacts.require('TokenMock');
 const WrappedTokenMock = artifacts.require('WrappedTokenMock');
@@ -139,16 +139,15 @@ describe('Interactions', async () => {
 
         it.only('swap with makingAmount', async () => {
             const ts = await time.latest();
-            const auctionParams = trim0x(web3.eth.abi.encodeParameters(
+            const auctionParams = web3.eth.abi.encodeParameters(
                 ['uint32', 'uint32', 'uint256', 'uint256'],
                 [
                     ts,
                     ts.addn(86400),
-                    ether('100'),
-                    ether('50'),
+                    ether('0.1'),
+                    ether('0.05'),
                 ],
-            ));
-
+            );
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -158,8 +157,8 @@ describe('Interactions', async () => {
                     from: addr0,
                 },
                 {
-                    getMakingAmount: this.dutchAuction.address + trim0x(web3.eth.abi.encodeFunctionSignature('getMakingAmount(bytes,uint256,uint256,bytes32)')) + auctionParams,
-                    getTakingAmount: this.dutchAuction.address + trim0x(web3.eth.abi.encodeFunctionSignature('getTakingAmount(bytes,uint256,uint256,bytes32)')) + auctionParams,
+                    getMakingAmount: this.dutchAuction.address + cutLastArg(trim0x(this.dutchAuction.contract.methods.getMakingAmount(auctionParams, 0, 0).encodeABI()), 64),
+                    getTakingAmount: this.dutchAuction.address + cutLastArg(trim0x(this.dutchAuction.contract.methods.getTakingAmount(auctionParams, 0, 0).encodeABI()), 64),
                 },
             );
             const signature = signOrder(order, this.chainId, this.swap.address, addr0Wallet.getPrivateKey());
