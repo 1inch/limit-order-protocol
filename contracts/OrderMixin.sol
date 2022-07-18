@@ -386,12 +386,11 @@ abstract contract OrderMixin is
             require(amount == orderExpectedAmount, "LOP: wrong amount");
             return orderResultAmount;
         } else {
-            bytes memory result = address(this).functionStaticCall(
-                abi.encodePacked(getter, amount, remainingAmount),
-                "LOP: getAmount call failed"
-            );
-            require(result.length == 32, "LOP: invalid getAmount return");
-            return result.decodeUint256();
+            (address target, bytes calldata data) = getter.decodeTargetAndCalldata();
+            (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount, remainingAmount));
+
+            if (!success || result.length != 32) revert getAmountCallFailed();
+            return result.decodeUint256Memory();
         }
     }
 }
