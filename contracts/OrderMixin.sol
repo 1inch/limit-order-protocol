@@ -256,7 +256,7 @@ abstract contract OrderMixin is
                 // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
                 if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
             } else {
-                uint256 requestedTakingAmount = takingAmount;
+                // uint256 requestedTakingAmount = takingAmount;
                 makingAmount = _callGetter(
                     OrderLib.getMakingAmount(order),
                     order.takingAmount,
@@ -380,7 +380,7 @@ abstract contract OrderMixin is
         return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount, orderResultAmount - remainingMakerAmount);
     }
 
-    function _callGetter(bytes memory getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount, uint256 remainingAmount) private view returns(uint256) {
+    function _callGetter(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount, uint256 remainingAmount) private view returns(uint256) {
         if (getter.length == 0) {
             // On empty getter calldata only exact amount is allowed
             require(amount == orderExpectedAmount, "LOP: wrong amount");
