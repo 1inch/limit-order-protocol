@@ -405,7 +405,7 @@ abstract contract OrderMixin is
     function _callGetter(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount, uint256 remainingAmount) private view returns(uint256) {
         if (getter.length == 0) {
             // On empty getter calldata only exact amount is allowed
-            require(amount == orderExpectedAmount, "LOP: wrong amount");
+            if (amount != orderExpectedAmount) revert WrongAmount();
             return orderResultAmount;
         } else {
             (address target, bytes calldata data) = getter.decodeTargetAndCalldata();

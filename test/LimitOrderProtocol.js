@@ -928,8 +928,8 @@ describe('LimitOrderProtocol', async () => {
      * But it is also possible that the limit-order will be filed in parts.
      * First, someone buys 1 ETH at the price of 3050 DAI, then another 1 ETH at the price of 3150 DAI, and so on.
      */
-    describe('Range limit orders', async function () {
-        it('Fill range limit-order by maker asset', async function () {
+    describe('Range limit orders', async () => {
+        it('Fill range limit-order by maker asset', async () => {
             // Order: 10 WETH -> 40_000 DAI with price range: 3000 -> 4000 DAI
             const fromUnits = (num, decimals) => BigInt(num * 10 ** decimals);
             const decimals = 18;
@@ -1013,7 +1013,7 @@ describe('LimitOrderProtocol', async () => {
             expect(newWethBalance00.toString()).equal((BigInt(takerWeth) + fromUnits(2 + 2, decimals)).toString(), 'weth balanceOf addr0');
         });
 
-        it.only('Fill range limit-order by taker asset', async function () {
+        it('Fill range limit-order by taker asset', async () => {
             // Order: 10 WETH -> 40_000 DAI with price range: 3000 -> 4000 DAI
             const fromUnits = (num, decimals) => BigInt(num * 10 ** decimals);
             const decimals = 18;
