@@ -251,35 +251,15 @@ abstract contract OrderMixin is
             if (actualMakingAmount > remainingMakerAmount) {
                 actualMakingAmount = remainingMakerAmount;
             }
-
-            takingAmount = _callGetter(
-                OrderLib.getTakingAmount(order),
-                order.makingAmount,
-                makingAmount,
-                order.takingAmount,
-                remainingMakerAmount
-            );
+            actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakerAmount);
             // check that actual rate is not worse than what was expected
             // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
             if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
         } else {
-            // uint256 requestedTakingAmount = takingAmount;
-            makingAmount = _callGetter(
-                OrderLib.getMakingAmount(order),
-                order.takingAmount,
-                takingAmount,
-                order.makingAmount,
-                remainingMakerAmount
-            );
-            if (makingAmount > remainingMakerAmount) {
-                makingAmount = remainingMakerAmount;
-                takingAmount = _callGetter(
-                    OrderLib.getTakingAmount(order),
-                    order.makingAmount,
-                    makingAmount,
-                    order.takingAmount,
-                    remainingMakerAmount
-                );
+            actualMakingAmount = _getMakingAmount(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount, remainingMakerAmount);
+            if (actualMakingAmount > remainingMakerAmount) {
+                actualMakingAmount = remainingMakerAmount;
+                actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakerAmount);
             }
             // check that actual rate is not worse than what was expected
             // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
@@ -402,11 +382,35 @@ abstract contract OrderMixin is
         return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount, orderResultAmount - remainingMakerAmount);
     }
 
-    function _callGetter(bytes calldata getter, uint256 orderExpectedAmount, uint256 amount, uint256 orderResultAmount, uint256 remainingAmount) private view returns(uint256) {
+        function _getTakingAmount(
+        bytes calldata getter,
+        uint256 orderExpectedAmount,
+        uint256 amount,
+        uint256 orderResultAmount,
+        uint256 remainingMakerAmount
+    ) private view returns(uint256) {
         if (getter.length == 0) {
-            // On empty getter calldata only exact amount is allowed
-            if (amount != orderExpectedAmount) revert WrongAmount();
-            return orderResultAmount;
+            // Linear proportion
+            return getTakingAmount(orderExpectedAmount, orderResultAmount, amount);
+        }
+        return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount, orderExpectedAmount - remainingMakerAmount);
+    }
+
+    function _callGetter(
+        bytes calldata getter,
+        uint256 orderExpectedAmount,
+        uint256 amount,
+        uint256 orderResultAmount,
+        uint256 remainingAmount
+    ) private view returns(uint256) {
+        if (getter.length == 1) {
+            if (OrderLib.getterIsFrozen(getter)) {
+                // On "x" getter calldata only exact amount is allowed
+                if (amount != orderExpectedAmount) revert WrongAmount();
+                return orderResultAmount;
+            } else {
+                revert WrongGetter();
+            }
         } else {
             (address target, bytes calldata data) = getter.decodeTargetAndCalldata();
             (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount, remainingAmount));
