@@ -265,7 +265,7 @@ abstract contract OrderMixin is
             // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
             if (actualMakingAmount * takingAmount < thresholdAmount * actualTakingAmount) revert MakingAmountTooLow();
         }
-        
+
         if (actualMakingAmount == 0 || actualTakingAmount == 0) revert SwapWithZeroAmount();
 
         // Update remaining amount in storage
@@ -379,7 +379,7 @@ abstract contract OrderMixin is
         return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount, orderResultAmount - remainingMakerAmount);
     }
 
-        function _getTakingAmount(
+    function _getTakingAmount(
         bytes calldata getter,
         uint256 orderExpectedAmount,
         uint256 amount,

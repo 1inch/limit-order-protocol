@@ -13,22 +13,39 @@ import "../libraries/Math.sol";
  * But it is also possible that the limit-order will be filed in parts.
  * First, someone buys 1 ETH at the price of 3050 DAI, then another 1 ETH at the price of 3150 DAI, and so on.
  */
+/**
+ * Function of the changing price of makerAsset tokens in takerAsset tokens by the filling amount of makerAsset tokens in order:
+ *      priceEnd - priceStart
+ * y = ----------------------- * x + priceStart
+ *           totalAmount
+ */
 contract RangeAmountCalculator {
+
+    error IncorrectRange();
+
+    modifier correctRange(uint256 priceStart, uint256 priceEnd) {
+        if (priceEnd < priceStart) revert IncorrectRange();
+        _;
+    }
 
     function getRangeTakerAmount(
         uint256 priceStart,
         uint256 priceEnd,
         uint256 totalAmount,
         uint256 fillAmount,
-        uint256 remainingAmount
-    ) public pure returns(uint256) {
-        unchecked {
-            // TODO: think about overflows
-            return (
-                priceStart * (2 * remainingAmount - fillAmount) +
-                priceEnd * (2 * (totalAmount - remainingAmount) + fillAmount)
-            ) * fillAmount / totalAmount / 2e18;
-        }
+        uint256 filledFor
+    ) public correctRange(priceStart, priceEnd) pure returns(uint256) {
+        /**
+         * rangeTakerAmount = (
+         *       y(makerAmountFilled) + y(makerAmountFilled + fillAmount)
+         *   ) * fillAmount / 2 / 1e18
+         *
+         *  divTo1e18 - it is a scale, because price is in ether
+         */
+        return (
+            (priceEnd - priceStart) * (2 * filledFor + fillAmount) / totalAmount +
+            2 * priceStart
+        ) * fillAmount / 2e18;
     }
 
     function getRangeMakerAmount(
@@ -37,22 +54,17 @@ contract RangeAmountCalculator {
         uint256 totalLiquidity,
         uint256 takingAmount,
         uint256 filledFor
-    ) public pure returns(uint256) {
-        unchecked {
-            uint256 priceRangeDiff = priceEnd - priceStart;
-            uint256 liquidityRemaining = totalLiquidity - filledFor;
-            uint256 priceStartSqr = priceStart * priceStart;
+    ) public correctRange(priceStart, priceEnd) pure returns(uint256) {
+        uint256 b = priceStart;
+        uint256 k = (priceEnd - priceStart) / totalLiquidity;
+        uint256 bDivK = priceStart * totalLiquidity / (priceEnd - priceStart);
 
-            uint256 d = 4 * (
-                2 * totalLiquidity * takingAmount * priceRangeDiff
-                + priceEnd * priceEnd * filledFor * filledFor
-                + priceStartSqr * totalLiquidity * totalLiquidity
-                + priceStartSqr * filledFor * filledFor
-                - 2 * priceStartSqr * totalLiquidity * filledFor
-                + 2 * priceStart * priceEnd * filledFor * liquidityRemaining
-            );
-
-            return (Math.sqrt(d / 4) - priceStart * liquidityRemaining - priceEnd * filledFor) / priceRangeDiff / 1e18;
-        }
+        return (Math.sqrt(
+            (
+                b * bDivK +
+                filledFor * (2 * b + k * filledFor) +
+                2 * takingAmount * 1e18
+            ) / k
+        ) - bDivK) - filledFor;
     }
 }
