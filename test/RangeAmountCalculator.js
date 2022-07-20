@@ -88,7 +88,7 @@ describe('RangeAmountCalculator', async () => {
     });
 
     describe('Fill by taker asset', async () => {
-        it('Revert with incorrect prices', async()  =>{
+        it('Revert with incorrect prices', async () => {
             const priceStart = ether('4000');
             const priceEnd = ether('3000');
             const totalLiquidity = ether('10');
