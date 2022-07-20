@@ -55,16 +55,20 @@ contract RangeAmountCalculator {
         uint256 takingAmount,
         uint256 filledFor
     ) public correctRange(priceStart, priceEnd) pure returns(uint256) {
+        if (priceEnd == priceStart) {
+            return takingAmount * 1e18 / priceStart;
+        }
+
         uint256 b = priceStart;
-        uint256 k = (priceEnd - priceStart) / totalLiquidity;
+        uint256 k = (priceEnd - priceStart) * 1e18 / totalLiquidity;
         uint256 bDivK = priceStart * totalLiquidity / (priceEnd - priceStart);
 
         return (Math.sqrt(
             (
                 b * bDivK +
-                filledFor * (2 * b + k * filledFor) +
+                filledFor * (2 * b + k * filledFor / 1e18) +
                 2 * takingAmount * 1e18
-            ) / k
+            ) / k * 1e18
         ) - bDivK) - filledFor;
     }
 }
