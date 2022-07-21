@@ -12,7 +12,7 @@
     "@openzeppelin/contracts": "4.6.0"
   },
   "devDependencies": {
-    "@1inch/solidity-utils": "2.0.22",
+    "@1inch/solidity-utils": "2.0.23",
     "@metamask/eth-sig-util": "4.0.1",
     "@nomiclabs/hardhat-etherscan": "3.1.0",
     "@nomiclabs/hardhat-truffle5": "2.0.6",
@@ -27,6 +27,7 @@
     "ethereumjs-util": "7.1.5",
     "ethereumjs-wallet": "1.0.2",
     "hardhat": "2.9.9",
+    "hardhat-dependency-compiler": "^1.1.3",
     "hardhat-deploy": "0.11.10",
     "hardhat-gas-reporter": "1.0.8",
     "rimraf": "3.0.2",
