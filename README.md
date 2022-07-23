@@ -11,8 +11,7 @@
 ### Version warning
 The master branch contains the latest work-in-progress version of limit orders. It hasn't been audited and may contain severe security issues or may not work at all.
 
-Please, use the commit tagged `v2` to get the latest production version that has passed through a series of [security audits](
-https://github.com/1inch/1inch-audits/tree/master/Limit%20Order%20Protocol%20V2).
+Please, use the commit tagged `v2` ([here](https://github.com/1inch/limit-order-protocol/releases/tag/v2)) to get the latest production version that has passed through a series of [security audits](https://github.com/1inch/1inch-audits/tree/master/Limit%20Order%20Protocol%20V2).
 
 ### About
 
