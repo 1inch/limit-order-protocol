@@ -3,29 +3,26 @@
 pragma solidity 0.8.15;
 pragma abicoder v1;
 
-import "../interfaces/NotificationReceiver.sol";
-import "../interfaces/IWithdrawable.sol";
+import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 
-contract WethUnwrapper is PostInteractionNotificationReceiver {
-    // solhint-disable-next-line no-empty-blocks
-    receive() external payable {}
+import "../interfaces/NotificationReceiver.sol";
+
+contract WethUnwrapper is OnlyWethReceiver, PostInteractionNotificationReceiver {
+    error ETHTransferFailed();
+
+    constructor(IWETH weth) OnlyWethReceiver(weth) {}  // solhint-disable-line no-empty-blocks
 
     function fillOrderPostInteraction(
         bytes32 /* orderHash */,
+        address maker,
         address /* taker */,
-        address /* makerAsset */,
-        address takerAsset,
         uint256 /* makingAmount */,
         uint256 takingAmount,
         uint256 /* remainingMakerAmount */,
-        bytes calldata interactiveData
+        bytes calldata /* interactiveData */
     ) external override {
-        address payable makerAddress;
-        // no memory ops inside so this insertion is automatically memory safe
-        assembly { // solhint-disable-line no-inline-assembly
-            makerAddress := shr(96, calldataload(interactiveData.offset))
-        }
-        IWithdrawable(takerAsset).withdraw(takingAmount);
-        makerAddress.transfer(takingAmount);
+        _WETH.withdraw(takingAmount);
+        (bool success, ) = maker.call{value: takingAmount}("");  // solhint-disable-line avoid-low-level-calls
+        if (!success) revert ETHTransferFailed();
     }
 }
