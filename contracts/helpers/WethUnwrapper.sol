@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.15;
-pragma abicoder v1;
 
 import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 

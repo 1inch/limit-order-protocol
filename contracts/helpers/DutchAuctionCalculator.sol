@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.15;
-pragma abicoder v1;
 
 contract DutchAuctionCalculator {
     uint256 private constant _LOW_128_BITS = 0xffffffffffffffffffffffffffffffff;

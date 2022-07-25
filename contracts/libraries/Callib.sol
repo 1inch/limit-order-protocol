@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.15;
-pragma abicoder v1;
 
 /// @title A helper contract to execute static calls expecting single uint256 as output
 library Callib {
