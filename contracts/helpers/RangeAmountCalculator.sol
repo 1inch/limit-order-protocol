@@ -38,10 +38,10 @@ contract RangeAmountCalculator {
         uint256 alreadyFilledMakingAmount = totalAmount - remainingMakerAmount;
         /**
          * rangeTakerAmount = (
-         *       y(makerAmountFilled) + y(makerAmountFilled + fillAmount)
+         *       f(makerAmountFilled) + f(makerAmountFilled + fillAmount)
          *   ) * fillAmount / 2 / 1e18
          *
-         *  divTo1e18 - it is a scale, because price is in ether
+         *  scaling to 1e18 happens to have better price accuracy
          */
         return (
             (priceEnd - priceStart) * (2 * alreadyFilledMakingAmount + fillAmount) / totalAmount +
