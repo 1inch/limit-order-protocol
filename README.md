@@ -8,6 +8,11 @@
 [![Build Status](https://github.com/1inch/limit-order-protocol/workflows/CI/badge.svg)](https://github.com/1inch/limit-order-protocol/actions)
 [![Coverage Status](https://coveralls.io/repos/github/1inch/limit-order-protocol/badge.svg?branch=master)](https://coveralls.io/github/1inch/limit-order-protocol?branch=master)
 
+### Version warning
+The master branch contains the latest work-in-progress version of limit orders. It hasn't been audited and may contain severe security issues or may not work at all.
+
+Please, use the commit tagged `v2` ([here](https://github.com/1inch/limit-order-protocol/releases/tag/v2)) to get the latest production version that has passed through a series of [security audits](https://github.com/1inch/1inch-audits/tree/master/Limit%20Order%20Protocol%20V2).
+
 ### About
 
 You can find general overview and docs on 1inch limit orders protocol [here](https://docs.1inch.io/docs/limit-order-protocol/introduction/).
