@@ -209,15 +209,15 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
             if (actualMakingAmount > remainingMakerAmount) {
                 actualMakingAmount = remainingMakerAmount;
             }
-            actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakerAmount);
+            actualTakingAmount = _getTakingAmount(order.getTakingAmount(), orderHash, order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakerAmount);
             // check that actual rate is not worse than what was expected
             // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
             if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
         } else {
-            actualMakingAmount = _getMakingAmount(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount, remainingMakerAmount);
+            actualMakingAmount = _getMakingAmount(order.getMakingAmount(), orderHash, order.takingAmount, actualTakingAmount, order.makingAmount, remainingMakerAmount);
             if (actualMakingAmount > remainingMakerAmount) {
                 actualMakingAmount = remainingMakerAmount;
-                actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakerAmount);
+                actualTakingAmount = _getTakingAmount(order.getTakingAmount(), orderHash, order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakerAmount);
             }
             // check that actual rate is not worse than what was expected
             // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
@@ -325,6 +325,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
 
     function _getMakingAmount(
         bytes calldata getter,
+        bytes32 orderHash,
         uint256 orderExpectedAmount,
         uint256 amount,
         uint256 orderResultAmount,
@@ -334,11 +335,12 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
             // Linear proportion
             return getMakingAmount(orderResultAmount, orderExpectedAmount, amount);
         }
-        return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount, orderResultAmount - remainingMakerAmount);
+        return _callGetter(getter, orderHash, orderExpectedAmount, amount, orderResultAmount, orderResultAmount - remainingMakerAmount);
     }
 
     function _getTakingAmount(
         bytes calldata getter,
+        bytes32 orderHash,
         uint256 orderExpectedAmount,
         uint256 amount,
         uint256 orderResultAmount,
@@ -348,11 +350,12 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
             // Linear proportion
             return getTakingAmount(orderExpectedAmount, orderResultAmount, amount);
         }
-        return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount, orderExpectedAmount - remainingMakerAmount);
+        return _callGetter(getter, orderHash, orderExpectedAmount, amount, orderResultAmount, orderExpectedAmount - remainingMakerAmount);
     }
 
     function _callGetter(
         bytes calldata getter,
+        bytes32 orderHash,
         uint256 orderExpectedAmount,
         uint256 amount,
         uint256 orderResultAmount,
@@ -368,7 +371,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
             }
         } else {
             (address target, bytes calldata data) = getter.decodeTargetAndCalldata();
-            (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount, remainingAmount));
+            (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount, remainingAmount, orderHash));
 
             if (!success || result.length != 32) revert GetAmountCallFailed();
             return abi.decode(result, (uint256));
