@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.15;
 
-import "../libraries/Math.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
  * Range limit order is used to sell an asset within a given price range.
