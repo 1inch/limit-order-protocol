@@ -177,13 +177,13 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
         actualMakingAmount = makingAmount;
         actualTakingAmount = takingAmount;
 
-        uint256 remainingMakerAmount = _remaining[orderHash];
-        if (remainingMakerAmount == _ORDER_FILLED) revert RemainingAmountIsZero();
+        uint256 remainingMakingAmount = _remaining[orderHash];
+        if (remainingMakingAmount == _ORDER_FILLED) revert RemainingAmountIsZero();
         if (order.allowedSender != address(0) && order.allowedSender != msg.sender) revert PrivateOrder();
-        if (remainingMakerAmount == _ORDER_DOES_NOT_EXIST) {
+        if (remainingMakingAmount == _ORDER_DOES_NOT_EXIST) {
             // First fill: validate order and permit maker asset
             if (!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert BadSignature();
-            remainingMakerAmount = order.makingAmount;
+            remainingMakingAmount = order.makingAmount;
 
             bytes calldata permit = order.permit(); // Helps with "Stack too deep"
             if (permit.length >= 20) {
@@ -193,7 +193,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
                 if (_remaining[orderHash] != _ORDER_DOES_NOT_EXIST) revert ReentrancyDetected();
             }
         } else {
-            unchecked { remainingMakerAmount -= 1; }
+            unchecked { remainingMakingAmount -= 1; }
         }
 
         // Check if order is valid
@@ -205,18 +205,18 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
         if ((actualTakingAmount == 0) == (actualMakingAmount == 0)) {
             revert OnlyOneAmountShouldBeZero();
         } else if (actualTakingAmount == 0) {
-            if (actualMakingAmount > remainingMakerAmount) {
-                actualMakingAmount = remainingMakerAmount;
+            if (actualMakingAmount > remainingMakingAmount) {
+                actualMakingAmount = remainingMakingAmount;
             }
-            actualTakingAmount = _getTakingAmount(order.getTakingAmount(), orderHash, order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakerAmount);
+            actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakingAmount, orderHash);
             // check that actual rate is not worse than what was expected
             // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
             if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
         } else {
-            actualMakingAmount = _getMakingAmount(order.getMakingAmount(), orderHash, order.takingAmount, actualTakingAmount, order.makingAmount, remainingMakerAmount);
-            if (actualMakingAmount > remainingMakerAmount) {
-                actualMakingAmount = remainingMakerAmount;
-                actualTakingAmount = _getTakingAmount(order.getTakingAmount(), orderHash, order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakerAmount);
+            actualMakingAmount = _getMakingAmount(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount, remainingMakingAmount, orderHash);
+            if (actualMakingAmount > remainingMakingAmount) {
+                actualMakingAmount = remainingMakingAmount;
+                actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakingAmount, orderHash);
             }
             // check that actual rate is not worse than what was expected
             // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
@@ -227,17 +227,17 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
 
         // Update remaining amount in storage
         unchecked {
-            remainingMakerAmount = remainingMakerAmount - actualMakingAmount;
-            _remaining[orderHash] = remainingMakerAmount + 1;
+            remainingMakingAmount = remainingMakingAmount - actualMakingAmount;
+            _remaining[orderHash] = remainingMakingAmount + 1;
         }
-        emit OrderFilled(order_.maker, orderHash, remainingMakerAmount);
+        emit OrderFilled(order_.maker, orderHash, remainingMakingAmount);
 
         // Maker can handle funds interactively
         if (order.preInteraction().length >= 20) {
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.preInteraction().decodeTargetAndCalldata();
             PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                orderHash, order.maker, msg.sender, actualMakingAmount, actualTakingAmount, remainingMakerAmount, interactionData
+                orderHash, order.maker, msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
             );
         }
 
@@ -286,7 +286,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.postInteraction().decodeTargetAndCalldata();
             PostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
-                 orderHash, order.maker, msg.sender, actualMakingAmount, actualTakingAmount, remainingMakerAmount, interactionData
+                 orderHash, order.maker, msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
             );
         }
     }
@@ -322,23 +322,44 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
         }
     }
 
-    function _getMakingAmount(bytes calldata getter, bytes32 orderHash, uint256 orderTakingAmount, uint256 requestedTakingAmount, uint256 orderMakingAmount, uint256 remainingMakingAmount) private view returns(uint256) {
+    function _getMakingAmount(
+        bytes calldata getter,
+        uint256 orderTakingAmount,
+        uint256 requestedTakingAmount,
+        uint256 orderMakingAmount,
+        uint256 remainingMakingAmount,
+        bytes32 orderHash
+    ) private view returns(uint256) {
         if (getter.length == 0) {
             // Linear proportion
             return getMakingAmount(orderMakingAmount, orderTakingAmount, requestedTakingAmount);
         }
-        return _callGetter(getter, orderHash, orderTakingAmount, requestedTakingAmount, orderMakingAmount, remainingMakingAmount);
+        return _callGetter(getter, orderTakingAmount, requestedTakingAmount, orderMakingAmount, remainingMakingAmount, orderHash);
     }
 
-    function _getTakingAmount(bytes calldata getter, bytes32 orderHash, uint256 orderMakingAmount, uint256 requestedMakingAmount, uint256 orderTakingAmount, uint256 remainingMakingAmount) private view returns(uint256) {
+    function _getTakingAmount(
+        bytes calldata getter,
+        uint256 orderMakingAmount,
+        uint256 requestedMakingAmount,
+        uint256 orderTakingAmount,
+        uint256 remainingMakingAmount,
+        bytes32 orderHash
+    ) private view returns(uint256) {
         if (getter.length == 0) {
             // Linear proportion
             return getTakingAmount(orderMakingAmount, orderTakingAmount, requestedMakingAmount);
         }
-        return _callGetter(getter, orderHash, orderMakingAmount, requestedMakingAmount, orderTakingAmount, remainingMakingAmount);
+        return _callGetter(getter, orderMakingAmount, requestedMakingAmount, orderTakingAmount, remainingMakingAmount, orderHash);
     }
 
-    function _callGetter(bytes calldata getter, bytes32 orderHash, uint256 orderExpectedAmount, uint256 requestedAmount, uint256 orderResultAmount, uint256 remainingMakingAmount) private view returns(uint256) {
+    function _callGetter(
+        bytes calldata getter,
+        uint256 orderExpectedAmount,
+        uint256 requestedAmount,
+        uint256 orderResultAmount,
+        uint256 remainingMakingAmount,
+        bytes32 orderHash
+    ) private view returns(uint256) {
         if (getter.length == 1) {
             if (OrderLib.getterIsFrozen(getter)) {
                 // On "x" getter calldata only exact amount is allowed
