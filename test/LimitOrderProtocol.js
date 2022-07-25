@@ -982,12 +982,12 @@ describe('LimitOrderProtocol', async () => {
                     from: maker,
                 },
                 {
-                    getMakingAmount: this.swap.address + trim0x(cutLastArg(
-                        this.swap.contract.methods.getRangeMakerAmount(startPrice, endPrice, makingAmount, 0, 0).encodeABI(),
+                    getMakingAmount: this.rangeAmountCalculator.address + trim0x(cutLastArg(
+                        this.rangeAmountCalculator.contract.methods.getRangeMakerAmount(startPrice, endPrice, makingAmount, 0, 0).encodeABI(),
                         64,
                     )),
-                    getTakingAmount: this.swap.address + trim0x(cutLastArg(
-                        this.swap.contract.methods.getRangeTakerAmount(startPrice, endPrice, makingAmount, 0, 0).encodeABI(),
+                    getTakingAmount: this.rangeAmountCalculator.address + trim0x(cutLastArg(
+                        this.rangeAmountCalculator.contract.methods.getRangeTakerAmount(startPrice, endPrice, makingAmount, 0, 0).encodeABI(),
                         64,
                     )),
                 },
