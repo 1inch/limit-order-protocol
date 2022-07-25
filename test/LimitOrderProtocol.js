@@ -1,15 +1,17 @@
 const Wallet = require('ethereumjs-wallet').default;
 const { TypedDataUtils } = require('@metamask/eth-sig-util');
-const { expect, toBN, time, constants, profileEVM, trim0x, TypedDataVersion } = require('@1inch/solidity-utils');
+const { expect, ether, toBN, time, constants, profileEVM, trim0x, TypedDataVersion } = require('@1inch/solidity-utils');
 const { bufferToHex } = require('ethereumjs-util');
 const { buildOrder, buildOrderData, signOrder } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
-const { addr0Wallet, addr1Wallet, joinStaticCalls } = require('./helpers/utils');
+const { addr0Wallet, addr1Wallet, joinStaticCalls, cutLastArg } = require('./helpers/utils');
 
 const TokenMock = artifacts.require('TokenMock');
 const WrappedTokenMock = artifacts.require('WrappedTokenMock');
 const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
 const ERC721Proxy = artifacts.require('ERC721Proxy');
+const RangeAmountCalculator = artifacts.require('RangeAmountCalculator');
+const TokenCustomDecimalsMock = artifacts.require('TokenCustomDecimalsMock');
 
 describe('LimitOrderProtocol', async () => {
     const [addr0, addr1] = [addr0Wallet.getAddressString(), addr1Wallet.getAddressString()];
@@ -24,15 +26,14 @@ describe('LimitOrderProtocol', async () => {
 
         this.swap = await LimitOrderProtocol.new(this.weth.address);
 
-        await this.dai.mint(addr0, '1000000');
-        await this.dai.mint(addr1, '1000000');
-        await this.weth.deposit({ from: addr0, value: '1000000' });
-        await this.weth.deposit({ from: addr1, value: '1000000' });
-
-        await this.dai.approve(this.swap.address, '1000000');
-        await this.weth.approve(this.swap.address, '1000000');
-        await this.dai.approve(this.swap.address, '1000000', { from: addr1 });
-        await this.weth.approve(this.swap.address, '1000000', { from: addr1 });
+        await this.dai.mint(addr1, ether('1000000000000'));
+        await this.weth.mint(addr1, ether('1000000000000'));
+        await this.dai.mint(addr0, ether('1000000000000'));
+        await this.weth.mint(addr0, ether('1000000000000'));
+        await this.dai.approve(this.swap.address, ether('1000000000000'));
+        await this.weth.approve(this.swap.address, ether('1000000000000'));
+        await this.dai.approve(this.swap.address, ether('1000000000000'), { from: addr1 });
+        await this.weth.approve(this.swap.address, ether('1000000000000'), { from: addr1 });
     });
 
     describe('wip', async () => {
@@ -917,6 +918,204 @@ describe('LimitOrderProtocol', async () => {
             await expect(
                 this.swap.fillOrder(order, signature, '0x', 900, 0, 900, { value: 1 }),
             ).to.eventually.be.rejectedWith('InvalidMsgValue()');
+        });
+    });
+
+    /**
+     * Range limit order is used to sell an asset within a given price range.
+     * For example, right now ETH is worth 3000 DAI and you believe that within the next week the price of ETH will rise and reach at least 4000 DAI.
+     * In this case, you can create an ETH -> DAI limit order with a price range of 3000 -> 4000.
+     * Let's say you created a similar order for the amount of 10 ETH.
+     * Someone can file the entire limit at once at an average price of 3500 DAI.
+     * But it is also possible that the limit-order will be filed in parts.
+     * First, someone buys 1 ETH at the price of 3050 DAI, then another 1 ETH at the price of 3150 DAI, and so on.
+     */
+    describe('Range limit orders', async () => {
+        const maker = addr1;
+        const taker = addr0;
+
+        const e6 = (value) => ether(value).div(toBN('1000000000000'));
+
+        before(async () => {
+            this.rangeAmountCalculator = await RangeAmountCalculator.new();
+        });
+
+        beforeEach(async () => {
+            this.usdc = await TokenCustomDecimalsMock.new('USDC', 'USDC', '0', 6);
+            await this.usdc.mint(maker, e6('1000000000000'));
+            await this.usdc.mint(taker, e6('1000000000000'));
+            await this.usdc.approve(this.swap.address, e6('1000000000000'));
+            await this.usdc.approve(this.swap.address, e6('1000000000000'), { from: addr1 });
+        });
+
+        /**
+         * @param makerAsset assetObject
+         * @param takerAsset assetObject
+         * @param fillOrderParams array of objects with params for fillOrder methods
+         * @param isByMakerAsset flag shows to fill range order by maker asset
+         *
+         * assetObject = {
+         *      asset: IERC20
+         *      ether: function(amount) => amount * assetDecimals
+         * }
+         *
+         * fillOrderParams = [{
+         *      makingAmount: uint256
+         *      takingAmount: uint256
+         *      thresholdAmount: uint256
+         * }]
+         */
+        const fillRangeLimitOrder = async (makerAsset, takerAsset, fillOrderParams, isByMakerAsset) => {
+            const getRangeAmount = (isByMakerAsset ? this.rangeAmountCalculator.getRangeTakerAmount : this.rangeAmountCalculator.getRangeMakerAmount);
+
+            // Order: 10 MA -> 35000 TA with price range: 3000 -> 4000 TA
+            const makingAmount = makerAsset.ether('10');
+            const takingAmount = takerAsset.ether('35000');
+            const startPrice = takerAsset.ether('3000');
+            const endPrice = takerAsset.ether('4000');
+            const order = buildOrder(
+                {
+                    makerAsset: makerAsset.asset.address,
+                    takerAsset: takerAsset.asset.address,
+                    makingAmount,
+                    takingAmount,
+                    from: maker,
+                },
+                {
+                    getMakingAmount: this.rangeAmountCalculator.address + trim0x(cutLastArg(
+                        this.rangeAmountCalculator.contract.methods.getRangeMakerAmount(startPrice, endPrice, makingAmount, 0, 0).encodeABI(),
+                        64,
+                    )),
+                    getTakingAmount: this.rangeAmountCalculator.address + trim0x(cutLastArg(
+                        this.rangeAmountCalculator.contract.methods.getRangeTakerAmount(startPrice, endPrice, makingAmount, 0, 0).encodeABI(),
+                        64,
+                    )),
+                },
+            );
+            const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
+
+            const makerTABalance = await takerAsset.asset.balanceOf(maker); // maker's takerAsset balance
+            const takerTABalance = await takerAsset.asset.balanceOf(taker); // taker's takerAsset balance
+            const makerMABalance = await makerAsset.asset.balanceOf(maker); // maker's makerAsset balance
+            const takerMABalance = await makerAsset.asset.balanceOf(taker); // taker's makerAsset balance
+
+            // Buy fillOrderParams[0].makingAmount tokens of makerAsset,
+            // price should be fillOrderParams[0].takingAmount tokens of takerAsset
+            await this.swap.fillOrder(
+                order, signature, '0x',
+                makerAsset.ether(fillOrderParams[0].makingAmount),
+                takerAsset.ether(fillOrderParams[0].takingAmount),
+                isByMakerAsset ? takerAsset.ether(fillOrderParams[0].thresholdAmount) : makerAsset.ether(fillOrderParams[0].thresholdAmount),
+            );
+            const rangeAmount1 = await getRangeAmount(
+                startPrice,
+                endPrice,
+                makingAmount,
+                isByMakerAsset ? makerAsset.ether(fillOrderParams[0].makingAmount) : takerAsset.ether(fillOrderParams[0].takingAmount),
+                makingAmount,
+            );
+            if (isByMakerAsset) {
+                expect(await takerAsset.asset.balanceOf(maker)).to.be.bignumber.equals(toBN(makerTABalance).add(rangeAmount1));
+                expect(await makerAsset.asset.balanceOf(maker)).to.be.bignumber.equals(toBN(makerMABalance).sub(makerAsset.ether(fillOrderParams[0].makingAmount)));
+                expect(await takerAsset.asset.balanceOf(taker)).to.be.bignumber.equals(toBN(takerTABalance).sub(rangeAmount1));
+                expect(await makerAsset.asset.balanceOf(taker)).to.be.bignumber.equals(toBN(takerMABalance).add(makerAsset.ether(fillOrderParams[0].makingAmount)));
+            } else {
+                expect(await takerAsset.asset.balanceOf(maker)).to.be.bignumber.equals(toBN(makerTABalance).add(takerAsset.ether(fillOrderParams[0].takingAmount)));
+                expect(await makerAsset.asset.balanceOf(maker)).to.be.bignumber.equals(toBN(makerMABalance).sub(rangeAmount1));
+                expect(await takerAsset.asset.balanceOf(taker)).to.be.bignumber.equals(toBN(takerTABalance).sub(takerAsset.ether(fillOrderParams[0].takingAmount)));
+                expect(await makerAsset.asset.balanceOf(taker)).to.be.bignumber.equals(toBN(takerMABalance).add(rangeAmount1));
+            }
+
+            // Buy fillOrderParams[1].makingAmount tokens of makerAsset more,
+            // price should be fillOrderParams[1].takingAmount tokens of takerAsset
+            await this.swap.fillOrder(
+                order, signature, '0x',
+                makerAsset.ether(fillOrderParams[1].makingAmount),
+                takerAsset.ether(fillOrderParams[1].takingAmount),
+                takerAsset.ether(fillOrderParams[1].thresholdAmount),
+            );
+            const rangeAmount2 = await getRangeAmount(
+                startPrice,
+                endPrice,
+                makingAmount,
+                isByMakerAsset ? makerAsset.ether(fillOrderParams[1].makingAmount) : takerAsset.ether(fillOrderParams[1].takingAmount),
+                isByMakerAsset ? makingAmount.sub(makerAsset.ether(fillOrderParams[0].makingAmount)) : makingAmount.sub(rangeAmount1),
+            );
+            if (isByMakerAsset) {
+                expect(await takerAsset.asset.balanceOf(maker)).to.be.bignumber.equals(toBN(makerTABalance).add(rangeAmount1).add(rangeAmount2));
+                expect(await makerAsset.asset.balanceOf(maker)).to.be.bignumber.equals(
+                    toBN(makerMABalance)
+                        .sub(makerAsset.ether(fillOrderParams[0].makingAmount))
+                        .sub(makerAsset.ether(fillOrderParams[1].makingAmount)),
+                );
+                expect(await takerAsset.asset.balanceOf(taker)).to.be.bignumber.equals(toBN(takerTABalance).sub(rangeAmount1).sub(rangeAmount2));
+                expect(await makerAsset.asset.balanceOf(taker)).to.be.bignumber.equals(
+                    toBN(takerMABalance)
+                        .add(makerAsset.ether(fillOrderParams[0].makingAmount))
+                        .add(makerAsset.ether(fillOrderParams[1].makingAmount)),
+                );
+            } else {
+                expect(await takerAsset.asset.balanceOf(maker)).to.be.bignumber.equals(
+                    toBN(makerTABalance)
+                        .add(takerAsset.ether(fillOrderParams[0].takingAmount))
+                        .add(takerAsset.ether(fillOrderParams[1].takingAmount)),
+                );
+                expect(await makerAsset.asset.balanceOf(maker)).to.be.bignumber.equals(toBN(makerMABalance).sub(rangeAmount1).sub(rangeAmount2));
+                expect(await takerAsset.asset.balanceOf(taker)).to.be.bignumber.equals(
+                    toBN(takerTABalance)
+                        .sub(takerAsset.ether(fillOrderParams[0].takingAmount))
+                        .sub(takerAsset.ether(fillOrderParams[1].takingAmount)),
+                );
+                expect(await makerAsset.asset.balanceOf(taker)).to.be.bignumber.equals(toBN(takerMABalance).add(rangeAmount1).add(rangeAmount2));
+            }
+        };
+
+        it('Fill range limit-order by maker asset', async () => {
+            await fillRangeLimitOrder(
+                { asset: this.weth, ether },
+                { asset: this.dai, ether },
+                [
+                    { makingAmount: '2', takingAmount: '0', thresholdAmount: '6200' },
+                    { makingAmount: '2', takingAmount: '0', thresholdAmount: '6600' },
+                ],
+                true,
+            );
+        });
+
+        it('Fill range limit-order by maker asset when taker asset has different decimals', async () => {
+            await fillRangeLimitOrder(
+                { asset: this.weth, ether },
+                { asset: this.usdc, ether: e6 },
+                [
+                    { makingAmount: '2', takingAmount: '0', thresholdAmount: '6200' },
+                    { makingAmount: '2', takingAmount: '0', thresholdAmount: '6600' },
+                ],
+                true,
+            );
+        });
+
+        it('Fill range limit-order by taker asset', async () => {
+            await fillRangeLimitOrder(
+                { asset: this.weth, ether },
+                { asset: this.dai, ether },
+                [
+                    { makingAmount: '0', takingAmount: '6200', thresholdAmount: '2' },
+                    { makingAmount: '0', takingAmount: '6600', thresholdAmount: '2' },
+                ],
+                false,
+            );
+        });
+
+        it('Fill range limit-order by taker asset when taker asset has different decimals', async () => {
+            await fillRangeLimitOrder(
+                { asset: this.weth, ether },
+                { asset: this.usdc, ether: e6 },
+                [
+                    { makingAmount: '0', takingAmount: '6200', thresholdAmount: '2' },
+                    { makingAmount: '0', takingAmount: '6600', thresholdAmount: '2' },
+                ],
+                false,
+            );
         });
     });
 });
