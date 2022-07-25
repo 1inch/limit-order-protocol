@@ -9,7 +9,6 @@ import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 
 import "./helpers/AmountCalculator.sol";
-import "./helpers/RangeAmountCalculator.sol";
 import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/IOrderMixin.sol";
