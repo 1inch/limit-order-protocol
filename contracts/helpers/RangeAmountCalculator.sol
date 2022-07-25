@@ -24,7 +24,7 @@ contract RangeAmountCalculator {
     error IncorrectRange();
 
     modifier correctPrices(uint256 priceStart, uint256 priceEnd) {
-        if (priceEnd < priceStart) revert IncorrectRange();
+        if (priceEnd <= priceStart) revert IncorrectRange();
         _;
     }
 
@@ -33,8 +33,9 @@ contract RangeAmountCalculator {
         uint256 priceEnd,
         uint256 totalAmount,
         uint256 fillAmount,
-        uint256 filledFor
+        uint256 remainingMakerAmount
     ) public correctPrices(priceStart, priceEnd) pure returns(uint256) {
+        uint256 alreadyFilledMakingAmount = totalAmount - remainingMakerAmount;
         /**
          * rangeTakerAmount = (
          *       y(makerAmountFilled) + y(makerAmountFilled + fillAmount)
@@ -43,7 +44,7 @@ contract RangeAmountCalculator {
          *  divTo1e18 - it is a scale, because price is in ether
          */
         return (
-            (priceEnd - priceStart) * (2 * filledFor + fillAmount) / totalAmount +
+            (priceEnd - priceStart) * (2 * alreadyFilledMakingAmount + fillAmount) / totalAmount +
             2 * priceStart
         ) * fillAmount / 2e18;
     }
@@ -53,21 +54,18 @@ contract RangeAmountCalculator {
         uint256 priceEnd,
         uint256 totalLiquidity,
         uint256 takingAmount,
-        uint256 filledFor
+        uint256 remainingMakerAmount
     ) public correctPrices(priceStart, priceEnd) pure returns(uint256) {
-        if (priceEnd == priceStart) {
-            return takingAmount * 1e18 / priceStart;
-        }
-
+        uint256 alreadyFilledMakingAmount = totalLiquidity - remainingMakerAmount;
         uint256 b = priceStart;
         uint256 k = (priceEnd - priceStart) * 1e18 / totalLiquidity;
         uint256 bDivK = priceStart * totalLiquidity / (priceEnd - priceStart);
         return (Math.sqrt(
             (
                 b * bDivK +
-                filledFor * (2 * b + k * filledFor / 1e18) +
+                alreadyFilledMakingAmount * (2 * b + k * alreadyFilledMakingAmount / 1e18) +
                 2 * takingAmount * 1e18
             ) / k * 1e18
-        ) - bDivK) - filledFor;
+        ) - bDivK) - alreadyFilledMakingAmount;
     }
 }

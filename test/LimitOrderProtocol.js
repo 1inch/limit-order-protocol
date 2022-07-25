@@ -1012,7 +1012,7 @@ describe('LimitOrderProtocol', async () => {
                 endPrice,
                 makingAmount,
                 isByMakerAsset ? makerAsset.ether(fillOrderParams[0].makingAmount) : takerAsset.ether(fillOrderParams[0].takingAmount),
-                makerAsset.ether('0'),
+                makingAmount,
             );
             if (isByMakerAsset) {
                 expect(await takerAsset.asset.balanceOf(maker)).to.be.bignumber.equals(toBN(makerTABalance).add(rangeAmount1));
@@ -1039,7 +1039,7 @@ describe('LimitOrderProtocol', async () => {
                 endPrice,
                 makingAmount,
                 isByMakerAsset ? makerAsset.ether(fillOrderParams[1].makingAmount) : takerAsset.ether(fillOrderParams[1].takingAmount),
-                isByMakerAsset ? makerAsset.ether(fillOrderParams[0].makingAmount) : rangeAmount1,
+                isByMakerAsset ? makingAmount.sub(makerAsset.ether(fillOrderParams[0].makingAmount)) : makingAmount.sub(rangeAmount1),
             );
             if (isByMakerAsset) {
                 expect(await takerAsset.asset.balanceOf(maker)).to.be.bignumber.equals(toBN(makerTABalance).add(rangeAmount1).add(rangeAmount2));

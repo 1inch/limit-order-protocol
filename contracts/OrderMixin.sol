@@ -334,7 +334,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
             // Linear proportion
             return getMakingAmount(orderResultAmount, orderExpectedAmount, amount);
         }
-        return _callGetter(getter, orderHash, orderExpectedAmount, amount, orderResultAmount, orderResultAmount - remainingMakerAmount);
+        return _callGetter(getter, orderHash, orderExpectedAmount, amount, orderResultAmount, remainingMakerAmount);
     }
 
     function _getTakingAmount(
@@ -349,7 +349,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
             // Linear proportion
             return getTakingAmount(orderExpectedAmount, orderResultAmount, amount);
         }
-        return _callGetter(getter, orderHash, orderExpectedAmount, amount, orderResultAmount, orderExpectedAmount - remainingMakerAmount);
+        return _callGetter(getter, orderHash, orderExpectedAmount, amount, orderResultAmount, remainingMakerAmount);
     }
 
     function _callGetter(
