@@ -20,14 +20,7 @@ import "./libraries/Errors.sol";
 import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
-abstract contract OrderMixin is
-    IOrderMixin,
-    EIP712,
-    AmountCalculator,
-    RangeAmountCalculator,
-    NonceManager,
-    PredicateHelper
-{
+abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceManager, PredicateHelper {
     using Callib for address;
     using SafeERC20 for IERC20;
     using ArgumentsDecoder for bytes;
@@ -67,40 +60,6 @@ abstract contract OrderMixin is
         uint256 remainingRaw
     );
 
-    // Fixed-size order part with core information
-    struct StaticOrder {
-        uint256 salt;
-        address makerAsset;
-        address takerAsset;
-        address maker;
-        address receiver;
-        address allowedSender;  // equals to Zero address on public orders
-        uint256 makingAmount;
-        uint256 takingAmount;
-    }
-
-    // `StaticOrder` extension including variable-sized additional order meta information
-    struct Order {
-        uint256 salt;
-        address makerAsset;
-        address takerAsset;
-        address maker;
-        address receiver;
-        address allowedSender;  // equals to Zero address on public orders
-        uint256 makingAmount;
-        uint256 takingAmount;
-        bytes makerAssetData;
-        bytes takerAssetData;
-        bytes getMakerAmount; // this.staticcall(abi.encodePacked(bytes, swapTakerAmount)) => (swapMakerAmount)
-        bytes getTakerAmount; // this.staticcall(abi.encodePacked(bytes, swapMakerAmount)) => (swapTakerAmount)
-        bytes predicate;      // this.staticcall(bytes) => (bool)
-        bytes permit;         // On first fill: permit.1.call(abi.encodePacked(permit.selector, permit.2))
-        bytes interaction;
-    }
-
-    bytes32 constant public LIMIT_ORDER_TYPEHASH = keccak256(
-        "Order(uint256 salt,address makerAsset,address takerAsset,address maker,address receiver,address allowedSender,uint256 makingAmount,uint256 takingAmount,bytes makerAssetData,bytes takerAssetData,bytes getMakerAmount,bytes getTakerAmount,bytes predicate,bytes permit,bytes interaction)"
-    );
     uint256 constant private _ORDER_DOES_NOT_EXIST = 0;
     uint256 constant private _ORDER_FILLED = 1;
 
@@ -242,7 +201,6 @@ abstract contract OrderMixin is
         if (order.predicate().length > 0) {
             if (!checkPredicate(order)) revert PredicateIsNotTrue();
         }
-
 
         // Compute maker and taker assets amount
         if ((actualTakingAmount == 0) == (actualMakingAmount == 0)) {
