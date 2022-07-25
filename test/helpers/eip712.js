@@ -1,5 +1,5 @@
-const { toBN } = require('@1inch/solidity-utils');
-const ethSigUtil = require('eth-sig-util');
+const { toBN, TypedDataVersion } = require('@1inch/solidity-utils');
+const { signTypedData, TypedDataUtils } = require('@metamask/eth-sig-util');
 const { fromRpcSig } = require('ethereumjs-util');
 const ERC20Permit = artifacts.require('@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol:ERC20Permit');
 const { cutSelector, trim0x } = require('./utils.js');
@@ -20,10 +20,11 @@ const Permit = [
 ];
 
 function domainSeparator (name, version, chainId, verifyingContract) {
-    return '0x' + ethSigUtil.TypedDataUtils.hashStruct(
+    return '0x' + TypedDataUtils.hashStruct(
         'EIP712Domain',
         { name, version, chainId, verifyingContract },
         { EIP712Domain },
+        TypedDataVersion,
     ).toString('hex');
 }
 
@@ -43,7 +44,7 @@ async function getPermit (owner, ownerPrivateKey, token, tokenVersion, chainId, 
     const nonce = await permitContract.nonces(owner);
     const name = await permitContract.name();
     const data = buildData(owner, name, tokenVersion, chainId, token.address, spender, nonce, value, deadline);
-    const signature = ethSigUtil.signTypedMessage(Buffer.from(ownerPrivateKey, 'hex'), { data });
+    const signature = signTypedData({ privateKey: Buffer.from(ownerPrivateKey, 'hex'), data, version: TypedDataVersion });
     const { v, r, s } = fromRpcSig(signature);
     const permitCall = permitContract.contract.methods.permit(owner, spender, value, deadline, v, r, s).encodeABI();
     return cutSelector(permitCall);

@@ -3,6 +3,7 @@
 pragma solidity 0.8.15;
 
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
+import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 import "./OrderMixin.sol";
 import "./OrderRFQMixin.sol";
 
@@ -30,8 +31,11 @@ import "./OrderRFQMixin.sol";
 contract LimitOrderProtocol is
     EIP712("1inch Limit Order Protocol", "3"),
     OrderMixin,
-    OrderRFQMixin
+    OrderRFQMixin,
+    OnlyWethReceiver
 {
+    // solhint-disable-next-line no-empty-blocks
+    constructor(IWETH _weth) OrderRFQMixin(_weth) OrderMixin(_weth) OnlyWethReceiver(_weth) {}
 
     /// @dev Returns the domain separator for the current chain (EIP-712)
     // solhint-disable-next-line func-name-mixedcase

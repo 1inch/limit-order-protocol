@@ -32,7 +32,7 @@ describe('ChainLinkExample', async () => {
         this.weth = await TokenMock.new('WETH', 'WETH');
         this.inch = await TokenMock.new('1INCH', '1INCH');
 
-        this.swap = await LimitOrderProtocol.new();
+        this.swap = await LimitOrderProtocol.new(this.weth.address);
         this.chainlink = await ChainlinkCalculator.new();
 
         await this.dai.mint(addr1, ether('1000000'));
