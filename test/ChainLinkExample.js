@@ -1,4 +1,3 @@
-const { trim0x } = require('@1inch/solidity-utils');
 const { ether, expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 const { web3 } = require('hardhat');
@@ -25,7 +24,7 @@ describe('ChainLinkExample', async function () {
         return composeCalldataForOptionalTarget(
             chainlink.address,
             swap.address,
-            chainlink.contract.methods.singlePrice(oracle.address, buildInverseWithSpread(inverse, spread), amount).encodeABI()
+            chainlink.contract.methods.singlePrice(oracle.address, buildInverseWithSpread(inverse, spread), amount).encodeABI(),
         );
     }
 
@@ -33,7 +32,7 @@ describe('ChainLinkExample', async function () {
         return composeCalldataForOptionalTarget(
             chainlink.address,
             swap.address,
-            chainlink.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount).encodeABI()
+            chainlink.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount).encodeABI(),
         );
     }
 
@@ -183,9 +182,9 @@ describe('ChainLinkExample', async function () {
                         ether('0.0002501'),
                         composeCalldataForTarget(
                             this.daiOracle.address,
-                            this.daiOracle.contract.methods.latestAnswer().encodeABI()
-                        )
-                    ).encodeABI()
+                            this.daiOracle.contract.methods.latestAnswer().encodeABI(),
+                        ),
+                    ).encodeABI(),
                 ),
             },
         );

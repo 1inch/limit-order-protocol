@@ -1,4 +1,3 @@
-const { trim0x } = require('@1inch/solidity-utils');
 const { expectRevert } = require('@openzeppelin/test-helpers');
 const { expect } = require('chai');
 

@@ -12,7 +12,7 @@ const ERC721Proxy = artifacts.require('ERC721Proxy');
 
 const { profileEVM } = require('./helpers/profileEVM');
 const { buildOrder, buildOrderData, signOrder } = require('./helpers/orderUtils');
-const { getPermit, bundlePermitForTaker } = require('./helpers/eip712');
+const { getPermit } = require('./helpers/eip712');
 const { addr1PrivateKey, joinStaticCalls, composeCalldataForDefaultTarget, composeCalldataForTarget, composeCalldataForOptionalTarget } = require('./helpers/utils');
 
 describe('LimitOrderProtocol', async function () {
@@ -629,12 +629,12 @@ describe('LimitOrderProtocol', async function () {
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
                 [tsBelow, gtBalance],
-                this.swap.address
+                this.swap.address,
             );
             await this.swap.contract.methods.or(offsets, data).send({ from: wallet });
         });
 
-        it.only('`or` should pass', async function () {
+        it('`or` should pass', async function () {
             const tsBelow = composeCalldataForDefaultTarget(1, this.swap.contract.methods.timestampBelow(0xff0000).encodeABI());
             const balanceCall = composeCalldataForTarget(1, this.dai.address, this.dai.contract.methods.balanceOf(wallet).encodeABI());
             const gtBalance = composeCalldataForDefaultTarget(1, this.swap.contract.methods.gt('100000', balanceCall).encodeABI());
@@ -675,7 +675,7 @@ describe('LimitOrderProtocol', async function () {
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
                 [tsBelow, gtBalance],
-                this.swap.address
+                this.swap.address,
             );
             const predicate = this.swap.contract.methods.or(offsets, data).encodeABI();
             const order = buildOrder(
@@ -706,7 +706,7 @@ describe('LimitOrderProtocol', async function () {
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
                 [tsBelow, gtBalance],
-                this.swap.address
+                this.swap.address,
             );
 
             const order = buildOrder(
@@ -743,7 +743,7 @@ describe('LimitOrderProtocol', async function () {
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
                 [tsBelow, nonceCall],
-                this.swap.address
+                this.swap.address,
             );
 
             const order = buildOrder(
@@ -786,7 +786,7 @@ describe('LimitOrderProtocol', async function () {
             const { offsets, data } = joinStaticCalls(
                 [this.swap.address, this.swap.address],
                 [tsBelow, gtBalance],
-                this.swap.address
+                this.swap.address,
             );
             const predicate = this.swap.contract.methods.and(offsets, data).encodeABI();
             const order = buildOrder(
