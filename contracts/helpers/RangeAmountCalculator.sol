@@ -33,9 +33,9 @@ contract RangeAmountCalculator {
         uint256 priceEnd,
         uint256 totalAmount,
         uint256 fillAmount,
-        uint256 remainingMakerAmount
+        uint256 remainingMakingAmount
     ) public correctPrices(priceStart, priceEnd) pure returns(uint256) {
-        uint256 alreadyFilledMakingAmount = totalAmount - remainingMakerAmount;
+        uint256 alreadyFilledMakingAmount = totalAmount - remainingMakingAmount;
         /**
          * rangeTakerAmount = (
          *       f(makerAmountFilled) + f(makerAmountFilled + fillAmount)
@@ -54,9 +54,9 @@ contract RangeAmountCalculator {
         uint256 priceEnd,
         uint256 totalLiquidity,
         uint256 takingAmount,
-        uint256 remainingMakerAmount
+        uint256 remainingMakingAmount
     ) public correctPrices(priceStart, priceEnd) pure returns(uint256) {
-        uint256 alreadyFilledMakingAmount = totalLiquidity - remainingMakerAmount;
+        uint256 alreadyFilledMakingAmount = totalLiquidity - remainingMakingAmount;
         uint256 b = priceStart;
         uint256 k = (priceEnd - priceStart) * 1e18 / totalLiquidity;
         uint256 bDivK = priceStart * totalLiquidity / (priceEnd - priceStart);
