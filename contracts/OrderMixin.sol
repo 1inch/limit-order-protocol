@@ -324,53 +324,53 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceMana
 
     function _getMakingAmount(
         bytes calldata getter,
-        uint256 orderExpectedAmount,
-        uint256 amount,
-        uint256 orderResultAmount,
+        uint256 orderTakingAmount,
+        uint256 requestedTakingAmount,
+        uint256 orderMakingAmount,
         uint256 remainingMakingAmount,
         bytes32 orderHash
     ) private view returns(uint256) {
         if (getter.length == 0) {
             // Linear proportion
-            return getMakingAmount(orderResultAmount, orderExpectedAmount, amount);
+            return getMakingAmount(orderMakingAmount, orderTakingAmount, requestedTakingAmount);
         }
-        return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount, remainingMakingAmount, orderHash);
+        return _callGetter(getter, orderTakingAmount, requestedTakingAmount, orderMakingAmount, remainingMakingAmount, orderHash);
     }
 
     function _getTakingAmount(
         bytes calldata getter,
-        uint256 orderExpectedAmount,
-        uint256 amount,
-        uint256 orderResultAmount,
+        uint256 orderMakingAmount,
+        uint256 requestedMakingAmount,
+        uint256 orderTakingAmount,
         uint256 remainingMakingAmount,
         bytes32 orderHash
     ) private view returns(uint256) {
         if (getter.length == 0) {
             // Linear proportion
-            return getTakingAmount(orderExpectedAmount, orderResultAmount, amount);
+            return getTakingAmount(orderMakingAmount, orderTakingAmount, requestedMakingAmount);
         }
-        return _callGetter(getter, orderExpectedAmount, amount, orderResultAmount, remainingMakingAmount, orderHash);
+        return _callGetter(getter, orderMakingAmount, requestedMakingAmount, orderTakingAmount, remainingMakingAmount, orderHash);
     }
 
     function _callGetter(
         bytes calldata getter,
         uint256 orderExpectedAmount,
-        uint256 amount,
+        uint256 requestedAmount,
         uint256 orderResultAmount,
-        uint256 remainingAmount,
+        uint256 remainingMakingAmount,
         bytes32 orderHash
     ) private view returns(uint256) {
         if (getter.length == 1) {
             if (OrderLib.getterIsFrozen(getter)) {
                 // On "x" getter calldata only exact amount is allowed
-                if (amount != orderExpectedAmount) revert WrongAmount();
+                if (requestedAmount != orderExpectedAmount) revert WrongAmount();
                 return orderResultAmount;
             } else {
                 revert WrongGetter();
             }
         } else {
             (address target, bytes calldata data) = getter.decodeTargetAndCalldata();
-            (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, amount, remainingAmount, orderHash));
+            (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, requestedAmount, remainingMakingAmount, orderHash));
             if (!success || result.length != 32) revert GetAmountCallFailed();
             return abi.decode(result, (uint256));
         }
