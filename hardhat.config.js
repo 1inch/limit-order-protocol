@@ -32,6 +32,7 @@ module.exports = {
     dependencyCompiler: {
         paths: [
             '@1inch/solidity-utils/contracts/mocks/TokenCustomDecimalsMock.sol',
+            '@1inch/solidity-utils/contracts/mocks/TokenMock.sol',
         ],
     },
 };
