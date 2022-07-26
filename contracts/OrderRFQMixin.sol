@@ -95,7 +95,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     );
 
     /**
-     * @notice Fills order's quote, fully or partially, with compact signuture
+     * @notice Fills order's quote, fully or partially, with compact signature
      * @param order Order quote to fill
      * @param r R component of signature
      * @param vs VS component of signature

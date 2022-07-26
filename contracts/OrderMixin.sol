@@ -9,7 +9,6 @@ import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 
 import "./helpers/AmountCalculator.sol";
-import "./helpers/NonceManager.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/IOrderMixin.sol";
 import "./interfaces/NotificationReceiver.sol";
@@ -19,7 +18,7 @@ import "./libraries/Errors.sol";
 import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
-abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, NonceManager, PredicateHelper {
+abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, PredicateHelper {
     using Callib for address;
     using SafeERC20 for IERC20;
     using ArgumentsDecoder for bytes;
