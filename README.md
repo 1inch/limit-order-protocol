@@ -6,7 +6,7 @@
 # 1inch Limit Order Protocol Smart Contract
 
 [![Build Status](https://github.com/1inch/limit-order-protocol/workflows/CI/badge.svg)](https://github.com/1inch/limit-order-protocol/actions)
-[![Coverage Status](https://coveralls.io/repos/github/1inch/limit-order-protocol/badge.svg?branch=master)](https://coveralls.io/github/1inch/limit-order-protocol?branch=master)
+[![Coverage Status](https://codecov.io/gh/1inch/limit-order-protocol/branch/master/graph/badge.svg?token=FSFTJPS41S)](https://codecov.io/gh/1inch/limit-order-protocol)
 
 ### Version warning
 The master branch contains the latest work-in-progress version of limit orders. It hasn't been audited and may contain severe security issues or may not work at all.
