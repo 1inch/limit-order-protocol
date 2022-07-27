@@ -15,9 +15,9 @@ describe('RangeAmountCalculator', async () => {
         it('Revert with incorrect prices', async () => {
             const fillAmount = ether('10');
             const remainingMakerAmount = totalLiquidity;
-            expect(this.rangeAmountCalculator.getRangeTakerAmount(priceStart, priceEnd, totalLiquidity, fillAmount, remainingMakerAmount))
+            await expect(this.rangeAmountCalculator.getRangeTakerAmount(priceEnd, priceStart, totalLiquidity, fillAmount, remainingMakerAmount))
                 .to.eventually.be.rejectedWith('IncorrectRange()');
-            expect(this.rangeAmountCalculator.getRangeTakerAmount(priceStart, priceStart, totalLiquidity, fillAmount, remainingMakerAmount))
+            await expect(this.rangeAmountCalculator.getRangeTakerAmount(priceStart, priceStart, totalLiquidity, fillAmount, remainingMakerAmount))
                 .to.eventually.be.rejectedWith('IncorrectRange()');
         });
 
@@ -58,9 +58,9 @@ describe('RangeAmountCalculator', async () => {
         it('Revert with incorrect prices', async () => {
             const fillAmount = ether('10');
             const remainingMakerAmount = totalLiquidity;
-            expect(this.rangeAmountCalculator.getRangeMakerAmount(priceStart, priceEnd, totalLiquidity, fillAmount, remainingMakerAmount))
+            await expect(this.rangeAmountCalculator.getRangeMakerAmount(priceEnd, priceStart, totalLiquidity, fillAmount, remainingMakerAmount))
                 .to.eventually.be.rejectedWith('IncorrectRange()');
-            expect(this.rangeAmountCalculator.getRangeMakerAmount(priceStart, priceStart, totalLiquidity, fillAmount, remainingMakerAmount))
+            await expect(this.rangeAmountCalculator.getRangeMakerAmount(priceStart, priceStart, totalLiquidity, fillAmount, remainingMakerAmount))
                 .to.eventually.be.rejectedWith('IncorrectRange()');
         });
 
