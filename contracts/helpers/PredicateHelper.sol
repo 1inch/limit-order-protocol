@@ -92,31 +92,34 @@ contract PredicateHelper is NonceManager {
         uint256 selector = uint32(data.decodeSelector());
         uint256 arg = data.decodeUint256(4);
 
-        if (selector < uint32(this.or.selector)) {  // 0x74261145
-            if (selector < uint32(this.timestampBelow.selector)) {  // 0x63592c2b
-                if (selector == uint32(this.timestampBelowAndNonceEquals.selector)) {  // 0x2cc2878d
-                    return (true, timestampBelowAndNonceEquals(arg) ? 1 : 0);
-                } else if (selector == uint32(this.gt.selector)) {  // 0x4f38e2b8
+        // special case for the most often used predicate
+        if (selector == uint32(this.timestampBelowAndNonceEquals.selector)) {  // 0x2cc2878d
+            return (true, timestampBelowAndNonceEquals(arg) ? 1 : 0);
+        }
+
+        if (selector < uint32(this.arbitraryStaticCall.selector)) {  // 0xbf15fcd8
+            if (selector < uint32(this.eq.selector)) {  // 0x6fe7b0ba
+                if (selector == uint32(this.gt.selector)) {  // 0x4f38e2b8
                     return (true, gt(arg, data.decodeTailCalldata(100)) ? 1 : 0);
+                } else if (selector == uint32(this.timestampBelow.selector)) {  // 0x63592c2b
+                    return (true, timestampBelow(arg) ? 1 : 0);
                 }
             } else {
-                if (selector == uint32(this.timestampBelow.selector)) {  // 0x63592c2b
-                    return (true, timestampBelow(arg) ? 1 : 0);
-                } else if (selector == uint32(this.eq.selector)) {  // 0x6fe7b0ba
+                if (selector == uint32(this.eq.selector)) {  // 0x6fe7b0ba
                     return (true, eq(arg, data.decodeTailCalldata(100)) ? 1 : 0);
+                } else if (selector == uint32(this.or.selector)) {  // 0x74261145
+                    return (true, or(arg, data.decodeTailCalldata(100)) ? 1 : 0);
                 }
             }
         } else {
-            if (selector < uint32(this.and.selector)) {  // 0xbfa75143
-                if (selector == uint32(this.or.selector)) {  // 0x74261145
-                    return (true, or(arg, data.decodeTailCalldata(100)) ? 1 : 0);
-                } else if (selector == uint32(this.arbitraryStaticCall.selector)) {  // 0xbf15fcd8
+            if (selector < uint32(this.lt.selector)) {  // 0xca4ece22
+                if (selector == uint32(this.arbitraryStaticCall.selector)) {  // 0xbf15fcd8
                     return (true, arbitraryStaticCall(address(uint160(arg)), data.decodeTailCalldata(100)));
+                } else if (selector == uint32(this.and.selector)) {  // 0xbfa75143
+                    return (true, and(arg, data.decodeTailCalldata(100)) ? 1 : 0);
                 }
             } else {
-                if (selector == uint32(this.and.selector)) {  // 0xbfa75143
-                    return (true, and(arg, data.decodeTailCalldata(100)) ? 1 : 0);
-                } else if (selector == uint32(this.lt.selector)) {  // 0xca4ece22
+                if (selector == uint32(this.lt.selector)) {  // 0xca4ece22
                     return (true, lt(arg, data.decodeTailCalldata(100)) ? 1 : 0);
                 } else if (selector == uint32(this.nonceEquals.selector)) {  // 0xcf6fc6e3
                     return (true, nonceEquals(address(uint160(arg)), data.decodeUint256(0x24)) ? 1 : 0);
