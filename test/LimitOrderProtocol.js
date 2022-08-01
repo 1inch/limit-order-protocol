@@ -5,6 +5,7 @@ const { bufferToHex } = require('ethereumjs-util');
 const { buildOrder, buildOrderData, signOrder } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { addr0Wallet, addr1Wallet, joinStaticCalls, cutLastArg } = require('./helpers/utils');
+const { web3 } = require('hardhat');
 
 const TokenMock = artifacts.require('TokenMock');
 const WrappedTokenMock = artifacts.require('WrappedTokenMock');
@@ -409,6 +410,61 @@ describe('LimitOrderProtocol', async () => {
                 await expect(
                     this.swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr0, targetPermitPair),
                 ).to.eventually.be.rejectedWith('expired deadline');
+            });
+        });
+
+        describe('maker permit', async () => {
+            beforeEach(async () => {
+                this.swap = await LimitOrderProtocol.new(this.weth.address);
+                this.permit = withTarget(
+                    this.weth.address,
+                    await getPermit(addr0, addr0Wallet.getPrivateKey(), this.weth, '1', this.chainId, this.swap.address, '1'),
+                );
+
+                this.order = buildOrder(
+                    {
+                        makerAsset: this.weth.address,
+                        takerAsset: this.dai.address,
+                        makingAmount: 1,
+                        takingAmount: 1,
+                        from: addr0,
+                    },
+                    {
+                        permit: this.permit,
+                    },
+                );
+                this.order.permit = this.permit;
+                this.signature = signOrder(this.order, this.chainId, this.swap.address, addr0Wallet.getPrivateKey());
+                await this.dai.approve(this.swap.address, '1', { from: addr1 });
+            });
+
+            it('maker permit works', async () => {
+                const makerDai = await this.dai.balanceOf(addr0);
+                const takerDai = await this.dai.balanceOf(addr1);
+                const makerWeth = await this.weth.balanceOf(addr0);
+                const takerWeth = await this.weth.balanceOf(addr1);
+
+                await this.swap.fillOrder(this.order, this.signature, '0x', 1, 0, 1, { from: addr1 });
+
+                expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(makerDai.addn(1));
+                expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(takerDai.subn(1));
+                expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(makerWeth.subn(1));
+                expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(takerWeth.addn(1));
+            });
+
+            it('skips permit with taker flag', async () => {
+                const makerDai = await this.dai.balanceOf(addr1);
+                const takerDai = await this.dai.balanceOf(addr0);
+                const makerWeth = await this.weth.balanceOf(addr1);
+                const takerWeth = await this.weth.balanceOf(addr0);
+
+                await web3.eth.sendTransaction({ from: addr1, to: this.weth.address, data: '0xd505accf' + this.permit.substring(42) });
+                await this.swap.fillOrder(this.order, this.signature, '0x', 1, 0, toBN(1).setn(255, true).toString(), { from: addr1 });
+
+                expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(makerDai.addn(1));
+                expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(takerDai.subn(1));
+                expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(makerWeth.subn(1));
+                expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(takerWeth.addn(1));
             });
         });
     });
