@@ -82,10 +82,10 @@ contract PredicateHelper is NonceManager {
     }
 
     function timestampBelowAndNonceEquals(uint256 timeNonceAccount) public view returns(bool) {
-        uint256 time = uint48(timeNonceAccount >> 208);
-        uint256 nonce = uint48(timeNonceAccount >> 160);
-        address account = address(uint160(timeNonceAccount));
-        return timestampBelow(time) && nonceEquals(account, nonce);
+        uint256 _time = uint48(timeNonceAccount >> 208);
+        uint256 _nonce = uint48(timeNonceAccount >> 160);
+        address _account = address(uint160(timeNonceAccount));
+        return timestampBelow(_time) && nonceEquals(_account, _nonce);
     }
 
     function _selfStaticCall(bytes calldata data) internal view returns(bool, uint256) {
