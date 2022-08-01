@@ -60,7 +60,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
 
     uint256 constant private _ORDER_DOES_NOT_EXIST = 0;
     uint256 constant private _ORDER_FILLED = 1;
-    uint256 constant private _EXECUTE_PERMIT_FLAG = 1 << 255;
+    uint256 constant private _SKIP_PERMIT_FLAG = 1 << 255;
 
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     /// @notice Stores unfilled amounts for each order plus one.
@@ -132,9 +132,9 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
         bytes calldata interaction,
         uint256 makingAmount,
         uint256 takingAmount,
-        uint256 executePermitAndThresholdAmount
+        uint256 skipPermitAndThresholdAmount
     ) external payable returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
-        return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, executePermitAndThresholdAmount, msg.sender);
+        return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, skipPermitAndThresholdAmount, msg.sender);
     }
 
     /**
@@ -146,7 +146,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
         bytes calldata interaction,
         uint256 makingAmount,
         uint256 takingAmount,
-        uint256 executePermitAndThresholdAmount,
+        uint256 skipPermitAndThresholdAmount,
         address target,
         bytes calldata permit
     ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
@@ -155,7 +155,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
             (address token, bytes calldata permitData) = permit.decodeTargetAndCalldata();
             IERC20(token).safePermit(permitData);
         }
-        return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, executePermitAndThresholdAmount, target);
+        return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, skipPermitAndThresholdAmount, target);
     }
 
     /**
@@ -167,7 +167,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
         bytes calldata interaction,
         uint256 makingAmount,
         uint256 takingAmount,
-        uint256 executePermitAndThresholdAmount,
+        uint256 skipPermitAndThresholdAmount,
         address target
     ) public payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
         if (target == address(0)) revert ZeroTargetIsForbidden();
@@ -186,7 +186,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
             remainingMakingAmount = order.makingAmount;
 
             bytes calldata permit = order.permit();
-            if (executePermitAndThresholdAmount & _EXECUTE_PERMIT_FLAG != 0 && permit.length >= 20) {
+            if (skipPermitAndThresholdAmount & _SKIP_PERMIT_FLAG == 0 && permit.length >= 20) {
                 // proceed only if taker is willing to execute permit and its length is enough to store address
                 (address token, bytes calldata permitCalldata) = permit.decodeTargetAndCalldata();
                 IERC20(token).safePermit(permitCalldata);
@@ -209,7 +209,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
                 actualMakingAmount = remainingMakingAmount;
             }
             actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakingAmount, orderHash);
-            uint256 thresholdAmount = executePermitAndThresholdAmount & ~_EXECUTE_PERMIT_FLAG;
+            uint256 thresholdAmount = skipPermitAndThresholdAmount & ~_SKIP_PERMIT_FLAG;
             // check that actual rate is not worse than what was expected
             // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
             if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
@@ -219,7 +219,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
                 actualMakingAmount = remainingMakingAmount;
                 actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakingAmount, orderHash);
             }
-            uint256 thresholdAmount = executePermitAndThresholdAmount & ~_EXECUTE_PERMIT_FLAG;
+            uint256 thresholdAmount = skipPermitAndThresholdAmount & ~_SKIP_PERMIT_FLAG;
             // check that actual rate is not worse than what was expected
             // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
             if (actualMakingAmount * takingAmount < thresholdAmount * actualTakingAmount) revert MakingAmountTooLow();
