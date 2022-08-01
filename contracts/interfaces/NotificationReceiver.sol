@@ -3,8 +3,6 @@
 pragma solidity 0.8.15;
 pragma abicoder v1;
 
-// TODO: pass order hash, remaining amount, etc to the arguments
-
 /// @title Interface for interactor which acts between `maker => taker` and `taker => maker` transfers.
 interface PreInteractionNotificationReceiver {
     function fillOrderPreInteraction(
