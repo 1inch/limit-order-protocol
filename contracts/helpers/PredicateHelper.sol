@@ -12,22 +12,6 @@ contract PredicateHelper is NonceManager {
     using ArgumentsDecoder for bytes;
 
     error ArbitraryStaticCallFailed();
-    error InvalidDispatcher();
-
-    uint256 constant private _MAGIC_SALT = 117243;  // https://gist.github.com/k06a/5b6c06faa235e656cc391cb444ea71e8
-    uint256 constant private _MAGIC_PRIME = 1337;
-    uint256 constant private _DISPACTHER_SELECTORS = 5;
-
-    constructor() {
-        if (_calculateIndex(PredicateHelper(address(0)).or.selector) != 0 ||
-            _calculateIndex(PredicateHelper(address(0)).and.selector) != 1 ||
-            _calculateIndex(PredicateHelper(address(0)).eq.selector) != 2 ||
-            _calculateIndex(PredicateHelper(address(0)).lt.selector) != 3 ||
-            _calculateIndex(PredicateHelper(address(0)).gt.selector) != 4)
-        {
-            revert InvalidDispatcher();
-        }
-    }
 
     /// @notice Calls every target with corresponding data
     /// @return Result True if call to any target returned True. Otherwise, false
@@ -105,37 +89,44 @@ contract PredicateHelper is NonceManager {
     }
 
     function _selfStaticCall(bytes calldata data) internal view returns(bool, uint256) {
-        bytes4 selector = data.decodeSelector();
-        uint256 index = _calculateIndex(selector);
+        uint256 selector = uint32(data.decodeSelector());
         uint256 arg = data.decodeUint256(4);
 
-        if (selector == [this.or, this.and, this.eq, this.lt, this.gt][index].selector) {
-            bytes calldata param = data.decodeTailCalldata(100);
-            return (true, [or, and, eq, lt, gt][index](arg, param) ? 1 : 0);
-        }
-
-        // Other functions
-        if (selector == this.timestampBelowAndNonceEquals.selector) {
+        // special case for the most often used predicate
+        if (selector == uint32(this.timestampBelowAndNonceEquals.selector)) {  // 0x2cc2878d
             return (true, timestampBelowAndNonceEquals(arg) ? 1 : 0);
         }
-        if (selector == this.timestampBelow.selector) {
-            return (true, timestampBelow(arg) ? 1 : 0);
-        }
-        if (selector == this.nonceEquals.selector) {
-            uint256 arg2 = data.decodeUint256(0x24);
-            return (true, nonceEquals(address(uint160(arg)), arg2) ? 1 : 0);
-        }
-        if (selector == this.arbitraryStaticCall.selector) {
-            bytes calldata param = data.decodeTailCalldata(100);
-            return (true, arbitraryStaticCall(address(uint160(arg)), param));
+
+        if (selector < uint32(this.arbitraryStaticCall.selector)) {  // 0xbf15fcd8
+            if (selector < uint32(this.eq.selector)) {  // 0x6fe7b0ba
+                if (selector == uint32(this.gt.selector)) {  // 0x4f38e2b8
+                    return (true, gt(arg, data.decodeTailCalldata(100)) ? 1 : 0);
+                } else if (selector == uint32(this.timestampBelow.selector)) {  // 0x63592c2b
+                    return (true, timestampBelow(arg) ? 1 : 0);
+                }
+            } else {
+                if (selector == uint32(this.eq.selector)) {  // 0x6fe7b0ba
+                    return (true, eq(arg, data.decodeTailCalldata(100)) ? 1 : 0);
+                } else if (selector == uint32(this.or.selector)) {  // 0x74261145
+                    return (true, or(arg, data.decodeTailCalldata(100)) ? 1 : 0);
+                }
+            }
+        } else {
+            if (selector < uint32(this.lt.selector)) {  // 0xca4ece22
+                if (selector == uint32(this.arbitraryStaticCall.selector)) {  // 0xbf15fcd8
+                    return (true, arbitraryStaticCall(address(uint160(arg)), data.decodeTailCalldata(100)));
+                } else if (selector == uint32(this.and.selector)) {  // 0xbfa75143
+                    return (true, and(arg, data.decodeTailCalldata(100)) ? 1 : 0);
+                }
+            } else {
+                if (selector == uint32(this.lt.selector)) {  // 0xca4ece22
+                    return (true, lt(arg, data.decodeTailCalldata(100)) ? 1 : 0);
+                } else if (selector == uint32(this.nonceEquals.selector)) {  // 0xcf6fc6e3
+                    return (true, nonceEquals(address(uint160(arg)), data.decodeUint256(0x24)) ? 1 : 0);
+                }
+            }
         }
 
         return address(this).staticcallForUint(data);
-    }
-
-    function _calculateIndex(bytes4 selector) private pure returns(uint256 index) {
-        unchecked {
-            index = ((uint32(selector) ^ _MAGIC_SALT) % _MAGIC_PRIME) % _DISPACTHER_SELECTORS;
-        }
     }
 }
