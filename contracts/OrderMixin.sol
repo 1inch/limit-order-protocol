@@ -13,13 +13,11 @@ import "./helpers/PredicateHelper.sol";
 import "./interfaces/IOrderMixin.sol";
 import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
-import "./libraries/Callib.sol";
 import "./libraries/Errors.sol";
 import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
 abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, PredicateHelper {
-    using Callib for address;
     using SafeERC20 for IERC20;
     using ArgumentsDecoder for bytes;
     using OrderLib for OrderLib.Order;

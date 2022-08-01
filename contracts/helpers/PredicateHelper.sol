@@ -2,13 +2,11 @@
 
 pragma solidity 0.8.15;
 
-import "../libraries/Callib.sol";
 import "../libraries/ArgumentsDecoder.sol";
 import "./NonceManager.sol";
 
 /// @title A helper contract for executing boolean functions on arbitrary target call results
 contract PredicateHelper is NonceManager {
-    using Callib for address;
     using ArgumentsDecoder for bytes;
 
     error ArbitraryStaticCallFailed();
@@ -76,7 +74,7 @@ contract PredicateHelper is NonceManager {
     /// @notice Performs an arbitrary call to target with data
     /// @return Result Bytes transmuted to uint256
     function arbitraryStaticCall(address target, bytes calldata data) public view returns(uint256) {
-        (bool success, uint256 res) = target.staticcallForUint(data);
+        (bool success, uint256 res) = _staticcallForUint(target, data);
         if (!success) revert ArbitraryStaticCallFailed();
         return res;
     }
@@ -127,6 +125,20 @@ contract PredicateHelper is NonceManager {
             }
         }
 
-        return address(this).staticcallForUint(data);
+        return _staticcallForUint(address(this), data);
+    }
+
+    function _staticcallForUint(address target, bytes calldata input) private view returns(bool success, uint256 res) {
+        /// @solidity memory-safe-assembly
+        assembly { // solhint-disable-line no-inline-assembly
+            let data := mload(0x40)
+
+            calldatacopy(data, input.offset, input.length)
+            success := staticcall(gas(), target, data, input.length, 0x0, 0x20)
+            if success {
+                success := eq(returndatasize(), 32)
+                res := mload(0)
+            }
+        }
     }
 }
