@@ -319,7 +319,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
             mstore(add(data, 0x24), to)
             mstore(add(data, 0x44), amount)
             calldatacopy(add(data, 0x64), input.offset, input.length)
-            let status := call(gas(), asset, 0, data, add(100, input.length), 0x0, 0x20)
+            let status := call(gas(), asset, 0, data, add(0x64, input.length), 0x0, 0x20)
             success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
         }
     }
