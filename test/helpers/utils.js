@@ -4,6 +4,20 @@ const Wallet = require('ethereumjs-wallet').default;
 const addr0Wallet = Wallet.fromPrivateKey(Buffer.from('ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', 'hex'));
 const addr1Wallet = Wallet.fromPrivateKey(Buffer.from('59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d', 'hex'));
 
+function bytes32 (num) {
+    let number = num;
+    if (number < 0) {
+        number = 0xFFFFFFFF + number + 1;
+    }
+    let result = number.toString(16).toUpperCase();
+    if (result.length < 64) {
+        const zeros = Array.from(new Array(64 - result.length)).map(() => 0).join('');
+        result = zeros + result;
+    }
+
+    return '0x' + result;
+}
+
 function price (val) {
     return ether(val).toString();
 }
@@ -45,4 +59,5 @@ module.exports = {
     cutSelector,
     cutLastArg,
     trim0x,
+    bytes32,
 };

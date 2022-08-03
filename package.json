@@ -12,6 +12,7 @@
     "@openzeppelin/contracts": "4.7.0"
   },
   "devDependencies": {
+    "@1inch/permit-signed-approvals-utils": "^1.4.2",
     "@1inch/solidity-utils": "2.0.23",
     "@metamask/eth-sig-util": "4.0.1",
     "@nomiclabs/hardhat-etherscan": "3.1.0",
@@ -38,6 +39,7 @@
   },
   "scripts": {
     "clean": "rimraf artifacts cache coverage",
+    "node": "hardhat node",
     "test": "hardhat test",
     "deploy": "hardhat deploy --network",
     "coverage": "hardhat coverage",

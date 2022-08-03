@@ -1687,11 +1687,13 @@ pragma solidity 0.6.12;
 
 abstract contract EIP712Domain {
     bytes32 public DOMAIN_SEPARATOR;
+    address public verifyingContract;
 
     function _setDomainSeparator(string memory name, string memory version)
     internal
     {
         DOMAIN_SEPARATOR = EIP712.makeDomainSeparator(name, version);
+        verifyingContract = address(this);
     }
 }
 
@@ -2307,6 +2309,7 @@ MaticGasAbstraction
         _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
         _setupRole(DEPOSITOR_ROLE, childChainManager);
         _setDomainSeparator(newName, EIP712_VERSION);
+        console.log("init USDC contract");
     }
 
     // This is to support Native meta transactions
@@ -2982,24 +2985,6 @@ Rescuable
         _permit(owner, spender, value, deadline, v, r, s);
     }
 
-    function permitDataTypeHash(
-        address owner,
-        address spender,
-        uint256 value,
-        uint256 deadline
-    ) external view returns(bytes memory) {
-        bytes memory data = _permitDataTypeHash(owner, spender, value, deadline);
-        return data;
-    }
-
-    function getChainId() external view returns(uint256) {
-        uint256 chainId;
-        assembly {
-            chainId := chainid()
-        }
-        return chainId;
-    }
-
     function transferWithAuthorization(
         address from,
         address to,
@@ -3144,5 +3129,33 @@ Rescuable
         bytes32 s
     ) external override whenNotPaused {
         _cancelAuthorization(authorizer, nonce, v, r, s);
+    }
+}
+
+contract USDCToken is UChildAdministrableERC20 {
+
+    function makeDomainSeparator(string memory name, string memory version)
+    external
+    view
+    returns (bytes32) {
+        return EIP712.makeDomainSeparator(name, version);
+    }
+
+    function permitDataTypeHash(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline
+    ) external view returns(bytes32) {
+        bytes memory data = _permitDataTypeHash(owner, spender, value, deadline);
+        return keccak256(data);
+    }
+
+    function getChainId() external view returns(uint256) {
+        uint256 chainId;
+        assembly {
+            chainId := chainid()
+        }
+        return chainId;
     }
 }

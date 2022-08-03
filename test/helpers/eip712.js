@@ -2,13 +2,20 @@ const { toBN, TypedDataVersion } = require('@1inch/solidity-utils');
 const { signTypedData, TypedDataUtils } = require('@metamask/eth-sig-util');
 const { fromRpcSig } = require('ethereumjs-util');
 const ERC20Permit = artifacts.require('@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol:ERC20Permit');
-const { cutSelector, trim0x } = require('./utils.js');
+const { cutSelector, trim0x, bytes32 } = require('./utils.js');
 
 const EIP712Domain = [
     { name: 'name', type: 'string' },
     { name: 'version', type: 'string' },
     { name: 'chainId', type: 'uint256' },
     { name: 'verifyingContract', type: 'address' },
+];
+
+const EIP712DomainWithSalt = [
+    { name: 'name', type: 'string' },
+    { name: 'version', type: 'string' },
+    { name: 'verifyingContract', type: 'address' },
+    { name: 'salt', type: 'bytes32' },
 ];
 
 const Permit = [
@@ -29,6 +36,15 @@ function domainSeparator (name, version, chainId, verifyingContract) {
 }
 
 const defaultDeadline = toBN('18446744073709551615');
+
+function buildDataWithSalt (owner, name, version, chainId, verifyingContract, spender, nonce, value, deadline) {
+    return {
+        primaryType: 'Permit',
+        types: { EIP712Domain: EIP712DomainWithSalt, Permit },
+        domain: { name, version, chainId, verifyingContract, salt: bytes32(chainId) },
+        message: { owner, spender, value, nonce, deadline },
+    };
+}
 
 function buildData (owner, name, version, chainId, verifyingContract, spender, nonce, value, deadline) {
     return {
@@ -60,4 +76,5 @@ module.exports = {
     domainSeparator,
     getPermit,
     withTarget,
+    buildDataWithSalt,
 };

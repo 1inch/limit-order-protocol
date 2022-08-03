@@ -22,7 +22,12 @@ module.exports = {
             },
         },
     },
-    networks,
+    networks: {
+        ...networks,
+        hardhat: {
+            allowUnlimitedContractSize: true,
+        },
+    },
     namedAccounts: {
         deployer: {
             default: 0,
