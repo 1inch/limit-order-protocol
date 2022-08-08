@@ -2,6 +2,7 @@ artifacts
 cache
 node_modules
 coverage
+hardhat-dependency-compiler
 coverage.json
 build
 .coverage_contracts
