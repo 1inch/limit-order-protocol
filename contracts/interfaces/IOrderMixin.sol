@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.15;
 
-import "../OrderLib.sol";
+import "../libraries/OrderLib.sol";
 
 interface IOrderMixin {
     /**

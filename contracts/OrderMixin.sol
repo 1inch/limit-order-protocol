@@ -14,7 +14,7 @@ import "./interfaces/IOrderMixin.sol";
 import "./interfaces/NotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Errors.sol";
-import "./OrderLib.sol";
+import "./libraries/OrderLib.sol";
 
 /// @title Regular Limit Order mixin
 abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, PredicateHelper {

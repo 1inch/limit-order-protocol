@@ -5,7 +5,7 @@ pragma solidity 0.8.15;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/NotificationReceiver.sol";
 import "../libraries/ArgumentsDecoder.sol";
-import "../OrderLib.sol";
+import "../libraries/OrderLib.sol";
 
 
 contract HashChecker is PreInteractionNotificationReceiver, Ownable {
