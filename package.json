@@ -37,7 +37,7 @@
     "solidity-docgen": "0.5.16"
   },
   "scripts": {
-    "clean": "rimraf artifacts cache coverage",
+    "clean": "rimraf artifacts cache coverage contracts/hardhat-dependency-compiler",
     "test": "hardhat test",
     "deploy": "hardhat deploy --network",
     "coverage": "hardhat coverage",
