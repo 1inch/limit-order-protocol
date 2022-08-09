@@ -11,7 +11,7 @@ import "../interfaces/NotificationReceiver.sol";
 contract WethUnwrapper is OnlyWethReceiver, PostInteractionNotificationReceiver {
     error ETHTransferFailed();
 
-    IWETH private immutable _WETH;
+    IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
 
     constructor(IWETH weth) OnlyWethReceiver(address(weth)) {
         _WETH = weth;
