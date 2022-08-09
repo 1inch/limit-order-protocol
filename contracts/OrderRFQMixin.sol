@@ -6,13 +6,14 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
+import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 
 import "./helpers/AmountCalculator.sol";
 import "./libraries/Errors.sol";
 import "./OrderRFQLib.sol";
 
 /// @title RFQ Limit Order mixin
-abstract contract OrderRFQMixin is EIP712, AmountCalculator {
+abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver, AmountCalculator {
     using SafeERC20 for IERC20;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
 
@@ -39,7 +40,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
 
-    constructor(IWETH weth) {
+    constructor(IWETH weth) OnlyWethReceiver(address(weth)) {
         _WETH = weth;
     }
 
