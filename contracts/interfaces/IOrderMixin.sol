@@ -60,6 +60,7 @@ interface IOrderMixin {
      * @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
+     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param makingAmount Making amount
      * @param takingAmount Taking amount
      * @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
@@ -83,6 +84,7 @@ interface IOrderMixin {
      * @dev See tests for examples
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
+     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param makingAmount Making amount
      * @param takingAmount Taking amount
      * @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
@@ -107,6 +109,7 @@ interface IOrderMixin {
      * @notice Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
      * @param order_ Order quote to fill
      * @param signature Signature to confirm quote ownership
+     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param makingAmount Making amount
      * @param takingAmount Taking amount
      * @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
