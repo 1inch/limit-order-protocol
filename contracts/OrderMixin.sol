@@ -111,7 +111,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
     /**
      * @notice See {IOrderMixin-cancelOrder}.
      */
-    function cancelOrder(OrderLib.Order calldata order) external returns(uint256 orderRemaining, bytes32 orderHash) {
+    function cancelOrder(OrderLib.Order calldata order) public virtual returns(uint256 orderRemaining, bytes32 orderHash) {
         if (order.maker != msg.sender) revert AccessDenied();
 
         orderHash = hashOrder(order);
@@ -131,7 +131,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
         uint256 makingAmount,
         uint256 takingAmount,
         uint256 skipPermitAndThresholdAmount
-    ) external payable returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
+    ) public virtual payable returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
         return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, skipPermitAndThresholdAmount, msg.sender);
     }
 
@@ -147,7 +147,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
         uint256 skipPermitAndThresholdAmount,
         address target,
         bytes calldata permit
-    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
+    ) public virtual returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
         if (permit.length < 20) revert PermitLengthTooLow();
         {  // Stack too deep
             (address token, bytes calldata permitData) = permit.decodeTargetAndCalldata();
@@ -167,7 +167,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
         uint256 takingAmount,
         uint256 skipPermitAndThresholdAmount,
         address target
-    ) public payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
+    ) public virtual payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
         if (target == address(0)) revert ZeroTargetIsForbidden();
         orderHash = hashOrder(order_);
 

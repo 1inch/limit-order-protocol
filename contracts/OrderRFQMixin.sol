@@ -58,12 +58,12 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver, AmountCalculator {
      * @notice Cancels order's quote
      * @param orderInfo Order info (only order id in lowest 64 bits is used)
      */
-    function cancelOrderRFQ(uint256 orderInfo) external {
+    function cancelOrderRFQ(uint256 orderInfo) public virtual {
         _invalidateOrder(msg.sender, orderInfo, 0);
     }
 
     /// @notice Cancels multiple order's quotes
-    function cancelOrderRFQ(uint256 orderInfo, uint256 additionalMask) public {
+    function cancelOrderRFQ(uint256 orderInfo, uint256 additionalMask) public virtual {
         _invalidateOrder(msg.sender, orderInfo, additionalMask);
     }
 
@@ -80,7 +80,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver, AmountCalculator {
         OrderRFQLib.OrderRFQ memory order,
         bytes calldata signature,
         uint256 flagsAndAmount
-    ) external payable returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
+    ) public virtual payable returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
         return fillOrderRFQTo(order, signature, flagsAndAmount, msg.sender);
     }
 
@@ -114,7 +114,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver, AmountCalculator {
         bytes32 r,
         bytes32 vs,
         uint256 flagsAndAmount
-    ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+    ) public virtual payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
         if (flagsAndAmount & _SIGNER_SMART_CONTRACT_HINT != 0) {
             if (flagsAndAmount & _IS_VALID_SIGNATURE_65_BYTES != 0) {
@@ -150,7 +150,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver, AmountCalculator {
         uint256 flagsAndAmount,
         address target,
         bytes calldata permit
-    ) external returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
+    ) public virtual returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
         IERC20(order.takerAsset).safePermit(permit);
         return fillOrderRFQTo(order, signature, flagsAndAmount, target);
     }
@@ -170,7 +170,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver, AmountCalculator {
         bytes calldata signature,
         uint256 flagsAndAmount,
         address target
-    ) public payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+    ) public virtual payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
         if (flagsAndAmount & _SIGNER_SMART_CONTRACT_HINT != 0) {
             if (flagsAndAmount & _IS_VALID_SIGNATURE_65_BYTES != 0 && signature.length != 65) revert RFQBadSignature();
