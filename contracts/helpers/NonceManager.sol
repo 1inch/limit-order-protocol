@@ -5,6 +5,7 @@ pragma abicoder v1;
 
 /// @title A helper contract for managing nonce of tx sender
 contract NonceManager {
+    error AdvanceNonceFailed();
     event NonceIncreased(address indexed maker, uint256 newNonce);
 
     mapping(address => uint256) public nonce;
@@ -16,6 +17,7 @@ contract NonceManager {
 
     /// @notice Advances nonce by specified amount
     function advanceNonce(uint8 amount) public {
+        if (amount == 0) revert AdvanceNonceFailed();
         uint256 newNonce = nonce[msg.sender] + amount;
         nonce[msg.sender] = newNonce;
         emit NonceIncreased(msg.sender, newNonce);
