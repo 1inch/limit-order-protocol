@@ -78,7 +78,7 @@ interface IOrderMixin {
     ) external payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);
 
     /**
-     * @notice Same as `fillOrder` but calls permit first,
+     * @notice Same as `fillOrderTo` but calls permit first,
      * allowing to approve token spending and make a swap in one transaction.
      * Also allows to specify funds destination instead of `msg.sender`
      * @dev See tests for examples
