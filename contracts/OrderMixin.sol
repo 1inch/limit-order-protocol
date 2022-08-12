@@ -75,8 +75,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
     function remaining(bytes32 orderHash) external view returns(uint256 /* amount */) {
         uint256 amount = _remaining[orderHash];
         if (amount == _ORDER_DOES_NOT_EXIST) revert UnknownOrder();
-        unchecked { amount -= 1; }
-        return amount;
+        unchecked { return amount - 1; }
     }
 
     /**
