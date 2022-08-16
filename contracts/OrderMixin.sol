@@ -17,7 +17,7 @@ import "./libraries/Errors.sol";
 import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
-abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, PredicateHelper {
+abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     using SafeERC20 for IERC20;
     using ArgumentsDecoder for bytes;
     using OrderLib for OrderLib.Order;
@@ -331,7 +331,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
     ) private view returns(uint256) {
         if (getter.length == 0) {
             // Linear proportion
-            return getMakingAmount(orderMakingAmount, orderTakingAmount, requestedTakingAmount);
+            return AmountCalculator.getMakingAmount(orderMakingAmount, orderTakingAmount, requestedTakingAmount);
         }
         return _callGetter(getter, orderTakingAmount, requestedTakingAmount, orderMakingAmount, remainingMakingAmount, orderHash);
     }
@@ -346,7 +346,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
     ) private view returns(uint256) {
         if (getter.length == 0) {
             // Linear proportion
-            return getTakingAmount(orderMakingAmount, orderTakingAmount, requestedMakingAmount);
+            return AmountCalculator.getTakingAmount(orderMakingAmount, orderTakingAmount, requestedMakingAmount);
         }
         return _callGetter(getter, orderMakingAmount, requestedMakingAmount, orderTakingAmount, remainingMakingAmount, orderHash);
     }
