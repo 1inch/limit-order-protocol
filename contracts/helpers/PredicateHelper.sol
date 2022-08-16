@@ -135,8 +135,8 @@ contract PredicateHelper is NonceManager {
 
             calldatacopy(data, input.offset, input.length)
             success := staticcall(gas(), target, data, input.length, 0x0, 0x20)
+            success := and(success, eq(returndatasize(), 32))
             if success {
-                success := eq(returndatasize(), 32)
                 res := mload(0)
             }
         }
