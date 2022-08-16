@@ -251,7 +251,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
         uint256 invalidatorBits = (1 << uint8(orderInfo)) | additionalMask;
         mapping(uint256 => uint256) storage invalidatorStorage = _invalidator[maker];
         uint256 invalidator = invalidatorStorage[invalidatorSlot];
-        if (invalidator & invalidatorBits != 0) revert InvalidatedOrder();
+        if (invalidator & invalidatorBits == invalidatorBits) revert InvalidatedOrder();
         invalidatorStorage[invalidatorSlot] = invalidator | invalidatorBits;
     }
 }
