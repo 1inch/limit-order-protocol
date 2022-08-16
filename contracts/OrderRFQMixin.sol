@@ -25,7 +25,6 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     error TakingAmountExceeded();
     error RFQSwapWithZeroAmount();
     error InvalidatedOrder();
-    error ETHTransferFailed();
 
     /**
      * @notice Emitted when RFQ gets filled
