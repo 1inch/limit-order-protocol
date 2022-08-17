@@ -13,7 +13,7 @@ import "./libraries/Errors.sol";
 import "./OrderRFQLib.sol";
 
 /// @title RFQ Limit Order mixin
-abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver, AmountCalculator {
+abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     using SafeERC20 for IERC20;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
 
@@ -25,7 +25,6 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver, AmountCalculator {
     error TakingAmountExceeded();
     error RFQSwapWithZeroAmount();
     error InvalidatedOrder();
-    error ETHTransferFailed();
 
     /**
      * @notice Emitted when RFQ gets filled
@@ -215,12 +214,12 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver, AmountCalculator {
             else if (flagsAndAmount & _MAKER_AMOUNT_FLAG != 0) {
                 if (amount > orderMakingAmount) revert MakingAmountExceeded();
                 makingAmount = amount;
-                takingAmount = getTakingAmount(orderMakingAmount, orderTakingAmount, makingAmount);
+                takingAmount = AmountCalculator.getTakingAmount(orderMakingAmount, orderTakingAmount, makingAmount);
             }
             else {
                 if (amount > orderTakingAmount) revert TakingAmountExceeded();
                 takingAmount = amount;
-                makingAmount = getMakingAmount(orderMakingAmount, orderTakingAmount, takingAmount);
+                makingAmount = AmountCalculator.getMakingAmount(orderMakingAmount, orderTakingAmount, takingAmount);
             }
         }
 
@@ -252,7 +251,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver, AmountCalculator {
         uint256 invalidatorBits = (1 << uint8(orderInfo)) | additionalMask;
         mapping(uint256 => uint256) storage invalidatorStorage = _invalidator[maker];
         uint256 invalidator = invalidatorStorage[invalidatorSlot];
-        if (invalidator & invalidatorBits != 0) revert InvalidatedOrder();
+        if (invalidator & invalidatorBits == invalidatorBits) revert InvalidatedOrder();
         invalidatorStorage[invalidatorSlot] = invalidator | invalidatorBits;
     }
 }

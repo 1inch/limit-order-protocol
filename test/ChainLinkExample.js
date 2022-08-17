@@ -100,8 +100,8 @@ describe('ChainLinkExample', async () => {
                 takingAmount,
                 from: addr1,
             }, {
-                getMakingAmount: this.swap.address + trim0x(cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI())),
-                getTakingAmount: this.swap.address + trim0x(cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI())),
+                getMakingAmount: '0x',
+                getTakingAmount: '0x',
                 predicate: this.swap.contract.methods.lt(ether('6.32'), priceCall).encodeABI(),
             },
         );
@@ -134,8 +134,8 @@ describe('ChainLinkExample', async () => {
                 from: addr1,
             },
             {
-                getMakingAmount: this.swap.address + trim0x(cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI())),
-                getTakingAmount: this.swap.address + trim0x(cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI())),
+                getMakingAmount: '0x',
+                getTakingAmount: '0x',
                 predicate: this.swap.contract.methods.lt(ether('6.31'), priceCall).encodeABI(),
             },
         );
@@ -163,8 +163,8 @@ describe('ChainLinkExample', async () => {
                 from: addr1,
             },
             {
-                getMakingAmount: this.swap.address + trim0x(cutLastArg(this.swap.contract.methods.getMakingAmount(makingAmount, takingAmount, 0).encodeABI())),
-                getTakingAmount: this.swap.address + trim0x(cutLastArg(this.swap.contract.methods.getTakingAmount(makingAmount, takingAmount, 0).encodeABI())),
+                getMakingAmount: '0x',
+                getTakingAmount: '0x',
                 predicate: this.swap.contract.methods.lt(ether('0.0002501'), latestAnswerCall).encodeABI(),
             },
         );

@@ -936,7 +936,7 @@ describe('LimitOrderProtocol', async () => {
             expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth);
         });
 
-        it('should reverted with takerAsset WETH and incorrect msg.value', async () => {
+        it('should revert with takerAsset WETH and not enough msg.value', async () => {
             const order = buildOrder(
                 {
                     makerAsset: this.dai.address,
@@ -951,9 +951,21 @@ describe('LimitOrderProtocol', async () => {
             await expect(
                 this.swap.fillOrder(order, signature, '0x', 900, 0, 3, { value: 2 }),
             ).to.eventually.be.rejectedWith('InvalidMsgValue()');
-            await expect(
-                this.swap.fillOrder(order, signature, '0x', 900, 0, 3, { value: 4 }),
-            ).to.eventually.be.rejectedWith('InvalidMsgValue()');
+        });
+
+        it('should pass with takerAsset WETH and correct msg.value', async () => {
+            const order = buildOrder(
+                {
+                    makerAsset: this.dai.address,
+                    takerAsset: this.weth.address,
+                    makingAmount: 900,
+                    takingAmount: 3,
+                    from: addr1,
+                },
+            );
+            const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
+
+            await this.swap.fillOrder(order, signature, '0x', 900, 0, 3, { value: 4 });
         });
 
         it('should reverted with takerAsset non-WETH and msg.value greater than 0', async () => {
