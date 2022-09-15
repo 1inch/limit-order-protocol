@@ -42,6 +42,7 @@ interface IOrderMixin {
 
     /**
      * @notice Delegates execution to custom implementation. Could be used to validate if `transferFrom` works properly
+     * @dev The function always reverts and returns the simulation results in revert data.
      * @param target Addresses that will be delegated
      * @param data Data that will be passed to delegatee
      */
