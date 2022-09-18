@@ -41,6 +41,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     error WrongAmount();
     error WrongGetter();
     error GetAmountCallFailed();
+    error SimulationResults(bool success, bytes res);
 
     /// @notice Emitted every time order gets filled, including partial fills
     event OrderFilled(
@@ -95,8 +96,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         }
         return results;
     }
-
-    error SimulationResults(bool success, bytes res);
 
     /**
      * @notice See {IOrderMixin-simulate}.
