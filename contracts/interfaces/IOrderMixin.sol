@@ -62,7 +62,7 @@ interface IOrderMixin {
      * @param signature Signature to confirm quote ownership
      * @param makingAmount Making amount
      * @param takingAmount Taking amount
-     * @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
+     * @param skipPermitAndThresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @return actualMakingAmount Actual amount transferred from maker to taker
      * @return actualTakingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -73,7 +73,7 @@ interface IOrderMixin {
         bytes calldata interaction,
         uint256 makingAmount,
         uint256 takingAmount,
-        uint256 thresholdAmount
+        uint256 skipPermitAndThresholdAmount
     ) external payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);
 
     /**
@@ -85,7 +85,7 @@ interface IOrderMixin {
      * @param signature Signature to confirm quote ownership
      * @param makingAmount Making amount
      * @param takingAmount Taking amount
-     * @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
+     * @param skipPermitAndThresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
      * @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
      * @return actualMakingAmount Actual amount transferred from maker to taker
@@ -98,7 +98,7 @@ interface IOrderMixin {
         bytes calldata interaction,
         uint256 makingAmount,
         uint256 takingAmount,
-        uint256 thresholdAmount,
+        uint256 skipPermitAndThresholdAmount,
         address target,
         bytes calldata permit
     ) external returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);
@@ -109,7 +109,7 @@ interface IOrderMixin {
      * @param signature Signature to confirm quote ownership
      * @param makingAmount Making amount
      * @param takingAmount Taking amount
-     * @param thresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount
+     * @param skipPermitAndThresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
      * @return actualMakingAmount Actual amount transferred from maker to taker
      * @return actualTakingAmount Actual amount transferred from taker to maker
@@ -121,7 +121,7 @@ interface IOrderMixin {
         bytes calldata interaction,
         uint256 makingAmount,
         uint256 takingAmount,
-        uint256 thresholdAmount,
+        uint256 skipPermitAndThresholdAmount,
         address target
     ) external payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);
 }
