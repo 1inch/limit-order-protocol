@@ -130,7 +130,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     }
 
     /**
-     * @notice Fills Same as `fillOrderRFQ` but calls permit first.
+     * @notice Same as `fillOrderRFQ` but calls permit first.
      * It allows to approve token spending and make a swap in one transaction.
      * Also allows to specify funds destination instead of `msg.sender`
      * @param order Order quote to fill

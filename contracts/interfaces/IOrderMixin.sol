@@ -34,7 +34,7 @@ interface IOrderMixin {
     function checkPredicate(OrderLib.Order calldata order) external view returns(bool result);
 
     /**
-     * @notice Returns order hash according to EIP712 standart
+     * @notice Returns order hash according to EIP712 standard
      * @param order Order to get hash for
      * @return orderHash Hash of the order
      */
