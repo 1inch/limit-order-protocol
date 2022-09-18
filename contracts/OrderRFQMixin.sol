@@ -62,7 +62,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     }
 
     /// @notice Cancels multiple order's quotes
-    function cancelOrderRFQ(uint256 orderInfo, uint256 additionalMask) public {
+    function cancelOrderRFQ(uint256 orderInfo, uint256 additionalMask) external {
         _invalidateOrder(msg.sender, orderInfo, additionalMask);
     }
 
