@@ -6,13 +6,14 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
+import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 
 import "./helpers/AmountCalculator.sol";
 import "./libraries/Errors.sol";
 import "./OrderRFQLib.sol";
 
 /// @title RFQ Limit Order mixin
-abstract contract OrderRFQMixin is EIP712, AmountCalculator {
+abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     using SafeERC20 for IERC20;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
 
@@ -24,7 +25,6 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     error TakingAmountExceeded();
     error RFQSwapWithZeroAmount();
     error InvalidatedOrder();
-    error ETHTransferFailed();
 
     /**
      * @notice Emitted when RFQ gets filled
@@ -39,7 +39,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
 
-    constructor(IWETH weth) {
+    constructor(IWETH weth) OnlyWethReceiver(address(weth)) {
         _WETH = weth;
     }
 
@@ -130,7 +130,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
     }
 
     /**
-     * @notice Same as `fillOrderRFQ` but calls permit first.
+     * @notice Same as `fillOrderRFQTo` but calls permit first.
      * It allows to approve token spending and make a swap in one transaction.
      * Also allows to specify funds destination instead of `msg.sender`
      * @param order Order quote to fill
@@ -214,12 +214,12 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
             else if (flagsAndAmount & _MAKER_AMOUNT_FLAG != 0) {
                 if (amount > orderMakingAmount) revert MakingAmountExceeded();
                 makingAmount = amount;
-                takingAmount = getTakingAmount(orderMakingAmount, orderTakingAmount, makingAmount);
+                takingAmount = AmountCalculator.getTakingAmount(orderMakingAmount, orderTakingAmount, makingAmount);
             }
             else {
                 if (amount > orderTakingAmount) revert TakingAmountExceeded();
                 takingAmount = amount;
-                makingAmount = getMakingAmount(orderMakingAmount, orderTakingAmount, takingAmount);
+                makingAmount = AmountCalculator.getMakingAmount(orderMakingAmount, orderTakingAmount, takingAmount);
             }
         }
 
@@ -251,7 +251,7 @@ abstract contract OrderRFQMixin is EIP712, AmountCalculator {
         uint256 invalidatorBits = (1 << uint8(orderInfo)) | additionalMask;
         mapping(uint256 => uint256) storage invalidatorStorage = _invalidator[maker];
         uint256 invalidator = invalidatorStorage[invalidatorSlot];
-        if (invalidator & invalidatorBits != 0) revert InvalidatedOrder();
+        if (invalidator & invalidatorBits == invalidatorBits) revert InvalidatedOrder();
         invalidatorStorage[invalidatorSlot] = invalidator | invalidatorBits;
     }
 }

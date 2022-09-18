@@ -57,10 +57,6 @@ library OrderLib {
     }
 
     function _get(Order calldata order, DynamicField field) private pure returns(bytes calldata) {
-        if (uint256(field) == 0) {
-            return order.interactions[0:uint32(order.offsets)];
-        }
-
         uint256 bitShift = uint256(field) << 5; // field * 32
         return order.interactions[
             uint32((order.offsets << 32) >> bitShift):

@@ -42,6 +42,7 @@ interface IOrderMixin {
 
     /**
      * @notice Delegates execution to custom implementation. Could be used to validate if `transferFrom` works properly
+     * @dev The function always reverts and returns the simulation results in revert data.
      * @param target Addresses that will be delegated
      * @param data Data that will be passed to delegatee
      */
@@ -60,6 +61,7 @@ interface IOrderMixin {
      * @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
+     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param makingAmount Making amount
      * @param takingAmount Taking amount
      * @param skipPermitAndThresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
@@ -77,12 +79,13 @@ interface IOrderMixin {
     ) external payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);
 
     /**
-     * @notice Same as `fillOrder` but calls permit first,
+     * @notice Same as `fillOrderTo` but calls permit first,
      * allowing to approve token spending and make a swap in one transaction.
      * Also allows to specify funds destination instead of `msg.sender`
      * @dev See tests for examples
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
+     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param makingAmount Making amount
      * @param takingAmount Taking amount
      * @param skipPermitAndThresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
@@ -107,6 +110,7 @@ interface IOrderMixin {
      * @notice Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
      * @param order_ Order quote to fill
      * @param signature Signature to confirm quote ownership
+     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param makingAmount Making amount
      * @param takingAmount Taking amount
      * @param skipPermitAndThresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.

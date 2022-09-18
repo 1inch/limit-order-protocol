@@ -17,7 +17,7 @@ import "./libraries/Errors.sol";
 import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
-abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, PredicateHelper {
+abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     using SafeERC20 for IERC20;
     using ArgumentsDecoder for bytes;
     using OrderLib for OrderLib.Order;
@@ -75,8 +75,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
     function remaining(bytes32 orderHash) external view returns(uint256 /* amount */) {
         uint256 amount = _remaining[orderHash];
         if (amount == _ORDER_DOES_NOT_EXIST) revert UnknownOrder();
-        unchecked { amount -= 1; }
-        return amount;
+        unchecked { return amount - 1; }
     }
 
     /**
@@ -267,7 +266,13 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
 
         // Taker => Maker
         if (order.takerAsset == address(_WETH) && msg.value > 0) {
-            if (msg.value != actualTakingAmount) revert InvalidMsgValue();
+            if (msg.value < actualTakingAmount) revert InvalidMsgValue();
+            if (msg.value > actualTakingAmount) {
+                unchecked {
+                    (bool success, ) = msg.sender.call{value: msg.value - actualTakingAmount}("");  // solhint-disable-line avoid-low-level-calls
+                    if (!success) revert ETHTransferFailed();
+                }
+            }
             _WETH.deposit{ value: actualTakingAmount }();
             _WETH.transfer(order.receiver == address(0) ? order.maker : order.receiver, actualTakingAmount);
         } else {
@@ -332,7 +337,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
     ) private view returns(uint256) {
         if (getter.length == 0) {
             // Linear proportion
-            return getMakingAmount(orderMakingAmount, orderTakingAmount, requestedTakingAmount);
+            return AmountCalculator.getMakingAmount(orderMakingAmount, orderTakingAmount, requestedTakingAmount);
         }
         return _callGetter(getter, orderTakingAmount, requestedTakingAmount, orderMakingAmount, remainingMakingAmount, orderHash);
     }
@@ -347,7 +352,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, AmountCalculator, Predicate
     ) private view returns(uint256) {
         if (getter.length == 0) {
             // Linear proportion
-            return getTakingAmount(orderMakingAmount, orderTakingAmount, requestedMakingAmount);
+            return AmountCalculator.getTakingAmount(orderMakingAmount, orderTakingAmount, requestedMakingAmount);
         }
         return _callGetter(getter, orderMakingAmount, requestedMakingAmount, orderTakingAmount, remainingMakingAmount, orderHash);
     }
