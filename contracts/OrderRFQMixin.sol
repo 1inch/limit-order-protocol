@@ -36,6 +36,17 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
         uint256 makingAmount
     );
 
+    uint256 constant private _MAKER_AMOUNT_FLAG = 1 << 255;
+    uint256 constant private _SIGNER_SMART_CONTRACT_HINT = 1 << 254;
+    uint256 constant private _IS_VALID_SIGNATURE_65_BYTES = 1 << 253;
+    uint256 constant private _UNWRAP_WETH_FLAG = 1 << 252;
+    uint256 constant private _AMOUNT_MASK = ~(
+        _MAKER_AMOUNT_FLAG |
+        _SIGNER_SMART_CONTRACT_HINT |
+        _IS_VALID_SIGNATURE_65_BYTES |
+        _UNWRAP_WETH_FLAG
+    );
+
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
 
@@ -82,17 +93,6 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     ) external payable returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
         return fillOrderRFQTo(order, signature, flagsAndAmount, msg.sender);
     }
-
-    uint256 constant private _MAKER_AMOUNT_FLAG = 1 << 255;
-    uint256 constant private _SIGNER_SMART_CONTRACT_HINT = 1 << 254;
-    uint256 constant private _IS_VALID_SIGNATURE_65_BYTES = 1 << 253;
-    uint256 constant private _UNWRAP_WETH_FLAG = 1 << 252;
-    uint256 constant private _AMOUNT_MASK = ~(
-        _MAKER_AMOUNT_FLAG |
-        _SIGNER_SMART_CONTRACT_HINT |
-        _IS_VALID_SIGNATURE_65_BYTES |
-        _UNWRAP_WETH_FLAG
-    );
 
     /**
      * @notice Fills order's quote, fully or partially, with compact signature
