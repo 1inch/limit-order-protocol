@@ -7,10 +7,9 @@ import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 
 import "../interfaces/NotificationReceiver.sol";
+import "../libraries/Errors.sol";
 
 contract WethUnwrapper is OnlyWethReceiver, PostInteractionNotificationReceiver {
-    error ETHTransferFailed();
-
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
 
     constructor(IWETH weth) OnlyWethReceiver(address(weth)) {
@@ -28,6 +27,6 @@ contract WethUnwrapper is OnlyWethReceiver, PostInteractionNotificationReceiver 
     ) external override {
         _WETH.withdraw(takingAmount);
         (bool success, ) = maker.call{value: takingAmount}("");  // solhint-disable-line avoid-low-level-calls
-        if (!success) revert ETHTransferFailed();
+        if (!success) revert Errors.ETHTransferFailed();
     }
 }

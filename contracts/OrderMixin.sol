@@ -266,17 +266,17 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
 
         // Taker => Maker
         if (order.takerAsset == address(_WETH) && msg.value > 0) {
-            if (msg.value < actualTakingAmount) revert InvalidMsgValue();
+            if (msg.value < actualTakingAmount) revert Errors.InvalidMsgValue();
             if (msg.value > actualTakingAmount) {
                 unchecked {
                     (bool success, ) = msg.sender.call{value: msg.value - actualTakingAmount}("");  // solhint-disable-line avoid-low-level-calls
-                    if (!success) revert ETHTransferFailed();
+                    if (!success) revert Errors.ETHTransferFailed();
                 }
             }
             _WETH.deposit{ value: actualTakingAmount }();
             _WETH.transfer(order.receiver == address(0) ? order.maker : order.receiver, actualTakingAmount);
         } else {
-            if (msg.value != 0) revert InvalidMsgValue();
+            if (msg.value != 0) revert Errors.InvalidMsgValue();
             if (!_callTransferFrom(
                 order.takerAsset,
                 msg.sender,

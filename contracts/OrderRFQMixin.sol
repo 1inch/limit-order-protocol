@@ -230,18 +230,18 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
             _WETH.transferFrom(maker, address(this), makingAmount);
             _WETH.withdraw(makingAmount);
             (bool success, ) = target.call{value: makingAmount}("");  // solhint-disable-line avoid-low-level-calls
-            if (!success) revert ETHTransferFailed();
+            if (!success) revert Errors.ETHTransferFailed();
         } else {
             IERC20(order.makerAsset).safeTransferFrom(maker, target, makingAmount);
         }
 
         // Taker => Maker
         if (order.takerAsset == address(_WETH) && msg.value > 0) {
-            if (msg.value != takingAmount) revert InvalidMsgValue();
+            if (msg.value != takingAmount) revert Errors.InvalidMsgValue();
             _WETH.deposit{ value: takingAmount }();
             _WETH.transfer(maker, takingAmount);
         } else {
-            if (msg.value != 0) revert InvalidMsgValue();
+            if (msg.value != 0) revert Errors.InvalidMsgValue();
             IERC20(order.takerAsset).safeTransferFrom(msg.sender, maker, takingAmount);
         }
     }
