@@ -42,6 +42,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     error WrongGetter();
     error GetAmountCallFailed();
     error TakingAmountIncreased();
+    error SimulationResults(bool success, bytes res);
 
     /// @notice Emitted every time order gets filled, including partial fills
     event OrderFilled(
@@ -60,6 +61,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     uint256 constant private _ORDER_DOES_NOT_EXIST = 0;
     uint256 constant private _ORDER_FILLED = 1;
     uint256 constant private _SKIP_PERMIT_FLAG = 1 << 255;
+    uint256 constant private _THRESHOLD_MASK = ~_SKIP_PERMIT_FLAG;
 
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     /// @notice Stores unfilled amounts for each order plus one.
@@ -96,8 +98,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         }
         return results;
     }
-
-    error SimulationResults(bool success, bytes res);
 
     /**
      * @notice See {IOrderMixin-simulate}.
@@ -207,7 +207,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                 actualMakingAmount = remainingMakingAmount;
             }
             actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakingAmount, orderHash);
-            uint256 thresholdAmount = skipPermitAndThresholdAmount & ~_SKIP_PERMIT_FLAG;
+            uint256 thresholdAmount = skipPermitAndThresholdAmount & _THRESHOLD_MASK;
             // check that actual rate is not worse than what was expected
             // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
             if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
@@ -218,7 +218,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                 actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakingAmount, orderHash);
                 if (actualTakingAmount > takingAmount) revert TakingAmountIncreased();
             }
-            uint256 thresholdAmount = skipPermitAndThresholdAmount & ~_SKIP_PERMIT_FLAG;
+            uint256 thresholdAmount = skipPermitAndThresholdAmount & _THRESHOLD_MASK;
             // check that actual rate is not worse than what was expected
             // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
             if (actualMakingAmount * takingAmount < thresholdAmount * actualTakingAmount) revert MakingAmountTooLow();
@@ -268,17 +268,17 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
 
         // Taker => Maker
         if (order.takerAsset == address(_WETH) && msg.value > 0) {
-            if (msg.value < actualTakingAmount) revert InvalidMsgValue();
+            if (msg.value < actualTakingAmount) revert Errors.InvalidMsgValue();
             if (msg.value > actualTakingAmount) {
                 unchecked {
                     (bool success, ) = msg.sender.call{value: msg.value - actualTakingAmount}("");  // solhint-disable-line avoid-low-level-calls
-                    if (!success) revert ETHTransferFailed();
+                    if (!success) revert Errors.ETHTransferFailed();
                 }
             }
             _WETH.deposit{ value: actualTakingAmount }();
             _WETH.transfer(order.receiver == address(0) ? order.maker : order.receiver, actualTakingAmount);
         } else {
-            if (msg.value != 0) revert InvalidMsgValue();
+            if (msg.value != 0) revert Errors.InvalidMsgValue();
             if (!_callTransferFrom(
                 order.takerAsset,
                 msg.sender,

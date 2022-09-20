@@ -37,6 +37,17 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     );
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
+    uint256 private constant _MAKER_AMOUNT_FLAG = 1 << 255;
+    uint256 private constant _SIGNER_SMART_CONTRACT_HINT = 1 << 254;
+    uint256 private constant _IS_VALID_SIGNATURE_65_BYTES = 1 << 253;
+    uint256 private constant _UNWRAP_WETH_FLAG = 1 << 252;
+    uint256 private constant _AMOUNT_MASK = ~(
+        _MAKER_AMOUNT_FLAG |
+        _SIGNER_SMART_CONTRACT_HINT |
+        _IS_VALID_SIGNATURE_65_BYTES |
+        _UNWRAP_WETH_FLAG
+    );
+
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
 
@@ -63,7 +74,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     }
 
     /// @notice Cancels multiple order's quotes
-    function cancelOrderRFQ(uint256 orderInfo, uint256 additionalMask) public {
+    function cancelOrderRFQ(uint256 orderInfo, uint256 additionalMask) external {
         _invalidateOrder(msg.sender, orderInfo, additionalMask);
     }
 
@@ -83,17 +94,6 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     ) external payable returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
         return fillOrderRFQTo(order, signature, flagsAndAmount, msg.sender);
     }
-
-    uint256 constant private _MAKER_AMOUNT_FLAG = 1 << 255;
-    uint256 constant private _SIGNER_SMART_CONTRACT_HINT = 1 << 254;
-    uint256 constant private _IS_VALID_SIGNATURE_65_BYTES = 1 << 253;
-    uint256 constant private _UNWRAP_WETH_FLAG = 1 << 252;
-    uint256 constant private _AMOUNT_MASK = ~(
-        _MAKER_AMOUNT_FLAG |
-        _SIGNER_SMART_CONTRACT_HINT |
-        _IS_VALID_SIGNATURE_65_BYTES |
-        _UNWRAP_WETH_FLAG
-    );
 
     /**
      * @notice Fills order's quote, fully or partially, with compact signature
@@ -131,7 +131,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     }
 
     /**
-     * @notice Fills Same as `fillOrderRFQTo` but calls permit first.
+     * @notice Same as `fillOrderRFQTo` but calls permit first.
      * It allows to approve token spending and make a swap in one transaction.
      * Also allows to specify funds destination instead of `msg.sender`
      * @param order Order quote to fill
@@ -232,18 +232,18 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
             _WETH.withdraw(makingAmount);
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = target.call{value: makingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
-            if (!success) revert ETHTransferFailed();
+            if (!success) revert Errors.ETHTransferFailed();
         } else {
             IERC20(order.makerAsset).safeTransferFrom(maker, target, makingAmount);
         }
 
         // Taker => Maker
         if (order.takerAsset == address(_WETH) && msg.value > 0) {
-            if (msg.value != takingAmount) revert InvalidMsgValue();
+            if (msg.value != takingAmount) revert Errors.InvalidMsgValue();
             _WETH.deposit{ value: takingAmount }();
             _WETH.transfer(maker, takingAmount);
         } else {
-            if (msg.value != 0) revert InvalidMsgValue();
+            if (msg.value != 0) revert Errors.InvalidMsgValue();
             IERC20(order.takerAsset).safeTransferFrom(msg.sender, maker, takingAmount);
         }
     }
