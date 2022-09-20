@@ -3,6 +3,8 @@
 pragma solidity 0.8.15;
 pragma abicoder v1;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
 contract DutchAuctionCalculator {
     uint256 private constant _LOW_128_BITS = 0xffffffffffffffffffffffffffffffff;
 
@@ -19,8 +21,7 @@ contract DutchAuctionCalculator {
     function _calculateAuctionTakingAmount(uint256 startTimeEndTime, uint256 takingAmountStart, uint256 takingAmountEnd) private view returns(uint256) {
         uint256 startTime = startTimeEndTime >> 128;
         uint256 endTime = startTimeEndTime & _LOW_128_BITS;
-        // solhint-disable-next-line not-rely-on-time
-        uint256 currentTime = block.timestamp < startTime ? startTime : block.timestamp > endTime ? endTime : block.timestamp;
+        uint256 currentTime = Math.max(startTime, Math.min(endTime, block.timestamp));  // solhint-disable-line not-rely-on-time
         return (takingAmountStart * (endTime - currentTime) + takingAmountEnd * (currentTime - startTime)) / (endTime - startTime);
     }
 }
