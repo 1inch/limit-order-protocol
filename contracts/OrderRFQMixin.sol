@@ -36,6 +36,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
         uint256 makingAmount
     );
 
+    uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
 
@@ -229,7 +230,8 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
         if (order.makerAsset == address(_WETH) && flagsAndAmount & _UNWRAP_WETH_FLAG != 0) {
             _WETH.transferFrom(maker, address(this), makingAmount);
             _WETH.withdraw(makingAmount);
-            (bool success, ) = target.call{value: makingAmount}("");  // solhint-disable-line avoid-low-level-calls
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = target.call{value: makingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
             if (!success) revert ETHTransferFailed();
         } else {
             IERC20(order.makerAsset).safeTransferFrom(maker, target, makingAmount);
