@@ -36,11 +36,12 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
         uint256 makingAmount
     );
 
-    uint256 constant private _MAKER_AMOUNT_FLAG = 1 << 255;
-    uint256 constant private _SIGNER_SMART_CONTRACT_HINT = 1 << 254;
-    uint256 constant private _IS_VALID_SIGNATURE_65_BYTES = 1 << 253;
-    uint256 constant private _UNWRAP_WETH_FLAG = 1 << 252;
-    uint256 constant private _AMOUNT_MASK = ~(
+    uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
+    uint256 private constant _MAKER_AMOUNT_FLAG = 1 << 255;
+    uint256 private constant _SIGNER_SMART_CONTRACT_HINT = 1 << 254;
+    uint256 private constant _IS_VALID_SIGNATURE_65_BYTES = 1 << 253;
+    uint256 private constant _UNWRAP_WETH_FLAG = 1 << 252;
+    uint256 private constant _AMOUNT_MASK = ~(
         _MAKER_AMOUNT_FLAG |
         _SIGNER_SMART_CONTRACT_HINT |
         _IS_VALID_SIGNATURE_65_BYTES |
@@ -229,7 +230,8 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
         if (order.makerAsset == address(_WETH) && flagsAndAmount & _UNWRAP_WETH_FLAG != 0) {
             _WETH.transferFrom(maker, address(this), makingAmount);
             _WETH.withdraw(makingAmount);
-            (bool success, ) = target.call{value: makingAmount}("");  // solhint-disable-line avoid-low-level-calls
+            // solhint-disable-next-line avoid-low-level-calls
+            (bool success, ) = target.call{value: makingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
             if (!success) revert Errors.ETHTransferFailed();
         } else {
             IERC20(order.makerAsset).safeTransferFrom(maker, target, makingAmount);

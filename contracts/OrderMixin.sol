@@ -41,6 +41,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     error WrongAmount();
     error WrongGetter();
     error GetAmountCallFailed();
+    error TakingAmountIncreased();
     error SimulationResults(bool success, bytes res);
 
     /// @notice Emitted every time order gets filled, including partial fills
@@ -215,6 +216,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             if (actualMakingAmount > remainingMakingAmount) {
                 actualMakingAmount = remainingMakingAmount;
                 actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakingAmount, orderHash);
+                if (actualTakingAmount > takingAmount) revert TakingAmountIncreased();
             }
             uint256 thresholdAmount = skipPermitAndThresholdAmount & _THRESHOLD_MASK;
             // check that actual rate is not worse than what was expected
