@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.15;
+pragma solidity 0.8.17;
 pragma abicoder v1;
 
 /// @title Interface for interactor which acts between `maker => taker` and `taker => maker` transfers.
