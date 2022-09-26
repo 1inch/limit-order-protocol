@@ -38,7 +38,7 @@ interface IOrderMixin {
      * @param order Order to get hash for
      * @return orderHash Hash of the order
      */
-    function hashOrder(OrderLib.Order calldata order) external view returns(bytes32);
+    function hashOrder(OrderLib.Order calldata order) external view returns(bytes32 orderHash);
 
     /**
      * @notice Delegates execution to custom implementation. Could be used to validate if `transferFrom` works properly
