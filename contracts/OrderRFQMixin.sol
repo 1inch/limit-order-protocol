@@ -101,7 +101,8 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
      * @param r R component of signature
      * @param vs VS component of signature
      * @param flagsAndAmount Fill configuration flags with amount packed in one slot
-     * - Bits 0-252 contain the amount to fill
+     * - Bits 0-251 contain the amount to fill
+     * - Bit 252 is used to indicate whether weth should be unwrapped to eth
      * - Bit 253 is used to indicate whether signature is 64-bit (0) or 65-bit (1)
      * - Bit 254 is used to indicate whether smart contract (1) signed the order or not (0)
      * - Bit 255 is used to indicate whether maker (1) or taker amount (0) is given in the amount parameter
@@ -138,7 +139,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
      * @param signature Signature to confirm quote ownership
      * @param flagsAndAmount Fill configuration flags with amount packed in one slot
      * @param target Address that will receive swap funds
-     * @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
+     * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
      * @return filledMakingAmount Actual amount transferred from maker to taker
      * @return filledTakingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
