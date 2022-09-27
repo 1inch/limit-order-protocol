@@ -12,6 +12,8 @@ import "../libraries/Errors.sol";
 contract WethUnwrapper is OnlyWethReceiver, PostInteractionNotificationReceiver {
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
 
+    uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
+
     constructor(IWETH weth) OnlyWethReceiver(address(weth)) {
         _WETH = weth;
     }
@@ -26,7 +28,8 @@ contract WethUnwrapper is OnlyWethReceiver, PostInteractionNotificationReceiver 
         bytes calldata /* interactiveData */
     ) external override {
         _WETH.withdraw(takingAmount);
-        (bool success, ) = maker.call{value: takingAmount}("");  // solhint-disable-line avoid-low-level-calls
+        // solhint-disable-next-line avoid-low-level-calls
+        (bool success, ) = maker.call{value: takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
         if (!success) revert Errors.ETHTransferFailed();
     }
 }
