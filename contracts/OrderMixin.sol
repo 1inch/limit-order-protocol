@@ -58,10 +58,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         uint256 remainingRaw
     );
 
-    uint256 constant private _ORDER_DOES_NOT_EXIST = 0;
-    uint256 constant private _ORDER_FILLED = 1;
-    uint256 constant private _SKIP_PERMIT_FLAG = 1 << 255;
-    uint256 constant private _THRESHOLD_MASK = ~_SKIP_PERMIT_FLAG;
+    uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
+    uint256 private constant _ORDER_DOES_NOT_EXIST = 0;
+    uint256 private constant _ORDER_FILLED = 1;
+    uint256 private constant _SKIP_PERMIT_FLAG = 1 << 255;
+    uint256 private constant _THRESHOLD_MASK = ~_SKIP_PERMIT_FLAG;
 
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     /// @notice Stores unfilled amounts for each order plus one.
@@ -271,7 +272,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             if (msg.value < actualTakingAmount) revert Errors.InvalidMsgValue();
             if (msg.value > actualTakingAmount) {
                 unchecked {
-                    (bool success, ) = msg.sender.call{value: msg.value - actualTakingAmount}("");  // solhint-disable-line avoid-low-level-calls
+                    // solhint-disable-next-line avoid-low-level-calls
+                    (bool success, ) = msg.sender.call{value: msg.value - actualTakingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
                     if (!success) revert Errors.ETHTransferFailed();
                 }
             }
