@@ -25,7 +25,7 @@ import "./OrderRFQMixin.sol";
  * - Cancelation by order id
  * - Partial Fill (only once)
  *
- * See [OrderRFQMixin](OrderRFQMixin.sol) for more details.
+ * See [OrderRFQMixin](OrderRFQMixin.md) for more details.
  */
 contract LimitOrderProtocol is
     EIP712("1inch Limit Order Protocol", "3"),
