@@ -6,7 +6,7 @@ pragma abicoder v1;
 /// @title A helper contract to manage nonce with the series
 contract SeriesNonceManager {
     error AdvanceNonceFailed();
-    event NonceIncreased(address indexed maker, uint8 series, uint256 newNonce);
+    event NonceIncreased(address indexed maker, uint256 series, uint256 newNonce);
 
     // {
     //    1: {
@@ -19,7 +19,7 @@ contract SeriesNonceManager {
     //    },
     //    ...
     // }
-    mapping(uint8 => mapping(address => uint256)) public nonce;
+    mapping(uint256 => mapping(address => uint256)) public nonce;
 
     /// @notice Advances nonce by one
     function increaseNonce(uint8 series) external {
@@ -27,16 +27,18 @@ contract SeriesNonceManager {
     }
 
     /// @notice Advances nonce by specified amount
-    function advanceNonce(uint8 series, uint8 amount) public {
-        if (amount == 0) revert AdvanceNonceFailed();
-        uint256 newNonce = nonce[series][msg.sender] + amount;
-        nonce[series][msg.sender] = newNonce;
-        emit NonceIncreased(msg.sender, series, newNonce);
+    function advanceNonce(uint256 series, uint256 amount) public {
+        if (amount == 0 || amount > 255) revert AdvanceNonceFailed();
+        unchecked {
+            uint256 newNonce = nonce[series][msg.sender] + amount;
+            nonce[series][msg.sender] = newNonce;
+            emit NonceIncreased(msg.sender, series, newNonce);
+        }
     }
 
     /// @notice Checks if `makerAddress` has specified `makerNonce` for `series`
     /// @return Result True if `makerAddress` has specified nonce. Otherwise, false
-    function nonceEquals(uint8 series, address makerAddress, uint256 makerNonce) external view returns(bool) {
+    function nonceEquals(uint256 series, address makerAddress, uint256 makerNonce) external view returns(bool) {
         return nonce[series][makerAddress] == makerNonce;
     }
 }

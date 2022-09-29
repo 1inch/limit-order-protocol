@@ -1,3 +1,4 @@
+const { expect } = require('@1inch/solidity-utils');
 const { addr0Wallet } = require('./helpers/utils');
 
 const NonceManager = artifacts.require('NonceManager');
@@ -18,6 +19,10 @@ describe('NonceManager', async () => {
         await this.nonceManager.advanceNonce(5);
         const nonce = (await this.nonceManager.nonce(addr0)).toNumber();
         expect(nonce).to.equal(5);
+    });
+
+    it('Advance nonce - should not advance by 256', async () => {
+        await expect(this.nonceManager.advanceNonce(256)).to.eventually.be.rejectedWith('AdvanceNonceFailed()');
     });
 
     it('Increase nonce - should add to nonce only 1', async () => {
