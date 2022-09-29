@@ -23,11 +23,13 @@ contract NonceManager {
      * @notice Advances nonce by specified amount
      * @param amount The amount to advance nonce by
      */
-    function advanceNonce(uint8 amount) public {
-        if (amount == 0) revert AdvanceNonceFailed();
-        uint256 newNonce = nonce[msg.sender] + amount;
-        nonce[msg.sender] = newNonce;
-        emit NonceIncreased(msg.sender, newNonce);
+    function advanceNonce(uint256 amount) public {
+        if (amount == 0 || amount > 255) revert AdvanceNonceFailed();
+        unchecked {
+            uint256 newNonce = nonce[msg.sender] + amount;
+            nonce[msg.sender] = newNonce;
+            emit NonceIncreased(msg.sender, newNonce);
+        }
     }
 
     /**
