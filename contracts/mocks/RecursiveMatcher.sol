@@ -3,10 +3,10 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../interfaces/NotificationReceiver.sol";
+import "../interfaces/IInteractionNotificationReceiver.sol";
 import "../interfaces/IOrderMixin.sol";
 
-contract RecursiveMatcher is InteractionNotificationReceiver {
+contract RecursiveMatcher is IInteractionNotificationReceiver {
     bytes1 private constant _FINALIZE_INTERACTION = 0x01;
 
     error IncorrectCalldataParams();
