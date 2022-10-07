@@ -11,7 +11,9 @@ import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 import "./helpers/AmountCalculator.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/IOrderMixin.sol";
-import "./interfaces/NotificationReceiver.sol";
+import "./interfaces/IInteractionNotificationReceiver.sol";
+import "./interfaces/IPreInteractionNotificationReceiver.sol";
+import "./interfaces/IPostInteractionNotificationReceiver.sol";
 import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Errors.sol";
 import "./OrderLib.sol";
@@ -238,7 +240,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         if (order.preInteraction().length >= 20) {
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.preInteraction().decodeTargetAndCalldata();
-            PreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
+            IPreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
                 orderHash, order.maker, msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
             );
         }
@@ -255,7 +257,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata();
-            uint256 offeredTakingAmount = InteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
+            uint256 offeredTakingAmount = IInteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
                 msg.sender, actualMakingAmount, actualTakingAmount, interactionData
             );
 
@@ -294,7 +296,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         if (order.postInteraction().length >= 20) {
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.postInteraction().decodeTargetAndCalldata();
-            PostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
+            IPostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
                  orderHash, order.maker, msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
             );
         }

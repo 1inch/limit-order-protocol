@@ -6,10 +6,10 @@ pragma abicoder v1;
 import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 
-import "../interfaces/NotificationReceiver.sol";
+import "../interfaces/IPostInteractionNotificationReceiver.sol";
 import "../libraries/Errors.sol";
 
-contract WethUnwrapper is OnlyWethReceiver, PostInteractionNotificationReceiver {
+contract WethUnwrapper is OnlyWethReceiver, IPostInteractionNotificationReceiver {
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
