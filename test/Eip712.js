@@ -1,25 +1,15 @@
-const { constants } = require('@1inch/solidity-utils');
 const { domainSeparator } = require('./helpers/eip712');
 const { name, version } = require('./helpers/orderUtils');
-
-const TokenMock = artifacts.require('TokenMock');
-const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
+const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
+const { deploySwapTokens } = require('./helpers/fixtures');
 
 describe('LimitOrderProtocol', async () => {
-    before(async () => {
-        this.chainId = await web3.eth.getChainId();
-    });
-
-    beforeEach(async () => {
-        this.dai = await TokenMock.new('DAI', 'DAI');
-        this.swap = await LimitOrderProtocol.new(constants.ZERO_ADDRESS);
-    });
-
     it('domain separator', async () => {
+        const { swap, chainId } = await loadFixture(deploySwapTokens);
         expect(
-            await this.swap.DOMAIN_SEPARATOR(),
+            await swap.DOMAIN_SEPARATOR(),
         ).to.equal(
-            await domainSeparator(name, version, this.chainId, this.swap.address),
+            await domainSeparator(name, version, chainId, swap.address),
         );
     });
 });

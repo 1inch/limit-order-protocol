@@ -1,44 +1,46 @@
 const { expect } = require('@1inch/solidity-utils');
-const { addr0Wallet } = require('./helpers/utils');
-
-const NonceManager = artifacts.require('NonceManager');
+const { ethers } = require('hardhat');
+const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
+const { deployNonceManager } = require('./helpers/fixtures');
 
 describe('NonceManager', async () => {
-    const addr0 = addr0Wallet.getAddressString();
-
-    beforeEach(async () => {
-        this.nonceManager = await NonceManager.new();
-    });
+    const [addr] = await ethers.getSigners();
 
     it('Get nonce - should return zero by default', async () => {
-        const nonce = (await this.nonceManager.nonce(addr0)).toNumber();
+        const { nonceManager } = await loadFixture(deployNonceManager);
+        const nonce = await nonceManager.nonce(addr.address);
         expect(nonce).to.equal(0);
     });
 
     it('Advance nonce - should add to nonce specified amount', async () => {
-        await this.nonceManager.advanceNonce(5);
-        const nonce = (await this.nonceManager.nonce(addr0)).toNumber();
+        const { nonceManager } = await loadFixture(deployNonceManager);
+        await nonceManager.advanceNonce(5);
+        const nonce = await nonceManager.nonce(addr.address);
         expect(nonce).to.equal(5);
     });
 
     it('Advance nonce - should not advance by 256', async () => {
-        await expect(this.nonceManager.advanceNonce(256)).to.eventually.be.rejectedWith('AdvanceNonceFailed()');
+        const { nonceManager } = await loadFixture(deployNonceManager);
+        await expect(nonceManager.advanceNonce(256)).to.eventually.be.rejectedWith('AdvanceNonceFailed()');
     });
 
     it('Increase nonce - should add to nonce only 1', async () => {
-        await this.nonceManager.increaseNonce();
-        const nonce = (await this.nonceManager.nonce(addr0)).toNumber();
+        const { nonceManager } = await loadFixture(deployNonceManager);
+        await nonceManager.increaseNonce();
+        const nonce = await nonceManager.nonce(addr.address);
         expect(nonce).to.equal(1);
     });
 
     it('Nonce equals - should return false when nonce does not match', async () => {
-        const isEquals = await this.nonceManager.nonceEquals(addr0, 1);
+        const { nonceManager } = await loadFixture(deployNonceManager);
+        const isEquals = await nonceManager.nonceEquals(addr.address, 1);
         expect(isEquals).to.equal(false);
     });
 
     it('Nonce equals - should return true when nonce matches', async () => {
-        await this.nonceManager.advanceNonce(4);
-        const isEquals = await this.nonceManager.nonceEquals(addr0, 4);
+        const { nonceManager } = await loadFixture(deployNonceManager);
+        await nonceManager.advanceNonce(4);
+        const isEquals = await nonceManager.nonceEquals(addr.address, 4);
         expect(isEquals).to.equal(true);
     });
 });

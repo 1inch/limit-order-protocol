@@ -1,7 +1,6 @@
-const { constants, toBN, trim0x, TypedDataVersion } = require('@1inch/solidity-utils');
-const { signTypedData } = require('@metamask/eth-sig-util');
-const { EIP712Domain } = require('./eip712');
+const { constants, trim0x } = require('@1inch/solidity-utils');
 const { ethers } = require('ethers');
+const { toBN } = require('./utils');
 
 const OrderRFQ = [
     { name: 'info', type: 'uint256' },
@@ -14,10 +13,9 @@ const OrderRFQ = [
 ];
 
 const ABIOrderRFQ = {
-    OrderRFQ: OrderRFQ.reduce((obj, item) => {
-        obj[item.name] = item.type;
-        return obj;
-    }, {}),
+    type: 'tuple',
+    name: 'order',
+    components: OrderRFQ,
 };
 
 const Order = [
@@ -34,10 +32,9 @@ const Order = [
 ];
 
 const ABIOrder = {
-    Order: Order.reduce((obj, item) => {
-        obj[item.name] = item.type;
-        return obj;
-    }, {}),
+    type: 'tuple',
+    name: 'order',
+    components: Order,
 };
 
 const name = '1inch Limit Order Protocol';
@@ -127,30 +124,28 @@ function buildOrderRFQ (
 
 function buildOrderData (chainId, verifyingContract, order) {
     return {
-        primaryType: 'Order',
-        types: { EIP712Domain, Order },
         domain: { name, version, chainId, verifyingContract },
-        message: order,
+        types: { Order },
+        value: order,
     };
 }
 
 function buildOrderRFQData (chainId, verifyingContract, order) {
     return {
-        primaryType: 'OrderRFQ',
-        types: { EIP712Domain, OrderRFQ },
         domain: { name, version, chainId, verifyingContract },
-        message: order,
+        types: { OrderRFQ },
+        value: order,
     };
 }
 
-function signOrder (order, chainId, target, privateKey) {
-    const data = buildOrderData(chainId, target, order);
-    return signTypedData({ privateKey, data, version: TypedDataVersion });
+async function signOrder (order, chainId, target, wallet) {
+    const orderData = buildOrderData(chainId, target, order);
+    return await wallet._signTypedData(orderData.domain, orderData.types, orderData.value);
 }
 
-function signOrderRFQ (order, chainId, target, privateKey) {
-    const data = buildOrderRFQData(chainId, target, order);
-    return signTypedData({ privateKey, data, version: TypedDataVersion });
+async function signOrderRFQ (order, chainId, target, wallet) {
+    const orderData = buildOrderRFQData(chainId, target, order);
+    return await wallet._signTypedData(orderData.domain, orderData.types, orderData.value);
 }
 
 function compactSignature (signature) {
@@ -174,8 +169,8 @@ function takingAmount (amount) {
 }
 
 module.exports = {
-    ABIOrderRFQ,
     ABIOrder,
+    ABIOrderRFQ,
     buildOrder,
     buildOrderRFQ,
     buildOrderData,
