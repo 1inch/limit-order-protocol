@@ -1,6 +1,4 @@
-const { TypedDataUtils } = require('@metamask/eth-sig-util');
-const { expect, time, constants, profileEVM, trim0x, TypedDataVersion } = require('@1inch/solidity-utils');
-const { bufferToHex } = require('ethereumjs-util');
+const { expect, time, constants, profileEVM, trim0x } = require('@1inch/solidity-utils');
 const { buildOrder, buildOrderData, signOrder } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, cutLastArg, ether, toBN } = require('./helpers/utils');
@@ -333,43 +331,20 @@ describe('LimitOrderProtocol', async () => {
                 const { dai, weth, swap, chainId } = await loadFixture(deploySwapTokens);
                 await initContracts(dai, weth, swap);
 
-                const permit = withTarget(
-                    weth.address,
-                    await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1'),
-                );
+                const order = buildOrder({
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    from: addr1.address,
+                });
+                const signature = await signOrder(order, chainId, swap.address, addr1);
 
-                const order = buildOrder(
-                    {
-                        makerAsset: weth.address,
-                        takerAsset: dai.address,
-                        makingAmount: 1,
-                        takingAmount: 1,
-                        from: addr.address,
-                    },
-                    {
-                        permit,
-                    },
-                );
-                order.permit = permit;
-                const signature = await signOrder(order, chainId, swap.address, addr);
-
-                return { dai, weth, swap, order, signature, permit };
+                return { dai, weth, swap, chainId, order, signature };
             };
 
             it('DAI => WETH', async () => {
-                const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInitPermit);
-
-                await dai.connect(addr1).approve(swap.address, '1000000');
-                const order = buildOrder(
-                    {
-                        makerAsset: dai.address,
-                        takerAsset: weth.address,
-                        makingAmount: 1,
-                        takingAmount: 1,
-                        from: addr1.address,
-                    },
-                );
-                const signature = await signOrder(order, chainId, swap.address, addr1);
+                const { dai, weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
                 const targetPermitPair = withTarget(weth.address, permit);
@@ -388,19 +363,7 @@ describe('LimitOrderProtocol', async () => {
             });
 
             it('rejects reused signature', async () => {
-                const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInitPermit);
-
-                await dai.connect(addr1).approve(swap.address, '1000000');
-                const order = buildOrder(
-                    {
-                        makerAsset: dai.address,
-                        takerAsset: weth.address,
-                        makingAmount: 1,
-                        takingAmount: 1,
-                        from: addr1.address,
-                    },
-                );
-                const signature = await signOrder(order, chainId, swap.address, addr1);
+                const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
                 const targetPermitPair = withTarget(weth.address, permit);
@@ -410,19 +373,7 @@ describe('LimitOrderProtocol', async () => {
             });
 
             it('rejects other signature', async () => {
-                const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInitPermit);
-
-                await dai.connect(addr1).approve(swap.address, '1000000');
-                const order = buildOrder(
-                    {
-                        makerAsset: dai.address,
-                        takerAsset: weth.address,
-                        makingAmount: 1,
-                        takingAmount: 1,
-                        from: addr1.address,
-                    },
-                );
-                const signature = await signOrder(order, chainId, swap.address, addr1);
+                const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
                 const permit = await getPermit(addr.address, addr2, weth, '1', chainId, swap.address, '1');
                 const targetPermitPair = withTarget(weth.address, permit);
@@ -432,19 +383,9 @@ describe('LimitOrderProtocol', async () => {
             });
 
             it('rejects expired permit', async () => {
-                const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInitPermit);
+                const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
                 const deadline = (await time.latest()) - time.duration.weeks(1);
-                await dai.connect(addr1).approve(swap.address, '1000000');
-                const order = buildOrder({
-                    makerAsset: dai.address,
-                    takerAsset: weth.address,
-                    makingAmount: 1,
-                    takingAmount: 1,
-                    from: addr1.address,
-                });
-                const signature = await signOrder(order, chainId, swap.address, addr1);
-
                 const permit = await getPermit(addr.address, addr1, weth, '1', chainId, swap.address, '1', deadline);
                 const targetPermitPair = withTarget(weth.address, permit);
                 await expect(
@@ -638,7 +579,7 @@ describe('LimitOrderProtocol', async () => {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
             await swap.connect(addr1).cancelOrder(order);
             const data = buildOrderData(chainId, swap.address, order);
-            const orderHash = bufferToHex(TypedDataUtils.eip712Hash(data, TypedDataVersion));
+            const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
             expect(await swap.remaining(orderHash)).to.equal('0');
         });
 
@@ -748,7 +689,7 @@ describe('LimitOrderProtocol', async () => {
             const nonce = toBN(0);
 
             await swap.connect(addr1).timestampBelowAndNonceEquals(
-                toBN(trim0x(addr1), 'hex')
+                toBN(addr1.address)
                     .or(nonce.shln(160))
                     .or(timestamp.shln(208)));
         });
@@ -1131,6 +1072,12 @@ describe('LimitOrderProtocol', async () => {
 
         const e6 = (value) => ether(value).div(toBN('1000000000000'));
 
+        before(async () => {
+            const RangeAmountCalculator = await ethers.getContractFactory('RangeAmountCalculator');
+            this.rangeAmountCalculator = await RangeAmountCalculator.deploy();
+            await this.rangeAmountCalculator.deployed();
+        });
+
         const deployContractsAndInit = async () => {
             const { dai, weth, swap, chainId } = await loadFixture(deploySwapTokens);
 
@@ -1142,11 +1089,7 @@ describe('LimitOrderProtocol', async () => {
             await usdc.approve(swap.address, e6('1000000000000'));
             await usdc.connect(addr1).approve(swap.address, e6('1000000000000'));
 
-            const RangeAmountCalculator = await ethers.getContractFactory('RangeAmountCalculator');
-            const rangeAmountCalculator = await RangeAmountCalculator.deploy();
-            await rangeAmountCalculator.deployed();
-
-            return { dai, weth, swap, chainId, usdc, rangeAmountCalculator };
+            return { dai, weth, swap, chainId, usdc };
         };
 
         /**
@@ -1166,8 +1109,8 @@ describe('LimitOrderProtocol', async () => {
          *      thresholdAmount: uint256
          * }]
          */
-        const fillRangeLimitOrder = async (makerAsset, takerAsset, fillOrderParams, isByMakerAsset, rangeAmountCalculator, swap, chainId) => {
-            const getRangeAmount = (isByMakerAsset ? rangeAmountCalculator.getRangeTakerAmount : rangeAmountCalculator.getRangeMakerAmount);
+        const fillRangeLimitOrder = async (makerAsset, takerAsset, fillOrderParams, isByMakerAsset, swap, chainId) => {
+            const getRangeAmount = (isByMakerAsset ? this.rangeAmountCalculator.getRangeTakerAmount : this.rangeAmountCalculator.getRangeMakerAmount);
 
             // Order: 10 MA -> 35000 TA with price range: 3000 -> 4000 TA
             const makingAmount = makerAsset.ether('10');
@@ -1183,12 +1126,12 @@ describe('LimitOrderProtocol', async () => {
                     from: maker,
                 },
                 {
-                    getMakingAmount: rangeAmountCalculator.address + trim0x(cutLastArg(
-                        rangeAmountCalculator.interface.encodeFunctionData('getRangeMakerAmount', [startPrice, endPrice, makingAmount, 0, 0],
+                    getMakingAmount: this.rangeAmountCalculator.address + trim0x(cutLastArg(
+                        this.rangeAmountCalculator.interface.encodeFunctionData('getRangeMakerAmount', [startPrice, endPrice, makingAmount, 0, 0],
                             64,
                         ))),
-                    getTakingAmount: rangeAmountCalculator.address + trim0x(cutLastArg(
-                        rangeAmountCalculator.interface.encodeFunctionData('getRangeTakerAmount', [startPrice, endPrice, makingAmount, 0, 0],
+                    getTakingAmount: this.rangeAmountCalculator.address + trim0x(cutLastArg(
+                        this.rangeAmountCalculator.interface.encodeFunctionData('getRangeTakerAmount', [startPrice, endPrice, makingAmount, 0, 0],
                             64,
                         ))),
                 },
@@ -1272,7 +1215,7 @@ describe('LimitOrderProtocol', async () => {
         };
 
         it('Fill range limit-order by maker asset', async () => {
-            const { dai, weth, swap, chainId, rangeAmountCalculator } = await loadFixture(deployContractsAndInit);
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             await fillRangeLimitOrder(
                 { asset: weth, ether },
                 { asset: dai, ether },
@@ -1281,14 +1224,13 @@ describe('LimitOrderProtocol', async () => {
                     { makingAmount: '2', takingAmount: '0', thresholdAmount: '6600' },
                 ],
                 true,
-                rangeAmountCalculator,
                 swap,
                 chainId,
             );
         });
 
         it('Fill range limit-order by maker asset when taker asset has different decimals', async () => {
-            const { weth, swap, chainId, usdc, rangeAmountCalculator } = await loadFixture(deployContractsAndInit);
+            const { weth, swap, chainId, usdc } = await loadFixture(deployContractsAndInit);
             await fillRangeLimitOrder(
                 { asset: weth, ether },
                 { asset: usdc, ether: e6 },
@@ -1297,14 +1239,13 @@ describe('LimitOrderProtocol', async () => {
                     { makingAmount: '2', takingAmount: '0', thresholdAmount: '6600' },
                 ],
                 true,
-                rangeAmountCalculator,
                 swap,
                 chainId,
             );
         });
 
         it('Fill range limit-order by taker asset', async () => {
-            const { dai, weth, swap, chainId, rangeAmountCalculator } = await loadFixture(deployContractsAndInit);
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             await fillRangeLimitOrder(
                 { asset: weth, ether },
                 { asset: dai, ether },
@@ -1313,14 +1254,13 @@ describe('LimitOrderProtocol', async () => {
                     { makingAmount: '0', takingAmount: '6600', thresholdAmount: '2' },
                 ],
                 false,
-                rangeAmountCalculator,
                 swap,
                 chainId,
             );
         });
 
         it('Fill range limit-order by taker asset when taker asset has different decimals', async () => {
-            const { weth, swap, chainId, usdc, rangeAmountCalculator } = await loadFixture(deployContractsAndInit);
+            const { weth, swap, chainId, usdc } = await loadFixture(deployContractsAndInit);
             await fillRangeLimitOrder(
                 { asset: weth, ether },
                 { asset: usdc, ether: e6 },
@@ -1329,7 +1269,6 @@ describe('LimitOrderProtocol', async () => {
                     { makingAmount: '0', takingAmount: '6600', thresholdAmount: '2' },
                 ],
                 false,
-                rangeAmountCalculator,
                 swap,
                 chainId,
             );
