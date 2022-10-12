@@ -16,7 +16,6 @@ const WETH = {
     31337: constants.ZERO_ADDRESS, // Hardhat
 };
 
-
 module.exports = async ({ getNamedAccounts, deployments }) => {
     console.log('running deploy script');
     const chainId = await getChainId();
