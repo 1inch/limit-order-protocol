@@ -6,10 +6,14 @@ const { ethers } = require('hardhat');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 
-describe('LimitOrderProtocol', async () => {
-    const [addr, addr1, addr2] = await ethers.getSigners();
+describe('LimitOrderProtocol', function () {
+    let addr, addr1, addr2;
 
-    const initContracts = async (dai, weth, swap) => {
+    before(async function() {
+        [addr, addr1, addr2] = await ethers.getSigners();
+    });
+
+    async function initContracts(dai, weth, swap) {
         await dai.mint(addr1.address, ether('1000000000000'));
         await weth.mint(addr1.address, ether('1000000000000'));
         await dai.mint(addr.address, ether('1000000000000'));
@@ -1063,20 +1067,19 @@ describe('LimitOrderProtocol', async () => {
      * But it is also possible that the limit-order will be filed in parts.
      * First, someone buys 1 ETH at the price of 3050 DAI, then another 1 ETH at the price of 3150 DAI, and so on.
      */
-    describe('Range limit orders', async () => {
-        const maker = addr1.address;
-        const taker = addr.address;
+    describe('Range limit orders', function () {
+        let maker, taker;
 
         const e6 = (value) => ether(value).div(1000000000000n);
 
-        before(async () => {
-            const RangeAmountCalculator = await ethers.getContractFactory('RangeAmountCalculator');
-            this.rangeAmountCalculator = await RangeAmountCalculator.deploy();
-            await this.rangeAmountCalculator.deployed();
+        before(async function() {
+            maker = addr1.address;
+            taker = addr.address;
         });
 
         const deployContractsAndInit = async () => {
             const { dai, weth, swap, chainId } = await deploySwapTokens();
+            await initContracts(dai, weth, swap);
 
             const TokenCustomDecimalsMock = await ethers.getContractFactory('TokenCustomDecimalsMock');
             const usdc = await TokenCustomDecimalsMock.deploy('USDC', 'USDC', '0', 6);
@@ -1086,7 +1089,11 @@ describe('LimitOrderProtocol', async () => {
             await usdc.approve(swap.address, e6('1000000000000'));
             await usdc.connect(addr1).approve(swap.address, e6('1000000000000'));
 
-            return { dai, weth, swap, chainId, usdc };
+            const RangeAmountCalculator = await ethers.getContractFactory('RangeAmountCalculator');
+            const rangeAmountCalculator = await RangeAmountCalculator.deploy();
+            await rangeAmountCalculator.deployed();
+
+            return { dai, weth, swap, chainId, usdc, rangeAmountCalculator };
         };
 
         /**
@@ -1106,8 +1113,8 @@ describe('LimitOrderProtocol', async () => {
          *      thresholdAmount: uint256
          * }]
          */
-        const fillRangeLimitOrder = async (makerAsset, takerAsset, fillOrderParams, isByMakerAsset, swap, chainId) => {
-            const getRangeAmount = (isByMakerAsset ? this.rangeAmountCalculator.getRangeTakerAmount : this.rangeAmountCalculator.getRangeMakerAmount);
+        async function fillRangeLimitOrder (makerAsset, takerAsset, fillOrderParams, isByMakerAsset, swap, rangeAmountCalculator, chainId) {
+            const getRangeAmount = (isByMakerAsset ? rangeAmountCalculator.getRangeTakerAmount : rangeAmountCalculator.getRangeMakerAmount);
 
             // Order: 10 MA -> 35000 TA with price range: 3000 -> 4000 TA
             const makingAmount = makerAsset.ether('10');
@@ -1123,12 +1130,12 @@ describe('LimitOrderProtocol', async () => {
                     from: maker,
                 },
                 {
-                    getMakingAmount: this.rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
-                        this.rangeAmountCalculator.interface.encodeFunctionData('getRangeMakerAmount', [startPrice, endPrice, makingAmount, 0, 0],
+                    getMakingAmount: rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
+                        rangeAmountCalculator.interface.encodeFunctionData('getRangeMakerAmount', [startPrice, endPrice, makingAmount, 0, 0],
                             64,
                         )))),
-                    getTakingAmount: this.rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
-                        this.rangeAmountCalculator.interface.encodeFunctionData('getRangeTakerAmount', [startPrice, endPrice, makingAmount, 0, 0],
+                    getTakingAmount: rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
+                        rangeAmountCalculator.interface.encodeFunctionData('getRangeTakerAmount', [startPrice, endPrice, makingAmount, 0, 0],
                             64,
                         )))),
                 },
@@ -1212,7 +1219,7 @@ describe('LimitOrderProtocol', async () => {
         };
 
         it('Fill range limit-order by maker asset', async () => {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { dai, weth, swap, chainId, rangeAmountCalculator } = await loadFixture(deployContractsAndInit);
             await fillRangeLimitOrder(
                 { asset: weth, ether },
                 { asset: dai, ether },
@@ -1222,12 +1229,13 @@ describe('LimitOrderProtocol', async () => {
                 ],
                 true,
                 swap,
+                rangeAmountCalculator,
                 chainId,
             );
         });
 
         it('Fill range limit-order by maker asset when taker asset has different decimals', async () => {
-            const { weth, swap, chainId, usdc } = await loadFixture(deployContractsAndInit);
+            const { usdc, weth, swap, chainId, rangeAmountCalculator } = await loadFixture(deployContractsAndInit);
             await fillRangeLimitOrder(
                 { asset: weth, ether },
                 { asset: usdc, ether: e6 },
@@ -1237,12 +1245,13 @@ describe('LimitOrderProtocol', async () => {
                 ],
                 true,
                 swap,
+                rangeAmountCalculator,
                 chainId,
             );
         });
 
         it('Fill range limit-order by taker asset', async () => {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { dai, weth, swap, rangeAmountCalculator, chainId } = await loadFixture(deployContractsAndInit);
             await fillRangeLimitOrder(
                 { asset: weth, ether },
                 { asset: dai, ether },
@@ -1252,12 +1261,13 @@ describe('LimitOrderProtocol', async () => {
                 ],
                 false,
                 swap,
+                rangeAmountCalculator,
                 chainId,
             );
         });
 
         it('Fill range limit-order by taker asset when taker asset has different decimals', async () => {
-            const { weth, swap, chainId, usdc } = await loadFixture(deployContractsAndInit);
+            const { usdc, weth, swap, rangeAmountCalculator, chainId } = await loadFixture(deployContractsAndInit);
             await fillRangeLimitOrder(
                 { asset: weth, ether },
                 { asset: usdc, ether: e6 },
@@ -1267,6 +1277,7 @@ describe('LimitOrderProtocol', async () => {
                 ],
                 false,
                 swap,
+                rangeAmountCalculator,
                 chainId,
             );
         });

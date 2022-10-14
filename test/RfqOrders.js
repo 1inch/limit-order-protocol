@@ -6,8 +6,12 @@ const { ethers } = require('hardhat');
 const { toBN } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 
-describe('RFQ Orders in LimitOrderProtocol', async () => {
-    const [addr, addr1, addr2] = await ethers.getSigners();
+describe('RFQ Orders in LimitOrderProtocol', function () {
+    let addr, addr1, addr2;
+
+    before(async function() {
+        [addr, addr1, addr2] = await ethers.getSigners();
+    });
 
     const initContracts = async () => {
         const { dai, weth, swap, chainId, usdc } = await loadFixture(deploySwapTokens);

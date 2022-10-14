@@ -5,8 +5,12 @@ const { cutLastArg, ether, toBN } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 
-describe('ChainLinkExample', async () => {
-    const [addr, addr1] = await ethers.getSigners();
+describe('ChainLinkExample', function () {
+    let addr, addr1;
+
+    before(async function() {
+        [addr, addr1] = await ethers.getSigners();
+    });
 
     function buildInverseWithSpread (inverse, spread) {
         return toBN(spread).setn(255, inverse).toString();
@@ -20,8 +24,8 @@ describe('ChainLinkExample', async () => {
         return chainlink.address + trim0x(chainlink.interface.encodeFunctionData('doublePrice', [oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount]));
     }
 
-    const deployContractsAndInit = async () => {
-        const { dai, weth, inch, swap, chainId } = await loadFixture(deploySwapTokens);
+    async function deployContractsAndInit() {
+        const { dai, weth, inch, swap, chainId } = await deploySwapTokens();
 
         await dai.mint(addr.address, ether('1000000'));
         await weth.mint(addr.address, ether('1000000'));

@@ -5,12 +5,16 @@ const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
 const { buildOrder, signOrder } = require('./helpers/orderUtils');
 
-describe('Interactions', async () => {
-    const [addr, addr1] = await ethers.getSigners();
+describe('Interactions', function () {
+    let addr, addr1;
     const abiCoder = ethers.utils.defaultAbiCoder;
 
-    const initContracts = async () => {
-        const { dai, weth, swap, chainId } = await loadFixture(deploySwapTokens);
+    before(async () => {
+        [addr, addr1] = await ethers.getSigners();
+    })
+
+    async function initContracts() {
+        const { dai, weth, swap, chainId } = await deploySwapTokens();
 
         await dai.mint(addr.address, ether('100'));
         await dai.mint(addr1.address, ether('100'));

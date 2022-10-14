@@ -4,7 +4,7 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deployArgumentsDecoderTest } = require('./helpers/fixtures');
 const { ether, getSelector } = require('./helpers/utils');
 
-describe('SolidityTests', async () => {
+describe('SolidityTests', function () {
     const abiCoder = ethers.utils.defaultAbiCoder;
 
     describe('ArgumentsDecoderTest', async () => {

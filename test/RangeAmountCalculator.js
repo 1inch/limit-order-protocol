@@ -3,7 +3,7 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deployRangeAmountCalculator } = require('./helpers/fixtures');
 const { ether } = require('./helpers/utils');
 
-describe('RangeAmountCalculator', async () => {
+describe('RangeAmountCalculator', function () {
     describe('Fill by maker asset', async () => {
         const priceStart = ether('3000');
         const priceEnd = ether('4000');

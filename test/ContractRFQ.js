@@ -5,14 +5,18 @@ const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
 const { deploySwap, deployUSDC, deployUSDT } = require('./helpers/fixtures');
 
-describe('ContractRFQ', async () => {
-    const [addr] = await ethers.getSigners();
+describe('ContractRFQ', function () {
     const abiCoder = ethers.utils.defaultAbiCoder;
+    let addr;
+
+    before(async function() {
+        [addr] = await ethers.getSigners();
+    });
 
     const deployAndInit = async () => {
-        const { swap } = await loadFixture(deploySwap);
-        const { usdc } = await loadFixture(deployUSDC);
-        const { usdt } = await loadFixture(deployUSDT);
+        const { swap } = await deploySwap();
+        const { usdc } = await deployUSDC();
+        const { usdt } = await deployUSDT();
 
         const ContractRFQ = await ethers.getContractFactory('ContractRFQ');
         const rfq = await ContractRFQ.deploy(swap.address, usdc.address, usdt.address, ether('0.9993'), 'USDT+USDC', 'USDX');

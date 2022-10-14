@@ -5,17 +5,15 @@ const { deploySwapTokens } = require('./helpers/fixtures');
 const { buildOrder, signOrder } = require('./helpers/orderUtils');
 const { ethers } = require('hardhat');
 
-describe('Dutch auction', async () => {
-    const [addr, addr1] = await ethers.getSigners();
+describe('Dutch auction', function () {
+    let addr, addr1;
 
-    before(async () => {
-        const DutchAuctionCalculator = await ethers.getContractFactory('DutchAuctionCalculator');
-        this.dutchAuctionCalculator = await DutchAuctionCalculator.deploy();
-        await this.dutchAuctionCalculator.deployed();
+    before(async function() {
+        [addr, addr1] = await ethers.getSigners();
     });
 
-    const deployAndBuildOrder = async () => {
-        const { dai, weth, swap, chainId } = await loadFixture(deploySwapTokens);
+    async function deployAndBuildOrder() {
+        const { dai, weth, swap, chainId } = await deploySwapTokens();
 
         await dai.mint(addr.address, ether('100'));
         await dai.mint(addr1.address, ether('100'));
@@ -26,6 +24,10 @@ describe('Dutch auction', async () => {
         await dai.connect(addr1).approve(swap.address, ether('100'));
         await weth.approve(swap.address, ether('1'));
         await weth.connect(addr1).approve(swap.address, ether('1'));
+
+        const DutchAuctionCalculator = await ethers.getContractFactory('DutchAuctionCalculator');
+        const dutchAuctionCalculator = await DutchAuctionCalculator.deploy();
+        await dutchAuctionCalculator.deployed();
 
         const ts = await time.latest();
         const startEndTs = toBN(ts).shln(128).or(toBN(ts).addn(86400));
@@ -38,10 +40,10 @@ describe('Dutch auction', async () => {
                 from: addr.address,
             },
             {
-                getMakingAmount: this.dutchAuctionCalculator.address + cutLastArg(trim0x(this.dutchAuctionCalculator.interface.encodeFunctionData('getMakingAmount',
+                getMakingAmount: dutchAuctionCalculator.address + cutLastArg(trim0x(dutchAuctionCalculator.interface.encodeFunctionData('getMakingAmount',
                     [startEndTs.toString(), ether('0.1'), ether('0.05'), ether('100'), 0],
                 )), 64),
-                getTakingAmount: this.dutchAuctionCalculator.address + cutLastArg(trim0x(this.dutchAuctionCalculator.interface.encodeFunctionData('getTakingAmount',
+                getTakingAmount: dutchAuctionCalculator.address + cutLastArg(trim0x(dutchAuctionCalculator.interface.encodeFunctionData('getTakingAmount',
                     [startEndTs.toString(), ether('0.1'), ether('0.05'), ether('100'), 0],
                 )), 64),
             },

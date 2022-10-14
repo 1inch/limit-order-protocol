@@ -3,8 +3,12 @@ const { ethers } = require('hardhat');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySeriesNonceManager } = require('./helpers/fixtures');
 
-describe('SeriesNonceManager', async () => {
-    const [addr] = await ethers.getSigners();
+describe('SeriesNonceManager', function () {
+    let addr;
+
+    before(async function() {
+        [addr] = await ethers.getSigners();
+    });
 
     it('Get nonce - should return zero by default', async () => {
         const { seriesNonceManager } = await loadFixture(deploySeriesNonceManager);
