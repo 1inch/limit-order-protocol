@@ -34,7 +34,7 @@ function joinStaticCalls (dataArray) {
         offsets: trimmed
             .map(d => d.length / 2)
             .map(cumulativeSum)
-            .reduce((acc, val, i) => acc.or(toBN(val).shln(32 * i)), toBN('0')),
+            .reduce((acc, val, i) => acc | BigInt(val) << BigInt(32 * i), 0n),
         data: '0x' + trimmed.join(''),
     };
 }

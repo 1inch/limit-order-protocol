@@ -663,10 +663,10 @@ describe('LimitOrderProtocol', async () => {
 
         it('benchmark gas', async () => {
             const { dai, swap } = await loadFixture(deployContractsAndInit);
-            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', ['0xff0000']);
+            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff0000n]);
             const balanceCall = dai.interface.encodeFunctionData('balanceOf', [addr1.address]);
             const gtBalance = swap.interface.encodeFunctionData('gt', [
-                '100000',
+                100000n,
                 swap.interface.encodeFunctionData('arbitraryStaticCall', [dai.address, balanceCall]),
             ]);
 
@@ -676,7 +676,7 @@ describe('LimitOrderProtocol', async () => {
 
         it('benchmark gas real case', async () => {
             const { swap } = await loadFixture(deployContractsAndInit);
-            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', ['0x70000000']);
+            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0x70000000n]);
             const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0]);
 
             const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
@@ -685,13 +685,10 @@ describe('LimitOrderProtocol', async () => {
 
         it('benchmark gas real case (optimized)', async () => {
             const { swap } = await loadFixture(deployContractsAndInit);
-            const timestamp = toBN('0x70000000');
-            const nonce = toBN(0);
+            const timestamp = 0x70000000n;
+            const nonce = 0n;
 
-            await swap.connect(addr1).timestampBelowAndNonceEquals(
-                toBN(addr1.address)
-                    .or(nonce.shln(160))
-                    .or(timestamp.shln(208)));
+            await swap.connect(addr1).timestampBelowAndNonceEquals(BigInt(addr1.address) | (nonce << 160n) | (timestamp << 208n));
         });
 
         it('`or` should pass', async () => {
@@ -732,7 +729,7 @@ describe('LimitOrderProtocol', async () => {
         it('`or` should fail', async () => {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
-            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', ['0xff0000']);
+            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff0000n]);
             const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 1]);
             const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
             const predicate = swap.interface.encodeFunctionData('or', [offsets, data]);
@@ -758,7 +755,7 @@ describe('LimitOrderProtocol', async () => {
         it('`and` should pass', async () => {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
-            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', ['0xff000000']);
+            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff000000n]);
             const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0]);
             const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
             const predicate = swap.interface.encodeFunctionData('and', [offsets, data]);
@@ -792,7 +789,7 @@ describe('LimitOrderProtocol', async () => {
         it('nonce + ts example', async () => {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
-            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', ['0xff000000']);
+            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff000000n]);
             const nonceCall = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0]);
             const { offsets, data } = joinStaticCalls([tsBelow, nonceCall]);
             const predicate = swap.interface.encodeFunctionData('and', [offsets, data]);
@@ -832,7 +829,7 @@ describe('LimitOrderProtocol', async () => {
         it('`and` should fail', async () => {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
-            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', ['0xff0000']);
+            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff0000n]);
             const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0]);
             const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
             const predicate = swap.interface.encodeFunctionData('and', [offsets, data]);
@@ -1070,7 +1067,7 @@ describe('LimitOrderProtocol', async () => {
         const maker = addr1.address;
         const taker = addr.address;
 
-        const e6 = (value) => ether(value).div(toBN('1000000000000'));
+        const e6 = (value) => ether(value).div(1000000000000n);
 
         before(async () => {
             const RangeAmountCalculator = await ethers.getContractFactory('RangeAmountCalculator');
@@ -1126,14 +1123,14 @@ describe('LimitOrderProtocol', async () => {
                     from: maker,
                 },
                 {
-                    getMakingAmount: this.rangeAmountCalculator.address + trim0x(cutLastArg(
+                    getMakingAmount: this.rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
                         this.rangeAmountCalculator.interface.encodeFunctionData('getRangeMakerAmount', [startPrice, endPrice, makingAmount, 0, 0],
                             64,
-                        ))),
-                    getTakingAmount: this.rangeAmountCalculator.address + trim0x(cutLastArg(
+                        )))),
+                    getTakingAmount: this.rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
                         this.rangeAmountCalculator.interface.encodeFunctionData('getRangeTakerAmount', [startPrice, endPrice, makingAmount, 0, 0],
                             64,
-                        ))),
+                        )))),
                 },
             );
             const signature = await signOrder(order, chainId, swap.address, addr1);
