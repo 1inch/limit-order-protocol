@@ -22,7 +22,7 @@ describe('LimitOrderProtocol', async () => {
 
     describe('wip', async () => {
         const deployContractsAndInit = async () => {
-            const { dai, weth, swap, chainId } = await loadFixture(deploySwapTokens);
+            const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
             return { dai, weth, swap, chainId };
         };
@@ -328,7 +328,7 @@ describe('LimitOrderProtocol', async () => {
     describe('Permit', async () => {
         describe('fillOrderToWithPermit', async () => {
             const deployContractsAndInitPermit = async () => {
-                const { dai, weth, swap, chainId } = await loadFixture(deploySwapTokens);
+                const { dai, weth, swap, chainId } = await deploySwapTokens();
                 await initContracts(dai, weth, swap);
 
                 const order = buildOrder({
@@ -396,7 +396,7 @@ describe('LimitOrderProtocol', async () => {
 
         describe('maker permit', async () => {
             const deployContractsAndInitPermit = async () => {
-                const { dai, weth, swap, chainId } = await loadFixture(deploySwapTokens);
+                const { dai, weth, swap, chainId } = await deploySwapTokens();
                 await initContracts(dai, weth, swap);
 
                 const permit = withTarget(
@@ -459,7 +459,7 @@ describe('LimitOrderProtocol', async () => {
 
     describe('Amount Calculator', async () => {
         const deployContractsAndInit = async () => {
-            const { dai, weth, swap, chainId } = await loadFixture(deploySwapTokens);
+            const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
             return { dai, weth, swap, chainId };
         };
@@ -557,13 +557,13 @@ describe('LimitOrderProtocol', async () => {
 
     describe('Order Cancelation', async () => {
         const deployContractsAndInit = async () => {
-            const { dai, weth, swap, chainId } = await loadFixture(deploySwapTokens);
+            const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
             return { dai, weth, swap, chainId };
         };
 
         const orderCancelationInit = async () => {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { dai, weth, swap, chainId } = await deployContractsAndInit();
             const order = buildOrder({
                 makerAsset: dai.address,
                 takerAsset: weth.address,
@@ -604,7 +604,7 @@ describe('LimitOrderProtocol', async () => {
 
     describe('Private Orders', async () => {
         const deployContractsAndInit = async () => {
-            const { dai, weth, swap, chainId } = await loadFixture(deploySwapTokens);
+            const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
             return { dai, weth, swap, chainId };
         };
@@ -656,7 +656,7 @@ describe('LimitOrderProtocol', async () => {
 
     describe('Predicate', async () => {
         const deployContractsAndInit = async () => {
-            const { dai, weth, swap, chainId } = await loadFixture(deploySwapTokens);
+            const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
             return { dai, weth, swap, chainId };
         };
@@ -855,7 +855,7 @@ describe('LimitOrderProtocol', async () => {
 
     describe('Expiration', async () => {
         const deployContractsAndInit = async () => {
-            const { dai, weth, swap, chainId } = await loadFixture(deploySwapTokens);
+            const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
             return { dai, weth, swap, chainId };
         };
@@ -965,7 +965,7 @@ describe('LimitOrderProtocol', async () => {
 
     describe('ETH fill', async () => {
         const deployContractsAndInit = async () => {
-            const { dai, weth, swap, chainId, usdc } = await loadFixture(deploySwapTokens);
+            const { dai, weth, swap, chainId, usdc } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
             return { dai, weth, swap, chainId, usdc };
         };
@@ -1076,7 +1076,7 @@ describe('LimitOrderProtocol', async () => {
         });
 
         const deployContractsAndInit = async () => {
-            const { dai, weth, swap, chainId } = await loadFixture(deploySwapTokens);
+            const { dai, weth, swap, chainId } = await deploySwapTokens();
 
             const TokenCustomDecimalsMock = await ethers.getContractFactory('TokenCustomDecimalsMock');
             const usdc = await TokenCustomDecimalsMock.deploy('USDC', 'USDC', '0', 6);
