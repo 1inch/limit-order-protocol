@@ -15,7 +15,7 @@ async function deploySwapTokens () {
     await swap.deployed();
     const usdc = await TokenMock.deploy('USDC', 'USDC');
     await usdc.deployed();
-    const chainId = ethers.provider._network.chainId;
+    const chainId = (await ethers.provider.getNetwork()).chainId;
     return { dai, weth, inch, swap, chainId, usdc };
 };
 
