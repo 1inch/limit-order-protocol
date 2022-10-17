@@ -1,6 +1,6 @@
 const { constants, trim0x } = require('@1inch/solidity-utils');
 const { ethers } = require('ethers');
-const { toBN } = require('./utils');
+const { setn } = require('./utils');
 
 const OrderRFQ = [
     { name: 'info', type: 'uint256' },
@@ -86,7 +86,7 @@ function buildOrder (
     const offsets = allInteractions
         .map(a => a.length / 2 - 1)
         .map(cumulativeSum)
-        .reduce((acc, a, i) => acc.add(toBN(a).shln(32 * i)), toBN('0'));
+        .reduce((acc, a, i) => acc + (BigInt(a) << BigInt(32 * i)), BigInt(0));
 
     return {
         salt: '1',
@@ -157,15 +157,15 @@ function compactSignature (signature) {
 }
 
 function unwrapWeth (amount) {
-    return toBN(amount).setn(252, 1).toString();
+    return setn(BigInt(amount), 252, 1).toString();
 }
 
 function makingAmount (amount) {
-    return toBN(amount).setn(255, 1).toString();
+    return setn(BigInt(amount), 255, 1).toString();
 }
 
 function takingAmount (amount) {
-    return toBN(amount).toString();
+    return BigInt(amount).toString();
 }
 
 module.exports = {

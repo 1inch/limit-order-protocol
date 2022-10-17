@@ -9,7 +9,7 @@ describe('ContractRFQ', function () {
     const abiCoder = ethers.utils.defaultAbiCoder;
     let addr;
 
-    before(async function() {
+    before(async function () {
         [addr] = await ethers.getSigners();
     });
 

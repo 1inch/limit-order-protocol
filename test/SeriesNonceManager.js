@@ -6,7 +6,7 @@ const { deploySeriesNonceManager } = require('./helpers/fixtures');
 describe('SeriesNonceManager', function () {
     let addr;
 
-    before(async function() {
+    before(async function () {
         [addr] = await ethers.getSigners();
     });
 

@@ -1,5 +1,4 @@
 const { utils } = require('ethers');
-const { BN } = require('bn.js');
 
 function price (val) {
     return ether(val).toString();
@@ -39,15 +38,16 @@ function joinStaticCalls (dataArray) {
     };
 }
 
-function toBN (num, base) {
-    if (typeof (num) === 'string' && num.startsWith('0x')) {
-        return new BN(num.substring(2), 16);
-    }
-    return new BN(num, base);
-}
-
 function ether (num) {
     return utils.parseUnits(num);
+}
+
+function setn (num, bit, value) {
+    if (value) {
+        return BigInt(num) | (BigInt(1) << BigInt(bit));
+    } else {
+        return BigInt(num) & (~(BigInt(1) << BigInt(bit)));
+    }
 }
 
 module.exports = {
@@ -57,6 +57,6 @@ module.exports = {
     cutSelector,
     cutLastArg,
     getSelector,
-    toBN,
+    setn,
     trim0x,
 };

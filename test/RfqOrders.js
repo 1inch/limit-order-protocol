@@ -3,13 +3,12 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { buildOrderRFQ, signOrderRFQ, compactSignature, makingAmount, takingAmount, unwrapWeth } = require('./helpers/orderUtils');
 const { getPermit } = require('./helpers/eip712');
 const { ethers } = require('hardhat');
-const { toBN } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 
 describe('RFQ Orders in LimitOrderProtocol', function () {
     let addr, addr1, addr2;
 
-    before(async function() {
+    before(async function () {
         [addr, addr1, addr2] = await ethers.getSigners();
     });
 
@@ -154,14 +153,14 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const { swap } = await loadFixture(initContracts);
             await swap.functions['cancelOrderRFQ(uint256)']('1');
             const invalidator = await swap.invalidatorForOrderRFQ(addr.address, '0');
-            expect(invalidator).to.equal(toBN('2'));
+            expect(invalidator).to.equal('2');
         });
 
         it('should cancel own order with huge number', async () => {
             const { swap } = await loadFixture(initContracts);
             await swap.functions['cancelOrderRFQ(uint256)']('1023');
             const invalidator = await swap.invalidatorForOrderRFQ(addr.address, '3');
-            expect(invalidator).to.equal(toBN('1').shln(255));
+            expect(invalidator).to.equal(BigInt('1') << BigInt(255));
         });
 
         it('should not fill cancelled order', async () => {

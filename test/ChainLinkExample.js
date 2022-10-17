@@ -1,19 +1,19 @@
 const { expect, trim0x } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { buildOrder, signOrder } = require('./helpers/orderUtils');
-const { cutLastArg, ether, toBN } = require('./helpers/utils');
+const { cutLastArg, ether, setn } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 
 describe('ChainLinkExample', function () {
     let addr, addr1;
 
-    before(async function() {
+    before(async function () {
         [addr, addr1] = await ethers.getSigners();
     });
 
     function buildInverseWithSpread (inverse, spread) {
-        return toBN(spread).setn(255, inverse).toString();
+        return setn(spread, 255, inverse).toString();
     }
 
     function buildSinglePriceGetter (chainlink, oracle, inverse, spread, amount = '0') {
@@ -24,7 +24,7 @@ describe('ChainLinkExample', function () {
         return chainlink.address + trim0x(chainlink.interface.encodeFunctionData('doublePrice', [oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount]));
     }
 
-    async function deployContractsAndInit() {
+    async function deployContractsAndInit () {
         const { dai, weth, inch, swap, chainId } = await deploySwapTokens();
 
         await dai.mint(addr.address, ether('1000000'));

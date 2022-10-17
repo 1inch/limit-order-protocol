@@ -1,3 +1,4 @@
+const { expect } = require('chai');
 const { domainSeparator } = require('./helpers/eip712');
 const { name, version } = require('./helpers/orderUtils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');

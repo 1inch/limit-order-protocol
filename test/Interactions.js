@@ -11,9 +11,9 @@ describe('Interactions', function () {
 
     before(async () => {
         [addr, addr1] = await ethers.getSigners();
-    })
+    });
 
-    async function initContracts() {
+    async function initContracts () {
         const { dai, weth, swap, chainId } = await deploySwapTokens();
 
         await dai.mint(addr.address, ether('100'));
