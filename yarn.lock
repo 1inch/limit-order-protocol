@@ -2,15 +2,18 @@
 # yarn lockfile v1
 
 
-"@1inch/solidity-utils@2.1.3":
-  version "2.1.3"
-  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-2.1.3.tgz#5f911469fed25b8050a46ba38f086a1c77229ce2"
-  integrity sha512-fVgTVlNbcMoh4E/fr4Txj/C5aSYh/QcPxP/Os4hcnn9KeX7iWFZkwCQVvRq6Wn9n9N1Trc6opdEXkyYcLF7/4w==
+"@1inch/solidity-utils@^2.2.0":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-2.2.0.tgz#5f35e306975b9cf26b271d39860ba5d1b15d2d98"
+  integrity sha512-U5nirVTXWnS0h1D49sL0Q8qf+5NJl7b50uk0kHt6dTrVdVaI92wjxywibd/N9R3ZsyqFXHcuCQoiER4+dcIWHg==
   dependencies:
     "@metamask/eth-sig-util" "4.0.1"
+    "@nomicfoundation/hardhat-network-helpers" "1.0.6"
+    "@nomiclabs/hardhat-ethers" "2.1.1"
     "@openzeppelin/contracts" "4.7.3"
     ethereumjs-util "7.1.5"
     ethers "5.7.1"
+    hardhat "2.11.2"
 
 "@babel/code-frame@^7.0.0":
   version "7.18.6"
@@ -610,7 +613,7 @@
     deep-eql "^4.0.1"
     ordinal "^1.0.3"
 
-"@nomicfoundation/hardhat-network-helpers@^1.0.6":
+"@nomicfoundation/hardhat-network-helpers@1.0.6", "@nomicfoundation/hardhat-network-helpers@^1.0.6":
   version "1.0.6"
   resolved "https://registry.yarnpkg.com/@nomicfoundation/hardhat-network-helpers/-/hardhat-network-helpers-1.0.6.tgz#5e2026ddde5ca539f70a2bf498528afd08bd0827"
   integrity sha512-a35iVD4ycF6AoTfllAnKm96IPIzzHpgKX/ep4oKc2bsUKFfMlacWdyntgC/7d5blyCTXfFssgNAvXDZfzNWVGQ==
