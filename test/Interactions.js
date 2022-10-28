@@ -9,7 +9,7 @@ describe('Interactions', function () {
     let addr, addr1;
     const abiCoder = ethers.utils.defaultAbiCoder;
 
-    before(async () => {
+    before(async function () {
         [addr, addr1] = await ethers.getSigners();
     });
 
@@ -37,8 +37,8 @@ describe('Interactions', function () {
         return { dai, weth, swap, chainId, matcher, hashChecker };
     };
 
-    describe('recursive swap', async () => {
-        it('opposite direction recursive swap', async () => {
+    describe('recursive swap', function () {
+        it('opposite direction recursive swap', async function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
 
             const order = buildOrder(
@@ -106,7 +106,7 @@ describe('Interactions', function () {
             expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('100')));
         });
 
-        it('unidirectional recursive swap', async () => {
+        it('unidirectional recursive swap', async function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
 
             const order = buildOrder(
@@ -177,7 +177,7 @@ describe('Interactions', function () {
             expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.sub(ether('25')));
         });
 
-        it('triple recursive swap', async () => {
+        it('triple recursive swap', async function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
 
             const order1 = buildOrder(
@@ -269,8 +269,8 @@ describe('Interactions', function () {
         });
     });
 
-    describe('check hash', async () => {
-        it('should check hash and fill', async () => {
+    describe('check hash', function () {
+        it('should check hash and fill', async function () {
             const { dai, weth, swap, chainId, hashChecker } = await loadFixture(initContracts);
 
             const preInteraction = hashChecker.address;
@@ -303,7 +303,7 @@ describe('Interactions', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(ether('0.1')));
         });
 
-        it('should revert transaction when orderHash not equal target', async () => {
+        it('should revert transaction when orderHash not equal target', async function () {
             const { dai, weth, swap, chainId, hashChecker } = await loadFixture(initContracts);
 
             const preInteraction = hashChecker.address;

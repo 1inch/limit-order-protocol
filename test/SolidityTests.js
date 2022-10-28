@@ -7,8 +7,8 @@ const { ether, getSelector } = require('./helpers/utils');
 describe('SolidityTests', function () {
     const abiCoder = ethers.utils.defaultAbiCoder;
 
-    describe('ArgumentsDecoderTest', async () => {
-        before(async () => {
+    describe('ArgumentsDecoderTest', function () {
+        before(async function () {
             this.offset = 12;
             this.uint256Data = abiCoder.encode(['uint256'], [ether('1234')]);
             this.uint256DataWithOffset = this.uint256Data + abiCoder.encode(['uint256'], [ether('5678')]).slice(-this.offset * 2);
@@ -18,8 +18,8 @@ describe('SolidityTests', function () {
             this.boolData = abiCoder.encode(['bool'], [true]);
         });
 
-        describe('testDecodeUint256 with offset', async () => {
-            it('should decode while data length and offset correct', async () => {
+        describe('testDecodeUint256 with offset', function () {
+            it('should decode while data length and offset correct', async function () {
                 const { argumentsDecoderTest } = await loadFixture(deployArgumentsDecoderTest);
                 for (let i = 0; i < this.offset; i++) {
                     await argumentsDecoderTest.testDecodeUint256(this.uint256DataWithOffset, i);
@@ -29,67 +29,67 @@ describe('SolidityTests', function () {
                 ).to.be.revertedWithCustomError(argumentsDecoderTest, 'IncorrectDataLength');
             });
 
-            it('should be cheaper than standart method @skip-on-coverage', async () => {
+            it('should be cheaper than standart method @skip-on-coverage', async function () {
                 const { argumentsDecoderTest } = await loadFixture(deployArgumentsDecoderTest);
                 const result = await argumentsDecoderTest.testUint256CalldataOffsetGas(this.uint256DataWithOffset, this.offset);
                 expect(result.gasLib).to.be.lt(result.gasAbiDecode);
             });
         });
 
-        describe('testDecodeSelector', async () => {
-            it('should decode', async () => {
+        describe('testDecodeSelector', function () {
+            it('should decode', async function () {
                 const { argumentsDecoderTest } = await loadFixture(deployArgumentsDecoderTest);
                 await argumentsDecoderTest.testDecodeSelector(this.selectorData);
             });
 
-            it('should not decode with incorrect data length', async () => {
+            it('should not decode with incorrect data length', async function () {
                 const { argumentsDecoderTest } = await loadFixture(deployArgumentsDecoderTest);
                 await expect(
                     argumentsDecoderTest.testDecodeSelector(this.selectorData.slice(0, -2)),
                 ).to.be.revertedWithCustomError(argumentsDecoderTest, 'IncorrectDataLength');
             });
 
-            it('should be cheaper than standart method @skip-on-coverage', async () => {
+            it('should be cheaper than standart method @skip-on-coverage', async function () {
                 const { argumentsDecoderTest } = await loadFixture(deployArgumentsDecoderTest);
                 const result = await argumentsDecoderTest.testSelectorGas(this.selectorData);
                 expect(result.gasLib).to.be.lt(result.gasAbiDecode);
             });
         });
 
-        describe('testDecodeTailCalldata', async () => {
-            it('should decode', async () => {
+        describe('testDecodeTailCalldata', function () {
+            it('should decode', async function () {
                 const { argumentsDecoderTest } = await loadFixture(deployArgumentsDecoderTest);
                 await argumentsDecoderTest.testDecodeTailCalldata(this.uint256Data, this.offset);
             });
 
-            it('should not decode with incorrect data length', async () => {
+            it('should not decode with incorrect data length', async function () {
                 const { argumentsDecoderTest } = await loadFixture(deployArgumentsDecoderTest);
                 await expect(
                     argumentsDecoderTest.testDecodeTailCalldata(this.uint256Data, 33),
                 ).to.be.revertedWithCustomError(argumentsDecoderTest, 'IncorrectDataLength');
             });
 
-            it('should be cheaper than standart method @skip-on-coverage', async () => {
+            it('should be cheaper than standart method @skip-on-coverage', async function () {
                 const { argumentsDecoderTest } = await loadFixture(deployArgumentsDecoderTest);
                 const result = await argumentsDecoderTest.testDecodeTailCalldataGas(this.uint256Data, this.offset);
                 expect(result.gasLib).to.be.lt(result.gasAbiDecode);
             });
         });
 
-        describe('testDecodeTargetAndCalldata', async () => {
-            it('should decode', async () => {
+        describe('testDecodeTargetAndCalldata', function () {
+            it('should decode', async function () {
                 const { argumentsDecoderTest } = await loadFixture(deployArgumentsDecoderTest);
                 await argumentsDecoderTest.testDecodeTargetAndCalldata(this.uint256Data);
             });
 
-            it('should not decode with incorrect data length', async () => {
+            it('should not decode with incorrect data length', async function () {
                 const { argumentsDecoderTest } = await loadFixture(deployArgumentsDecoderTest);
                 await expect(
                     argumentsDecoderTest.testDecodeTargetAndCalldata(this.uint256Data.slice(0, 18 * 2)),
                 ).to.be.revertedWithCustomError(argumentsDecoderTest, 'IncorrectDataLength');
             });
 
-            it('should be cheaper than standart method @skip-on-coverage', async () => {
+            it('should be cheaper than standart method @skip-on-coverage', async function () {
                 const { argumentsDecoderTest } = await loadFixture(deployArgumentsDecoderTest);
                 const result = await argumentsDecoderTest.testDecodeTargetAndCalldataGas(this.uint256Data);
                 expect(result.gasLib).to.be.lt(result.gasAbiDecode);

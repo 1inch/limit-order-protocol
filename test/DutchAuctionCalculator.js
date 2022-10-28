@@ -57,7 +57,7 @@ describe('Dutch auction', function () {
         return { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore };
     };
 
-    it('swap with makingAmount 50% time passed', async () => {
+    it('swap with makingAmount 50% time passed', async function () {
         const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
         await time.increaseTo(ts + 43200n); // 50% auction time
@@ -69,7 +69,7 @@ describe('Dutch auction', function () {
         assertRoughlyEqualValues(await weth.balanceOf(addr1.address), takerWethBefore.sub(ether('0.075')), 1e-6);
     });
 
-    it('swap with takingAmount 50% time passed', async () => {
+    it('swap with takingAmount 50% time passed', async function () {
         const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
         await time.increaseTo(ts + 43200n); // 50% auction time
@@ -81,7 +81,7 @@ describe('Dutch auction', function () {
         assertRoughlyEqualValues(await weth.balanceOf(addr1.address), takerWethBefore.sub(ether('0.075')), 1e-6);
     });
 
-    it('swap with makingAmount 0% time passed', async () => {
+    it('swap with makingAmount 0% time passed', async function () {
         const { dai, weth, swap, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
         await swap.connect(addr1).fillOrder(order, signature, '0x', ether('100'), '0', ether('0.1'));
@@ -92,7 +92,7 @@ describe('Dutch auction', function () {
         assertRoughlyEqualValues(await weth.balanceOf(addr1.address), takerWethBefore.sub(ether('0.1')), 1e-6);
     });
 
-    it('swap with takingAmount 0% time passed', async () => {
+    it('swap with takingAmount 0% time passed', async function () {
         const { dai, weth, swap, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
         await swap.connect(addr1).fillOrder(order, signature, '0x', '0', ether('0.1'), ether('100'));
@@ -103,7 +103,7 @@ describe('Dutch auction', function () {
         assertRoughlyEqualValues(await weth.balanceOf(addr1.address), takerWethBefore.sub(ether('0.1')), 1e-6);
     });
 
-    it('swap with makingAmount 100% time passed', async () => {
+    it('swap with makingAmount 100% time passed', async function () {
         const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
         await time.increaseTo(ts + 86500n); // >100% auction time
@@ -115,7 +115,7 @@ describe('Dutch auction', function () {
         assertRoughlyEqualValues(await weth.balanceOf(addr1.address), takerWethBefore.sub(ether('0.05')), 1e-6);
     });
 
-    it('swap with takingAmount 100% time passed', async () => {
+    it('swap with takingAmount 100% time passed', async function () {
         const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
         await time.increaseTo(ts + 86500n); // >100% auction time

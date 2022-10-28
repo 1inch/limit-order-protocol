@@ -24,21 +24,21 @@ describe('LimitOrderProtocol', function () {
         await weth.connect(addr1).approve(swap.address, ether('1000000000000'));
     };
 
-    describe('wip', async () => {
-        const deployContractsAndInit = async () => {
+    describe('wip', function () {
+        const deployContractsAndInit = async function () {
             const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
             return { dai, weth, swap, chainId };
         };
 
-        it('transferFrom', async () => {
+        it('transferFrom', async function () {
             const { dai } = await loadFixture(deployContractsAndInit);
 
             await dai.connect(addr1).approve(addr.address, '2');
             await dai.transferFrom(addr1.address, addr.address, '1');
         });
 
-        it('should not swap with bad signature', async () => {
+        it('should not swap with bad signature', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
@@ -66,7 +66,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(swap, 'BadSignature');
         });
 
-        it('should not fill (1,1)', async () => {
+        it('should not fill (1,1)', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
@@ -85,7 +85,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(swap, 'OnlyOneAmountShouldBeZero');
         });
 
-        it('should not fill above threshold', async () => {
+        it('should not fill above threshold', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
@@ -104,7 +104,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(swap, 'TakingAmountTooHigh');
         });
 
-        it('should not fill below threshold', async () => {
+        it('should not fill below threshold', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
@@ -123,7 +123,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(swap, 'MakingAmountTooLow');
         });
 
-        it('should fail when both amounts are zero', async () => {
+        it('should fail when both amounts are zero', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
@@ -142,7 +142,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(swap, 'OnlyOneAmountShouldBeZero');
         });
 
-        it('should swap fully based on signature', async () => {
+        it('should swap fully based on signature', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
@@ -175,7 +175,7 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
         });
 
-        it('should swap half based on signature', async () => {
+        it('should swap half based on signature', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 2 DAI => 2 WETH
             // Swap:  1 DAI => 1 WETH
@@ -210,7 +210,7 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
         });
 
-        it('should floor maker amount', async () => {
+        it('should floor maker amount', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 2 DAI => 10 WETH
             // Swap:  9 WETH <= 1 DAI
@@ -239,7 +239,7 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(9));
         });
 
-        it('should fail on floor maker amount = 0', async () => {
+        it('should fail on floor maker amount = 0', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 2 DAI => 10 WETH
             // Swap:  4 WETH <= 0 DAI
@@ -260,7 +260,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(swap, 'SwapWithZeroAmount');
         });
 
-        it('should ceil taker amount', async () => {
+        it('should ceil taker amount', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 10 DAI => 2 WETH
             // Swap:  4 DAI => 1 WETH
@@ -289,7 +289,7 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
         });
 
-        it('ERC721Proxy should work', async () => {
+        it('ERC721Proxy should work', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const ERC721Proxy = await ethers.getContractFactory('ERC721Proxy');
@@ -329,9 +329,9 @@ describe('LimitOrderProtocol', function () {
         });
     });
 
-    describe('Permit', async () => {
-        describe('fillOrderToWithPermit', async () => {
-            const deployContractsAndInitPermit = async () => {
+    describe('Permit', function () {
+        describe('fillOrderToWithPermit', function () {
+            const deployContractsAndInitPermit = async function () {
                 const { dai, weth, swap, chainId } = await deploySwapTokens();
                 await initContracts(dai, weth, swap);
 
@@ -347,7 +347,7 @@ describe('LimitOrderProtocol', function () {
                 return { dai, weth, swap, chainId, order, signature };
             };
 
-            it('DAI => WETH', async () => {
+            it('DAI => WETH', async function () {
                 const { dai, weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
@@ -366,7 +366,7 @@ describe('LimitOrderProtocol', function () {
                 expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
             });
 
-            it('rejects reused signature', async () => {
+            it('rejects reused signature', async function () {
                 const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
@@ -376,7 +376,7 @@ describe('LimitOrderProtocol', function () {
                 await expect(requestFunc()).to.be.revertedWith('ERC20Permit: invalid signature');
             });
 
-            it('rejects other signature', async () => {
+            it('rejects other signature', async function () {
                 const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
                 const permit = await getPermit(addr.address, addr2, weth, '1', chainId, swap.address, '1');
@@ -386,7 +386,7 @@ describe('LimitOrderProtocol', function () {
                 ).to.be.revertedWith('ERC20Permit: invalid signature');
             });
 
-            it('rejects expired permit', async () => {
+            it('rejects expired permit', async function () {
                 const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
                 const deadline = (await time.latest()) - time.duration.weeks(1);
@@ -398,8 +398,8 @@ describe('LimitOrderProtocol', function () {
             });
         });
 
-        describe('maker permit', async () => {
-            const deployContractsAndInitPermit = async () => {
+        describe('maker permit', function () {
+            const deployContractsAndInitPermit = async function () {
                 const { dai, weth, swap, chainId } = await deploySwapTokens();
                 await initContracts(dai, weth, swap);
 
@@ -426,7 +426,7 @@ describe('LimitOrderProtocol', function () {
                 return { dai, weth, swap, order, signature, permit };
             };
 
-            it('maker permit works', async () => {
+            it('maker permit works', async function () {
                 const { dai, weth, swap, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
                 const makerDai = await dai.balanceOf(addr.address);
@@ -442,7 +442,7 @@ describe('LimitOrderProtocol', function () {
                 expect(await weth.balanceOf(addr1.address)).to.equal(takerWeth.add(1));
             });
 
-            it('skips permit with taker flag', async () => {
+            it('skips permit with taker flag', async function () {
                 const { dai, weth, swap, order, signature, permit } = await loadFixture(deployContractsAndInitPermit);
 
                 const makerDai = await dai.balanceOf(addr1.address);
@@ -461,14 +461,14 @@ describe('LimitOrderProtocol', function () {
         });
     });
 
-    describe('Amount Calculator', async () => {
-        const deployContractsAndInit = async () => {
+    describe('Amount Calculator', function () {
+        const deployContractsAndInit = async function () {
             const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
             return { dai, weth, swap, chainId };
         };
 
-        it('empty getTakingAmount should work on full fill', async () => {
+        it('empty getTakingAmount should work on full fill', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
@@ -494,7 +494,7 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(10));
         });
 
-        it('empty getTakingAmount should not work on partial fill', async () => {
+        it('empty getTakingAmount should not work on partial fill', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
@@ -513,7 +513,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(swap, 'WrongAmount');
         });
 
-        it('empty getMakingAmount should work on full fill', async () => {
+        it('empty getMakingAmount should work on full fill', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
@@ -539,7 +539,7 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(10));
         });
 
-        it('empty getMakingAmount should not work on partial fill', async () => {
+        it('empty getMakingAmount should not work on partial fill', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
@@ -559,14 +559,14 @@ describe('LimitOrderProtocol', function () {
         });
     });
 
-    describe('Order Cancelation', async () => {
-        const deployContractsAndInit = async () => {
+    describe('Order Cancelation', function () {
+        const deployContractsAndInit = async function () {
             const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
             return { dai, weth, swap, chainId };
         };
 
-        const orderCancelationInit = async () => {
+        const orderCancelationInit = async function () {
             const { dai, weth, swap, chainId } = await deployContractsAndInit();
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -579,7 +579,7 @@ describe('LimitOrderProtocol', function () {
         };
 
         // TODO: need same test for RFQ
-        it('should cancel own order', async () => {
+        it('should cancel own order', async function () {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
             await swap.connect(addr1).cancelOrder(order);
             const data = buildOrderData(chainId, swap.address, order);
@@ -587,14 +587,14 @@ describe('LimitOrderProtocol', function () {
             expect(await swap.remaining(orderHash)).to.equal('0');
         });
 
-        it('should not cancel foreign order', async () => {
+        it('should not cancel foreign order', async function () {
             const { swap, order } = await loadFixture(orderCancelationInit);
             await expect(
                 swap.cancelOrder(order),
             ).to.be.revertedWithCustomError(swap, 'AccessDenied');
         });
 
-        it('should not fill cancelled order', async () => {
+        it('should not fill cancelled order', async function () {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
             const signature = await signOrder(order, chainId, swap.address, addr1);
 
@@ -606,14 +606,14 @@ describe('LimitOrderProtocol', function () {
         });
     });
 
-    describe('Private Orders', async () => {
-        const deployContractsAndInit = async () => {
+    describe('Private Orders', function () {
+        const deployContractsAndInit = async function () {
             const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
             return { dai, weth, swap, chainId };
         };
 
-        it('should fill with correct taker', async () => {
+        it('should fill with correct taker', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
@@ -639,7 +639,7 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
         });
 
-        it('should not fill with incorrect taker', async () => {
+        it('should not fill with incorrect taker', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
@@ -658,14 +658,14 @@ describe('LimitOrderProtocol', function () {
         });
     });
 
-    describe('Predicate', async () => {
-        const deployContractsAndInit = async () => {
+    describe('Predicate', function () {
+        const deployContractsAndInit = async function () {
             const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
             return { dai, weth, swap, chainId };
         };
 
-        it('benchmark gas', async () => {
+        it('benchmark gas', async function () {
             const { dai, swap } = await loadFixture(deployContractsAndInit);
             const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff0000n]);
             const balanceCall = dai.interface.encodeFunctionData('balanceOf', [addr1.address]);
@@ -678,7 +678,7 @@ describe('LimitOrderProtocol', function () {
             await swap.connect(addr1).or(offsets, data);
         });
 
-        it('benchmark gas real case', async () => {
+        it('benchmark gas real case', async function () {
             const { swap } = await loadFixture(deployContractsAndInit);
             const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0x70000000n]);
             const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0]);
@@ -687,7 +687,7 @@ describe('LimitOrderProtocol', function () {
             await swap.connect(addr1).and(offsets, data);
         });
 
-        it('benchmark gas real case (optimized)', async () => {
+        it('benchmark gas real case (optimized)', async function () {
             const { swap } = await loadFixture(deployContractsAndInit);
             const timestamp = 0x70000000n;
             const nonce = 0n;
@@ -695,7 +695,7 @@ describe('LimitOrderProtocol', function () {
             await swap.connect(addr1).timestampBelowAndNonceEquals(BigInt(addr1.address) | (nonce << 160n) | (timestamp << 208n));
         });
 
-        it('`or` should pass', async () => {
+        it('`or` should pass', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const tsBelow = swap.interface.encodeFunctionData('timestampBelow', ['0xff0000']);
@@ -730,7 +730,7 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
         });
 
-        it('`or` should fail', async () => {
+        it('`or` should fail', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff0000n]);
@@ -756,7 +756,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
         });
 
-        it('`and` should pass', async () => {
+        it('`and` should pass', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff000000n]);
@@ -790,7 +790,7 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
         });
 
-        it('nonce + ts example', async () => {
+        it('nonce + ts example', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff000000n]);
@@ -824,13 +824,13 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
         });
 
-        it('advance nonce', async () => {
+        it('advance nonce', async function () {
             const { swap } = await loadFixture(deployContractsAndInit);
             await swap.increaseNonce();
             expect(await swap.nonce(addr.address)).to.equal('1');
         });
 
-        it('`and` should fail', async () => {
+        it('`and` should fail', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff0000n]);
@@ -857,14 +857,14 @@ describe('LimitOrderProtocol', function () {
         });
     });
 
-    describe('Expiration', async () => {
-        const deployContractsAndInit = async () => {
+    describe('Expiration', function () {
+        const deployContractsAndInit = async function () {
             const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
             return { dai, weth, swap, chainId };
         };
 
-        it('should fill when not expired', async () => {
+        it('should fill when not expired', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
@@ -894,7 +894,7 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
         });
 
-        it('should not fill when expired', async () => {
+        it('should not fill when expired', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
@@ -916,7 +916,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
         });
 
-        it('should fill partially if not enough coins (taker)', async () => {
+        it('should fill partially if not enough coins (taker)', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
@@ -941,7 +941,7 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(2));
         });
 
-        it('should fill partially if not enough coins (maker)', async () => {
+        it('should fill partially if not enough coins (maker)', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
@@ -967,14 +967,14 @@ describe('LimitOrderProtocol', function () {
         });
     });
 
-    describe('ETH fill', async () => {
-        const deployContractsAndInit = async () => {
+    describe('ETH fill', function () {
+        const deployContractsAndInit = async function () {
             const { dai, weth, swap, chainId, usdc } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
             return { dai, weth, swap, chainId, usdc };
         };
 
-        it('should fill with ETH', async () => {
+        it('should fill with ETH', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
@@ -1001,7 +1001,7 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth);
         });
 
-        it('should revert with takerAsset WETH and not enough msg.value', async () => {
+        it('should revert with takerAsset WETH and not enough msg.value', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
@@ -1020,7 +1020,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(swap, 'InvalidMsgValue');
         });
 
-        it('should pass with takerAsset WETH and correct msg.value', async () => {
+        it('should pass with takerAsset WETH and correct msg.value', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
@@ -1037,7 +1037,7 @@ describe('LimitOrderProtocol', function () {
             await swap.fillOrder(order, signature, '0x', 900, 0, 3, { value: 4 });
         });
 
-        it('should reverted with takerAsset non-WETH and msg.value greater than 0', async () => {
+        it('should reverted with takerAsset non-WETH and msg.value greater than 0', async function () {
             const { dai, swap, chainId, usdc } = await loadFixture(deployContractsAndInit);
             await usdc.mint(addr.address, '1000000');
             await usdc.approve(swap.address, '1000000');
@@ -1077,7 +1077,7 @@ describe('LimitOrderProtocol', function () {
             taker = addr.address;
         });
 
-        const deployContractsAndInit = async () => {
+        const deployContractsAndInit = async function () {
             const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
 
@@ -1218,7 +1218,7 @@ describe('LimitOrderProtocol', function () {
             }
         };
 
-        it('Fill range limit-order by maker asset', async () => {
+        it('Fill range limit-order by maker asset', async function () {
             const { dai, weth, swap, chainId, rangeAmountCalculator } = await loadFixture(deployContractsAndInit);
             await fillRangeLimitOrder(
                 { asset: weth, ether },
@@ -1234,7 +1234,7 @@ describe('LimitOrderProtocol', function () {
             );
         });
 
-        it('Fill range limit-order by maker asset when taker asset has different decimals', async () => {
+        it('Fill range limit-order by maker asset when taker asset has different decimals', async function () {
             const { usdc, weth, swap, chainId, rangeAmountCalculator } = await loadFixture(deployContractsAndInit);
             await fillRangeLimitOrder(
                 { asset: weth, ether },
@@ -1250,7 +1250,7 @@ describe('LimitOrderProtocol', function () {
             );
         });
 
-        it('Fill range limit-order by taker asset', async () => {
+        it('Fill range limit-order by taker asset', async function () {
             const { dai, weth, swap, rangeAmountCalculator, chainId } = await loadFixture(deployContractsAndInit);
             await fillRangeLimitOrder(
                 { asset: weth, ether },
@@ -1266,7 +1266,7 @@ describe('LimitOrderProtocol', function () {
             );
         });
 
-        it('Fill range limit-order by taker asset when taker asset has different decimals', async () => {
+        it('Fill range limit-order by taker asset when taker asset has different decimals', async function () {
             const { usdc, weth, swap, rangeAmountCalculator, chainId } = await loadFixture(deployContractsAndInit);
             await fillRangeLimitOrder(
                 { asset: weth, ether },

@@ -4,12 +4,12 @@ const { deployRangeAmountCalculator } = require('./helpers/fixtures');
 const { ether } = require('./helpers/utils');
 
 describe('RangeAmountCalculator', function () {
-    describe('Fill by maker asset', async () => {
+    describe('Fill by maker asset', function () {
         const priceStart = ether('3000');
         const priceEnd = ether('4000');
         const totalLiquidity = ether('10');
 
-        it('Revert with incorrect prices', async () => {
+        it('Revert with incorrect prices', async function () {
             const { rangeAmountCalculator } = await loadFixture(deployRangeAmountCalculator);
             const fillAmount = ether('10');
             const remainingMakerAmount = totalLiquidity;
@@ -19,7 +19,7 @@ describe('RangeAmountCalculator', function () {
                 .to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
         });
 
-        it('Fill limit-order completely', async () => {
+        it('Fill limit-order completely', async function () {
             const { rangeAmountCalculator } = await loadFixture(deployRangeAmountCalculator);
             const fillAmount = ether('10');
             const remainingMakerAmount = totalLiquidity;
@@ -27,7 +27,7 @@ describe('RangeAmountCalculator', function () {
                 .to.equal(ether('35000')); // 3500 * 10
         });
 
-        it('Fill limit-order by half', async () => {
+        it('Fill limit-order by half', async function () {
             const { rangeAmountCalculator } = await loadFixture(deployRangeAmountCalculator);
             const fillAmount = ether('5');
             const remainingMakerAmount = totalLiquidity;
@@ -35,7 +35,7 @@ describe('RangeAmountCalculator', function () {
                 .to.equal(ether('16250')); // 3250 * 5
         });
 
-        it('Fill limit-order 10 times', async () => {
+        it('Fill limit-order 10 times', async function () {
             const { rangeAmountCalculator } = await loadFixture(deployRangeAmountCalculator);
             let remainingMakerAmount = totalLiquidity;
 
@@ -51,12 +51,12 @@ describe('RangeAmountCalculator', function () {
         });
     });
 
-    describe('Fill by taker asset', async () => {
+    describe('Fill by taker asset', function () {
         const priceStart = ether('3000');
         const priceEnd = ether('4000');
         const totalLiquidity = ether('10');
 
-        it('Revert with incorrect prices', async () => {
+        it('Revert with incorrect prices', async function () {
             const { rangeAmountCalculator } = await loadFixture(deployRangeAmountCalculator);
             const fillAmount = ether('10');
             const remainingMakerAmount = totalLiquidity;
@@ -66,7 +66,7 @@ describe('RangeAmountCalculator', function () {
                 .to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
         });
 
-        it('Fill limit-order completely', async () => {
+        it('Fill limit-order completely', async function () {
             const { rangeAmountCalculator } = await loadFixture(deployRangeAmountCalculator);
             const fillAmount = ether('35000');
             const remainingMakerAmount = totalLiquidity;
@@ -74,7 +74,7 @@ describe('RangeAmountCalculator', function () {
                 .to.equal(ether('10')); // 35000 / 3500 = 10
         });
 
-        it('Fill limit-order by half', async () => {
+        it('Fill limit-order by half', async function () {
             const { rangeAmountCalculator } = await loadFixture(deployRangeAmountCalculator);
             const fillAmount = ether('16250');
             const remainingMakerAmount = totalLiquidity;
@@ -82,7 +82,7 @@ describe('RangeAmountCalculator', function () {
                 .to.equal(ether('5')); // 16250 / 3250 = 5
         });
 
-        it('Fill limit-order by several steps', async () => {
+        it('Fill limit-order by several steps', async function () {
             const { rangeAmountCalculator } = await loadFixture(deployRangeAmountCalculator);
             let remainingMakerAmount = totalLiquidity;
 

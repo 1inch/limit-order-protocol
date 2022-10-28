@@ -10,14 +10,14 @@ describe('SeriesNonceManager', function () {
         [addr] = await ethers.getSigners();
     });
 
-    it('Get nonce - should return zero by default', async () => {
+    it('Get nonce - should return zero by default', async function () {
         const { seriesNonceManager } = await loadFixture(deploySeriesNonceManager);
         const series = 0;
         const nonce = await seriesNonceManager.nonce(series, addr.address);
         expect(nonce).to.equal(0);
     });
 
-    it('Advance nonce - should add to nonce specified amount', async () => {
+    it('Advance nonce - should add to nonce specified amount', async function () {
         const { seriesNonceManager } = await loadFixture(deploySeriesNonceManager);
         const series = 0;
         await seriesNonceManager.advanceNonce(series, 2);
@@ -27,12 +27,12 @@ describe('SeriesNonceManager', function () {
         expect(nonceSeries1).to.equal(0);
     });
 
-    it('Advance nonce - should not advance by 256', async () => {
+    it('Advance nonce - should not advance by 256', async function () {
         const { seriesNonceManager } = await loadFixture(deploySeriesNonceManager);
         await expect(seriesNonceManager.advanceNonce(0, 256)).to.be.revertedWithCustomError(seriesNonceManager, 'AdvanceNonceFailed');
     });
 
-    it('Increase nonce - should add to nonce only 1', async () => {
+    it('Increase nonce - should add to nonce only 1', async function () {
         const { seriesNonceManager } = await loadFixture(deploySeriesNonceManager);
         const series = 0;
         await seriesNonceManager.increaseNonce(series);
@@ -40,14 +40,14 @@ describe('SeriesNonceManager', function () {
         expect(nonce).to.equal(1);
     });
 
-    it('Nonce equals - should return false when nonce does not match', async () => {
+    it('Nonce equals - should return false when nonce does not match', async function () {
         const { seriesNonceManager } = await loadFixture(deploySeriesNonceManager);
         const series = 4;
         const isEquals = await seriesNonceManager.nonceEquals(series, addr.address, 1);
         expect(isEquals).to.equal(false);
     });
 
-    it('Nonce equals - should return true when nonce matches', async () => {
+    it('Nonce equals - should return true when nonce matches', async function () {
         const { seriesNonceManager } = await loadFixture(deploySeriesNonceManager);
         const series = 4;
         await seriesNonceManager.increaseNonce(series);

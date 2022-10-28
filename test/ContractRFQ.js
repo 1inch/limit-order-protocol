@@ -13,7 +13,7 @@ describe('ContractRFQ', function () {
         [addr] = await ethers.getSigners();
     });
 
-    const deployAndInit = async () => {
+    async function deployAndInit () {
         const { swap } = await deploySwap();
         const { usdc } = await deployUSDC();
         const { usdt } = await deployUSDT();
@@ -33,7 +33,7 @@ describe('ContractRFQ', function () {
         return { usdc, usdt, swap, rfq };
     };
 
-    it('should fill contract-signed RFQ order', async () => {
+    it('should fill contract-signed RFQ order', async function () {
         const { usdc, usdt, swap, rfq } = await loadFixture(deployAndInit);
 
         const makerUsdc = await usdc.balanceOf(rfq.address);

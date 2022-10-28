@@ -54,7 +54,7 @@ describe('ChainLinkExample', function () {
         return { dai, weth, inch, swap, chainId, chainlink, daiOracle, inchOracle };
     };
 
-    it('eth -> dai chainlink+eps order', async () => {
+    it('eth -> dai chainlink+eps order', async function () {
         const { dai, weth, swap, chainId, chainlink, daiOracle } = await loadFixture(deployContractsAndInit);
 
         // chainlink rate is 1 eth = 4000 dai
@@ -87,7 +87,7 @@ describe('ChainLinkExample', function () {
         expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.add(ether('1')));
     });
 
-    it('dai -> 1inch stop loss order', async () => {
+    it('dai -> 1inch stop loss order', async function () {
         const { dai, inch, swap, chainId, chainlink, daiOracle, inchOracle } = await loadFixture(deployContractsAndInit);
 
         const makingAmount = ether('100');
@@ -125,7 +125,7 @@ describe('ChainLinkExample', function () {
         expect(await inch.balanceOf(addr.address)).to.equal(takerInch.add(makingAmount));
     });
 
-    it('dai -> 1inch stop loss order predicate is invalid', async () => {
+    it('dai -> 1inch stop loss order predicate is invalid', async function () {
         const { dai, inch, swap, chainId, chainlink, daiOracle, inchOracle } = await loadFixture(deployContractsAndInit);
 
         const makingAmount = ether('100');
@@ -153,7 +153,7 @@ describe('ChainLinkExample', function () {
         ).to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
     });
 
-    it('eth -> dai stop loss order', async () => {
+    it('eth -> dai stop loss order', async function () {
         const { dai, weth, swap, chainId, daiOracle } = await loadFixture(deployContractsAndInit);
 
         const makingAmount = ether('1');
