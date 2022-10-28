@@ -44,9 +44,9 @@ function ether (num) {
 
 function setn (num, bit, value) {
     if (value) {
-        return BigInt(num) | (BigInt(1) << BigInt(bit));
+        return BigInt(num) | (1n << BigInt(bit));
     } else {
-        return BigInt(num) & (~(BigInt(1) << BigInt(bit)));
+        return BigInt(num) & (~(1n << BigInt(bit)));
     }
 }
 

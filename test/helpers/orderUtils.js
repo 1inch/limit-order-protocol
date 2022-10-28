@@ -86,7 +86,7 @@ function buildOrder (
     const offsets = allInteractions
         .map(a => a.length / 2 - 1)
         .map(cumulativeSum)
-        .reduce((acc, a, i) => acc + (BigInt(a) << BigInt(32 * i)), BigInt(0));
+        .reduce((acc, a, i) => acc + (BigInt(a) << BigInt(32 * i)), 0n);
 
     return {
         salt: '1',

@@ -29,8 +29,8 @@ describe('Dutch auction', function () {
         const dutchAuctionCalculator = await DutchAuctionCalculator.deploy();
         await dutchAuctionCalculator.deployed();
 
-        const ts = await time.latest();
-        const startEndTs = (BigInt(ts) << BigInt(128)) | (BigInt(ts) + BigInt(86400));
+        const ts = BigInt(await time.latest());
+        const startEndTs = (ts << 128n) | (ts + 86400n);
         const order = buildOrder(
             {
                 makerAsset: dai.address,
@@ -60,7 +60,7 @@ describe('Dutch auction', function () {
     it('swap with makingAmount 50% time passed', async () => {
         const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
-        await time.increaseTo(BigInt(ts) + BigInt(43200)); // 50% auction time
+        await time.increaseTo(ts + 43200n); // 50% auction time
         await swap.connect(addr1).fillOrder(order, signature, '0x', ether('100'), '0', ether('0.08'));
 
         expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
@@ -72,7 +72,7 @@ describe('Dutch auction', function () {
     it('swap with takingAmount 50% time passed', async () => {
         const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
-        await time.increaseTo(BigInt(ts) + BigInt(43200)); // 50% auction time
+        await time.increaseTo(ts + 43200n); // 50% auction time
         await swap.connect(addr1).fillOrder(order, signature, '0x', '0', ether('0.075'), ether('100'));
 
         expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
@@ -106,7 +106,7 @@ describe('Dutch auction', function () {
     it('swap with makingAmount 100% time passed', async () => {
         const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
-        await time.increaseTo(BigInt(ts) + BigInt(86500)); // >100% auction time
+        await time.increaseTo(ts + 86500n); // >100% auction time
         await swap.connect(addr1).fillOrder(order, signature, '0x', ether('100'), '0', ether('0.05'));
 
         expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
@@ -118,7 +118,7 @@ describe('Dutch auction', function () {
     it('swap with takingAmount 100% time passed', async () => {
         const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
-        await time.increaseTo(BigInt(ts) + BigInt(86500)); // >100% auction time
+        await time.increaseTo(ts + 86500n); // >100% auction time
         await swap.connect(addr1).fillOrder(order, signature, '0x', '0', ether('0.05'), ether('100'));
 
         expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));

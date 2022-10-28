@@ -160,7 +160,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const { swap } = await loadFixture(initContracts);
             await swap.functions['cancelOrderRFQ(uint256)']('1023');
             const invalidator = await swap.invalidatorForOrderRFQ(addr.address, '3');
-            expect(invalidator).to.equal(BigInt('1') << BigInt(255));
+            expect(invalidator).to.equal(1n << 255n);
         });
 
         it('should not fill cancelled order', async () => {
