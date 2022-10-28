@@ -1,50 +1,58 @@
-const { expect, ether, constants } = require('@1inch/solidity-utils');
+const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
+const { expect } = require('@1inch/solidity-utils');
 const { ABIOrderRFQ, buildOrderRFQ, makingAmount } = require('./helpers/orderUtils');
-const { addr0Wallet } = require('./helpers/utils');
+const { ethers } = require('hardhat');
+const { ether } = require('./helpers/utils');
+const { deploySwap, deployUSDC, deployUSDT } = require('./helpers/fixtures');
 
-const TokenMock = artifacts.require('TokenMock');
-const ContractRFQ = artifacts.require('ContractRFQ');
-const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
+describe('ContractRFQ', function () {
+    const abiCoder = ethers.utils.defaultAbiCoder;
+    let addr;
 
-describe('ContractRFQ', async () => {
-    const addr0 = addr0Wallet.getAddressString();
-
-    before(async () => {
-        this.chainId = await web3.eth.getChainId();
+    before(async function () {
+        [addr] = await ethers.getSigners();
     });
 
-    beforeEach(async () => {
-        this.swap = await LimitOrderProtocol.new(constants.ZERO_ADDRESS);
-        this.usdc = await TokenMock.new('USDC', 'USDC');
-        this.usdt = await TokenMock.new('USDT', 'USDT');
-        this.rfq = await ContractRFQ.new(this.swap.address, this.usdc.address, this.usdt.address, ether('0.9993'), 'USDT+USDC', 'USDX');
+    async function deployAndInit () {
+        const { swap } = await deploySwap();
+        const { usdc } = await deployUSDC();
+        const { usdt } = await deployUSDT();
 
-        await this.usdc.mint(addr0, '1000000000');
-        await this.usdt.mint(addr0, '1000000000');
-        await this.usdc.mint(this.rfq.address, '1000000000');
-        await this.usdt.mint(this.rfq.address, '1000000000');
+        const ContractRFQ = await ethers.getContractFactory('ContractRFQ');
+        const rfq = await ContractRFQ.deploy(swap.address, usdc.address, usdt.address, ether('0.9993'), 'USDT+USDC', 'USDX');
+        await rfq.deployed();
 
-        await this.usdc.approve(this.swap.address, '1000000000');
-        await this.usdt.approve(this.swap.address, '1000000000');
-    });
+        await usdc.mint(addr.address, '1000000000');
+        await usdt.mint(addr.address, '1000000000');
+        await usdc.mint(rfq.address, '1000000000');
+        await usdt.mint(rfq.address, '1000000000');
 
-    it('should fill contract-signed RFQ order', async () => {
-        const makerUsdc = await this.usdc.balanceOf(this.rfq.address);
-        const takerUsdc = await this.usdc.balanceOf(addr0);
-        const makerUsdt = await this.usdt.balanceOf(this.rfq.address);
-        const takerUsdt = await this.usdt.balanceOf(addr0);
+        await usdc.approve(swap.address, '1000000000');
+        await usdt.approve(swap.address, '1000000000');
 
-        const order = buildOrderRFQ('1', this.usdc.address, this.usdt.address, 1000000000, 1000700000, this.rfq.address);
-        const signature = web3.eth.abi.encodeParameter(ABIOrderRFQ, order);
-        await this.swap.fillOrderRFQ(order, signature, makingAmount(1000000));
+        return { usdc, usdt, swap, rfq };
+    };
 
-        expect(await this.usdc.balanceOf(this.rfq.address)).to.be.bignumber.equal(makerUsdc.subn(1000000));
-        expect(await this.usdc.balanceOf(addr0)).to.be.bignumber.equal(takerUsdc.addn(1000000));
-        expect(await this.usdt.balanceOf(this.rfq.address)).to.be.bignumber.equal(makerUsdt.addn(1000700));
-        expect(await this.usdt.balanceOf(addr0)).to.be.bignumber.equal(takerUsdt.subn(1000700));
+    it('should fill contract-signed RFQ order', async function () {
+        const { usdc, usdt, swap, rfq } = await loadFixture(deployAndInit);
 
-        const order2 = buildOrderRFQ('2', this.usdc.address, this.usdt.address, 1000000000, 1000700000, this.rfq.address);
-        const signature2 = web3.eth.abi.encodeParameter(ABIOrderRFQ, order2);
-        await this.swap.fillOrderRFQ(order2, signature2, makingAmount(1000000));
+        const makerUsdc = await usdc.balanceOf(rfq.address);
+        const takerUsdc = await usdc.balanceOf(addr.address);
+        const makerUsdt = await usdt.balanceOf(rfq.address);
+        const takerUsdt = await usdt.balanceOf(addr.address);
+
+        const order = buildOrderRFQ('1', usdc.address, usdt.address, 1000000000, 1000700000, rfq.address);
+
+        const signature = abiCoder.encode([ABIOrderRFQ], [order]);
+        await swap.fillOrderRFQ(order, signature, makingAmount(1000000));
+
+        expect(await usdc.balanceOf(rfq.address)).to.equal(makerUsdc.sub(1000000));
+        expect(await usdc.balanceOf(addr.address)).to.equal(takerUsdc.add(1000000));
+        expect(await usdt.balanceOf(rfq.address)).to.equal(makerUsdt.add(1000700));
+        expect(await usdt.balanceOf(addr.address)).to.equal(takerUsdt.sub(1000700));
+
+        const order2 = buildOrderRFQ('2', usdc.address, usdt.address, 1000000000, 1000700000, rfq.address);
+        const signature2 = abiCoder.encode([ABIOrderRFQ], [order2]);
+        await swap.fillOrderRFQ(order2, signature2, makingAmount(1000000));
     });
 });

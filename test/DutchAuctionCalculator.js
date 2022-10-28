@@ -1,119 +1,129 @@
-const { expect, trim0x, ether, time, toBN, assertRoughlyEqualValues } = require('@1inch/solidity-utils');
-const { addr0Wallet, addr1Wallet, cutLastArg } = require('./helpers/utils');
-
-const TokenMock = artifacts.require('TokenMock');
-const WrappedTokenMock = artifacts.require('WrappedTokenMock');
-const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
-const DutchAuctionCalculator = artifacts.require('DutchAuctionCalculator');
-
+const { expect, trim0x, time, assertRoughlyEqualValues } = require('@1inch/solidity-utils');
+const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
+const { cutLastArg, ether } = require('./helpers/utils');
+const { deploySwapTokens } = require('./helpers/fixtures');
 const { buildOrder, signOrder } = require('./helpers/orderUtils');
+const { ethers } = require('hardhat');
 
-describe('Dutch auction', async () => {
-    const [addr0, addr1] = [addr0Wallet.getAddressString(), addr1Wallet.getAddressString()];
+describe('Dutch auction', function () {
+    let addr, addr1;
 
-    before(async () => {
-        this.chainId = await web3.eth.getChainId();
-        this.DutchAuctionCalculator = await DutchAuctionCalculator.new();
+    before(async function () {
+        [addr, addr1] = await ethers.getSigners();
     });
 
-    beforeEach(async () => {
-        this.dai = await TokenMock.new('DAI', 'DAI');
-        this.weth = await WrappedTokenMock.new('WETH', 'WETH');
+    async function deployAndBuildOrder () {
+        const { dai, weth, swap, chainId } = await deploySwapTokens();
 
-        this.swap = await LimitOrderProtocol.new(this.weth.address);
+        await dai.mint(addr.address, ether('100'));
+        await dai.mint(addr1.address, ether('100'));
+        await weth.deposit({ value: ether('1') });
+        await weth.connect(addr1).deposit({ value: ether('1') });
 
-        await this.dai.mint(addr0, ether('100'));
-        await this.dai.mint(addr1, ether('100'));
-        await this.weth.deposit({ from: addr0, value: ether('1') });
-        await this.weth.deposit({ from: addr1, value: ether('1') });
+        await dai.approve(swap.address, ether('100'));
+        await dai.connect(addr1).approve(swap.address, ether('100'));
+        await weth.approve(swap.address, ether('1'));
+        await weth.connect(addr1).approve(swap.address, ether('1'));
 
-        await this.dai.approve(this.swap.address, ether('100'));
-        await this.dai.approve(this.swap.address, ether('100'), { from: addr1 });
-        await this.weth.approve(this.swap.address, ether('1'));
-        await this.weth.approve(this.swap.address, ether('1'), { from: addr1 });
+        const DutchAuctionCalculator = await ethers.getContractFactory('DutchAuctionCalculator');
+        const dutchAuctionCalculator = await DutchAuctionCalculator.deploy();
+        await dutchAuctionCalculator.deployed();
 
-        this.ts = await time.latest();
-        const startEndTs = toBN(this.ts).shln(128).or(toBN(this.ts).addn(86400));
-        this.order = buildOrder(
+        const ts = BigInt(await time.latest());
+        const startEndTs = (ts << 128n) | (ts + 86400n);
+        const order = buildOrder(
             {
-                makerAsset: this.dai.address,
-                takerAsset: this.weth.address,
+                makerAsset: dai.address,
+                takerAsset: weth.address,
                 makingAmount: ether('100'),
                 takingAmount: ether('0.1'),
-                from: addr0,
+                from: addr.address,
             },
             {
-                getMakingAmount: this.DutchAuctionCalculator.address + cutLastArg(trim0x(this.DutchAuctionCalculator.contract.methods.getMakingAmount(
-                    startEndTs, ether('0.1'), ether('0.05'), ether('100'), 0,
-                ).encodeABI()), 64),
-                getTakingAmount: this.DutchAuctionCalculator.address + cutLastArg(trim0x(this.DutchAuctionCalculator.contract.methods.getTakingAmount(
-                    startEndTs, ether('0.1'), ether('0.05'), ether('100'), 0,
-                ).encodeABI()), 64),
+                getMakingAmount: dutchAuctionCalculator.address + cutLastArg(trim0x(dutchAuctionCalculator.interface.encodeFunctionData('getMakingAmount',
+                    [startEndTs.toString(), ether('0.1'), ether('0.05'), ether('100'), 0],
+                )), 64),
+                getTakingAmount: dutchAuctionCalculator.address + cutLastArg(trim0x(dutchAuctionCalculator.interface.encodeFunctionData('getTakingAmount',
+                    [startEndTs.toString(), ether('0.1'), ether('0.05'), ether('100'), 0],
+                )), 64),
             },
         );
-        this.signature = signOrder(this.order, this.chainId, this.swap.address, addr0Wallet.getPrivateKey());
+        const signature = await signOrder(order, chainId, swap.address, addr);
 
-        this.makerDaiBefore = await this.dai.balanceOf(addr0);
-        this.takerDaiBefore = await this.dai.balanceOf(addr1);
-        this.makerWethBefore = await this.weth.balanceOf(addr0);
-        this.takerWethBefore = await this.weth.balanceOf(addr1);
+        const makerDaiBefore = await dai.balanceOf(addr.address);
+        const takerDaiBefore = await dai.balanceOf(addr1.address);
+        const makerWethBefore = await weth.balanceOf(addr.address);
+        const takerWethBefore = await weth.balanceOf(addr1.address);
+        return { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore };
+    };
+
+    it('swap with makingAmount 50% time passed', async function () {
+        const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
+
+        await time.increaseTo(ts + 43200n); // 50% auction time
+        await swap.connect(addr1).fillOrder(order, signature, '0x', ether('100'), '0', ether('0.08'));
+
+        expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
+        expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));
+        assertRoughlyEqualValues(await weth.balanceOf(addr.address), makerWethBefore.add(ether('0.075')), 1e-6);
+        assertRoughlyEqualValues(await weth.balanceOf(addr1.address), takerWethBefore.sub(ether('0.075')), 1e-6);
     });
 
-    it('swap with makingAmount 50% time passed', async () => {
-        await time.increaseTo(toBN(this.ts).addn(43200)); // 50% auction time
-        await this.swap.fillOrder(this.order, this.signature, '0x', ether('100'), '0', ether('0.08'), { from: addr1 });
+    it('swap with takingAmount 50% time passed', async function () {
+        const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
-        expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(this.makerDaiBefore.sub(ether('100')));
-        expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(this.takerDaiBefore.add(ether('100')));
-        assertRoughlyEqualValues(await this.weth.balanceOf(addr0), this.makerWethBefore.add(ether('0.075')), 1e-6);
-        assertRoughlyEqualValues(await this.weth.balanceOf(addr1), this.takerWethBefore.sub(ether('0.075')), 1e-6);
+        await time.increaseTo(ts + 43200n); // 50% auction time
+        await swap.connect(addr1).fillOrder(order, signature, '0x', '0', ether('0.075'), ether('100'));
+
+        expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
+        expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));
+        assertRoughlyEqualValues(await weth.balanceOf(addr.address), makerWethBefore.add(ether('0.075')), 1e-6);
+        assertRoughlyEqualValues(await weth.balanceOf(addr1.address), takerWethBefore.sub(ether('0.075')), 1e-6);
     });
 
-    it('swap with takingAmount 50% time passed', async () => {
-        await time.increaseTo(toBN(this.ts).addn(43200)); // 50% auction time
-        await this.swap.fillOrder(this.order, this.signature, '0x', '0', ether('0.075'), ether('100'), { from: addr1 });
+    it('swap with makingAmount 0% time passed', async function () {
+        const { dai, weth, swap, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
-        expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(this.makerDaiBefore.sub(ether('100')));
-        expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(this.takerDaiBefore.add(ether('100')));
-        assertRoughlyEqualValues(await this.weth.balanceOf(addr0), this.makerWethBefore.add(ether('0.075')), 1e-6);
-        assertRoughlyEqualValues(await this.weth.balanceOf(addr1), this.takerWethBefore.sub(ether('0.075')), 1e-6);
+        await swap.connect(addr1).fillOrder(order, signature, '0x', ether('100'), '0', ether('0.1'));
+
+        expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
+        expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));
+        assertRoughlyEqualValues(await weth.balanceOf(addr.address), makerWethBefore.add(ether('0.1')), 1e-6);
+        assertRoughlyEqualValues(await weth.balanceOf(addr1.address), takerWethBefore.sub(ether('0.1')), 1e-6);
     });
 
-    it('swap with makingAmount 0% time passed', async () => {
-        await this.swap.fillOrder(this.order, this.signature, '0x', ether('100'), '0', ether('0.1'), { from: addr1 });
+    it('swap with takingAmount 0% time passed', async function () {
+        const { dai, weth, swap, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
-        expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(this.makerDaiBefore.sub(ether('100')));
-        expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(this.takerDaiBefore.add(ether('100')));
-        assertRoughlyEqualValues(await this.weth.balanceOf(addr0), this.makerWethBefore.add(ether('0.1')), 1e-6);
-        assertRoughlyEqualValues(await this.weth.balanceOf(addr1), this.takerWethBefore.sub(ether('0.1')), 1e-6);
+        await swap.connect(addr1).fillOrder(order, signature, '0x', '0', ether('0.1'), ether('100'));
+
+        expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
+        expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));
+        assertRoughlyEqualValues(await weth.balanceOf(addr.address), makerWethBefore.add(ether('0.1')), 1e-6);
+        assertRoughlyEqualValues(await weth.balanceOf(addr1.address), takerWethBefore.sub(ether('0.1')), 1e-6);
     });
 
-    it('swap with takingAmount 0% time passed', async () => {
-        await this.swap.fillOrder(this.order, this.signature, '0x', '0', ether('0.1'), ether('100'), { from: addr1 });
+    it('swap with makingAmount 100% time passed', async function () {
+        const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
-        expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(this.makerDaiBefore.sub(ether('100')));
-        expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(this.takerDaiBefore.add(ether('100')));
-        assertRoughlyEqualValues(await this.weth.balanceOf(addr0), this.makerWethBefore.add(ether('0.1')), 1e-6);
-        assertRoughlyEqualValues(await this.weth.balanceOf(addr1), this.takerWethBefore.sub(ether('0.1')), 1e-6);
+        await time.increaseTo(ts + 86500n); // >100% auction time
+        await swap.connect(addr1).fillOrder(order, signature, '0x', ether('100'), '0', ether('0.05'));
+
+        expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
+        expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));
+        assertRoughlyEqualValues(await weth.balanceOf(addr.address), makerWethBefore.add(ether('0.05')), 1e-6);
+        assertRoughlyEqualValues(await weth.balanceOf(addr1.address), takerWethBefore.sub(ether('0.05')), 1e-6);
     });
 
-    it('swap with makingAmount 100% time passed', async () => {
-        await time.increaseTo(toBN(this.ts).addn(86500)); // >100% auction time
-        await this.swap.fillOrder(this.order, this.signature, '0x', ether('100'), '0', ether('0.05'), { from: addr1 });
+    it('swap with takingAmount 100% time passed', async function () {
+        const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
-        expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(this.makerDaiBefore.sub(ether('100')));
-        expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(this.takerDaiBefore.add(ether('100')));
-        assertRoughlyEqualValues(await this.weth.balanceOf(addr0), this.makerWethBefore.add(ether('0.05')), 1e-6);
-        assertRoughlyEqualValues(await this.weth.balanceOf(addr1), this.takerWethBefore.sub(ether('0.05')), 1e-6);
-    });
+        await time.increaseTo(ts + 86500n); // >100% auction time
+        await swap.connect(addr1).fillOrder(order, signature, '0x', '0', ether('0.05'), ether('100'));
 
-    it('swap with takingAmount 100% time passed', async () => {
-        await time.increaseTo(toBN(this.ts).addn(86500)); // >100% auction time
-        await this.swap.fillOrder(this.order, this.signature, '0x', '0', ether('0.05'), ether('100'), { from: addr1 });
-
-        expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(this.makerDaiBefore.sub(ether('100')));
-        expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(this.takerDaiBefore.add(ether('100')));
-        assertRoughlyEqualValues(await this.weth.balanceOf(addr0), this.makerWethBefore.add(ether('0.05')), 1e-6);
-        assertRoughlyEqualValues(await this.weth.balanceOf(addr1), this.takerWethBefore.sub(ether('0.05')), 1e-6);
+        expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
+        expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));
+        assertRoughlyEqualValues(await weth.balanceOf(addr.address), makerWethBefore.add(ether('0.05')), 1e-6);
+        assertRoughlyEqualValues(await weth.balanceOf(addr1.address), takerWethBefore.sub(ether('0.05')), 1e-6);
     });
 });

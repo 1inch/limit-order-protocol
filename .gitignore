@@ -4,7 +4,10 @@ node_modules
 coverage
 hardhat-dependency-compiler
 coverage.json
+typechain-types
+dist
 build
+yarn-error.log
 .coverage_contracts
 .coverage_artifacts
 .idea

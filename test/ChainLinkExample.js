@@ -1,185 +1,194 @@
-const { expect, ether, toBN, trim0x } = require('@1inch/solidity-utils');
-const { web3 } = require('hardhat');
+const { expect, trim0x } = require('@1inch/solidity-utils');
+const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { buildOrder, signOrder } = require('./helpers/orderUtils');
-const { cutLastArg, addr0Wallet, addr1Wallet } = require('./helpers/utils');
+const { cutLastArg, ether, setn } = require('./helpers/utils');
+const { deploySwapTokens } = require('./helpers/fixtures');
+const { ethers } = require('hardhat');
 
-const TokenMock = artifacts.require('TokenMock');
-const LimitOrderProtocol = artifacts.require('LimitOrderProtocol');
-const AggregatorMock = artifacts.require('AggregatorMock');
-const ChainlinkCalculator = artifacts.require('ChainlinkCalculator');
+describe('ChainLinkExample', function () {
+    let addr, addr1;
 
-describe('ChainLinkExample', async () => {
-    const [addr0, addr1] = [addr0Wallet.getAddressString(), addr1Wallet.getAddressString()];
+    before(async function () {
+        [addr, addr1] = await ethers.getSigners();
+    });
 
     function buildInverseWithSpread (inverse, spread) {
-        return toBN(spread).setn(255, inverse).toString();
+        return setn(spread, 255, inverse).toString();
     }
 
     function buildSinglePriceGetter (chainlink, oracle, inverse, spread, amount = '0') {
-        return chainlink.address + trim0x(chainlink.contract.methods.singlePrice(oracle.address, buildInverseWithSpread(inverse, spread), amount).encodeABI());
+        return chainlink.address + trim0x(chainlink.interface.encodeFunctionData('singlePrice', [oracle.address, buildInverseWithSpread(inverse, spread), amount]));
     }
 
     function buildDoublePriceGetter (chainlink, oracle1, oracle2, spread, amount = '0') {
-        return chainlink.address + trim0x(chainlink.contract.methods.doublePrice(oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount).encodeABI());
+        return chainlink.address + trim0x(chainlink.interface.encodeFunctionData('doublePrice', [oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount]));
     }
 
-    before(async () => {
-        this.chainId = await web3.eth.getChainId();
-    });
+    async function deployContractsAndInit () {
+        const { dai, weth, inch, swap, chainId } = await deploySwapTokens();
 
-    beforeEach(async () => {
-        this.dai = await TokenMock.new('DAI', 'DAI');
-        this.weth = await TokenMock.new('WETH', 'WETH');
-        this.inch = await TokenMock.new('1INCH', '1INCH');
+        await dai.mint(addr.address, ether('1000000'));
+        await weth.mint(addr.address, ether('1000000'));
+        await inch.mint(addr.address, ether('1000000'));
+        await dai.mint(addr1.address, ether('1000000'));
+        await weth.mint(addr1.address, ether('1000000'));
+        await inch.mint(addr1.address, ether('1000000'));
 
-        this.swap = await LimitOrderProtocol.new(this.weth.address);
-        this.chainlink = await ChainlinkCalculator.new();
+        await dai.approve(swap.address, ether('1000000'));
+        await weth.approve(swap.address, ether('1000000'));
+        await inch.approve(swap.address, ether('1000000'));
+        await dai.connect(addr1).approve(swap.address, ether('1000000'));
+        await weth.connect(addr1).approve(swap.address, ether('1000000'));
+        await inch.connect(addr1).approve(swap.address, ether('1000000'));
 
-        await this.dai.mint(addr1, ether('1000000'));
-        await this.weth.mint(addr1, ether('1000000'));
-        await this.inch.mint(addr1, ether('1000000'));
-        await this.dai.mint(addr0, ether('1000000'));
-        await this.weth.mint(addr0, ether('1000000'));
-        await this.inch.mint(addr0, ether('1000000'));
+        const ChainlinkCalculator = await ethers.getContractFactory('ChainlinkCalculator');
+        const chainlink = await ChainlinkCalculator.deploy();
+        await chainlink.deployed();
 
-        await this.dai.approve(this.swap.address, ether('1000000'));
-        await this.weth.approve(this.swap.address, ether('1000000'));
-        await this.inch.approve(this.swap.address, ether('1000000'));
-        await this.dai.approve(this.swap.address, ether('1000000'), { from: addr1 });
-        await this.weth.approve(this.swap.address, ether('1000000'), { from: addr1 });
-        await this.inch.approve(this.swap.address, ether('1000000'), { from: addr1 });
+        const AggregatorMock = await ethers.getContractFactory('AggregatorMock');
+        const daiOracle = await AggregatorMock.deploy(ether('0.00025'));
+        await daiOracle.deployed();
+        const inchOracle = await AggregatorMock.deploy('1577615249227853');
+        await inchOracle.deployed();
 
-        this.daiOracle = await AggregatorMock.new(ether('0.00025'));
-        this.inchOracle = await AggregatorMock.new('1577615249227853');
-    });
+        return { dai, weth, inch, swap, chainId, chainlink, daiOracle, inchOracle };
+    };
 
-    it('eth -> dai chainlink+eps order', async () => {
+    it('eth -> dai chainlink+eps order', async function () {
+        const { dai, weth, swap, chainId, chainlink, daiOracle } = await loadFixture(deployContractsAndInit);
+
         // chainlink rate is 1 eth = 4000 dai
         const order = buildOrder(
             {
-                makerAsset: this.weth.address,
-                takerAsset: this.dai.address,
+                makerAsset: weth.address,
+                takerAsset: dai.address,
                 makingAmount: ether('1').toString(),
                 takingAmount: ether('4000').toString(),
-                from: addr1,
+                from: addr1.address,
             },
             {
-                getMakingAmount: cutLastArg(buildSinglePriceGetter(this.chainlink, this.daiOracle, false, '990000000')), // maker offset is 0.99
-                getTakingAmount: cutLastArg(buildSinglePriceGetter(this.chainlink, this.daiOracle, true, '1010000000')), // taker offset is 1.01
+                getMakingAmount: cutLastArg(buildSinglePriceGetter(chainlink, daiOracle, false, '990000000')), // maker offset is 0.99
+                getTakingAmount: cutLastArg(buildSinglePriceGetter(chainlink, daiOracle, true, '1010000000')), // taker offset is 1.01
             },
         );
 
-        const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
+        const signature = await signOrder(order, chainId, swap.address, addr1);
 
-        const makerDai = await this.dai.balanceOf(addr1);
-        const takerDai = await this.dai.balanceOf(addr0);
-        const makerWeth = await this.weth.balanceOf(addr1);
-        const takerWeth = await this.weth.balanceOf(addr0);
+        const makerDai = await dai.balanceOf(addr1.address);
+        const takerDai = await dai.balanceOf(addr.address);
+        const makerWeth = await weth.balanceOf(addr1.address);
+        const takerWeth = await weth.balanceOf(addr.address);
 
-        await this.swap.fillOrder(order, signature, '0x', ether('1'), 0, ether('4040.01')); // taking threshold = 4000 + 1% + eps
+        await swap.fillOrder(order, signature, '0x', ether('1'), 0, ether('4040.01')); // taking threshold = 4000 + 1% + eps
 
-        expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.add(ether('4040')));
-        expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.sub(ether('4040')));
-        expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth.sub(ether('1')));
-        expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.add(ether('1')));
+        expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(ether('4040')));
+        expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(ether('4040')));
+        expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.sub(ether('1')));
+        expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.add(ether('1')));
     });
 
-    it('dai -> 1inch stop loss order', async () => {
+    it('dai -> 1inch stop loss order', async function () {
+        const { dai, inch, swap, chainId, chainlink, daiOracle, inchOracle } = await loadFixture(deployContractsAndInit);
+
         const makingAmount = ether('100');
         const takingAmount = ether('631');
-        const priceCall = this.swap.contract.methods.arbitraryStaticCall(
-            this.chainlink.address,
-            this.chainlink.contract.methods.doublePrice(this.inchOracle.address, this.daiOracle.address, buildInverseWithSpread(false, '1000000000'), '0', ether('1')).encodeABI(),
-        ).encodeABI();
+        const priceCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
+            chainlink.address,
+            chainlink.interface.encodeFunctionData('doublePrice', [inchOracle.address, daiOracle.address, buildInverseWithSpread(false, '1000000000'), '0', ether('1')]),
+        ]);
 
         const order = buildOrder(
             {
-                makerAsset: this.inch.address,
-                takerAsset: this.dai.address,
+                makerAsset: inch.address,
+                takerAsset: dai.address,
                 makingAmount,
                 takingAmount,
-                from: addr1,
+                from: addr1.address,
             }, {
                 getMakingAmount: '0x',
                 getTakingAmount: '0x',
-                predicate: this.swap.contract.methods.lt(ether('6.32'), priceCall).encodeABI(),
+                predicate: swap.interface.encodeFunctionData('lt', [ether('6.32'), priceCall]),
             },
         );
-        const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
+        const signature = await signOrder(order, chainId, swap.address, addr1);
 
-        const makerDai = await this.dai.balanceOf(addr1);
-        const takerDai = await this.dai.balanceOf(addr0);
-        const makerInch = await this.inch.balanceOf(addr1);
-        const takerInch = await this.inch.balanceOf(addr0);
+        const makerDai = await dai.balanceOf(addr1.address);
+        const takerDai = await dai.balanceOf(addr.address);
+        const makerInch = await inch.balanceOf(addr1.address);
+        const takerInch = await inch.balanceOf(addr.address);
 
-        await this.swap.fillOrder(order, signature, '0x', makingAmount, 0, takingAmount.add(ether('0.01'))); // taking threshold = exact taker amount + eps
+        await swap.fillOrder(order, signature, '0x', makingAmount, 0, takingAmount.add(ether('0.01'))); // taking threshold = exact taker amount + eps
 
-        expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.add(takingAmount));
-        expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.sub(takingAmount));
-        expect(await this.inch.balanceOf(addr1)).to.be.bignumber.equal(makerInch.sub(makingAmount));
-        expect(await this.inch.balanceOf(addr0)).to.be.bignumber.equal(takerInch.add(makingAmount));
+        expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(takingAmount));
+        expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(takingAmount));
+        expect(await inch.balanceOf(addr1.address)).to.equal(makerInch.sub(makingAmount));
+        expect(await inch.balanceOf(addr.address)).to.equal(takerInch.add(makingAmount));
     });
 
-    it('dai -> 1inch stop loss order predicate is invalid', async () => {
+    it('dai -> 1inch stop loss order predicate is invalid', async function () {
+        const { dai, inch, swap, chainId, chainlink, daiOracle, inchOracle } = await loadFixture(deployContractsAndInit);
+
         const makingAmount = ether('100');
         const takingAmount = ether('631');
-        const priceCall = buildDoublePriceGetter(this.chainlink, this.inchOracle, this.daiOracle, '1000000000', ether('1'));
+        const priceCall = buildDoublePriceGetter(chainlink, inchOracle, daiOracle, '1000000000', ether('1'));
 
         const order = buildOrder(
             {
-                makerAsset: this.inch.address,
-                takerAsset: this.dai.address,
+                makerAsset: inch.address,
+                takerAsset: dai.address,
                 makingAmount,
                 takingAmount,
-                from: addr1,
+                from: addr1.address,
             },
             {
                 getMakingAmount: '0x',
                 getTakingAmount: '0x',
-                predicate: this.swap.contract.methods.lt(ether('6.31'), priceCall).encodeABI(),
+                predicate: swap.interface.encodeFunctionData('lt', [ether('6.31'), priceCall]),
             },
         );
-        const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
+        const signature = await signOrder(order, chainId, swap.address, addr1);
 
         await expect(
-            this.swap.fillOrder(order, signature, '0x', makingAmount, 0, takingAmount.add(ether('0.01'))), // taking threshold = exact taker amount + eps
-        ).to.eventually.be.rejectedWith('PredicateIsNotTrue()');
+            swap.fillOrder(order, signature, '0x', makingAmount, 0, takingAmount.add(ether('0.01'))), // taking threshold = exact taker amount + eps
+        ).to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
     });
 
-    it('eth -> dai stop loss order', async () => {
+    it('eth -> dai stop loss order', async function () {
+        const { dai, weth, swap, chainId, daiOracle } = await loadFixture(deployContractsAndInit);
+
         const makingAmount = ether('1');
         const takingAmount = ether('4000');
-        const latestAnswerCall = this.swap.contract.methods.arbitraryStaticCall(
-            this.daiOracle.address,
-            this.daiOracle.contract.methods.latestAnswer().encodeABI(),
-        ).encodeABI();
+        const latestAnswerCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
+            daiOracle.address,
+            daiOracle.interface.encodeFunctionData('latestAnswer'),
+        ]);
 
         const order = buildOrder(
             {
-                makerAsset: this.weth.address,
-                takerAsset: this.dai.address,
+                makerAsset: weth.address,
+                takerAsset: dai.address,
                 makingAmount,
                 takingAmount,
-                from: addr1,
+                from: addr1.address,
             },
             {
                 getMakingAmount: '0x',
                 getTakingAmount: '0x',
-                predicate: this.swap.contract.methods.lt(ether('0.0002501'), latestAnswerCall).encodeABI(),
+                predicate: swap.interface.encodeFunctionData('lt', [ether('0.0002501'), latestAnswerCall]),
             },
         );
-        const signature = signOrder(order, this.chainId, this.swap.address, addr1Wallet.getPrivateKey());
+        const signature = await signOrder(order, chainId, swap.address, addr1);
 
-        const makerDai = await this.dai.balanceOf(addr1);
-        const takerDai = await this.dai.balanceOf(addr0);
-        const makerWeth = await this.weth.balanceOf(addr1);
-        const takerWeth = await this.weth.balanceOf(addr0);
+        const makerDai = await dai.balanceOf(addr1.address);
+        const takerDai = await dai.balanceOf(addr.address);
+        const makerWeth = await weth.balanceOf(addr1.address);
+        const takerWeth = await weth.balanceOf(addr.address);
 
-        await this.swap.fillOrder(order, signature, '0x', makingAmount, 0, takingAmount);
+        await swap.fillOrder(order, signature, '0x', makingAmount, 0, takingAmount);
 
-        expect(await this.dai.balanceOf(addr1)).to.be.bignumber.equal(makerDai.add(takingAmount));
-        expect(await this.dai.balanceOf(addr0)).to.be.bignumber.equal(takerDai.sub(takingAmount));
-        expect(await this.weth.balanceOf(addr1)).to.be.bignumber.equal(makerWeth.sub(makingAmount));
-        expect(await this.weth.balanceOf(addr0)).to.be.bignumber.equal(takerWeth.add(makingAmount));
+        expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(takingAmount));
+        expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(takingAmount));
+        expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.sub(makingAmount));
+        expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.add(makingAmount));
     });
 });

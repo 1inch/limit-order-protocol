@@ -1,8 +1,4 @@
-const { toBN, ether } = require('@1inch/solidity-utils');
-const Wallet = require('ethereumjs-wallet').default;
-
-const addr0Wallet = Wallet.fromPrivateKey(Buffer.from('ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', 'hex'));
-const addr1Wallet = Wallet.fromPrivateKey(Buffer.from('59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d', 'hex'));
+const { utils } = require('ethers');
 
 function price (val) {
     return ether(val).toString();
@@ -21,6 +17,11 @@ function cutSelector (data) {
     return hexPrefix + data.substring(hexPrefix.length + 8);
 }
 
+function getSelector (data) {
+    const hexPrefix = '0x';
+    return data.substring(0, hexPrefix.length + 8);
+}
+
 function cutLastArg (data, padding = 0) {
     return data.substring(0, data.length - 64 - padding);
 }
@@ -32,17 +33,30 @@ function joinStaticCalls (dataArray) {
         offsets: trimmed
             .map(d => d.length / 2)
             .map(cumulativeSum)
-            .reduce((acc, val, i) => acc.or(toBN(val).shln(32 * i)), toBN('0')),
+            .reduce((acc, val, i) => acc | BigInt(val) << BigInt(32 * i), 0n),
         data: '0x' + trimmed.join(''),
     };
 }
 
+function ether (num) {
+    return utils.parseUnits(num);
+}
+
+function setn (num, bit, value) {
+    if (value) {
+        return BigInt(num) | (1n << BigInt(bit));
+    } else {
+        return BigInt(num) & (~(1n << BigInt(bit)));
+    }
+}
+
 module.exports = {
-    addr0Wallet,
-    addr1Wallet,
     joinStaticCalls,
     price,
+    ether,
     cutSelector,
     cutLastArg,
+    getSelector,
+    setn,
     trim0x,
 };
