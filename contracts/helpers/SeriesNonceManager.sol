@@ -38,7 +38,21 @@ contract SeriesNonceManager {
 
     /// @notice Checks if `makerAddress` has specified `makerNonce` for `series`
     /// @return Result True if `makerAddress` has specified nonce. Otherwise, false
-    function nonceEquals(uint256 series, address makerAddress, uint256 makerNonce) external view returns(bool) {
+    function nonceEquals(uint256 series, address makerAddress, uint256 makerNonce) public view returns(bool) {
         return nonce[series][makerAddress] == makerNonce;
+    }
+
+    /// @notice Checks passed time against block timestamp
+    /// @return Result True if current block timestamp is lower than `time`. Otherwise, false
+    function timestampBelow(uint256 time) public view returns(bool) {
+        return block.timestamp < time;  // solhint-disable-line not-rely-on-time
+    }
+
+    function timestampBelowAndNonceEquals(uint256 timeNonceSeriesAccount) external view returns(bool) {
+        uint256 _time = uint40(timeNonceSeriesAccount >> 216);
+        uint256 _nonce = uint40(timeNonceSeriesAccount >> 176);
+        uint256 _series = uint16(timeNonceSeriesAccount >> 160);
+        address _account = address(uint160(timeNonceSeriesAccount));
+        return timestampBelow(_time) && nonceEquals(_series, _account, _nonce);
     }
 }
