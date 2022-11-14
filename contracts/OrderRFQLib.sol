@@ -7,12 +7,28 @@ import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 library OrderRFQLib {
     struct OrderRFQ {
         uint256 info;  // lowest 64 bits is the order id, next 64 bits is the expiration timestamp
-        address makerAsset;
-        address takerAsset;
-        address maker;
-        address allowedSender;  // equals to Zero address on public orders
+        uint256 makerAsset;
+        uint256 takerAsset;
+        uint256 maker;
+        uint256 allowedSender;  // equals to Zero address on public orders
         uint256 makingAmount;
         uint256 takingAmount;
+    }
+
+    function getMakerAsset(OrderRFQ calldata order) internal pure returns(address) {
+        return address(uint160(order.makerAsset));
+    }
+
+    function getTakerAsset(OrderRFQ calldata order) internal pure returns(address) {
+        return address(uint160(order.takerAsset));
+    }
+
+    function getMaker(OrderRFQ calldata order) internal pure returns(address) {
+        return address(uint160(order.maker));
+    }
+
+    function getAllowedSender(OrderRFQ calldata order) internal pure returns(address) {
+        return address(uint160(order.allowedSender));
     }
 
     bytes32 constant internal _LIMIT_ORDER_RFQ_TYPEHASH = keccak256(

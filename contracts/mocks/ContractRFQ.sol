@@ -71,15 +71,18 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     }
 
     function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns(bytes4) {
-        OrderRFQLib.OrderRFQ memory order = abi.decode(signature, (OrderRFQLib.OrderRFQ));
+        OrderRFQLib.OrderRFQ calldata order;
+        assembly {
+            order := signature.offset
+        }
 
         if (
             (
-                (order.makerAsset != address(token0) || order.takerAsset != address(token1)) &&
-                (order.makerAsset != address(token1) || order.takerAsset != address(token0))
+                (order.getMakerAsset() != address(token0) || order.getTakerAsset() != address(token1)) &&
+                (order.getMakerAsset() != address(token1) || order.getTakerAsset() != address(token0))
             ) ||
             order.makingAmount * fee > order.takingAmount * 1e18 ||
-            order.maker != address(this) || // TODO: remove redundant check
+            order.getMaker() != address(this) || // TODO: remove redundant check
             order.hash(_domainSeparatorV4()) != hash
         ) revert BadPrice();
 
