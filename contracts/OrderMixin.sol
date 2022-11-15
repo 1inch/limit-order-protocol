@@ -115,7 +115,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
      * @notice See {IOrderMixin-cancelOrder}.
      */
     function cancelOrder(OrderLib.Order calldata order) external returns(uint256 orderRemaining, bytes32 orderHash) {
-        if (order.maker != msg.sender) revert AccessDenied();
+        if (order.getMaker() != msg.sender) revert AccessDenied();
 
         orderHash = hashOrder(order);
         orderRemaining = _remaining[orderHash];
@@ -180,10 +180,10 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
 
         uint256 remainingMakingAmount = _remaining[orderHash];
         if (remainingMakingAmount == _ORDER_FILLED) revert RemainingAmountIsZero();
-        if (order.allowedSender != address(0) && order.allowedSender != msg.sender) revert PrivateOrder();
+        if (order.getAllowedSender() != address(0) && order.getAllowedSender() != msg.sender) revert PrivateOrder();
         if (remainingMakingAmount == _ORDER_DOES_NOT_EXIST) {
             // First fill: validate order and permit maker asset
-            if (!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert BadSignature();
+            if (!ECDSA.recoverOrIsValidSignature(order.getMaker(), orderHash, signature)) revert BadSignature();
             remainingMakingAmount = order.makingAmount;
 
             bytes calldata permit = order.permit();
@@ -234,21 +234,21 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             remainingMakingAmount = remainingMakingAmount - actualMakingAmount;
             _remaining[orderHash] = remainingMakingAmount + 1;
         }
-        emit OrderFilled(order_.maker, orderHash, remainingMakingAmount);
+        emit OrderFilled(order_.getMaker(), orderHash, remainingMakingAmount);
 
         // Maker can handle funds interactively
         if (order.preInteraction().length >= 20) {
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.preInteraction().decodeTargetAndCalldata();
             IPreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                orderHash, order.maker, msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
+                orderHash, order.getMaker(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
             );
         }
 
         // Maker => Taker
         if (!_callTransferFrom(
-            order.makerAsset,
-            order.maker,
+            order.getMakerAsset(),
+            order.getMaker(),
             target,
             actualMakingAmount,
             order.makerAssetData()
@@ -270,7 +270,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         }
 
         // Taker => Maker
-        if (order.takerAsset == address(_WETH) && msg.value > 0) {
+        if (order.getTakerAsset() == address(_WETH) && msg.value > 0) {
             if (msg.value < actualTakingAmount) revert Errors.InvalidMsgValue();
             if (msg.value > actualTakingAmount) {
                 unchecked {
@@ -280,13 +280,13 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                 }
             }
             _WETH.deposit{ value: actualTakingAmount }();
-            _WETH.transfer(order.receiver == address(0) ? order.maker : order.receiver, actualTakingAmount);
+            _WETH.transfer(order.getReceiver() == address(0) ? order.getMaker() : order.getReceiver(), actualTakingAmount);
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
             if (!_callTransferFrom(
-                order.takerAsset,
+                order.getTakerAsset(),
                 msg.sender,
-                order.receiver == address(0) ? order.maker : order.receiver,
+                order.getReceiver() == address(0) ? order.getMaker() : order.getReceiver(),
                 actualTakingAmount,
                 order.takerAssetData()
             )) revert TransferFromTakerToMakerFailed();
@@ -297,7 +297,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             // proceed only if interaction length is enough to store address
             (address interactionTarget, bytes calldata interactionData) = order.postInteraction().decodeTargetAndCalldata();
             IPostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
-                 orderHash, order.maker, msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
+                 orderHash, order.getMaker(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
             );
         }
     }

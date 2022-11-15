@@ -7,11 +7,11 @@ import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 library OrderLib {
     struct Order {
         uint256 salt;
-        address makerAsset;
-        address takerAsset;
-        address maker;
-        address receiver;
-        address allowedSender;  // equals to Zero address on public orders
+        uint256 makerAsset;
+        uint256 takerAsset;
+        uint256 maker;
+        uint256 receiver;
+        uint256 allowedSender;  // equals to Zero address on public orders
         uint256 makingAmount;
         uint256 takingAmount;
         uint256 offsets;
@@ -50,6 +50,26 @@ library OrderLib {
         Permit,
         PreInteraction,
         PostInteraction
+    }
+
+    function getMakerAsset(Order calldata order) internal pure returns(address) {
+        return address(uint160(order.makerAsset));
+    }
+
+    function getTakerAsset(Order calldata order) internal pure returns(address) {
+        return address(uint160(order.takerAsset));
+    }
+
+    function getMaker(Order calldata order) internal pure returns(address) {
+        return address(uint160(order.maker));
+    }
+
+    function getReceiver(Order calldata order) internal pure returns(address) {
+        return address(uint160(order.receiver));
+    }
+
+    function getAllowedSender(Order calldata order) internal pure returns(address) {
+        return address(uint160(order.allowedSender));
     }
 
     function getterIsFrozen(bytes calldata getter) internal pure returns(bool) {
