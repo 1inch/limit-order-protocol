@@ -1,14 +1,21 @@
 {
-  "name": "@1inch/limit-order-protocol",
-  "version": "0.3.0-prerelease",
+  "name": "@1inch/limit-order-protocol-contract",
+  "version": "3.0.0",
   "description": "1inch Limit Order Protocol",
   "repository": {
     "type": "git",
     "url": "git@github.com:1inch/limit-order-protocol.git"
   },
   "license": "MIT",
+  "files": [
+    "contracts/*.sol",
+    "contracts/helpers",
+    "contracts/interfaces",
+    "contracts/libraries",
+    "contracts/mocks"
+  ],
   "dependencies": {
-    "@1inch/solidity-utils": "2.2.0",
+    "@1inch/solidity-utils": "2.2.2",
     "@chainlink/contracts": "0.5.1",
     "@openzeppelin/contracts": "4.7.3"
   },
