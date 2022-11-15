@@ -72,7 +72,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
 
     function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns(bytes4) {
         OrderRFQLib.OrderRFQ calldata order;
-        assembly {
+        assembly { // solhint-disable-line no-inline-assembly
             order := signature.offset
         }
 
