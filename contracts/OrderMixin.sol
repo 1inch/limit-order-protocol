@@ -69,7 +69,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     /// @notice Stores unfilled amounts for each order plus one.
     /// Therefore 0 means order doesn't exist and 1 means order was filled
-    mapping(bytes32 => uint256) private _remaining;
+    mapping(address => mapping(bytes32 => uint256)) private _remaining;
 
     constructor(IWETH weth) {
         _WETH = weth;
@@ -78,8 +78,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     /**
      * @notice See {IOrderMixin-remaining}.
      */
-    function remaining(bytes32 orderHash) external view returns(uint256 /* amount */) {
-        uint256 amount = _remaining[orderHash];
+    function remaining(address account, bytes32 orderHash) external view returns(uint256 /* amount */) {
+        uint256 amount = _remaining[account][orderHash];
         if (amount == _ORDER_DOES_NOT_EXIST) revert UnknownOrder();
         unchecked { return amount - 1; }
     }
@@ -87,19 +87,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     /**
      * @notice See {IOrderMixin-remainingRaw}.
      */
-    function remainingRaw(bytes32 orderHash) external view returns(uint256 /* rawAmount */) {
-        return _remaining[orderHash];
-    }
-
-    /**
-     * @notice See {IOrderMixin-remainingsRaw}.
-     */
-    function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory /* rawAmounts */) {
-        uint256[] memory results = new uint256[](orderHashes.length);
-        for (uint256 i = 0; i < orderHashes.length; i++) {
-            results[i] = _remaining[orderHashes[i]];
-        }
-        return results;
+    function remainingRaw(address account, bytes32 orderHash) external view returns(uint256 /* rawAmount */) {
+        return _remaining[account][orderHash];
     }
 
     /**
@@ -114,14 +103,20 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     /**
      * @notice See {IOrderMixin-cancelOrder}.
      */
-    function cancelOrder(OrderLib.Order calldata order) external returns(uint256 orderRemaining, bytes32 orderHash) {
-        if (order.maker != msg.sender) revert AccessDenied();
-
-        orderHash = hashOrder(order);
-        orderRemaining = _remaining[orderHash];
+    function cancelOrder(bytes32 orderHash) public returns(uint256 orderRemaining) {
+        orderRemaining = _remaining[msg.sender][orderHash];
         if (orderRemaining == _ORDER_FILLED) revert AlreadyFilled();
         emit OrderCanceled(msg.sender, orderHash, orderRemaining);
-        _remaining[orderHash] = _ORDER_FILLED;
+        _remaining[msg.sender][orderHash] = _ORDER_FILLED;
+    }
+
+    function cancelOrders(bytes32[] calldata orderHashes) external returns(uint256[] memory orderRemainings) {
+        orderRemainings = new uint256[](orderHashes.length);
+        unchecked {
+            for (uint256 i = 0; i < orderHashes.length; i++) {
+                orderRemainings[i] = cancelOrder(orderHashes[i]);
+            }
+        }
     }
 
     /**
@@ -178,12 +173,15 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         actualMakingAmount = makingAmount;
         actualTakingAmount = takingAmount;
 
-        uint256 remainingMakingAmount = _remaining[orderHash];
+        mapping(bytes32 => uint256) storage _makersRemaining = _remaining[order.maker];
+        uint256 remainingMakingAmount = _makersRemaining[orderHash];
         if (remainingMakingAmount == _ORDER_FILLED) revert RemainingAmountIsZero();
         if (order.allowedSender != address(0) && order.allowedSender != msg.sender) revert PrivateOrder();
         if (remainingMakingAmount == _ORDER_DOES_NOT_EXIST) {
+            bytes calldata signature2 = signature;
+
             // First fill: validate order and permit maker asset
-            if (!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert BadSignature();
+            if (!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature2)) revert BadSignature();
             remainingMakingAmount = order.makingAmount;
 
             bytes calldata permit = order.permit();
@@ -191,7 +189,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                 // proceed only if taker is willing to execute permit and its length is enough to store address
                 (address token, bytes calldata permitCalldata) = permit.decodeTargetAndCalldata();
                 IERC20(token).safePermit(permitCalldata);
-                if (_remaining[orderHash] != _ORDER_DOES_NOT_EXIST) revert ReentrancyDetected();
+                if (_makersRemaining[orderHash] != _ORDER_DOES_NOT_EXIST) revert ReentrancyDetected();
             }
         } else {
             unchecked { remainingMakingAmount -= 1; }
@@ -232,7 +230,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         // Update remaining amount in storage
         unchecked {
             remainingMakingAmount = remainingMakingAmount - actualMakingAmount;
-            _remaining[orderHash] = remainingMakingAmount + 1;
+            _makersRemaining[orderHash] = remainingMakingAmount + 1;
         }
         emit OrderFilled(order_.maker, orderHash, remainingMakingAmount);
 
