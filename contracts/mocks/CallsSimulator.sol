@@ -2,11 +2,11 @@
 
 pragma solidity 0.8.17;
 
-import "../libraries/ArgumentsDecoder.sol";
+import "../libraries/CalldataLib.sol";
 
 /// @title Tool to be used inside `LOP.simulate()` call
 contract CallsSimulator {
-    using ArgumentsDecoder for bytes;
+    using CalldataLib for bytes;
 
     error ArraySizeMismatch();
 

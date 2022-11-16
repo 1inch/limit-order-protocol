@@ -14,16 +14,15 @@ import "./interfaces/IOrderMixin.sol";
 import "./interfaces/IInteractionNotificationReceiver.sol";
 import "./interfaces/IPreInteractionNotificationReceiver.sol";
 import "./interfaces/IPostInteractionNotificationReceiver.sol";
-import "./libraries/ArgumentsDecoder.sol";
 import "./libraries/Errors.sol";
 import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
 abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     using SafeERC20 for IERC20;
-    using ArgumentsDecoder for bytes;
     using OrderLib for OrderLib.Order;
     using CalldataLib for CalldataLib.Address;
+    using CalldataLib for bytes;
 
     error UnknownOrder();
     error AccessDenied();

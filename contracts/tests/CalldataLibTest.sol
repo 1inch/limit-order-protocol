@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.17;
 
-import "../libraries/ArgumentsDecoder.sol";
+import "../libraries/CalldataLib.sol";
 
-contract ArgumentsDecoderTest {
-    using ArgumentsDecoder for bytes;
+contract CalldataLibTest {
+    using CalldataLib for bytes;
 
     error InvalidResult();
 
