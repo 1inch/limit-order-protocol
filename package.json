@@ -45,7 +45,6 @@
   },
   "scripts": {
     "clean": "rimraf artifacts cache coverage contracts/hardhat-dependency-compiler",
-    "test": "hardhat test",
     "deploy": "hardhat deploy --network",
     "coverage": "hardhat coverage",
     "docify": "npx solidity-utils-docify",
@@ -54,6 +53,8 @@
     "lint:sol": "solhint --max-warnings 0 \"contracts/**/*.sol\"",
     "lint:sol:fix": "solhint --max-warnings 0 \"contracts/**/*.sol\" --fix",
     "lint": "yarn run lint:js && yarn run lint:sol",
-    "lint:fix": "yarn run lint:js:fix && yarn run lint:sol:fix"
+    "lint:fix": "yarn run lint:js:fix && yarn run lint:sol:fix",
+    "test": "hardhat test --parallel",
+    "test:ci": "hardhat test"
   }
 }
