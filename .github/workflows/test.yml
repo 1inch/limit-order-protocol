@@ -18,7 +18,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/setup
-      - run: yarn test
+      - run: yarn test:ci
 
   coverage:
     runs-on: ubuntu-latest
