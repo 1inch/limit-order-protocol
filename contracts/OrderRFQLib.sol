@@ -5,12 +5,14 @@ pragma solidity 0.8.17;
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 
 library OrderRFQLib {
+    type Address is uint256;
+
     struct OrderRFQ {
         uint256 info;  // lowest 64 bits is the order id, next 64 bits is the expiration timestamp
-        address makerAsset;
-        address takerAsset;
-        address maker;
-        address allowedSender;  // equals to Zero address on public orders
+        Address makerAsset;
+        Address takerAsset;
+        Address maker;
+        Address allowedSender;  // equals to Zero address on public orders
         uint256 makingAmount;
         uint256 takingAmount;
     }
@@ -26,6 +28,10 @@ library OrderRFQLib {
             "uint256 takingAmount"
         ")"
     );
+
+    function get(Address a) internal pure returns(address) {
+        return address(uint160(Address.unwrap(a)));
+    }
 
     function hash(OrderRFQ memory order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes32 typehash = _LIMIT_ORDER_RFQ_TYPEHASH;

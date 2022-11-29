@@ -5,13 +5,15 @@ pragma solidity 0.8.17;
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 
 library OrderLib {
+    type Address is uint256;
+
     struct Order {
         uint256 salt;
-        address makerAsset;
-        address takerAsset;
-        address maker;
-        address receiver;
-        address allowedSender;  // equals to Zero address on public orders
+        Address makerAsset;
+        Address takerAsset;
+        Address maker;
+        Address receiver;
+        Address allowedSender;  // equals to Zero address on public orders
         uint256 makingAmount;
         uint256 takingAmount;
         uint256 offsets;
@@ -50,6 +52,10 @@ library OrderLib {
         Permit,
         PreInteraction,
         PostInteraction
+    }
+
+    function get(Address a) internal pure returns(address) {
+        return address(uint160(Address.unwrap(a)));
     }
 
     function getterIsFrozen(bytes calldata getter) internal pure returns(bool) {

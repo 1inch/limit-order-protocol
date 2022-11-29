@@ -12,6 +12,7 @@ import { EIP712Alien } from "./EIP712Alien.sol";
 contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     using SafeERC20 for IERC20;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
+    using OrderRFQLib for OrderRFQLib.Address;
 
     error NotAllowedToken();
     error BadPrice();
@@ -73,11 +74,11 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
 
         if (
             (
-                (order.makerAsset != address(token0) || order.takerAsset != address(token1)) &&
-                (order.makerAsset != address(token1) || order.takerAsset != address(token0))
+                (order.makerAsset.get() != address(token0) || order.takerAsset.get() != address(token1)) &&
+                (order.makerAsset.get() != address(token1) || order.takerAsset.get() != address(token0))
             ) ||
             order.makingAmount * fee > order.takingAmount * 1e18 ||
-            order.maker != address(this) || // TODO: remove redundant check
+            order.maker.get() != address(this) || // TODO: remove redundant check
             order.hash(_domainSeparatorV4()) != hash
         ) revert BadPrice();
 

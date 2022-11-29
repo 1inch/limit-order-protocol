@@ -9,6 +9,7 @@ import "../OrderLib.sol";
 
 contract HashChecker is IPreInteractionNotificationReceiver, Ownable {
     using OrderLib for OrderLib.Order;
+    using OrderLib for OrderLib.Address;
 
     error IncorrectOrderHash();
 
