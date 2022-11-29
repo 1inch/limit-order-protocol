@@ -54,13 +54,6 @@ async function deploySeriesNonceManager () {
     return { seriesNonceManager };
 };
 
-async function deployArgumentsDecoderTest () {
-    const ArgumentsDecoderTest = await ethers.getContractFactory('ArgumentsDecoderTest');
-    const argumentsDecoderTest = await ArgumentsDecoderTest.deploy();
-    await argumentsDecoderTest.deployed();
-    return { argumentsDecoderTest };
-};
-
 async function deployRangeAmountCalculator () {
     const RangeAmountCalculator = await ethers.getContractFactory('RangeAmountCalculator');
     const rangeAmountCalculator = await RangeAmountCalculator.deploy();
@@ -72,7 +65,6 @@ module.exports = {
     deploySwapTokens,
     deployNonceManager,
     deploySeriesNonceManager,
-    deployArgumentsDecoderTest,
     deployRangeAmountCalculator,
     deployUSDT,
     deployUSDC,
