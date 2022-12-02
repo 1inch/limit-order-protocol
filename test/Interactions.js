@@ -34,11 +34,11 @@ describe('Interactions', function () {
         const matcher = await RecursiveMatcher.deploy();
         await matcher.deployed();
 
-        const PreInteractionValidator = await ethers.getContractFactory('PreInteractionValidator');
-        const preInteractionValidator = await PreInteractionValidator.deploy(swap.address);
-        await preInteractionValidator.deployed();
+        const OrderIdInvalidator = await ethers.getContractFactory('OrderIdInvalidator');
+        const orderIdInvalidator = await OrderIdInvalidator.deploy(swap.address);
+        await orderIdInvalidator.deployed();
 
-        return { dai, weth, swap, chainId, matcher, hashChecker, preInteractionValidator };
+        return { dai, weth, swap, chainId, matcher, hashChecker, orderIdInvalidator };
     };
 
     describe('recursive swap', function () {
@@ -333,7 +333,7 @@ describe('Interactions', function () {
 
     describe('pre interaction validation', function () {
         it('should execute order with 2 partial fills', async function () {
-            const { dai, weth, swap, chainId, preInteractionValidator } = await loadFixture(initContracts);
+            const { dai, weth, swap, chainId, orderIdInvalidator } = await loadFixture(initContracts);
             const orderId = 13341n;
 
             const order = buildOrder(
@@ -345,7 +345,7 @@ describe('Interactions', function () {
                     from: addr.address,
                 },
                 {
-                    preInteraction: preInteractionValidator.address + orderId.toString(16).padStart(8, '0'),
+                    preInteraction: orderIdInvalidator.address + orderId.toString(16).padStart(8, '0'),
                 },
             );
             const signature = await signOrder(order, chainId, swap.address, addr);
@@ -371,7 +371,7 @@ describe('Interactions', function () {
         });
 
         it('should fail to execute order with same orderId, but with different orderHash', async function () {
-            const { dai, weth, swap, chainId, preInteractionValidator } = await loadFixture(initContracts);
+            const { dai, weth, swap, chainId, orderIdInvalidator } = await loadFixture(initContracts);
             const orderId = 13341n;
 
             const order = buildOrder(
@@ -383,7 +383,7 @@ describe('Interactions', function () {
                     from: addr.address,
                 },
                 {
-                    preInteraction: preInteractionValidator.address + orderId.toString(16).padStart(8, '0'),
+                    preInteraction: orderIdInvalidator.address + orderId.toString(16).padStart(8, '0'),
                 },
             );
 
@@ -396,7 +396,7 @@ describe('Interactions', function () {
                     from: addr.address,
                 },
                 {
-                    preInteraction: preInteractionValidator.address + orderId.toString(16).padStart(8, '0'),
+                    preInteraction: orderIdInvalidator.address + orderId.toString(16).padStart(8, '0'),
                 },
             );
 
@@ -415,7 +415,7 @@ describe('Interactions', function () {
             expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('50')));
             expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('50')));
 
-            await expect(swap.connect(addr1).fillOrder(partialOrder, signaturePartial, '0x', ether('50'), 0, ether('0.1'))).to.be.revertedWithCustomError(preInteractionValidator, 'InvalidOrderHash');
+            await expect(swap.connect(addr1).fillOrder(partialOrder, signaturePartial, '0x', ether('50'), 0, ether('0.1'))).to.be.revertedWithCustomError(orderIdInvalidator, 'InvalidOrderHash');
         });
     });
 });

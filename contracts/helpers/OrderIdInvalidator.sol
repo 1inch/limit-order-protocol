@@ -3,12 +3,10 @@
 pragma solidity 0.8.17;
 
 /**
- * @title ##1inch Pre-Interaction Validator of orders
- * @notice Pre-Interaction Validator stores pairs (orderId, orderHash) 
- * that allows to replace order with same orderId
- * and invalidates if orderId was used twice with same orderHash (order parameters).
+ * @notice OrderIdInvalidator stores pairs (orderId, orderHash)
+ * that allows to execute only one order with the same orderId
  */
-contract PreInteractionValidator {
+contract OrderIdInvalidator {
     error AccessDenied();
     error InvalidOrderHash();
 
