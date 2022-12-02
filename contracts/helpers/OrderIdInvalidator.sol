@@ -2,11 +2,13 @@
 
 pragma solidity 0.8.17;
 
+import "../interfaces/IPreInteractionNotificationReceiver.sol";
+
 /**
  * @notice OrderIdInvalidator stores pairs (orderId, orderHash)
  * that allows to execute only one order with the same orderId
  */
-contract OrderIdInvalidator {
+contract OrderIdInvalidator is IPreInteractionNotificationReceiver {
     error AccessDenied();
     error InvalidOrderHash();
 
