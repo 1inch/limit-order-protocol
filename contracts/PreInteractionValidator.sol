@@ -13,7 +13,7 @@ contract PreInteractionValidator {
     error InvalidOrderHash();
 
     /// @notice Limit order protocol address.
-    address private _limitOrderProtocol;
+    address private immutable _limitOrderProtocol;
     /// @notice Stores corresponding order ids and hashes.
     mapping(uint32 => bytes32) private _ordersIdsHashes;
 
