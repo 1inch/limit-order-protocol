@@ -331,7 +331,7 @@ describe('Interactions', function () {
         });
     });
 
-    describe('pre interaction validation', function () {
+    describe('order id validation', function () {
         it('should execute order with 2 partial fills', async function () {
             const { dai, weth, swap, chainId, orderIdInvalidator } = await loadFixture(initContracts);
             const orderId = 13341n;
