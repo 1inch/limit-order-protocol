@@ -34,7 +34,11 @@ describe('Interactions', function () {
         const matcher = await RecursiveMatcher.deploy();
         await matcher.deployed();
 
-        return { dai, weth, swap, chainId, matcher, hashChecker };
+        const OrderIdInvalidator = await ethers.getContractFactory('OrderIdInvalidator');
+        const orderIdInvalidator = await OrderIdInvalidator.deploy(swap.address);
+        await orderIdInvalidator.deployed();
+
+        return { dai, weth, swap, chainId, matcher, hashChecker, orderIdInvalidator };
     };
 
     describe('recursive swap', function () {
@@ -324,6 +328,94 @@ describe('Interactions', function () {
             const signature = await signOrder(order, chainId, swap.address, addr1);
 
             await expect(swap.fillOrder(order, signature, '0x', ether('100'), 0, ether('0.1'))).to.be.revertedWithCustomError(hashChecker, 'IncorrectOrderHash');
+        });
+    });
+
+    describe('order id validation', function () {
+        it('should execute order with 2 partial fills', async function () {
+            const { dai, weth, swap, chainId, orderIdInvalidator } = await loadFixture(initContracts);
+            const orderId = 13341n;
+
+            const order = buildOrder(
+                {
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: ether('100'),
+                    takingAmount: ether('0.1'),
+                    from: addr.address,
+                },
+                {
+                    preInteraction: orderIdInvalidator.address + orderId.toString(16).padStart(8, '0'),
+                },
+            );
+            const signature = await signOrder(order, chainId, swap.address, addr);
+
+            const addrweth = await weth.balanceOf(addr.address);
+            const addr1weth = await weth.balanceOf(addr1.address);
+            const addrdai = await dai.balanceOf(addr.address);
+            const addr1dai = await dai.balanceOf(addr1.address);
+
+            await swap.connect(addr1).fillOrder(order, signature, '0x', ether('50'), 0, ether('0.1'));
+
+            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.05')));
+            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.05')));
+            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('50')));
+            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('50')));
+
+            await swap.connect(addr1).fillOrder(order, signature, '0x', ether('50'), 0, ether('0.1'));
+
+            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.1')));
+            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.1')));
+            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('100')));
+            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('100')));
+        });
+
+        it('should fail to execute order with same orderId, but with different orderHash', async function () {
+            const { dai, weth, swap, chainId, orderIdInvalidator } = await loadFixture(initContracts);
+            const orderId = 13341n;
+
+            const order = buildOrder(
+                {
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: ether('100'),
+                    takingAmount: ether('0.1'),
+                    from: addr.address,
+                },
+                {
+                    preInteraction: orderIdInvalidator.address + orderId.toString(16).padStart(8, '0'),
+                },
+            );
+
+            const partialOrder = buildOrder(
+                {
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: ether('50'),
+                    takingAmount: ether('0.05'),
+                    from: addr.address,
+                },
+                {
+                    preInteraction: orderIdInvalidator.address + orderId.toString(16).padStart(8, '0'),
+                },
+            );
+
+            const signature = await signOrder(order, chainId, swap.address, addr);
+            const signaturePartial = await signOrder(partialOrder, chainId, swap.address, addr);
+
+            const addrweth = await weth.balanceOf(addr.address);
+            const addr1weth = await weth.balanceOf(addr1.address);
+            const addrdai = await dai.balanceOf(addr.address);
+            const addr1dai = await dai.balanceOf(addr1.address);
+
+            await swap.connect(addr1).fillOrder(order, signature, '0x', ether('50'), 0, ether('0.1'));
+
+            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.05')));
+            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.05')));
+            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('50')));
+            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('50')));
+
+            await expect(swap.connect(addr1).fillOrder(partialOrder, signaturePartial, '0x', ether('50'), 0, ether('0.1'))).to.be.revertedWithCustomError(orderIdInvalidator, 'InvalidOrderHash');
         });
     });
 });
