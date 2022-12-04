@@ -51,9 +51,7 @@ contract OrderIdInvalidator is IPreInteractionNotificationReceiver {
         bytes32 storedOrderHash = _ordersIdsHashes[maker][orderId];
         if (storedOrderHash == 0x0) {
             _ordersIdsHashes[maker][orderId] = orderHash;
-            return;
-        }
-        if (storedOrderHash != orderHash) {
+        } else if (storedOrderHash != orderHash) {
             revert InvalidOrderHash();
         }
     }
