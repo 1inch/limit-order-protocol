@@ -12,7 +12,8 @@
     "contracts/helpers",
     "contracts/interfaces",
     "contracts/libraries",
-    "contracts/mocks"
+    "contracts/mocks",
+    "test/helpers"
   ],
   "dependencies": {
     "@1inch/solidity-utils": "2.2.2",
