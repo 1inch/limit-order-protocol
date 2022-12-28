@@ -233,12 +233,15 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         emit OrderFilled(order_.maker.get(), orderHash, remainingMakingAmount);
 
         // Maker can handle funds interactively
-        if (order.preInteraction().length >= 20) {
-            // proceed only if interaction length is enough to store address
-            (address interactionTarget, bytes calldata interactionData) = order.preInteraction().decodeTargetAndCalldata();
-            IPreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
-            );
+        { // Stack too deep
+            bytes calldata preInteraction = order.preInteraction();
+            if (preInteraction.length >= 20) {
+                // proceed only if interaction length is enough to store address
+                (address interactionTarget, bytes calldata interactionData) = preInteraction.decodeTargetAndCalldata();
+                IPreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
+                    orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
+                );
+            }
         }
 
         // Maker => Taker
@@ -289,9 +292,10 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         }
 
         // Maker can handle funds interactively
-        if (order.postInteraction().length >= 20) {
+        bytes calldata postInteraction = order.postInteraction();
+        if (postInteraction.length >= 20) {
             // proceed only if interaction length is enough to store address
-            (address interactionTarget, bytes calldata interactionData) = order.postInteraction().decodeTargetAndCalldata();
+            (address interactionTarget, bytes calldata interactionData) = postInteraction.decodeTargetAndCalldata();
             IPostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
                  orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
             );
