@@ -28,19 +28,17 @@ library OrderRFQLib {
         ")"
     );
 
-    function hash(OrderRFQ memory order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
+    function hash(OrderRFQ calldata order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes32 typehash = _LIMIT_ORDER_RFQ_TYPEHASH;
-        bytes32 orderHash;
-        // this assembly is memory unsafe :(
+        /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
-            let ptr := sub(order, 0x20)
+            let ptr := mload(0x40)
 
             // keccak256(abi.encode(_LIMIT_ORDER_RFQ_TYPEHASH, order));
-            let tmp := mload(ptr)
             mstore(ptr, typehash)
-            orderHash := keccak256(ptr, 0x100)
-            mstore(ptr, tmp)
+            calldatacopy(add(ptr, 0x20), order, 0xe0)
+            result := keccak256(ptr, 0x100)
         }
-        return ECDSA.toTypedDataHash(domainSeparator, orderHash);
+        result = ECDSA.toTypedDataHash(domainSeparator, result);
     }
 }
