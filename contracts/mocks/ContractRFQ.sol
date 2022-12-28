@@ -18,6 +18,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
 
     error NotAllowedToken();
     error BadPrice();
+    error MalformedSignature();
 
     address immutable public protocol;
     IERC20 immutable public token0;
@@ -72,6 +73,8 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     }
 
     function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns(bytes4) {
+        if (signature.length != 32 * 7) revert MalformedSignature();
+
         OrderRFQLib.OrderRFQ calldata order;
         assembly { // solhint-disable-line no-inline-assembly
             order := signature.offset
