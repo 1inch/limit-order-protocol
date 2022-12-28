@@ -24,11 +24,15 @@ contract WethUnwrapper is OnlyWethReceiver, IPostInteractionNotificationReceiver
         uint256 /* makingAmount */,
         uint256 takingAmount,
         uint256 /* remainingMakerAmount */,
-        bytes calldata /* interactiveData */
+        bytes calldata interactiveData
     ) external override {
         _WETH.withdraw(takingAmount);
+        address receiver = maker;
+        if (interactiveData.length == 20) {
+            receiver = address(bytes20(interactiveData));
+        }
         // solhint-disable-next-line avoid-low-level-calls
-        (bool success, ) = maker.call{value: takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
+        (bool success, ) = receiver.call{value: takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
         if (!success) revert Errors.ETHTransferFailed();
     }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@1inch/limit-order-protocol-contract",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "1inch Limit Order Protocol",
   "repository": {
     "type": "git",
@@ -12,7 +12,8 @@
     "contracts/helpers",
     "contracts/interfaces",
     "contracts/libraries",
-    "contracts/mocks"
+    "contracts/mocks",
+    "test/helpers"
   ],
   "dependencies": {
     "@1inch/solidity-utils": "2.2.2",

@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.17;
+
+library CalldataLib {
+    type Address is uint256;
+
+    error IncorrectDataLength();
+
+    function get(Address account) internal pure returns (address) {
+        return address(uint160(Address.unwrap(account)));
+    }
+}

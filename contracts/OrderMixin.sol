@@ -8,7 +8,6 @@ import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 
-import "./helpers/AmountCalculator.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/IOrderMixin.sol";
 import "./interfaces/IInteractionNotificationReceiver.sol";
@@ -21,7 +20,8 @@ import "./OrderLib.sol";
 abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     using SafeERC20 for IERC20;
     using OrderLib for OrderLib.Order;
-    using OrderLib for OrderLib.Address;
+    using CalldataLib for CalldataLib.Address;
+    using CalldataLib for bytes;
 
     error UnknownOrder();
     error AccessDenied();
@@ -39,9 +39,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     error SwapWithZeroAmount();
     error TransferFromMakerToTakerFailed();
     error TransferFromTakerToMakerFailed();
-    error WrongAmount();
-    error WrongGetter();
-    error GetAmountCallFailed();
     error TakingAmountIncreased();
     error SimulationResults(bool success, bytes res);
 
@@ -210,16 +207,16 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             if (actualMakingAmount > remainingMakingAmount) {
                 actualMakingAmount = remainingMakingAmount;
             }
-            actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakingAmount, orderHash);
+            actualTakingAmount = order.getTakingAmount(actualMakingAmount, remainingMakingAmount, orderHash);
             uint256 thresholdAmount = skipPermitAndThresholdAmount & _THRESHOLD_MASK;
             // check that actual rate is not worse than what was expected
             // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
             if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
         } else {
-            actualMakingAmount = _getMakingAmount(order.getMakingAmount(), order.takingAmount, actualTakingAmount, order.makingAmount, remainingMakingAmount, orderHash);
+            actualMakingAmount = order.getMakingAmount(actualTakingAmount, remainingMakingAmount, orderHash);
             if (actualMakingAmount > remainingMakingAmount) {
                 actualMakingAmount = remainingMakingAmount;
-                actualTakingAmount = _getTakingAmount(order.getTakingAmount(), order.makingAmount, actualMakingAmount, order.takingAmount, remainingMakingAmount, orderHash);
+                actualTakingAmount = order.getTakingAmount(actualMakingAmount, remainingMakingAmount, orderHash);
                 if (actualTakingAmount > takingAmount) revert TakingAmountIncreased();
             }
             uint256 thresholdAmount = skipPermitAndThresholdAmount & _THRESHOLD_MASK;
@@ -336,61 +333,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             calldatacopy(add(data, 0x64), input.offset, input.length)
             let status := call(gas(), asset, 0, data, add(0x64, input.length), 0x0, 0x20)
             success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
-        }
-    }
-
-    function _getMakingAmount(
-        bytes calldata getter,
-        uint256 orderTakingAmount,
-        uint256 requestedTakingAmount,
-        uint256 orderMakingAmount,
-        uint256 remainingMakingAmount,
-        bytes32 orderHash
-    ) private view returns(uint256) {
-        if (getter.length == 0) {
-            // Linear proportion
-            return AmountCalculator.getMakingAmount(orderMakingAmount, orderTakingAmount, requestedTakingAmount);
-        }
-        return _callGetter(getter, orderTakingAmount, requestedTakingAmount, orderMakingAmount, remainingMakingAmount, orderHash);
-    }
-
-    function _getTakingAmount(
-        bytes calldata getter,
-        uint256 orderMakingAmount,
-        uint256 requestedMakingAmount,
-        uint256 orderTakingAmount,
-        uint256 remainingMakingAmount,
-        bytes32 orderHash
-    ) private view returns(uint256) {
-        if (getter.length == 0) {
-            // Linear proportion
-            return AmountCalculator.getTakingAmount(orderMakingAmount, orderTakingAmount, requestedMakingAmount);
-        }
-        return _callGetter(getter, orderMakingAmount, requestedMakingAmount, orderTakingAmount, remainingMakingAmount, orderHash);
-    }
-
-    function _callGetter(
-        bytes calldata getter,
-        uint256 orderExpectedAmount,
-        uint256 requestedAmount,
-        uint256 orderResultAmount,
-        uint256 remainingMakingAmount,
-        bytes32 orderHash
-    ) private view returns(uint256) {
-        if (getter.length == 1) {
-            if (OrderLib.getterIsFrozen(getter)) {
-                // On "x" getter calldata only exact amount is allowed
-                if (requestedAmount != orderExpectedAmount) revert WrongAmount();
-                return orderResultAmount;
-            } else {
-                revert WrongGetter();
-            }
-        } else {
-            address target = address(bytes20(getter));
-            bytes calldata data = getter[20:];
-            (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, requestedAmount, remainingMakingAmount, orderHash));
-            if (!success || result.length != 32) revert GetAmountCallFailed();
-            return abi.decode(result, (uint256));
         }
     }
 }

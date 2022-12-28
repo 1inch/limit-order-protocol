@@ -6,16 +6,19 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "../LimitOrderProtocol.sol";
+import "../libraries/CalldataLib.sol";
 import "../OrderRFQLib.sol";
 import { EIP712Alien } from "./EIP712Alien.sol";
 
 contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     using SafeERC20 for IERC20;
+    using CalldataLib for bytes;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
-    using OrderRFQLib for OrderRFQLib.Address;
+    using CalldataLib for CalldataLib.Address;
 
     error NotAllowedToken();
     error BadPrice();
+    error MalformedSignature();
 
     address immutable public protocol;
     IERC20 immutable public token0;
@@ -70,7 +73,12 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     }
 
     function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns(bytes4) {
-        OrderRFQLib.OrderRFQ memory order = abi.decode(signature, (OrderRFQLib.OrderRFQ));
+        if (signature.length != 32 * 7) revert MalformedSignature();
+
+        OrderRFQLib.OrderRFQ calldata order;
+        assembly { // solhint-disable-line no-inline-assembly
+            order := signature.offset
+        }
 
         if (
             (

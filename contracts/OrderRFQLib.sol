@@ -3,16 +3,17 @@
 pragma solidity 0.8.17;
 
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
+import "./libraries/CalldataLib.sol";
 
 library OrderRFQLib {
     type Address is uint256;
 
     struct OrderRFQ {
         uint256 info;  // lowest 64 bits is the order id, next 64 bits is the expiration timestamp
-        Address makerAsset;
-        Address takerAsset;
-        Address maker;
-        Address allowedSender;  // equals to Zero address on public orders
+        CalldataLib.Address makerAsset;
+        CalldataLib.Address takerAsset;
+        CalldataLib.Address maker;
+        CalldataLib.Address allowedSender;  // equals to Zero address on public orders
         uint256 makingAmount;
         uint256 takingAmount;
     }
@@ -29,23 +30,17 @@ library OrderRFQLib {
         ")"
     );
 
-    function get(Address a) internal pure returns(address) {
-        return address(uint160(Address.unwrap(a)));
-    }
-
-    function hash(OrderRFQ memory order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
+    function hash(OrderRFQ calldata order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes32 typehash = _LIMIT_ORDER_RFQ_TYPEHASH;
-        bytes32 orderHash;
-        // this assembly is memory unsafe :(
+        /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
-            let ptr := sub(order, 0x20)
+            let ptr := mload(0x40)
 
             // keccak256(abi.encode(_LIMIT_ORDER_RFQ_TYPEHASH, order));
-            let tmp := mload(ptr)
             mstore(ptr, typehash)
-            orderHash := keccak256(ptr, 0x100)
-            mstore(ptr, tmp)
+            calldatacopy(add(ptr, 0x20), order, 0xe0)
+            result := keccak256(ptr, 0x100)
         }
-        return ECDSA.toTypedDataHash(domainSeparator, orderHash);
+        result = ECDSA.toTypedDataHash(domainSeparator, result);
     }
 }

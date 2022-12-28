@@ -2,10 +2,13 @@
 
 pragma solidity 0.8.17;
 
+import "../libraries/CalldataLib.sol";
 import "./NonceManager.sol";
 
 /// @title A helper contract for executing boolean functions on arbitrary target call results
 contract PredicateHelper is NonceManager {
+    using CalldataLib for bytes;
+
     error ArbitraryStaticCallFailed();
 
     /// @notice Calls every target with corresponding data

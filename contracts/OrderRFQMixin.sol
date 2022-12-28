@@ -16,7 +16,7 @@ import "./OrderRFQLib.sol";
 abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     using SafeERC20 for IERC20;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
-    using OrderRFQLib for OrderRFQLib.Address;
+    using CalldataLib for CalldataLib.Address;
 
     error RFQZeroTargetIsForbidden();
     error RFQPrivateOrder();
