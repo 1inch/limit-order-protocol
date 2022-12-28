@@ -6,8 +6,6 @@ import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 import "./libraries/CalldataLib.sol";
 
 library OrderRFQLib {
-    type Address is uint256;
-
     struct OrderRFQ {
         uint256 info;  // lowest 64 bits is the order id, next 64 bits is the expiration timestamp
         CalldataLib.Address makerAsset;
