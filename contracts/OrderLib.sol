@@ -4,7 +4,13 @@ pragma solidity 0.8.17;
 
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 
+import "./helpers/AmountCalculator.sol";
+
 library OrderLib {
+    error WrongAmount();
+    error WrongGetter();
+    error GetAmountCallFailed();
+
     struct Order {
         uint256 salt;
         address makerAsset;
@@ -111,5 +117,58 @@ library OrderLib {
             result := keccak256(ptr, 0x160)
         }
         result = ECDSA.toTypedDataHash(domainSeparator, result);
+    }
+
+    function getMakingAmount(
+        Order calldata order,
+        uint256 requestedTakingAmount,
+        uint256 remainingMakingAmount,
+        bytes32 orderHash
+    ) internal view returns(uint256) {
+        bytes calldata getter = getMakingAmount(order);
+        if (getter.length == 0) {
+            // Linear proportion
+            return AmountCalculator.getMakingAmount(order.makingAmount, order.takingAmount, requestedTakingAmount);
+        }
+        return _callGetter(getter, order.takingAmount, requestedTakingAmount, order.makingAmount, remainingMakingAmount, orderHash);
+    }
+
+    function getTakingAmount(
+        Order calldata order,
+        uint256 requestedMakingAmount,
+        uint256 remainingMakingAmount,
+        bytes32 orderHash
+    ) internal view returns(uint256) {
+        bytes calldata getter = getTakingAmount(order);
+        if (getter.length == 0) {
+            // Linear proportion
+            return AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, requestedMakingAmount);
+        }
+        return _callGetter(getter, order.makingAmount, requestedMakingAmount, order.takingAmount, remainingMakingAmount, orderHash);
+    }
+
+    function _callGetter(
+        bytes calldata getter,
+        uint256 orderExpectedAmount,
+        uint256 requestedAmount,
+        uint256 orderResultAmount,
+        uint256 remainingMakingAmount,
+        bytes32 orderHash
+    ) private view returns(uint256) {
+        if (getter.length == 1) {
+            if (OrderLib.getterIsFrozen(getter)) {
+                // On "x" getter calldata only exact amount is allowed
+                if (requestedAmount != orderExpectedAmount) revert WrongAmount();
+                return orderResultAmount;
+            } else {
+                revert WrongGetter();
+            }
+        } else {
+            address target = address(bytes20(getter));
+            bytes calldata data = getter[20:];
+            (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, requestedAmount, remainingMakingAmount, orderHash));
+            if (!success || result.length != 32) revert GetAmountCallFailed();
+            return abi.decode(result, (uint256));
+        }
     }
 }
