@@ -39,9 +39,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     error SwapWithZeroAmount();
     error TransferFromMakerToTakerFailed();
     error TransferFromTakerToMakerFailed();
-    error WrongAmount();
-    error WrongGetter();
-    error GetAmountCallFailed();
     error TakingAmountIncreased();
     error SimulationResults(bool success, bytes res);
 
