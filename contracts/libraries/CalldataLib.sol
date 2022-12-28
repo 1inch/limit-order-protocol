@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity 0.8.17;
-pragma abicoder v1;
 
-/// @title Library with gas efficient alternatives to `abi.decode`
-library ArgumentsDecoder {
+library CalldataLib {
+    type Address is uint256;
+
     error IncorrectDataLength();
+
+    function get(Address account) internal pure returns (address) {
+        return address(uint160(Address.unwrap(account)));
+    }
 
     function decodeUint256(bytes calldata data, uint256 offset) internal pure returns(uint256 value) {
         unchecked { if (data.length < offset + 32) revert IncorrectDataLength(); }

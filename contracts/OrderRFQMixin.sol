@@ -16,6 +16,7 @@ import "./OrderRFQLib.sol";
 abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     using SafeERC20 for IERC20;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
+    using CalldataLib for CalldataLib.Address;
 
     error RFQZeroTargetIsForbidden();
     error RFQPrivateOrder();
@@ -88,7 +89,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
      * @return orderHash Hash of the filled order
      */
     function fillOrderRFQ(
-        OrderRFQLib.OrderRFQ memory order,
+        OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
         uint256 flagsAndAmount
     ) external payable returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
@@ -111,7 +112,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
      * @return orderHash Hash of the filled order
      */
     function fillOrderRFQCompact(
-        OrderRFQLib.OrderRFQ memory order,
+        OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 flagsAndAmount
@@ -119,12 +120,12 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
         orderHash = order.hash(_domainSeparatorV4());
         if (flagsAndAmount & _SIGNER_SMART_CONTRACT_HINT != 0) {
             if (flagsAndAmount & _IS_VALID_SIGNATURE_65_BYTES != 0) {
-                if (!ECDSA.isValidSignature65(order.maker, orderHash, r, vs)) revert RFQBadSignature();
+                if (!ECDSA.isValidSignature65(order.maker.get(), orderHash, r, vs)) revert RFQBadSignature();
             } else {
-                if (!ECDSA.isValidSignature(order.maker, orderHash, r, vs)) revert RFQBadSignature();
+                if (!ECDSA.isValidSignature(order.maker.get(), orderHash, r, vs)) revert RFQBadSignature();
             }
         } else {
-            if(!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, r, vs)) revert RFQBadSignature();
+            if(!ECDSA.recoverOrIsValidSignature(order.maker.get(), orderHash, r, vs)) revert RFQBadSignature();
         }
 
         (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, flagsAndAmount, msg.sender);
@@ -146,13 +147,13 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
      * @dev See tests for examples
      */
     function fillOrderRFQToWithPermit(
-        OrderRFQLib.OrderRFQ memory order,
+        OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
         uint256 flagsAndAmount,
         address target,
         bytes calldata permit
     ) external returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
-        IERC20(order.takerAsset).safePermit(permit);
+        IERC20(order.takerAsset.get()).safePermit(permit);
         return fillOrderRFQTo(order, signature, flagsAndAmount, target);
     }
 
@@ -167,7 +168,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
      * @return orderHash Hash of the filled order
      */
     function fillOrderRFQTo(
-        OrderRFQLib.OrderRFQ memory order,
+        OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
         uint256 flagsAndAmount,
         address target
@@ -175,25 +176,25 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
         orderHash = order.hash(_domainSeparatorV4());
         if (flagsAndAmount & _SIGNER_SMART_CONTRACT_HINT != 0) {
             if (flagsAndAmount & _IS_VALID_SIGNATURE_65_BYTES != 0 && signature.length != 65) revert RFQBadSignature();
-            if (!ECDSA.isValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
+            if (!ECDSA.isValidSignature(order.maker.get(), orderHash, signature)) revert RFQBadSignature();
         } else {
-            if(!ECDSA.recoverOrIsValidSignature(order.maker, orderHash, signature)) revert RFQBadSignature();
+            if(!ECDSA.recoverOrIsValidSignature(order.maker.get(), orderHash, signature)) revert RFQBadSignature();
         }
         (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, flagsAndAmount, target);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
     function _fillOrderRFQTo(
-        OrderRFQLib.OrderRFQ memory order,
+        OrderRFQLib.OrderRFQ calldata order,
         uint256 flagsAndAmount,
         address target
     ) private returns(uint256 makingAmount, uint256 takingAmount) {
         if (target == address(0)) revert RFQZeroTargetIsForbidden();
 
-        address maker = order.maker;
+        address maker = order.maker.get();
 
         // Validate order
-        if (order.allowedSender != address(0) && order.allowedSender != msg.sender) revert RFQPrivateOrder();
+        if (order.allowedSender.get() != address(0) && order.allowedSender.get() != msg.sender) revert RFQPrivateOrder();
 
         {  // Stack too deep
             uint256 info = order.info;
@@ -228,24 +229,24 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
         if (makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
 
         // Maker => Taker
-        if (order.makerAsset == address(_WETH) && flagsAndAmount & _UNWRAP_WETH_FLAG != 0) {
+        if (order.makerAsset.get() == address(_WETH) && flagsAndAmount & _UNWRAP_WETH_FLAG != 0) {
             _WETH.transferFrom(maker, address(this), makingAmount);
             _WETH.withdraw(makingAmount);
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = target.call{value: makingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
             if (!success) revert Errors.ETHTransferFailed();
         } else {
-            IERC20(order.makerAsset).safeTransferFrom(maker, target, makingAmount);
+            IERC20(order.makerAsset.get()).safeTransferFrom(maker, target, makingAmount);
         }
 
         // Taker => Maker
-        if (order.takerAsset == address(_WETH) && msg.value > 0) {
+        if (order.takerAsset.get() == address(_WETH) && msg.value > 0) {
             if (msg.value != takingAmount) revert Errors.InvalidMsgValue();
             _WETH.deposit{ value: takingAmount }();
             _WETH.transfer(maker, takingAmount);
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
-            IERC20(order.takerAsset).safeTransferFrom(msg.sender, maker, takingAmount);
+            IERC20(order.takerAsset.get()).safeTransferFrom(msg.sender, maker, takingAmount);
         }
     }
 
