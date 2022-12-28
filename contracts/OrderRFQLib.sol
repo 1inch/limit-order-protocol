@@ -3,15 +3,15 @@
 pragma solidity 0.8.17;
 
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
-import "./libraries/CalldataLib.sol";
+import "./libraries/AddressLib.sol";
 
 library OrderRFQLib {
     struct OrderRFQ {
         uint256 info;  // lowest 64 bits is the order id, next 64 bits is the expiration timestamp
-        CalldataLib.Address makerAsset;
-        CalldataLib.Address takerAsset;
-        CalldataLib.Address maker;
-        CalldataLib.Address allowedSender;  // equals to Zero address on public orders
+        AddressLib.Address makerAsset;
+        AddressLib.Address takerAsset;
+        AddressLib.Address maker;
+        AddressLib.Address allowedSender;  // equals to Zero address on public orders
         uint256 makingAmount;
         uint256 takingAmount;
     }
