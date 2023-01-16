@@ -4,13 +4,11 @@ pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IPreInteractionNotificationReceiver.sol";
-import "../libraries/CalldataLib.sol";
 import "../OrderLib.sol";
 
 
 contract HashChecker is IPreInteractionNotificationReceiver, Ownable {
     using OrderLib for OrderLib.Order;
-    using CalldataLib for bytes;
 
     error IncorrectOrderHash();
 

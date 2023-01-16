@@ -20,8 +20,7 @@ import "./OrderLib.sol";
 abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     using SafeERC20 for IERC20;
     using OrderLib for OrderLib.Order;
-    using CalldataLib for CalldataLib.Address;
-    using CalldataLib for bytes;
+    using AddressLib for Address;
 
     error UnknownOrder();
     error AccessDenied();
