@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
+import "@1inch/solidity-utils/contracts/interfaces/IPermit2.sol";
 
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/IOrderMixin.sol";
@@ -37,6 +38,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     error TakingAmountTooHigh();
     error MakingAmountTooLow();
     error SwapWithZeroAmount();
+    error Permit2TransferFromMakerToTakerFailed();
     error TransferFromMakerToTakerFailed();
     error TransferFromTakerToMakerFailed();
     error TakingAmountIncreased();
@@ -60,7 +62,9 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     uint256 private constant _ORDER_DOES_NOT_EXIST = 0;
     uint256 private constant _ORDER_FILLED = 1;
     uint256 private constant _SKIP_PERMIT_FLAG = 1 << 255;
-    uint256 private constant _THRESHOLD_MASK = ~_SKIP_PERMIT_FLAG;
+    uint256 private constant _USE_PERMIT2_FLAG = 1 << 254;
+    uint256 private constant _THRESHOLD_MASK = ~(_SKIP_PERMIT_FLAG | _USE_PERMIT2_FLAG);
+    address private constant _PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     /// @notice Stores unfilled amounts for each order plus one.
@@ -129,9 +133,9 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         bytes calldata interaction,
         uint256 makingAmount,
         uint256 takingAmount,
-        uint256 skipPermitAndThresholdAmount
+        uint256 skipPermitUsePermit2ThresholdAmount
     ) external payable returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
-        return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, skipPermitAndThresholdAmount, msg.sender);
+        return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, skipPermitUsePermit2ThresholdAmount, msg.sender);
     }
 
     /**
@@ -143,7 +147,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         bytes calldata interaction,
         uint256 makingAmount,
         uint256 takingAmount,
-        uint256 skipPermitAndThresholdAmount,
+        uint256 skipPermitUsePermit2ThresholdAmount,
         address target,
         bytes calldata permit
     ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
@@ -152,7 +156,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             (address token, bytes calldata permitData) = permit.decodeTargetAndCalldata();
             IERC20(token).safePermit(permitData);
         }
-        return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, skipPermitAndThresholdAmount, target);
+        return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, skipPermitUsePermit2ThresholdAmount, target);
     }
 
     /**
@@ -164,7 +168,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         bytes calldata interaction,
         uint256 makingAmount,
         uint256 takingAmount,
-        uint256 skipPermitAndThresholdAmount,
+        uint256 skipPermitUsePermit2ThresholdAmount,
         address target
     ) public payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
         if (target == address(0)) revert ZeroTargetIsForbidden();
@@ -183,7 +187,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             remainingMakingAmount = order.makingAmount;
 
             bytes calldata permit = order.permit();
-            if (skipPermitAndThresholdAmount & _SKIP_PERMIT_FLAG == 0 && permit.length >= 20) {
+            if (skipPermitUsePermit2ThresholdAmount & _SKIP_PERMIT_FLAG == 0 && permit.length >= 20) {
                 // proceed only if taker is willing to execute permit and its length is enough to store address
                 (address token, bytes calldata permitCalldata) = permit.decodeTargetAndCalldata();
                 IERC20(token).safePermit(permitCalldata);
@@ -206,7 +210,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                 actualMakingAmount = remainingMakingAmount;
             }
             actualTakingAmount = order.getTakingAmount(actualMakingAmount, remainingMakingAmount, orderHash);
-            uint256 thresholdAmount = skipPermitAndThresholdAmount & _THRESHOLD_MASK;
+            uint256 thresholdAmount = skipPermitUsePermit2ThresholdAmount & _THRESHOLD_MASK;
             // check that actual rate is not worse than what was expected
             // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
             if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
@@ -217,7 +221,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                 actualTakingAmount = order.getTakingAmount(actualMakingAmount, remainingMakingAmount, orderHash);
                 if (actualTakingAmount > takingAmount) revert TakingAmountIncreased();
             }
-            uint256 thresholdAmount = skipPermitAndThresholdAmount & _THRESHOLD_MASK;
+            uint256 thresholdAmount = skipPermitUsePermit2ThresholdAmount & _THRESHOLD_MASK;
             // check that actual rate is not worse than what was expected
             // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
             if (actualMakingAmount * takingAmount < thresholdAmount * actualTakingAmount) revert MakingAmountTooLow();
@@ -245,13 +249,23 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         }
 
         // Maker => Taker
-        if (!_callTransferFrom(
-            order.makerAsset.get(),
-            order.maker.get(),
-            target,
-            actualMakingAmount,
-            order.makerAssetData()
-        )) revert TransferFromMakerToTakerFailed();
+        if ((skipPermitUsePermit2ThresholdAmount & _USE_PERMIT2_FLAG) != 0) {
+            if (!_callPermit2TransferFrom(
+                order.makerAsset.get(),
+                order.maker.get(),
+                target,
+                actualMakingAmount,
+                order.makerAssetData()
+            )) revert Permit2TransferFromMakerToTakerFailed();
+        } else {
+            if (!_callTransferFrom(
+                order.makerAsset.get(),
+                order.maker.get(),
+                target,
+                actualMakingAmount,
+                order.makerAssetData()
+            )) revert TransferFromMakerToTakerFailed();
+        }
 
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
@@ -329,6 +343,23 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             mstore(add(data, 0x44), amount)
             calldatacopy(add(data, 0x64), input.offset, input.length)
             let status := call(gas(), asset, 0, data, add(0x64, input.length), 0x0, 0x20)
+            success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
+        }
+    }
+
+    function _callPermit2TransferFrom(address asset, address from, address to, uint256 amount, bytes calldata input) private returns(bool success) {
+        bytes4 selector = IPermit2.transferFrom.selector;
+        /// @solidity memory-safe-assembly
+        assembly { // solhint-disable-line no-inline-assembly
+            let data := mload(0x40)
+
+            mstore(data, selector)
+            mstore(add(data, 0x04), from)
+            mstore(add(data, 0x24), to)
+            mstore(add(data, 0x44), amount)
+            mstore(add(data, 0x64), asset)
+            calldatacopy(add(data, 0x84), input.offset, input.length)
+            let status := call(gas(), _PERMIT2, 0, data, add(0x84, input.length), 0x0, 0x20)
             success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
         }
     }

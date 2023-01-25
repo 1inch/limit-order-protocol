@@ -15,6 +15,7 @@ import "./OrderRFQLib.sol";
 /// @title RFQ Limit Order mixin
 abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     using SafeERC20 for IERC20;
+    using SafeERC20 for IWETH;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
     using CalldataLib for CalldataLib.Address;
 
@@ -42,11 +43,13 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     uint256 private constant _SIGNER_SMART_CONTRACT_HINT = 1 << 254;
     uint256 private constant _IS_VALID_SIGNATURE_65_BYTES = 1 << 253;
     uint256 private constant _UNWRAP_WETH_FLAG = 1 << 252;
+    uint256 private constant _USE_PERMIT2_FLAG = 1 << 251;
     uint256 private constant _AMOUNT_MASK = ~(
         _MAKER_AMOUNT_FLAG |
         _SIGNER_SMART_CONTRACT_HINT |
         _IS_VALID_SIGNATURE_65_BYTES |
-        _UNWRAP_WETH_FLAG
+        _UNWRAP_WETH_FLAG |
+        _USE_PERMIT2_FLAG
     );
 
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
@@ -230,13 +233,13 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
 
         // Maker => Taker
         if (order.makerAsset.get() == address(_WETH) && flagsAndAmount & _UNWRAP_WETH_FLAG != 0) {
-            _WETH.transferFrom(maker, address(this), makingAmount);
+            _WETH.safeTransferFromUniversal(maker, address(this), makingAmount, (flagsAndAmount & _USE_PERMIT2_FLAG) != 0);
             _WETH.withdraw(makingAmount);
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = target.call{value: makingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
             if (!success) revert Errors.ETHTransferFailed();
         } else {
-            IERC20(order.makerAsset.get()).safeTransferFrom(maker, target, makingAmount);
+            IERC20(order.makerAsset.get()).safeTransferFromUniversal(maker, target, makingAmount, (flagsAndAmount & _USE_PERMIT2_FLAG) != 0);
         }
 
         // Taker => Maker

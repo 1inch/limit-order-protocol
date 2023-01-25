@@ -1,4 +1,4 @@
-const { expect, time, constants, profileEVM, trim0x } = require('@1inch/solidity-utils');
+const { expect, time, constants, profileEVM, trim0x, getPermit2 } = require('@1inch/solidity-utils');
 const { buildOrder, buildOrderData, signOrder } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, cutLastArg, ether, setn } = require('./helpers/utils');
@@ -166,7 +166,7 @@ describe('LimitOrderProtocol', function () {
             const receipt = await swap.fillOrder(order, signature, '0x', 1, 0, 1);
 
             expect(
-                await profileEVM(receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
+                await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
             ).to.be.deep.equal([2, 1, 7, 7, 0]);
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
@@ -199,7 +199,7 @@ describe('LimitOrderProtocol', function () {
             const receipt = await swap.fillOrder(order, signature, '0x', 1, 0, 1);
 
             expect(
-                await profileEVM(receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
+                await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
             ).to.be.deep.equal([2, 1, 7, 7, 0]);
 
             // await gasspectEVM(receipt.hash);
@@ -351,6 +351,25 @@ describe('LimitOrderProtocol', function () {
                 const { dai, weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
+                const targetPermitPair = withTarget(weth.address, permit);
+
+                const makerDai = await dai.balanceOf(addr1.address);
+                const takerDai = await dai.balanceOf(addr.address);
+                const makerWeth = await weth.balanceOf(addr1.address);
+                const takerWeth = await weth.balanceOf(addr.address);
+
+                await swap.fillOrderToWithPermit(order, signature, '0x', 1, 0, 1, addr.address, targetPermitPair);
+
+                expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
+                expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
+                expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.add(1));
+                expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
+            });
+
+            it('DAI => WETH, permit2', async function () {
+                const { dai, weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
+
+                const permit = await getPermit2(addr, weth.address, chainId, swap.address, '1');
                 const targetPermitPair = withTarget(weth.address, permit);
 
                 const makerDai = await dai.balanceOf(addr1.address);

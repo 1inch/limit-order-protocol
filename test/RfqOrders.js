@@ -1,4 +1,4 @@
-const { expect, time, profileEVM } = require('@1inch/solidity-utils');
+const { expect, time, profileEVM, getPermit2 } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { buildOrderRFQ, signOrderRFQ, compactSignature, makingAmount, takingAmount, unwrapWeth } = require('./helpers/orderUtils');
 const { getPermit } = require('./helpers/eip712');
@@ -49,7 +49,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const receipt = await swap.fillOrderRFQ(order, signature, makingAmount(1));
 
                 expect(
-                    await profileEVM(receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
+                    await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
                 ).to.be.deep.equal([2, 1, 7, 7, 0]);
 
                 // await gasspectEVM(receipt.hash);
@@ -79,7 +79,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const receipt = await swap.fillOrderRFQCompact(order, r, vs, 1);
 
                 expect(
-                    await profileEVM(receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
+                    await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
                 ).to.be.deep.equal([2, 1, 7, 7, 0]);
 
                 // await gasspectEVM(receipt.hash);
@@ -100,6 +100,26 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
+
+                const makerDai = await dai.balanceOf(addr1.address);
+                const takerDai = await dai.balanceOf(addr.address);
+                const makerWeth = await weth.balanceOf(addr1.address);
+                const takerWeth = await weth.balanceOf(addr.address);
+
+                await swap.fillOrderRFQToWithPermit(order, signature, makingAmount(1), addr.address, permit);
+
+                expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
+                expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
+                expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.add(1));
+                expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
+            });
+
+            it('DAI => WETH, permit2', async function () {
+                const { dai, weth, swap, chainId } = await loadFixture(initContracts);
+                const order = buildOrderRFQ('0xFF000000000000000000000001', dai.address, weth.address, 1, 1, addr1.address);
+                const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+
+                const permit = await getPermit2(addr, weth.address, chainId, swap.address, '1');
 
                 const makerDai = await dai.balanceOf(addr1.address);
                 const takerDai = await dai.balanceOf(addr.address);

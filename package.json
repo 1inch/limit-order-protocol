@@ -16,7 +16,7 @@
     "test/helpers"
   ],
   "dependencies": {
-    "@1inch/solidity-utils": "2.2.2",
+    "@1inch/solidity-utils": "2.2.15",
     "@chainlink/contracts": "0.5.1",
     "@openzeppelin/contracts": "4.7.3"
   },

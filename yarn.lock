@@ -2,15 +2,16 @@
 # yarn lockfile v1
 
 
-"@1inch/solidity-utils@2.2.2":
-  version "2.2.2"
-  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-2.2.2.tgz#3c7165b0131426a11abd35a556fa244a5ac0c59b"
-  integrity sha512-nO65pP6fgbc0RUbKaI7PrqZdM20KjK6FONrh3iOf5o5y+iH/kf7njcUwXSU9hEB/UmnTUD0lr2LeGOwiCVDCkg==
+"@1inch/solidity-utils@2.2.15":
+  version "2.2.15"
+  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-2.2.15.tgz#9a0b03a6427b1bc51da63d93474606066d350af6"
+  integrity sha512-C4rGHnI6PlT70Vsku1JZPBgLuL2Dc/q+vo1XptfmJr/uiXGgqA59cerSf2Ig4WmNma+o4qQeTmXEEWodG52yWQ==
   dependencies:
     "@metamask/eth-sig-util" "4.0.1"
     "@nomicfoundation/hardhat-network-helpers" "1.0.6"
     "@nomiclabs/hardhat-ethers" "2.1.1"
     "@openzeppelin/contracts" "4.7.3"
+    "@uniswap/permit2-sdk" "^1.2.0"
     ethereumjs-util "7.1.5"
     ethers "5.7.1"
     hardhat "2.11.2"
@@ -1147,6 +1148,14 @@
   integrity sha512-Da66lEIFeIz9ltsdMZcpQvmrmmoqrfju8pm1BH8WbYjZSwUgCwXLb9C+9XYogwBITnbsSaMdVPb2ekf7TV+03w==
   dependencies:
     "@types/node" "*"
+
+"@uniswap/permit2-sdk@^1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@uniswap/permit2-sdk/-/permit2-sdk-1.2.0.tgz#ed86440a87a6c318169c8e6f161fc263ad040891"
+  integrity sha512-Ietv3FxN7+RCXcPSED/i/8b0a2GUZrMdyX05k3FsSztvYKyPFAMS/hBXojF0NZqYB1bHecqYc7Ej+7tV/rdYXg==
+  dependencies:
+    ethers "^5.3.1"
+    tiny-invariant "^1.3.1"
 
 abbrev@1:
   version "1.1.1"
@@ -2669,7 +2678,7 @@ ethers@5.7.1, ethers@^5.5.3:
     "@ethersproject/web" "5.7.1"
     "@ethersproject/wordlists" "5.7.0"
 
-ethers@5.7.2:
+ethers@5.7.2, ethers@^5.3.1:
   version "5.7.2"
   resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.7.2.tgz#3a7deeabbb8c030d4126b24f84e525466145872e"
   integrity sha512-wswUsmWo1aOK8rR7DIKiWSw9DbLWe6x98Jrn8wcTflTVvaXhAMaB5zGAXy0GYQEQp9iO1iSHWVyARQm11zUtyg==
@@ -5565,6 +5574,11 @@ through@^2.3.6:
   version "2.3.8"
   resolved "https://registry.yarnpkg.com/through/-/through-2.3.8.tgz#0dd4c9ffaabc357960b1b724115d7e0e86a2e1f5"
   integrity sha512-w89qg7PI8wAdvX60bMDP+bFoD5Dvhm9oLheFp5O4a2QF0cSBGsBX4qZmadPMvVqlLJBBci+WqGGOAPvcDeNSVg==
+
+tiny-invariant@^1.3.1:
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/tiny-invariant/-/tiny-invariant-1.3.1.tgz#8560808c916ef02ecfd55e66090df23a4b7aa642"
+  integrity sha512-AD5ih2NlSssTCwsMznbvwMZpJ1cbhkGd2uueNxzv2jDlEeZdU04JQfRnggJQ8DrcVBGjAsCKwFBbDlVNtEMlzw==
 
 tmp@0.0.33, tmp@^0.0.33:
   version "0.0.33"
