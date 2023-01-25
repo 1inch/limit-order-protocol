@@ -36,7 +36,7 @@ library OrderLib {
     bytes32 constant internal _LIMIT_ORDER_TYPEHASH = keccak256(
         "Order("
             "uint256 salt,"
-            "address makerAsset,"
+            "uint256 makerAsset,"
             "address takerAsset,"
             "address maker,"
             "address receiver,"

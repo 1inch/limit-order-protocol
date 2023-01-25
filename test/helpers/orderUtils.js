@@ -20,7 +20,7 @@ const ABIOrderRFQ = {
 
 const Order = [
     { name: 'salt', type: 'uint256' },
-    { name: 'makerAsset', type: 'address' },
+    { name: 'makerAsset', type: 'uint256' },
     { name: 'takerAsset', type: 'address' },
     { name: 'maker', type: 'address' },
     { name: 'receiver', type: 'address' },

@@ -1,4 +1,4 @@
-const { expect, time, constants, profileEVM, trim0x, getPermit2 } = require('@1inch/solidity-utils');
+const { expect, time, constants, profileEVM, trim0x, getPermit2, permit2Contract } = require('@1inch/solidity-utils');
 const { buildOrder, buildOrderData, signOrder } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, cutLastArg, ether, setn } = require('./helpers/utils');
@@ -331,9 +331,24 @@ describe('LimitOrderProtocol', function () {
 
     describe('Permit', function () {
         describe('fillOrderToWithPermit', function () {
+
             const deployContractsAndInitPermit = async function () {
                 const { dai, weth, swap, chainId } = await deploySwapTokens();
                 await initContracts(dai, weth, swap);
+
+                return { dai, weth, swap, chainId };
+            };
+
+            it('DAI => WETH', async function () {
+                const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInitPermit);
+
+                const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
+                const targetPermitPair = withTarget(weth.address, permit);
+
+                const makerDai = await dai.balanceOf(addr1.address);
+                const takerDai = await dai.balanceOf(addr.address);
+                const makerWeth = await weth.balanceOf(addr1.address);
+                const takerWeth = await weth.balanceOf(addr.address);
 
                 const order = buildOrder({
                     makerAsset: dai.address,
@@ -343,21 +358,6 @@ describe('LimitOrderProtocol', function () {
                     from: addr1.address,
                 });
                 const signature = await signOrder(order, chainId, swap.address, addr1);
-
-                return { dai, weth, swap, chainId, order, signature };
-            };
-
-            it('DAI => WETH', async function () {
-                const { dai, weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
-
-                const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
-                const targetPermitPair = withTarget(weth.address, permit);
-
-                const makerDai = await dai.balanceOf(addr1.address);
-                const takerDai = await dai.balanceOf(addr.address);
-                const makerWeth = await weth.balanceOf(addr1.address);
-                const takerWeth = await weth.balanceOf(addr.address);
-
                 await swap.fillOrderToWithPermit(order, signature, '0x', 1, 0, 1, addr.address, targetPermitPair);
 
                 expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
@@ -366,17 +366,27 @@ describe('LimitOrderProtocol', function () {
                 expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
             });
 
-            it('DAI => WETH, permit2', async function () {
-                const { dai, weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
+            it('DAI => WETH, permit2 maker', async function () {
+                const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInitPermit);
 
-                const permit = await getPermit2(addr, weth.address, chainId, swap.address, '1');
-                const targetPermitPair = withTarget(weth.address, permit);
+                const permit2 = await permit2Contract();
+                await dai.connect(addr1).approve(permit2.address, 1);
+                const permit = await getPermit2(addr1, dai.address, chainId, swap.address, 1);
+                const targetPermitPair = withTarget(dai.address, permit);
 
                 const makerDai = await dai.balanceOf(addr1.address);
                 const takerDai = await dai.balanceOf(addr.address);
                 const makerWeth = await weth.balanceOf(addr1.address);
                 const takerWeth = await weth.balanceOf(addr.address);
 
+                const order = buildOrder({
+                    makerAsset: (BigInt(dai.address) | 1n << 255n).toString(),
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    from: addr1.address,
+                });
+                const signature = await signOrder(order, chainId, swap.address, addr1);
                 await swap.fillOrderToWithPermit(order, signature, '0x', 1, 0, 1, addr.address, targetPermitPair);
 
                 expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
@@ -386,31 +396,56 @@ describe('LimitOrderProtocol', function () {
             });
 
             it('rejects reused signature', async function () {
-                const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
+                const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInitPermit);
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
                 const targetPermitPair = withTarget(weth.address, permit);
+
+                const order = buildOrder({
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    from: addr1.address,
+                });
+                const signature = await signOrder(order, chainId, swap.address, addr1);
                 const requestFunc = () => swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr.address, targetPermitPair);
                 await requestFunc();
                 await expect(requestFunc()).to.be.revertedWith('ERC20Permit: invalid signature');
             });
 
             it('rejects other signature', async function () {
-                const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
+                const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInitPermit);
 
                 const permit = await getPermit(addr.address, addr2, weth, '1', chainId, swap.address, '1');
                 const targetPermitPair = withTarget(weth.address, permit);
+                const order = buildOrder({
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    from: addr1.address,
+                });
+                const signature = await signOrder(order, chainId, swap.address, addr1);
                 await expect(
                     swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr.address, targetPermitPair),
                 ).to.be.revertedWith('ERC20Permit: invalid signature');
             });
 
             it('rejects expired permit', async function () {
-                const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
+                const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInitPermit);
 
                 const deadline = (await time.latest()) - time.duration.weeks(1);
                 const permit = await getPermit(addr.address, addr1, weth, '1', chainId, swap.address, '1', deadline);
                 const targetPermitPair = withTarget(weth.address, permit);
+                const order = buildOrder({
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    from: addr1.address,
+                });
+                const signature = await signOrder(order, chainId, swap.address, addr1);
                 await expect(
                     swap.fillOrderToWithPermit(order, signature, '0x', 0, 1, 1, addr.address, targetPermitPair),
                 ).to.be.revertedWith('ERC20Permit: expired deadline');

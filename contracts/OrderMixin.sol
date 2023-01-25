@@ -39,6 +39,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     error MakingAmountTooLow();
     error SwapWithZeroAmount();
     error Permit2TransferFromMakerToTakerFailed();
+    error Permit2TransferFromTakerToMakerFailed();
     error TransferFromMakerToTakerFailed();
     error TransferFromTakerToMakerFailed();
     error TakingAmountIncreased();
@@ -249,7 +250,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         }
 
         // Maker => Taker
-        if ((skipPermitUsePermit2ThresholdAmount & _USE_PERMIT2_FLAG) != 0) {
+        if (order.makerAsset.usePermit2()) {
             if (!_callPermit2TransferFrom(
                 order.makerAsset.get(),
                 order.maker.get(),
@@ -296,13 +297,23 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             _WETH.transfer(order.receiver.get() == address(0) ? order.maker.get() : order.receiver.get(), actualTakingAmount);
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
-            if (!_callTransferFrom(
-                order.takerAsset.get(),
-                msg.sender,
-                order.receiver.get() == address(0) ? order.maker.get() : order.receiver.get(),
-                actualTakingAmount,
-                order.takerAssetData()
-            )) revert TransferFromTakerToMakerFailed();
+            if ((skipPermitUsePermit2ThresholdAmount & _USE_PERMIT2_FLAG) != 0) {
+                if (!_callPermit2TransferFrom(
+                    order.takerAsset.get(),
+                    msg.sender,
+                    order.receiver.get() == address(0) ? order.maker.get() : order.receiver.get(),
+                    actualTakingAmount,
+                    order.takerAssetData()
+                )) revert Permit2TransferFromTakerToMakerFailed();
+            } else {
+                if (!_callTransferFrom(
+                    order.takerAsset.get(),
+                    msg.sender,
+                    order.receiver.get() == address(0) ? order.maker.get() : order.receiver.get(),
+                    actualTakingAmount,
+                    order.takerAssetData()
+                )) revert TransferFromTakerToMakerFailed();
+            }
         }
 
         // Maker can handle funds interactively

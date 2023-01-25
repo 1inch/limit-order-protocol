@@ -5,10 +5,17 @@ pragma solidity 0.8.17;
 library CalldataLib {
     type Address is uint256;
 
+    uint256 private constant _USE_PERMIT2_FLAG = 1 << 255;
+    uint256 private constant _LOW_160_BIT_MASK = (1 << 160) - 1;
+
     error IncorrectDataLength();
 
     function get(Address account) internal pure returns (address) {
-        return address(uint160(Address.unwrap(account)));
+        return address(uint160(Address.unwrap(account) & _LOW_160_BIT_MASK));
+    }
+
+    function usePermit2(Address account) internal pure returns (bool) {
+        return Address.unwrap(account) & _USE_PERMIT2_FLAG != 0;
     }
 
     function decodeUint256(bytes calldata data, uint256 offset) internal pure returns(uint256 value) {

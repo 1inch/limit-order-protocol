@@ -1,4 +1,4 @@
-const { expect, time, profileEVM, getPermit2 } = require('@1inch/solidity-utils');
+const { expect, time, profileEVM, getPermit2, permit2Contract } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { buildOrderRFQ, signOrderRFQ, compactSignature, makingAmount, takingAmount, unwrapWeth } = require('./helpers/orderUtils');
 const { getPermit } = require('./helpers/eip712');
@@ -116,10 +116,11 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
             it('DAI => WETH, permit2', async function () {
                 const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-                const order = buildOrderRFQ('0xFF000000000000000000000001', dai.address, weth.address, 1, 1, addr1.address);
+                const order = buildOrderRFQ('0x1000000FF000000000000000000000001', dai.address, weth.address, 1, 1, addr1.address);
                 const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
-
-                const permit = await getPermit2(addr, weth.address, chainId, swap.address, '1');
+                const permit2 = await permit2Contract();
+                await dai.connect(addr1).approve(permit2.address, 1);
+                const permit = await getPermit2(addr1, dai.address, chainId, swap.address, 1);
 
                 const makerDai = await dai.balanceOf(addr1.address);
                 const takerDai = await dai.balanceOf(addr.address);
