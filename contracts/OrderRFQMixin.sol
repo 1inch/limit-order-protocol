@@ -9,6 +9,7 @@ import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 
 import "./helpers/AmountCalculator.sol";
+import "./interfaces/IInteractionNotificationReceiver.sol";
 import "./libraries/Errors.sol";
 import "./OrderRFQLib.sol";
 
@@ -17,6 +18,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     using SafeERC20 for IERC20;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
     using CalldataLib for CalldataLib.Address;
+    using CalldataLib for bytes;
 
     error RFQZeroTargetIsForbidden();
     error RFQPrivateOrder();
@@ -83,6 +85,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
      * @notice Fills order's quote, fully or partially (whichever is possible)
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
+     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param flagsAndAmount Fill configuration flags with amount packed in one slot
      * @return filledMakingAmount Actual amount transferred from maker to taker
      * @return filledTakingAmount Actual amount transferred from taker to maker
@@ -91,9 +94,10 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     function fillOrderRFQ(
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
+        bytes calldata interaction,
         uint256 flagsAndAmount
     ) external payable returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
-        return fillOrderRFQTo(order, signature, flagsAndAmount, msg.sender);
+        return fillOrderRFQTo(order, signature, interaction, flagsAndAmount, msg.sender);
     }
 
     /**
@@ -101,6 +105,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
      * @param order Order quote to fill
      * @param r R component of signature
      * @param vs VS component of signature
+     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param flagsAndAmount Fill configuration flags with amount packed in one slot
      * - Bits 0-251 contain the amount to fill
      * - Bit 252 is used to indicate whether weth should be unwrapped to eth
@@ -115,6 +120,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
+        bytes calldata interaction,
         uint256 flagsAndAmount
     ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
@@ -128,7 +134,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
             if(!ECDSA.recoverOrIsValidSignature(order.maker.get(), orderHash, r, vs)) revert RFQBadSignature();
         }
 
-        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, flagsAndAmount, msg.sender);
+        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, interaction, flagsAndAmount, msg.sender);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
@@ -138,6 +144,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
      * Also allows to specify funds destination instead of `msg.sender`
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
+     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param flagsAndAmount Fill configuration flags with amount packed in one slot
      * @param target Address that will receive swap funds
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
@@ -149,12 +156,13 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     function fillOrderRFQToWithPermit(
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
+        bytes calldata interaction,
         uint256 flagsAndAmount,
         address target,
         bytes calldata permit
     ) external returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
         IERC20(order.takerAsset.get()).safePermit(permit);
-        return fillOrderRFQTo(order, signature, flagsAndAmount, target);
+        return fillOrderRFQTo(order, signature, interaction, flagsAndAmount, target);
     }
 
     /**
@@ -170,6 +178,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
     function fillOrderRFQTo(
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
+        bytes calldata interaction,
         uint256 flagsAndAmount,
         address target
     ) public payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
@@ -180,12 +189,13 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
         } else {
             if(!ECDSA.recoverOrIsValidSignature(order.maker.get(), orderHash, signature)) revert RFQBadSignature();
         }
-        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, flagsAndAmount, target);
+        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, interaction, flagsAndAmount, target);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
     function _fillOrderRFQTo(
         OrderRFQLib.OrderRFQ calldata order,
+        bytes calldata interaction,
         uint256 flagsAndAmount,
         address target
     ) private returns(uint256 makingAmount, uint256 takingAmount) {
@@ -237,6 +247,19 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
             if (!success) revert Errors.ETHTransferFailed();
         } else {
             IERC20(order.makerAsset.get()).safeTransferFrom(maker, target, makingAmount);
+        }
+
+        if (interaction.length >= 20) {
+            // proceed only if interaction length is enough to store address
+            (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata();
+            uint256 offeredTakingAmount = IInteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
+                msg.sender, makingAmount, takingAmount, interactionData
+            );
+
+            if (offeredTakingAmount > takingAmount)
+            {
+                takingAmount = offeredTakingAmount;
+            }
         }
 
         // Taker => Maker
