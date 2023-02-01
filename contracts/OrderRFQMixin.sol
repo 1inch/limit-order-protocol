@@ -12,6 +12,7 @@ import "./helpers/AmountCalculator.sol";
 import "./interfaces/IInteractionNotificationReceiver.sol";
 import "./libraries/Errors.sol";
 import "./OrderRFQLib.sol";
+import "hardhat/console.sol";
 
 /// @title RFQ Limit Order mixin
 abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
@@ -161,6 +162,7 @@ abstract contract OrderRFQMixin is EIP712, OnlyWethReceiver {
         address target,
         bytes calldata permit
     ) external returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
+        console.log("interaction.length:", interaction.length);
         IERC20(order.takerAsset.get()).safePermit(permit);
         return fillOrderRFQTo(order, signature, interaction, flagsAndAmount, target);
     }
