@@ -18,7 +18,7 @@
   "dependencies": {
     "@1inch/solidity-utils": "2.2.2",
     "@chainlink/contracts": "0.5.1",
-    "@openzeppelin/contracts": "4.7.3"
+    "@openzeppelin/contracts": "4.8.1"
   },
   "devDependencies": {
     "@metamask/eth-sig-util": "4.0.1",
