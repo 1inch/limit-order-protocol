@@ -23,39 +23,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     using CalldataLib for CalldataLib.Address;
     using CalldataLib for bytes;
 
-    error UnknownOrder();
-    error AccessDenied();
-    error AlreadyFilled();
-    error PermitLengthTooLow();
-    error ZeroTargetIsForbidden();
-    error RemainingAmountIsZero();
-    error PrivateOrder();
-    error BadSignature();
-    error ReentrancyDetected();
-    error PredicateIsNotTrue();
-    error OnlyOneAmountShouldBeZero();
-    error TakingAmountTooHigh();
-    error MakingAmountTooLow();
-    error SwapWithZeroAmount();
-    error TransferFromMakerToTakerFailed();
-    error TransferFromTakerToMakerFailed();
-    error TakingAmountIncreased();
-    error SimulationResults(bool success, bytes res);
-
-    /// @notice Emitted every time order gets filled, including partial fills
-    event OrderFilled(
-        address indexed maker,
-        bytes32 orderHash,
-        uint256 remaining
-    );
-
-    /// @notice Emitted when order gets cancelled
-    event OrderCanceled(
-        address indexed maker,
-        bytes32 orderHash,
-        uint256 remainingRaw
-    );
-
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
     uint256 private constant _ORDER_DOES_NOT_EXIST = 0;
     uint256 private constant _ORDER_FILLED = 1;

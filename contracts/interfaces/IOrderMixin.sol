@@ -5,6 +5,39 @@ pragma solidity 0.8.17;
 import "../OrderLib.sol";
 
 interface IOrderMixin {
+    error UnknownOrder();
+    error AccessDenied();
+    error AlreadyFilled();
+    error PermitLengthTooLow();
+    error ZeroTargetIsForbidden();
+    error RemainingAmountIsZero();
+    error PrivateOrder();
+    error BadSignature();
+    error ReentrancyDetected();
+    error PredicateIsNotTrue();
+    error OnlyOneAmountShouldBeZero();
+    error TakingAmountTooHigh();
+    error MakingAmountTooLow();
+    error SwapWithZeroAmount();
+    error TransferFromMakerToTakerFailed();
+    error TransferFromTakerToMakerFailed();
+    error TakingAmountIncreased();
+    error SimulationResults(bool success, bytes res);
+
+    /// @notice Emitted every time order gets filled, including partial fills
+    event OrderFilled(
+        address indexed maker,
+        bytes32 orderHash,
+        uint256 remaining
+    );
+
+    /// @notice Emitted when order gets cancelled
+    event OrderCanceled(
+        address indexed maker,
+        bytes32 orderHash,
+        uint256 remainingRaw
+    );
+
     /**
      * @notice Returns unfilled amount for order. Throws if order does not exist
      * @param orderHash Order's hash. Can be obtained by the `hashOrder` function
