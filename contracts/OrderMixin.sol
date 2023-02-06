@@ -234,14 +234,16 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         emit OrderFilled(order_.maker.get(), orderHash, remainingMakingAmount);
 
         // Maker can handle funds interactively
-        if (order.preInteraction().length >= 20) {
-            // proceed only if interaction length is enough to store address
+        { // Stack too deep
             bytes calldata preInteraction = order.preInteraction();
-            address interactionTarget = address(bytes20(preInteraction));
-            bytes calldata interactionData = preInteraction[20:];
-            IPreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
-            );
+            if (preInteraction.length >= 20) {
+                // proceed only if interaction length is enough to store address
+                address interactionTarget = address(bytes20(preInteraction));
+                bytes calldata interactionData = preInteraction[20:];
+                IPreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
+                    orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
+                );
+            }
         }
 
         // Maker => Taker
@@ -293,9 +295,9 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         }
 
         // Maker can handle funds interactively
-        if (order.postInteraction().length >= 20) {
+        bytes calldata postInteraction = order.postInteraction();
+        if (postInteraction.length >= 20) {
             // proceed only if interaction length is enough to store address
-            bytes calldata postInteraction = order.postInteraction();
             address interactionTarget = address(bytes20(postInteraction));
             bytes calldata interactionData = postInteraction[20:];
             IPostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
