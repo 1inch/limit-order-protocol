@@ -71,7 +71,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     }
 
     function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns(bytes4) {
-        if (signature.length != 32 * 7) revert MalformedSignature();
+        if (signature.length != 32 * 6) revert MalformedSignature();
 
         OrderRFQLib.OrderRFQ calldata order;
         assembly { // solhint-disable-line no-inline-assembly
@@ -84,7 +84,6 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
                 (order.makerAsset.get() != address(token1) || order.takerAsset.get() != address(token0))
             ) ||
             order.makingAmount * fee > order.takingAmount * 1e18 ||
-            order.maker.get() != address(this) || // TODO: remove redundant check
             order.hash(_domainSeparatorV4()) != hash
         ) revert BadPrice();
 

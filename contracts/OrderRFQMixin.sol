@@ -22,13 +22,9 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
     uint256 private constant _MAKER_AMOUNT_FLAG = 1 << 255;
-    uint256 private constant _SIGNER_SMART_CONTRACT_HINT = 1 << 254;
-    uint256 private constant _IS_VALID_SIGNATURE_65_BYTES = 1 << 253;
-    uint256 private constant _UNWRAP_WETH_FLAG = 1 << 252;
+    uint256 private constant _UNWRAP_WETH_FLAG = 1 << 254;
     uint256 private constant _AMOUNT_MASK = ~(
         _MAKER_AMOUNT_FLAG |
-        _SIGNER_SMART_CONTRACT_HINT |
-        _IS_VALID_SIGNATURE_65_BYTES |
         _UNWRAP_WETH_FLAG
     );
 
@@ -61,39 +57,45 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
     }
 
     /**
+     * @notice See {IOrderRFQMixin-fillRFQ}.
+     */
+    function fillRFQ(
+        OrderRFQLib.OrderRFQ calldata order,
+        bytes32 r,
+        bytes32 vs,
+        uint256 flagsAndAmount
+    ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+        return fillOrderRFQTo(order, r, vs, flagsAndAmount, msg.data[:0], msg.sender);
+    }
+
+    /**
      * @notice See {IOrderRFQMixin-fillOrderRFQ}.
      */
     function fillOrderRFQ(
         OrderRFQLib.OrderRFQ calldata order,
-        bytes calldata signature,
-        bytes calldata interaction,
-        uint256 flagsAndAmount
-    ) external payable returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
-        return fillOrderRFQTo(order, signature, interaction, flagsAndAmount, msg.sender);
+        bytes32 r,
+        bytes32 vs,
+        uint256 flagsAndAmount,
+        bytes calldata interaction
+    ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+        return fillOrderRFQTo(order, r, vs, flagsAndAmount, interaction, msg.sender);
     }
 
     /**
-     * @notice See {IOrderRFQMixin-fillOrderRFQCompact}.
+     * @notice See {IOrderRFQMixin-fillOrderRFQTo}.
      */
-    function fillOrderRFQCompact(
+    function fillOrderRFQTo(
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
+        uint256 flagsAndAmount,
         bytes calldata interaction,
-        uint256 flagsAndAmount
-    ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+        address target
+    ) public payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
-        if (flagsAndAmount & _SIGNER_SMART_CONTRACT_HINT != 0) {
-            if (flagsAndAmount & _IS_VALID_SIGNATURE_65_BYTES != 0) {
-                if (!ECDSA.isValidSignature65(order.maker.get(), orderHash, r, vs)) revert RFQBadSignature();
-            } else {
-                if (!ECDSA.isValidSignature(order.maker.get(), orderHash, r, vs)) revert RFQBadSignature();
-            }
-        } else {
-            if(!ECDSA.recoverOrIsValidSignature(order.maker.get(), orderHash, r, vs)) revert RFQBadSignature();
-        }
-
-        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, interaction, flagsAndAmount, msg.sender);
+        address maker = ECDSA.recover(orderHash, r, vs);
+        if (maker == address(0)) revert RFQBadSignature();
+        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker, flagsAndAmount, interaction, target);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
@@ -102,46 +104,49 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
      */
     function fillOrderRFQToWithPermit(
         OrderRFQLib.OrderRFQ calldata order,
-        bytes calldata signature,
-        bytes calldata interaction,
+        bytes32 r,
+        bytes32 vs,
         uint256 flagsAndAmount,
+        bytes calldata interaction,
         address target,
         bytes calldata permit
     ) external returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
         IERC20(order.takerAsset.get()).safePermit(permit);
-        return fillOrderRFQTo(order, signature, interaction, flagsAndAmount, target);
+        return fillOrderRFQTo(order, r, vs, flagsAndAmount, interaction, target);
     }
 
     /**
-     * @notice See {IOrderRFQMixin-fillOrderRFQTo}.
+     * @notice See {IOrderRFQMixin-fillContractOrderRFQToWithPermit}.
      */
-    function fillOrderRFQTo(
+    function fillContractOrderRFQToWithPermit(
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
-        bytes calldata interaction,
+        address maker,
         uint256 flagsAndAmount,
-        address target
-    ) public payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
-        orderHash = order.hash(_domainSeparatorV4());
-        if (flagsAndAmount & _SIGNER_SMART_CONTRACT_HINT != 0) {
-            if (flagsAndAmount & _IS_VALID_SIGNATURE_65_BYTES != 0 && signature.length != 65) revert RFQBadSignature();
-            if (!ECDSA.isValidSignature(order.maker.get(), orderHash, signature)) revert RFQBadSignature();
-        } else {
-            if(!ECDSA.recoverOrIsValidSignature(order.maker.get(), orderHash, signature)) revert RFQBadSignature();
+        bytes calldata interaction,
+        address target,
+        bytes calldata permit
+    ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+        if (permit.length > 0) {
+            IERC20(order.takerAsset.get()).safePermit(permit);
         }
-        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, interaction, flagsAndAmount, target);
+        if (target == address(0)) {
+            target = msg.sender;
+        }
+        orderHash = order.hash(_domainSeparatorV4());
+        if (!ECDSA.isValidSignature(maker, orderHash, signature)) revert RFQBadSignature();
+        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker, flagsAndAmount, interaction, target);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
     function _fillOrderRFQTo(
         OrderRFQLib.OrderRFQ calldata order,
-        bytes calldata interaction,
+        address maker,
         uint256 flagsAndAmount,
+        bytes calldata interaction,
         address target
     ) private returns(uint256 makingAmount, uint256 takingAmount) {
         if (target == address(0)) revert RFQZeroTargetIsForbidden();
-
-        address maker = order.maker.get();
 
         // Validate order
         if (order.allowedSender.get() != address(0) && order.allowedSender.get() != msg.sender) revert RFQPrivateOrder();
