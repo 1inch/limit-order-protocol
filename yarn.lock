@@ -2812,7 +2812,7 @@ ethers@5.7.1, ethers@^5.5.3:
     "@ethersproject/web" "5.7.1"
     "@ethersproject/wordlists" "5.7.0"
 
-ethers@5.7.2, ethers@^5.3.1:
+ethers@5.7.2, ethers@^5.3.1, ethers@^5.6.1:
   version "5.7.2"
   resolved "https://registry.yarnpkg.com/ethers/-/ethers-5.7.2.tgz#3a7deeabbb8c030d4126b24f84e525466145872e"
   integrity sha512-wswUsmWo1aOK8rR7DIKiWSw9DbLWe6x98Jrn8wcTflTVvaXhAMaB5zGAXy0GYQEQp9iO1iSHWVyARQm11zUtyg==
@@ -3435,6 +3435,13 @@ hardhat-gas-reporter@1.0.9:
     array-uniq "1.0.3"
     eth-gas-reporter "^0.2.25"
     sha1 "^1.1.1"
+
+hardhat-tracer@^1.2.1:
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/hardhat-tracer/-/hardhat-tracer-1.2.1.tgz#2877a21e187ac5ad17e2e09a83d337375e50f1b0"
+  integrity sha512-ZZVXZfWfRzPkjGdkLoxC4v3Dqja7cpG1mOOr+3+m9xGmqfw9P6cKMDo+wYtGPNM6KttwsJ226Gqt5AwBjMxgTg==
+  dependencies:
+    ethers "^5.6.1"
 
 hardhat@2.11.2:
   version "2.11.2"
