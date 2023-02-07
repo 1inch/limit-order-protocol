@@ -18,6 +18,7 @@ import "./OrderRFQLib.sol";
 /// @title RFQ Limit Order mixin
 abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
     using SafeERC20 for IERC20;
+    using SafeERC20 for IWETH;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
     using AddressLib for Address;
     using ConstraintsLib for Constraints;
@@ -159,11 +160,8 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
 
         // Maker => Taker
         if (order.makerAsset.get() == address(_WETH) && input.needUnwrapWeth()) {
-            _WETH.transferFrom(maker, address(this), makingAmount);
-            _WETH.withdraw(makingAmount);
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = target.call{value: makingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
-            if (!success) revert Errors.ETHTransferFailed();
+            _WETH.safeTransferFrom(maker, address(this), makingAmount);
+            _WETH.safeWithdrawTo(makingAmount, target);
         } else {
             IERC20(order.makerAsset.get()).safeTransferFrom(maker, target, makingAmount);
         }
@@ -183,8 +181,8 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         // Taker => Maker
         if (order.takerAsset.get() == address(_WETH) && msg.value > 0) { // TODO: check balance to get ETH in interaction?
             if (msg.value != takingAmount) revert Errors.InvalidMsgValue();
-            _WETH.deposit{ value: takingAmount }();
-            _WETH.transfer(maker, takingAmount);
+            _WETH.safeDeposit(takingAmount);
+            _WETH.safeTransfer(maker, takingAmount);
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
             IERC20(order.takerAsset.get()).safeTransferFrom(msg.sender, maker, takingAmount);

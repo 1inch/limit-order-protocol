@@ -20,6 +20,7 @@ import "./OrderLib.sol";
 /// @title Regular Limit Order mixin
 abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     using SafeERC20 for IERC20;
+    using SafeERC20 for IWETH;
     using OrderLib for OrderLib.Order;
     using AddressLib for Address;
     using ConstraintsLib for Constraints;
@@ -224,13 +225,18 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         }
 
         // Maker => Taker
-        if (!_callTransferFrom(
-            order.makerAsset.get(),
-            order.maker.get(),
-            target,
-            actualMakingAmount,
-            order.makerAssetData()
-        )) revert TransferFromMakerToTakerFailed();
+        if (order.makerAsset.get() == address(_WETH) && input.needUnwrapWeth()) {
+            _WETH.safeTransferFrom(order.maker.get(), address(this), actualMakingAmount);
+            _WETH.safeWithdrawTo(actualMakingAmount, target);
+        } else {
+            if (!_callTransferFrom(
+                order.makerAsset.get(),
+                order.maker.get(),
+                target,
+                actualMakingAmount,
+                order.makerAssetData()
+            )) revert TransferFromMakerToTakerFailed();
+        }
 
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
@@ -246,17 +252,17 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         }
 
         // Taker => Maker
-        if (order.takerAsset.get() == address(_WETH) && msg.value > 0) {
+        if (order.takerAsset.get() == address(_WETH) && msg.value > 0) { // TODO: check balance to get ETH in interaction?
             if (msg.value < actualTakingAmount) revert Errors.InvalidMsgValue();
-            if (msg.value > actualTakingAmount) {
+            if (msg.value > actualTakingAmount) { // TODO: why? interaction have argument regarding amount
                 unchecked {
                     // solhint-disable-next-line avoid-low-level-calls
                     (bool success, ) = msg.sender.call{value: msg.value - actualTakingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
                     if (!success) revert Errors.ETHTransferFailed();
                 }
             }
-            _WETH.deposit{ value: actualTakingAmount }();
-            _WETH.transfer(order.receiver.get() == address(0) ? order.maker.get() : order.receiver.get(), actualTakingAmount);
+            _WETH.safeDeposit(actualTakingAmount);
+            _WETH.safeTransfer(order.receiver.get() == address(0) ? order.maker.get() : order.receiver.get(), actualTakingAmount);
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
             if (!_callTransferFrom(
