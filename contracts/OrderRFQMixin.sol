@@ -111,7 +111,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         address target,
         bytes calldata permit
     ) external returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
-        IERC20(order.takerAsset.get()).safePermit(permit);
+        IERC20(order.takerAsset()).safePermit(permit);
         return fillOrderRFQTo(order, r, vs, flagsAndAmount, interaction, target);
     }
 
@@ -128,7 +128,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         bytes calldata permit
     ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         if (permit.length > 0) {
-            IERC20(order.takerAsset.get()).safePermit(permit);
+            IERC20(order.takerAsset()).safePermit(permit);
         }
         if (target == address(0)) {
             target = msg.sender;
@@ -149,7 +149,10 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         if (target == address(0)) revert RFQZeroTargetIsForbidden();
 
         // Validate order
-        if (order.allowedSender.get() != address(0) && order.allowedSender.get() != msg.sender) revert RFQPrivateOrder();
+        { // Stack too deep
+            address allowedSender = order.allowedSender();
+            if (allowedSender != address(0) && allowedSender != msg.sender) revert RFQPrivateOrder();
+        }
 
         {  // Stack too deep
             uint256 info = order.info;
@@ -160,8 +163,8 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         }
 
         {  // Stack too deep
-            uint256 orderMakingAmount = order.makingAmount;
-            uint256 orderTakingAmount = order.takingAmount;
+            uint256 orderMakingAmount = order.makingAmount();
+            uint256 orderTakingAmount = order.takingAmount();
             uint256 amount = flagsAndAmount & _AMOUNT_MASK;
             // Compute partial fill if needed
             if (amount == 0) {
@@ -184,14 +187,14 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         if (makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
 
         // Maker => Taker
-        if (order.makerAsset.get() == address(_WETH) && flagsAndAmount & _UNWRAP_WETH_FLAG != 0) {
+        if (order.makerAsset() == address(_WETH) && flagsAndAmount & _UNWRAP_WETH_FLAG != 0) {
             _WETH.transferFrom(maker, address(this), makingAmount);
             _WETH.withdraw(makingAmount);
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = target.call{value: makingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
             if (!success) revert Errors.ETHTransferFailed();
         } else {
-            IERC20(order.makerAsset.get()).safeTransferFrom(maker, target, makingAmount);
+            IERC20(order.makerAsset()).safeTransferFrom(maker, target, makingAmount);
         }
 
         if (interaction.length >= 20) {
@@ -207,13 +210,13 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         }
 
         // Taker => Maker
-        if (order.takerAsset.get() == address(_WETH) && msg.value > 0) {
+        if (order.takerAsset() == address(_WETH) && msg.value > 0) {
             if (msg.value != takingAmount) revert Errors.InvalidMsgValue();
             _WETH.deposit{ value: takingAmount }();
             _WETH.transfer(maker, takingAmount);
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
-            IERC20(order.takerAsset.get()).safeTransferFrom(msg.sender, maker, takingAmount);
+            IERC20(order.takerAsset()).safeTransferFrom(msg.sender, maker, takingAmount);
         }
     }
 

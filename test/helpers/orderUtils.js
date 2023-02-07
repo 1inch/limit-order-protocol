@@ -1,14 +1,13 @@
 const { constants, trim0x } = require('@1inch/solidity-utils');
+const { assert } = require('chai');
 const { ethers } = require('ethers');
 const { setn } = require('./utils');
 
 const OrderRFQ = [
     { name: 'info', type: 'uint256' },
-    { name: 'makerAsset', type: 'address' },
-    { name: 'takerAsset', type: 'address' },
-    { name: 'allowedSender', type: 'address' },
-    { name: 'makingAmount', type: 'uint256' },
-    { name: 'takingAmount', type: 'uint256' },
+    { name: '_raw1', type: 'uint256' },
+    { name: '_raw2', type: 'uint256' },
+    { name: '_raw3', type: 'uint256' },
 ];
 
 const ABIOrderRFQ = {
@@ -109,13 +108,20 @@ function buildOrderRFQ (
     takingAmount,
     allowedSender = constants.ZERO_ADDRESS,
 ) {
+    const blob = BigInt(info).toString(16).padStart(64, '0') +
+        BigInt(makerAsset).toString(16).padStart(40, '0') +
+        BigInt(takerAsset).toString(16).padStart(40, '0') +
+        BigInt(allowedSender).toString(16).padStart(40, '0') +
+        BigInt(makingAmount).toString(16).padStart(28, '0') +
+        BigInt(takingAmount).toString(16).padStart(28, '0') +
+        '0000000000000000';
+    assert(blob.length === 256, 'Invalid blob length');
+
     return {
-        info,
-        makerAsset,
-        takerAsset,
-        allowedSender,
-        makingAmount,
-        takingAmount,
+        info: '0x' + blob.slice(0, 64),
+        _raw1: '0x' + blob.slice(64, 128),
+        _raw2: '0x' + blob.slice(128, 192),
+        _raw3: '0x' + blob.slice(192, 256),
     };
 }
 

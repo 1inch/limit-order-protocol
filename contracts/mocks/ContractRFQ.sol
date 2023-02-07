@@ -80,10 +80,10 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
 
         if (
             (
-                (order.makerAsset.get() != address(token0) || order.takerAsset.get() != address(token1)) &&
-                (order.makerAsset.get() != address(token1) || order.takerAsset.get() != address(token0))
+                (order.makerAsset() != address(token0) || order.takerAsset() != address(token1)) &&
+                (order.makerAsset() != address(token1) || order.takerAsset() != address(token0))
             ) ||
-            order.makingAmount * fee > order.takingAmount * 1e18 ||
+            order.makingAmount() * fee > order.takingAmount() * 1e18 ||
             order.hash(_domainSeparatorV4()) != hash
         ) revert BadPrice();
 
