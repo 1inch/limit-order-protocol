@@ -45,8 +45,9 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const takerDai = await dai.balanceOf(addr.address);
                 const makerWeth = await weth.balanceOf(addr1.address);
                 const takerWeth = await weth.balanceOf(addr.address);
+                const emptyInteraction = '0x';
 
-                const receipt = await swap.fillOrderRFQ(order, signature, makingAmount(1));
+                const receipt = await swap.fillOrderRFQ(order, signature, emptyInteraction, makingAmount(1));
 
                 expect(
                     await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
@@ -76,7 +77,8 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const takerWeth = await weth.balanceOf(addr.address);
 
                 const { r, vs } = compactSignature(signature);
-                const receipt = await swap.fillOrderRFQCompact(order, r, vs, 1);
+                const emptyInteraction = '0x';
+                const receipt = await swap.fillOrderRFQCompact(order, r, vs, emptyInteraction, 1);
 
                 expect(
                     await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
@@ -105,8 +107,9 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const takerDai = await dai.balanceOf(addr.address);
                 const makerWeth = await weth.balanceOf(addr1.address);
                 const takerWeth = await weth.balanceOf(addr.address);
+                const emptyInteraction = '0x';
 
-                await swap.fillOrderRFQToWithPermit(order, signature, makingAmount(1), addr.address, permit);
+                await swap.fillOrderRFQToWithPermit(order, signature, emptyInteraction, makingAmount(1), addr.address, permit);
 
                 expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
                 expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -120,7 +123,9 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
-                const requestFunc = () => swap.fillOrderRFQToWithPermit(order, signature, takingAmount(1), addr.address, permit);
+                const emptyInteraction = '0x';
+
+                const requestFunc = () => swap.fillOrderRFQToWithPermit(order, signature, emptyInteraction, takingAmount(1), addr.address, permit);
                 await requestFunc();
                 await expect(requestFunc()).to.be.revertedWith('ERC20Permit: invalid signature');
             });
@@ -131,7 +136,8 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
                 const permit = await getPermit(addr.address, addr2, weth, '1', chainId, swap.address, '1');
-                const requestFunc = () => swap.fillOrderRFQToWithPermit(order, signature, takingAmount(1), addr.address, permit);
+                const emptyInteraction = '0x';
+                const requestFunc = () => swap.fillOrderRFQToWithPermit(order, signature, emptyInteraction, takingAmount(1), addr.address, permit);
                 await expect(requestFunc()).to.be.revertedWith('ERC20Permit: invalid signature');
             });
 
@@ -142,7 +148,8 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
                 const permit = await getPermit(addr.address, addr1, weth, '1', chainId, swap.address, '1', deadline);
-                const requestFunc = () => swap.fillOrderRFQToWithPermit(order, signature, takingAmount(1), addr.address, permit);
+                const emptyInteraction = '0x';
+                const requestFunc = () => swap.fillOrderRFQToWithPermit(order, signature, emptyInteraction, takingAmount(1), addr.address, permit);
                 await expect(requestFunc()).to.be.revertedWith('ERC20Permit: expired deadline');
             });
         });
@@ -170,8 +177,9 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
             await swap.connect(addr1).functions['cancelOrderRFQ(uint256)']('1');
 
+            const emptyInteraction = '0x';
             await expect(
-                swap.fillOrderRFQ(order, signature, makingAmount(1)),
+                swap.fillOrderRFQ(order, signature, emptyInteraction, makingAmount(1)),
             ).to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
         });
 
@@ -183,8 +191,9 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             await swap.connect(addr1).functions['cancelOrderRFQ(uint256)']('1');
 
             const { r, vs } = compactSignature(signature);
+            const emptyInteraction = '0x';
             await expect(
-                swap.fillOrderRFQCompact(order, r, vs, 1),
+                swap.fillOrderRFQCompact(order, r, vs, emptyInteraction, 1),
             ).to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
         });
     });
@@ -199,8 +208,9 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerDai = await dai.balanceOf(addr.address);
             const makerWeth = await weth.balanceOf(addr1.address);
             const takerWeth = await weth.balanceOf(addr.address);
+            const emptyInteraction = '0x';
 
-            await swap.fillOrderRFQ(order, signature, makingAmount(1));
+            await swap.fillOrderRFQ(order, signature, emptyInteraction, makingAmount(1));
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -219,7 +229,8 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerWeth = await weth.balanceOf(addr.address);
 
             const { r, vs } = compactSignature(signature);
-            await swap.fillOrderRFQCompact(order, r, vs, takingAmount(1));
+            const emptyInteraction = '0x';
+            await swap.fillOrderRFQCompact(order, r, vs, emptyInteraction, takingAmount(1));
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -236,8 +247,9 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerDai = await dai.balanceOf(addr.address);
             const makerWeth = await weth.balanceOf(addr1.address);
             const takerWeth = await weth.balanceOf(addr.address);
+            const emptyInteraction = '0x';
 
-            await swap.fillOrderRFQ(order, signature, makingAmount(1));
+            await swap.fillOrderRFQ(order, signature, emptyInteraction, makingAmount(1));
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -256,7 +268,8 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerWeth = await weth.balanceOf(addr.address);
 
             const { r, vs } = compactSignature(signature);
-            await swap.fillOrderRFQCompact(order, r, vs, takingAmount(1));
+            const emptyInteraction = '0x';
+            await swap.fillOrderRFQCompact(order, r, vs, emptyInteraction, takingAmount(1));
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -273,8 +286,9 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerDai = await dai.balanceOf(addr.address);
             const makerWeth = await weth.balanceOf(addr1.address);
             const takerWeth = await weth.balanceOf(addr.address);
+            const emptyInteraction = '0x';
 
-            await swap.fillOrderRFQ(order, signature, 0);
+            await swap.fillOrderRFQ(order, signature, emptyInteraction, 0);
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -293,7 +307,8 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerWeth = await weth.balanceOf(addr.address);
 
             const { r, vs } = compactSignature(signature);
-            await swap.fillOrderRFQCompact(order, r, vs, 0);
+            const emptyInteraction = '0x';
+            await swap.fillOrderRFQCompact(order, r, vs, emptyInteraction, 0);
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -306,8 +321,9 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const order = buildOrderRFQ('0xFF000000000000000000000001', dai.address, weth.address, 5, 10, addr1.address);
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
+            const emptyInteraction = '0x';
             await expect(
-                swap.fillOrderRFQ(order, signature, takingAmount(1)),
+                swap.fillOrderRFQ(order, signature, emptyInteraction, takingAmount(1)),
             ).to.be.revertedWithCustomError(swap, 'RFQSwapWithZeroAmount');
         });
 
@@ -317,8 +333,9 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
+            const emptyInteraction = '0x';
             await expect(
-                swap.fillOrderRFQCompact(order, r, vs, takingAmount(1)),
+                swap.fillOrderRFQCompact(order, r, vs, emptyInteraction, takingAmount(1)),
             ).to.be.revertedWithCustomError(swap, 'RFQSwapWithZeroAmount');
         });
 
@@ -327,8 +344,9 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const order = buildOrderRFQ('308276084001730439550074881', dai.address, weth.address, 1, 1, addr1.address);
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
+            const emptyInteraction = '0x';
             await expect(
-                swap.fillOrderRFQ(order, signature, makingAmount(1)),
+                swap.fillOrderRFQ(order, signature, emptyInteraction, makingAmount(1)),
             ).to.be.revertedWithCustomError(swap, 'OrderExpired');
         });
 
@@ -338,8 +356,9 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
+            const emptyInteraction = '0x';
             await expect(
-                swap.fillOrderRFQCompact(order, r, vs, takingAmount(1)),
+                swap.fillOrderRFQCompact(order, r, vs, emptyInteraction, takingAmount(1)),
             ).to.be.revertedWithCustomError(swap, 'OrderExpired');
         });
     });
@@ -355,7 +374,8 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const makerWeth = await weth.balanceOf(addr1.address);
             const takerWeth = await weth.balanceOf(addr.address);
 
-            await swap.fillOrderRFQ(order, signature, takingAmount(3), { value: 3 });
+            const emptyInteraction = '0x';
+            await swap.fillOrderRFQ(order, signature, emptyInteraction, takingAmount(3), { value: 3 });
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(900));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(900));
@@ -373,7 +393,8 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const makerWeth = await weth.balanceOf(addr1.address);
             const takerWeth = await weth.balanceOf(addr.address);
 
-            await swap.fillOrderRFQ(order, signature, unwrapWeth(makingAmount(3)));
+            const emptyInteraction = '0x';
+            await swap.fillOrderRFQ(order, signature, emptyInteraction, unwrapWeth(makingAmount(3)));
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(900));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(900));
@@ -386,11 +407,12 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const order = buildOrderRFQ('0xFF000000000000000000000001', dai.address, weth.address, 900, 3, addr1.address);
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
+            const emptyInteraction = '0x';
             await expect(
-                swap.fillOrderRFQ(order, signature, makingAmount(900), { value: 2 }),
+                swap.fillOrderRFQ(order, signature, emptyInteraction, makingAmount(900), { value: 2 }),
             ).to.be.revertedWithCustomError(swap, 'InvalidMsgValue');
             await expect(
-                swap.fillOrderRFQ(order, signature, makingAmount(900), { value: 4 }),
+                swap.fillOrderRFQ(order, signature, emptyInteraction, makingAmount(900), { value: 4 }),
             ).to.be.revertedWithCustomError(swap, 'InvalidMsgValue');
         });
 
@@ -400,8 +422,9 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const order = buildOrderRFQ('0xFF000000000000000000000001', dai.address, usdc.address, 900, 900, addr1.address);
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
+            const emptyInteraction = '0x';
             await expect(
-                swap.fillOrderRFQ(order, signature, makingAmount(900), { value: 1 }),
+                swap.fillOrderRFQ(order, signature, emptyInteraction, makingAmount(900), { value: 1 }),
             ).to.be.revertedWithCustomError(swap, 'InvalidMsgValue');
         });
     });

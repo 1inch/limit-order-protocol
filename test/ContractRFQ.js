@@ -40,11 +40,12 @@ describe('ContractRFQ', function () {
         const takerUsdc = await usdc.balanceOf(addr.address);
         const makerUsdt = await usdt.balanceOf(rfq.address);
         const takerUsdt = await usdt.balanceOf(addr.address);
+        const emptyInteraction = '0x';
 
         const order = buildOrderRFQ('1', usdc.address, usdt.address, 1000000000, 1000700000, rfq.address);
 
         const signature = abiCoder.encode([ABIOrderRFQ], [order]);
-        await swap.fillOrderRFQ(order, signature, makingAmount(1000000));
+        await swap.fillOrderRFQ(order, signature, emptyInteraction, makingAmount(1000000));
 
         expect(await usdc.balanceOf(rfq.address)).to.equal(makerUsdc.sub(1000000));
         expect(await usdc.balanceOf(addr.address)).to.equal(takerUsdc.add(1000000));
@@ -53,6 +54,6 @@ describe('ContractRFQ', function () {
 
         const order2 = buildOrderRFQ('2', usdc.address, usdt.address, 1000000000, 1000700000, rfq.address);
         const signature2 = abiCoder.encode([ABIOrderRFQ], [order2]);
-        await swap.fillOrderRFQ(order2, signature2, makingAmount(1000000));
+        await swap.fillOrderRFQ(order2, signature2, emptyInteraction, makingAmount(1000000));
     });
 });

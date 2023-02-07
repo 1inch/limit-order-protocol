@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
@@ -21,39 +21,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     using SafeERC20 for IERC20;
     using OrderLib for OrderLib.Order;
     using AddressLib for Address;
-
-    error UnknownOrder();
-    error AccessDenied();
-    error AlreadyFilled();
-    error PermitLengthTooLow();
-    error ZeroTargetIsForbidden();
-    error RemainingAmountIsZero();
-    error PrivateOrder();
-    error BadSignature();
-    error ReentrancyDetected();
-    error PredicateIsNotTrue();
-    error OnlyOneAmountShouldBeZero();
-    error TakingAmountTooHigh();
-    error MakingAmountTooLow();
-    error SwapWithZeroAmount();
-    error TransferFromMakerToTakerFailed();
-    error TransferFromTakerToMakerFailed();
-    error TakingAmountIncreased();
-    error SimulationResults(bool success, bytes res);
-
-    /// @notice Emitted every time order gets filled, including partial fills
-    event OrderFilled(
-        address indexed maker,
-        bytes32 orderHash,
-        uint256 remaining
-    );
-
-    /// @notice Emitted when order gets cancelled
-    event OrderCanceled(
-        address indexed maker,
-        bytes32 orderHash,
-        uint256 remainingRaw
-    );
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
     uint256 private constant _ORDER_DOES_NOT_EXIST = 0;
