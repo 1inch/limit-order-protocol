@@ -1,8 +1,8 @@
+const { ethers } = require('hardhat');
 const { expect, time, constants, profileEVM, trim0x } = require('@1inch/solidity-utils');
 const { buildOrder, buildOrderData, signOrder } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, cutLastArg, ether, setn } = require('./helpers/utils');
-const { ethers } = require('hardhat');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 

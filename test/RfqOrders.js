@@ -1,8 +1,8 @@
+const { ethers } = require('hardhat');
 const { expect, time, profileEVM } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { buildOrderRFQ, signOrderRFQ, compactSignature, makingAmount, takingAmount, unwrapWeth } = require('./helpers/orderUtils');
 const { getPermit } = require('./helpers/eip712');
-const { ethers } = require('hardhat');
 const { deploySwapTokens } = require('./helpers/fixtures');
 
 describe('RFQ Orders in LimitOrderProtocol', function () {

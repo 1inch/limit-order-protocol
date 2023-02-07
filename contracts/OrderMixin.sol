@@ -20,8 +20,7 @@ import "./OrderLib.sol";
 abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     using SafeERC20 for IERC20;
     using OrderLib for OrderLib.Order;
-    using CalldataLib for CalldataLib.Address;
-    using CalldataLib for bytes;
+    using AddressLib for Address;
 
     error UnknownOrder();
     error AccessDenied();
@@ -149,7 +148,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
         if (permit.length < 20) revert PermitLengthTooLow();
         {  // Stack too deep
-            (address token, bytes calldata permitData) = permit.decodeTargetAndCalldata();
+            address token = address(bytes20(permit));
+            bytes calldata permitData = permit[20:];
             IERC20(token).safePermit(permitData);
         }
         return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, skipPermitAndThresholdAmount, target);
@@ -185,7 +185,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             bytes calldata permit = order.permit();
             if (skipPermitAndThresholdAmount & _SKIP_PERMIT_FLAG == 0 && permit.length >= 20) {
                 // proceed only if taker is willing to execute permit and its length is enough to store address
-                (address token, bytes calldata permitCalldata) = permit.decodeTargetAndCalldata();
+                address token = address(bytes20(permit));
+                bytes calldata permitCalldata = permit[20:];
                 IERC20(token).safePermit(permitCalldata);
                 if (_remaining[orderHash] != _ORDER_DOES_NOT_EXIST) revert ReentrancyDetected();
             }
@@ -237,7 +238,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             bytes calldata preInteraction = order.preInteraction();
             if (preInteraction.length >= 20) {
                 // proceed only if interaction length is enough to store address
-                (address interactionTarget, bytes calldata interactionData) = preInteraction.decodeTargetAndCalldata();
+                address interactionTarget = address(bytes20(preInteraction));
+                bytes calldata interactionData = preInteraction[20:];
                 IPreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
                     orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
                 );
@@ -255,7 +257,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
 
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
-            (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata();
+            address interactionTarget = address(bytes20(interaction));
+            bytes calldata interactionData = interaction[20:];
             uint256 offeredTakingAmount = IInteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
                 msg.sender, actualMakingAmount, actualTakingAmount, interactionData
             );
@@ -295,7 +298,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         bytes calldata postInteraction = order.postInteraction();
         if (postInteraction.length >= 20) {
             // proceed only if interaction length is enough to store address
-            (address interactionTarget, bytes calldata interactionData) = postInteraction.decodeTargetAndCalldata();
+            address interactionTarget = address(bytes20(postInteraction));
+            bytes calldata interactionData = postInteraction[20:];
             IPostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
                  orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
             );
