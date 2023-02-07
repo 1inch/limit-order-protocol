@@ -6,7 +6,6 @@ const OrderRFQ = [
     { name: 'info', type: 'uint256' },
     { name: 'makerAsset', type: 'address' },
     { name: 'takerAsset', type: 'address' },
-    { name: 'maker', type: 'address' },
     { name: 'allowedSender', type: 'address' },
     { name: 'makingAmount', type: 'uint256' },
     { name: 'takingAmount', type: 'uint256' },
@@ -108,14 +107,12 @@ function buildOrderRFQ (
     takerAsset,
     makingAmount,
     takingAmount,
-    from,
     allowedSender = constants.ZERO_ADDRESS,
 ) {
     return {
         info,
         makerAsset,
         takerAsset,
-        maker: from,
         allowedSender,
         makingAmount,
         takingAmount,
@@ -157,7 +154,7 @@ function compactSignature (signature) {
 }
 
 function unwrapWeth (amount) {
-    return setn(BigInt(amount), 252, 1).toString();
+    return setn(BigInt(amount), 254, 1).toString();
 }
 
 function makingAmount (amount) {

@@ -4,8 +4,10 @@ const { ABIOrderRFQ, buildOrderRFQ, makingAmount } = require('./helpers/orderUti
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
 const { deploySwap, deployUSDC, deployUSDT } = require('./helpers/fixtures');
+const { constants } = require('ethers');
 
 describe('ContractRFQ', function () {
+    const emptyInteraction = '0x';
     const abiCoder = ethers.utils.defaultAbiCoder;
     let addr;
 
@@ -40,20 +42,19 @@ describe('ContractRFQ', function () {
         const takerUsdc = await usdc.balanceOf(addr.address);
         const makerUsdt = await usdt.balanceOf(rfq.address);
         const takerUsdt = await usdt.balanceOf(addr.address);
-        const emptyInteraction = '0x';
 
-        const order = buildOrderRFQ('1', usdc.address, usdt.address, 1000000000, 1000700000, rfq.address);
+        const order = buildOrderRFQ('1', usdc.address, usdt.address, 1000000000, 1000700000);
 
         const signature = abiCoder.encode([ABIOrderRFQ], [order]);
-        await swap.fillOrderRFQ(order, signature, emptyInteraction, makingAmount(1000000));
+        await swap.fillContractOrderRFQToWithPermit(order, signature, rfq.address, makingAmount(1000000), emptyInteraction, constants.AddressZero, '0x');
 
         expect(await usdc.balanceOf(rfq.address)).to.equal(makerUsdc.sub(1000000));
         expect(await usdc.balanceOf(addr.address)).to.equal(takerUsdc.add(1000000));
         expect(await usdt.balanceOf(rfq.address)).to.equal(makerUsdt.add(1000700));
         expect(await usdt.balanceOf(addr.address)).to.equal(takerUsdt.sub(1000700));
 
-        const order2 = buildOrderRFQ('2', usdc.address, usdt.address, 1000000000, 1000700000, rfq.address);
+        const order2 = buildOrderRFQ('2', usdc.address, usdt.address, 1000000000, 1000700000);
         const signature2 = abiCoder.encode([ABIOrderRFQ], [order2]);
-        await swap.fillOrderRFQ(order2, signature2, emptyInteraction, makingAmount(1000000));
+        await swap.fillContractOrderRFQToWithPermit(order2, signature2, rfq.address, makingAmount(1000000), emptyInteraction, constants.AddressZero, '0x');
     });
 });
