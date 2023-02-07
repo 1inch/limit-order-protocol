@@ -11,6 +11,7 @@ interface IOrderRFQMixin {
     error MakingAmountExceeded();
     error TakingAmountExceeded();
     error RFQSwapWithZeroAmount();
+    error RFQPartialFillNotAllowed();
     error InvalidatedOrder();
 
     /**

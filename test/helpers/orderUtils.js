@@ -6,7 +6,7 @@ const OrderRFQ = [
     { name: 'info', type: 'uint256' },
     { name: 'makerAsset', type: 'address' },
     { name: 'takerAsset', type: 'address' },
-    { name: 'allowedSender', type: 'address' },
+    { name: 'traits', type: 'uint256' },
     { name: 'makingAmount', type: 'uint256' },
     { name: 'takingAmount', type: 'uint256' },
 ];
@@ -107,13 +107,13 @@ function buildOrderRFQ (
     takerAsset,
     makingAmount,
     takingAmount,
-    allowedSender = constants.ZERO_ADDRESS,
+    traits = constants.ZERO_ADDRESS,
 ) {
     return {
         info,
         makerAsset,
         takerAsset,
-        allowedSender,
+        traits,
         makingAmount,
         takingAmount,
     };

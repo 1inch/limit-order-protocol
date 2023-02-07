@@ -19,6 +19,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
     using SafeERC20 for IERC20;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
     using AddressLib for Address;
+    using TraitsRFQLib for TraitsRFQ;
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
     uint256 private constant _MAKER_AMOUNT_FLAG = 1 << 255;
@@ -135,10 +136,13 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         }
 
         // Validate order
-        if (order.allowedSender.get() != address(0) && order.allowedSender.get() != msg.sender) revert RFQPrivateOrder();
-
         {  // Stack too deep
-            // Check time expiration
+            address allowedSender = order.traits.allowedSender();
+            if (allowedSender != address(0) && allowedSender != msg.sender) revert RFQPrivateOrder();
+        }
+
+        // Check time expiration and id invalidation
+        {  // Stack too deep
             uint256 expiration = uint128(order.info) >> 64;
             if (expiration != 0 && block.timestamp > expiration) revert OrderExpired(); // solhint-disable-line not-rely-on-time
             _invalidateOrder(maker, order.info, 0);
@@ -147,7 +151,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         {  // Stack too deep
             uint256 amount = flagsAndAmount & _AMOUNT_MASK;
             // Compute partial fill if needed
-            if (amount == 0) {
+            if (amount == 0 || !order.traits.allowPartialFills()) {
                 // zero amount means whole order
                 makingAmount = order.makingAmount;
                 takingAmount = order.takingAmount;
@@ -184,7 +188,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
             uint256 offeredTakingAmount = IInteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
                 msg.sender, makingAmount, takingAmount, interactionData
             );
-            if (offeredTakingAmount > takingAmount) {
+            if (offeredTakingAmount > takingAmount && order.traits.allowImproveRate()) {
                 takingAmount = offeredTakingAmount;
             }
         }
