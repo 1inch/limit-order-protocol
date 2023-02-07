@@ -117,9 +117,6 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         if (permit.length > 0) {
             IERC20(order.takerAsset.get()).safePermit(permit);
         }
-        if (target == address(0)) {
-            target = msg.sender;
-        }
         orderHash = order.hash(_domainSeparatorV4());
         if (!ECDSA.isValidSignature(maker.get(), orderHash, signature)) revert RFQBadSignature();
         (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker.get(), flagsAndAmount, interaction, target);
@@ -133,7 +130,9 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         bytes calldata interaction,
         address target
     ) private returns(uint256 makingAmount, uint256 takingAmount) {
-        if (target == address(0)) revert RFQZeroTargetIsForbidden();
+        if (target == address(0)) {
+            target = msg.sender;
+        }
 
         // Validate order
         if (order.allowedSender.get() != address(0) && order.allowedSender.get() != msg.sender) revert RFQPrivateOrder();

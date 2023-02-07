@@ -3,9 +3,10 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
-const { buildOrderRFQ, signOrderRFQ } = require('./helpers/orderUtils');
+const { buildOrderRFQ, signOrderRFQ, compactSignature } = require('./helpers/orderUtils');
+const { constants } = require('ethers');
 
-describe('Interactions', function () {
+describe('RfqInteractions', function () {
     let addr, addr1;
     const abiCoder = ethers.utils.defaultAbiCoder;
 
@@ -37,24 +38,8 @@ describe('Interactions', function () {
         it('opposite direction recursive swap', async function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
 
-            const order = buildOrderRFQ(
-                '0x01',
-                dai.address,
-                weth.address,
-                ether('100'),
-                ether('0.1'),
-                addr.address,
-            );
-
-            const backOrder = buildOrderRFQ(
-                '0x01',
-                weth.address,
-                dai.address,
-                ether('0.1'),
-                ether('100'),
-                addr1.address,
-            );
-
+            const order = buildOrderRFQ('0x01', dai.address, weth.address, ether('100'), ether('0.1'));
+            const backOrder = buildOrderRFQ('0x01', weth.address, dai.address, ether('0.1'), ether('100'));
             const signature = await signOrderRFQ(order, chainId, swap.address, addr);
             const signatureBackOrder = await signOrderRFQ(backOrder, chainId, swap.address, addr1);
 
@@ -72,11 +57,13 @@ describe('Interactions', function () {
                 ],
             ).substring(2);
 
-            const interaction = matcher.address + '02' + swap.interface.encodeFunctionData('fillOrderRFQ', [
+            const interaction = matcher.address + '02' + swap.interface.encodeFunctionData('fillOrderRFQTo', [
                 backOrder,
-                signatureBackOrder,
-                matchingParams,
+                compactSignature(signatureBackOrder).r,
+                compactSignature(signatureBackOrder).vs,
                 ether('100'),
+                constants.AddressZero,
+                matchingParams,
             ]).substring(10);
 
             const addrweth = await weth.balanceOf(addr.address);
@@ -84,7 +71,8 @@ describe('Interactions', function () {
             const addrdai = await dai.balanceOf(addr.address);
             const addr1dai = await dai.balanceOf(addr1.address);
 
-            await matcher.matchRfqOrders(swap.address, order, signature, interaction, ether('0.1'));
+            const { r, vs } = compactSignature(signature);
+            await matcher.matchRfqOrders(swap.address, order, r, vs, ether('0.1'), interaction);
 
             expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.1')));
             expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.1')));
@@ -95,24 +83,8 @@ describe('Interactions', function () {
         it('unidirectional recursive swap', async function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
 
-            const order = buildOrderRFQ(
-                '0x01',
-                dai.address,
-                weth.address,
-                ether('10'),
-                ether('0.01'),
-                addr1.address,
-            );
-
-            const backOrder = buildOrderRFQ(
-                '0x02',
-                dai.address,
-                weth.address,
-                ether('15'),
-                ether('0.015'),
-                addr1.address,
-            );
-
+            const order = buildOrderRFQ('0x01', dai.address, weth.address, ether('10'), ether('0.01'));
+            const backOrder = buildOrderRFQ('0x02', dai.address, weth.address, ether('15'), ether('0.015'));
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
             const signatureBackOrder = await signOrderRFQ(backOrder, chainId, swap.address, addr1);
 
@@ -132,11 +104,13 @@ describe('Interactions', function () {
                 ],
             ).substring(2);
 
-            const interaction = matcher.address + '02' + swap.interface.encodeFunctionData('fillOrderRFQ', [
+            const interaction = matcher.address + '02' + swap.interface.encodeFunctionData('fillOrderRFQTo', [
                 backOrder,
-                signatureBackOrder,
-                matchingParams,
+                compactSignature(signatureBackOrder).r,
+                compactSignature(signatureBackOrder).vs,
                 ether('0.015'),
+                constants.AddressZero,
+                matchingParams,
             ]).substring(10);
 
             const addrweth = await weth.balanceOf(addr.address);
@@ -145,7 +119,8 @@ describe('Interactions', function () {
             const addr1dai = await dai.balanceOf(addr1.address);
 
             await weth.approve(matcher.address, ether('0.025'));
-            await matcher.matchRfqOrders(swap.address, order, signature, interaction, ether('0.01'));
+            const { r, vs } = compactSignature(signature);
+            await matcher.matchRfqOrders(swap.address, order, r, vs, ether('0.01'), interaction);
 
             expect(await weth.balanceOf(addr.address)).to.equal(addrweth.sub(ether('0.025')));
             expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.add(ether('0.025')));
@@ -155,32 +130,10 @@ describe('Interactions', function () {
 
         it('triple recursive swap', async function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
-            const order1 = buildOrderRFQ(
-                '0x01',
-                dai.address,
-                weth.address,
-                ether('10'),
-                ether('0.01'),
-                addr1.address,
-            );
 
-            const order2 = buildOrderRFQ(
-                '0x02',
-                dai.address,
-                weth.address,
-                ether('15'),
-                ether('0.015'),
-                addr1.address,
-            );
-
-            const backOrder = buildOrderRFQ(
-                '0x01',
-                weth.address,
-                dai.address,
-                ether('0.025'),
-                ether('25'),
-                addr.address,
-            );
+            const order1 = buildOrderRFQ('0x01', dai.address, weth.address, ether('10'), ether('0.01'));
+            const order2 = buildOrderRFQ('0x02', dai.address, weth.address, ether('15'), ether('0.015'));
+            const backOrder = buildOrderRFQ('0x01', weth.address, dai.address, ether('0.025'), ether('25'));
 
             const signature1 = await signOrderRFQ(order1, chainId, swap.address, addr1);
             const signature2 = await signOrderRFQ(order2, chainId, swap.address, addr1);
@@ -200,18 +153,22 @@ describe('Interactions', function () {
                 ],
             ).substring(2);
 
-            const internalInteraction = matcher.address + '02' + swap.interface.encodeFunctionData('fillOrderRFQ', [
+            const internalInteraction = matcher.address + '02' + swap.interface.encodeFunctionData('fillOrderRFQTo', [
                 backOrder,
-                signatureBackOrder,
-                matchingParams,
+                compactSignature(signatureBackOrder).r,
+                compactSignature(signatureBackOrder).vs,
                 ether('25'),
+                constants.AddressZero,
+                matchingParams,
             ]).substring(10);
 
-            const externalInteraction = matcher.address + '02' + swap.interface.encodeFunctionData('fillOrderRFQ', [
+            const externalInteraction = matcher.address + '02' + swap.interface.encodeFunctionData('fillOrderRFQTo', [
                 order2,
-                signature2,
-                internalInteraction,
+                compactSignature(signature2).r,
+                compactSignature(signature2).vs,
                 ether('0.015'),
+                constants.AddressZero,
+                internalInteraction,
             ]).substring(10);
 
             const addrweth = await weth.balanceOf(addr.address);
@@ -219,7 +176,8 @@ describe('Interactions', function () {
             const addrdai = await dai.balanceOf(addr.address);
             const addr1dai = await dai.balanceOf(addr1.address);
 
-            await matcher.matchRfqOrders(swap.address, order1, signature1, externalInteraction, ether('0.01'));
+            const { r, vs } = compactSignature(signature1);
+            await matcher.matchRfqOrders(swap.address, order1, r, vs, ether('0.01'), externalInteraction);
 
             expect(await weth.balanceOf(addr.address)).to.equal(addrweth.sub(ether('0.025')));
             expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.add(ether('0.025')));

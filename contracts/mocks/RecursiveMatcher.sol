@@ -12,7 +12,7 @@ contract RecursiveMatcher is IInteractionNotificationReceiver {
     bytes1 private constant _RFQ_FLAG = 0x02; // set this flag, if RFQ order is filling
 
     error IncorrectCalldataParams();
-    error FailedExternalCall();
+    error FailedExternalCall(bytes reason);
 
     function matchOrders(
         IOrderMixin orderMixin,
@@ -66,33 +66,42 @@ contract RecursiveMatcher is IInteractionNotificationReceiver {
             if(targets.length != calldatas.length) revert IncorrectCalldataParams();
             for(uint256 i = 0; i < targets.length; i++) {
                 // solhint-disable-next-line avoid-low-level-calls
-                (bool success, ) = targets[i].call(calldatas[i]);
-                if(!success) revert FailedExternalCall();
+                (bool success, bytes memory reason) = targets[i].call(calldatas[i]);
+                if(!success) revert FailedExternalCall(reason);
             }
         } else {
             if(interactiveData[0] & _RFQ_FLAG != 0x0) {
-                // msg.sender.call(abi.encodePacked(IOrderRFQMixin.fillOrderRFQTo.selector, interactiveData[1:]));
-
-                (
-                    OrderRFQLib.OrderRFQ memory order,
-                    bytes32 r,
-                    bytes32 vs,
-                    uint256 flagsAndAmount,
-                    bytes memory interaction
-                ) = abi.decode(interactiveData[1:], (OrderRFQLib.OrderRFQ, bytes32, bytes32, uint256, bytes));
-
-                IOrderRFQMixin(msg.sender).fillOrderRFQTo(
-                    order,
-                    r,
-                    vs,
-                    flagsAndAmount,
-                    address(this),
-                    interaction
+                // Not necessary to encode and decode calldata, because it is already encoded
+                // solhint-disable-next-line avoid-low-level-calls
+                (bool success, bytes memory reason) = msg.sender.call(
+                    abi.encodePacked(IOrderRFQMixin.fillOrderRFQTo.selector, interactiveData[1:])
                 );
+                if (!success) revert FailedExternalCall(reason);
+
+                // (
+                //     OrderRFQLib.OrderRFQ memory order,
+                //     bytes32 r,
+                //     bytes32 vs,
+                //     uint256 flagsAndAmount,
+                //     address target,
+                //     bytes memory interaction
+                // ) = abi.decode(interactiveData[1:], (OrderRFQLib.OrderRFQ, bytes32, bytes32, uint256, address, bytes));
+
+                // IOrderRFQMixin(msg.sender).fillOrderRFQTo(
+                //     order,
+                //     r,
+                //     vs,
+                //     flagsAndAmount,
+                //     target,
+                //     interaction
+                // );
             } else {
                 // Not necessary to encode and decode calldata, because it is already encoded
                 // solhint-disable-next-line avoid-low-level-calls
-                msg.sender.call(abi.encodePacked(IOrderMixin.fillOrder.selector, interactiveData[1:]));
+                (bool success, bytes memory reason) = msg.sender.call(
+                    abi.encodePacked(IOrderMixin.fillOrder.selector, interactiveData[1:])
+                );
+                if (!success) revert FailedExternalCall(reason);
 
                 // (
                 //     OrderLib.Order memory order,
