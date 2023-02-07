@@ -146,24 +146,22 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         }
 
         {  // Stack too deep
-            uint256 orderMakingAmount = order.makingAmount;
-            uint256 orderTakingAmount = order.takingAmount;
             uint256 amount = flagsAndAmount & _AMOUNT_MASK;
             // Compute partial fill if needed
             if (amount == 0) {
                 // zero amount means whole order
-                makingAmount = orderMakingAmount;
-                takingAmount = orderTakingAmount;
+                makingAmount = order.makingAmount;
+                takingAmount = order.takingAmount;
             }
             else if (flagsAndAmount & _MAKER_AMOUNT_FLAG != 0) {
-                if (amount > orderMakingAmount) revert MakingAmountExceeded();
+                if (amount > order.makingAmount) revert MakingAmountExceeded();
                 makingAmount = amount;
-                takingAmount = AmountCalculator.getTakingAmount(orderMakingAmount, orderTakingAmount, makingAmount);
+                takingAmount = AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, makingAmount);
             }
             else {
-                if (amount > orderTakingAmount) revert TakingAmountExceeded();
+                if (amount > order.takingAmount) revert TakingAmountExceeded();
                 takingAmount = amount;
-                makingAmount = AmountCalculator.getMakingAmount(orderMakingAmount, orderTakingAmount, takingAmount);
+                makingAmount = AmountCalculator.getMakingAmount(order.makingAmount, order.takingAmount, takingAmount);
             }
         }
 
