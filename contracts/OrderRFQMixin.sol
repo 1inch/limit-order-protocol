@@ -18,8 +18,7 @@ import "./OrderRFQLib.sol";
 abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
     using SafeERC20 for IERC20;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
-    using CalldataLib for CalldataLib.Address;
-    using CalldataLib for bytes;
+    using AddressLib for Address;
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
     uint256 private constant _MAKER_AMOUNT_FLAG = 1 << 255;

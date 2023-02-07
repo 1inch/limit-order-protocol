@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
-import "./libraries/CalldataLib.sol";
+import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 
 import "./helpers/AmountCalculator.sol";
 
@@ -14,11 +14,11 @@ library OrderLib {
 
     struct Order {
         uint256 salt;
-        CalldataLib.Address makerAsset;
-        CalldataLib.Address takerAsset;
-        CalldataLib.Address maker;
-        CalldataLib.Address receiver;
-        CalldataLib.Address allowedSender;  // equals to Zero address on public orders
+        Address makerAsset;
+        Address takerAsset;
+        Address maker;
+        Address receiver;
+        Address allowedSender;  // equals to Zero address on public orders
         uint256 makingAmount;
         uint256 takingAmount;
         uint256 offsets;

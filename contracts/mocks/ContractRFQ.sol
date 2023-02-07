@@ -6,15 +6,13 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "../LimitOrderProtocol.sol";
-import "../libraries/CalldataLib.sol";
 import "../OrderRFQLib.sol";
 import { EIP712Alien } from "./EIP712Alien.sol";
 
 contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     using SafeERC20 for IERC20;
-    using CalldataLib for bytes;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
-    using CalldataLib for CalldataLib.Address;
+    using AddressLib for Address;
 
     error NotAllowedToken();
     error BadPrice();

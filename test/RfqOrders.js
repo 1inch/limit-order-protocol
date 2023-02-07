@@ -1,8 +1,8 @@
+const { ethers } = require('hardhat');
 const { expect, time, profileEVM } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { buildOrderRFQ, signOrderRFQ, compactSignature, makingAmount, takingAmount, unwrapWeth } = require('./helpers/orderUtils');
 const { getPermit } = require('./helpers/eip712');
-const { ethers } = require('hardhat');
 const { deploySwapTokens } = require('./helpers/fixtures');
 
 describe('RFQ Orders in LimitOrderProtocol', function () {
@@ -50,7 +50,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const receipt = await swap.fillOrderRFQ(order, signature, emptyInteraction, makingAmount(1));
 
                 expect(
-                    await profileEVM(receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
+                    await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
                 ).to.be.deep.equal([2, 1, 7, 7, 0]);
 
                 // await gasspectEVM(receipt.hash);
@@ -81,7 +81,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const receipt = await swap.fillOrderRFQCompact(order, r, vs, emptyInteraction, 1);
 
                 expect(
-                    await profileEVM(receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
+                    await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
                 ).to.be.deep.equal([2, 1, 7, 7, 0]);
 
                 // await gasspectEVM(receipt.hash);
