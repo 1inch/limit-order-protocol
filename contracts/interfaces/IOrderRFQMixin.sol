@@ -148,7 +148,7 @@ interface IOrderRFQMixin {
     function fillContractOrderRFQToWithPermit(
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
-        address maker,
+        Address maker,
         uint256 flagsAndAmount,
         bytes calldata interaction,
         address target,

@@ -121,7 +121,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
     function fillContractOrderRFQToWithPermit(
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
-        address maker,
+        Address maker,
         uint256 flagsAndAmount,
         bytes calldata interaction,
         address target,
@@ -134,8 +134,8 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
             target = msg.sender;
         }
         orderHash = order.hash(_domainSeparatorV4());
-        if (!ECDSA.isValidSignature(maker, orderHash, signature)) revert RFQBadSignature();
-        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker, flagsAndAmount, interaction, target);
+        if (!ECDSA.isValidSignature(maker.get(), orderHash, signature)) revert RFQBadSignature();
+        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker.get(), flagsAndAmount, interaction, target);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
