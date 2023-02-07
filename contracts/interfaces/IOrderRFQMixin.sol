@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 import "../OrderRFQLib.sol";
 
 interface IOrderRFQMixin {
-    error RFQZeroTargetIsForbidden();
     error RFQPrivateOrder();
     error RFQBadSignature();
     error OrderExpired();
