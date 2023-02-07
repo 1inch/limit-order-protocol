@@ -138,11 +138,10 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         if (order.allowedSender.get() != address(0) && order.allowedSender.get() != msg.sender) revert RFQPrivateOrder();
 
         {  // Stack too deep
-            uint256 info = order.info;
             // Check time expiration
-            uint256 expiration = uint128(info) >> 64;
+            uint256 expiration = uint128(order.info) >> 64;
             if (expiration != 0 && block.timestamp > expiration) revert OrderExpired(); // solhint-disable-line not-rely-on-time
-            _invalidateOrder(maker, info, 0);
+            _invalidateOrder(maker, order.info, 0);
         }
 
         {  // Stack too deep
