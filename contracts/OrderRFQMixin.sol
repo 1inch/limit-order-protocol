@@ -191,13 +191,12 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
 
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
-            (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata();
+            address interactionTarget = address(bytes20(interaction));
+            bytes calldata interactionData = interaction[20:];
             uint256 offeredTakingAmount = IInteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
                 msg.sender, makingAmount, takingAmount, interactionData
             );
-
-            if (offeredTakingAmount > takingAmount)
-            {
+            if (offeredTakingAmount > takingAmount) {
                 takingAmount = offeredTakingAmount;
             }
         }
