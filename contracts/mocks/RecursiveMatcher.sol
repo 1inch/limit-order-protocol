@@ -41,11 +41,12 @@ contract RecursiveMatcher is IInteractionNotificationReceiver {
         uint256 flagsAndAmount,
         bytes calldata interaction
     ) external {
-        orderRFQMixin.fillOrderRFQ(
+        orderRFQMixin.fillOrderRFQTo(
             order,
             r,
             vs,
             flagsAndAmount,
+            address(this),
             interaction
         );
     }
@@ -70,6 +71,8 @@ contract RecursiveMatcher is IInteractionNotificationReceiver {
             }
         } else {
             if(interactiveData[0] & _RFQ_FLAG != 0x0) {
+                // msg.sender.call(abi.encodePacked(IOrderRFQMixin.fillOrderRFQTo.selector, interactiveData[1:]));
+
                 (
                     OrderRFQLib.OrderRFQ memory order,
                     bytes32 r,
@@ -78,31 +81,36 @@ contract RecursiveMatcher is IInteractionNotificationReceiver {
                     bytes memory interaction
                 ) = abi.decode(interactiveData[1:], (OrderRFQLib.OrderRFQ, bytes32, bytes32, uint256, bytes));
 
-                IOrderRFQMixin(msg.sender).fillOrderRFQ(
+                IOrderRFQMixin(msg.sender).fillOrderRFQTo(
                     order,
                     r,
                     vs,
                     flagsAndAmount,
+                    address(this),
                     interaction
                 );
             } else {
-                (
-                    OrderLib.Order memory order,
-                    bytes memory signature,
-                    bytes memory interaction,
-                    uint256 makingOrderAmount,
-                    uint256 takingOrderAmount,
-                    uint256 thresholdAmount
-                ) = abi.decode(interactiveData[1:], (OrderLib.Order, bytes, bytes, uint256, uint256, uint256));
+                // Not necessary to encode and decode calldata, because it is already encoded
+                // solhint-disable-next-line avoid-low-level-calls
+                msg.sender.call(abi.encodePacked(IOrderMixin.fillOrder.selector, interactiveData[1:]));
 
-                IOrderMixin(msg.sender).fillOrder(
-                    order,
-                    signature,
-                    interaction,
-                    makingOrderAmount,
-                    takingOrderAmount,
-                    thresholdAmount
-                );
+                // (
+                //     OrderLib.Order memory order,
+                //     bytes memory signature,
+                //     bytes memory interaction,
+                //     uint256 makingOrderAmount,
+                //     uint256 takingOrderAmount,
+                //     uint256 thresholdAmount
+                // ) = abi.decode(interactiveData[1:], (OrderLib.Order, bytes, bytes, uint256, uint256, uint256));
+
+                // IOrderMixin(msg.sender).fillOrder(
+                //     order,
+                //     signature,
+                //     interaction,
+                //     makingOrderAmount,
+                //     takingOrderAmount,
+                //     thresholdAmount
+                // );
             }
         }
         return 0;

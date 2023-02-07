@@ -57,28 +57,15 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
     }
 
     /**
-     * @notice See {IOrderRFQMixin-fillRFQ}.
-     */
-    function fillRFQ(
-        OrderRFQLib.OrderRFQ calldata order,
-        bytes32 r,
-        bytes32 vs,
-        uint256 flagsAndAmount
-    ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
-        return fillOrderRFQTo(order, r, vs, flagsAndAmount, msg.data[:0], msg.sender);
-    }
-
-    /**
      * @notice See {IOrderRFQMixin-fillOrderRFQ}.
      */
     function fillOrderRFQ(
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        uint256 flagsAndAmount,
-        bytes calldata interaction
+        uint256 flagsAndAmount
     ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
-        return fillOrderRFQTo(order, r, vs, flagsAndAmount, interaction, msg.sender);
+        return fillOrderRFQTo(order, r, vs, flagsAndAmount, msg.sender, msg.data[:0]);
     }
 
     /**
@@ -89,8 +76,8 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         bytes32 r,
         bytes32 vs,
         uint256 flagsAndAmount,
-        bytes calldata interaction,
-        address target
+        address target,
+        bytes calldata interaction
     ) public payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
         address maker = ECDSA.recover(orderHash, r, vs);
@@ -107,12 +94,12 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         bytes32 r,
         bytes32 vs,
         uint256 flagsAndAmount,
-        bytes calldata interaction,
         address target,
+        bytes calldata interaction,
         bytes calldata permit
     ) external returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
         IERC20(order.takerAsset.get()).safePermit(permit);
-        return fillOrderRFQTo(order, r, vs, flagsAndAmount, interaction, target);
+        return fillOrderRFQTo(order, r, vs, flagsAndAmount, target, interaction);
     }
 
     /**
@@ -123,8 +110,8 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         bytes calldata signature,
         Address maker,
         uint256 flagsAndAmount,
-        bytes calldata interaction,
         address target,
+        bytes calldata interaction,
         bytes calldata permit
     ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         if (permit.length > 0) {

@@ -53,33 +53,11 @@ interface IOrderRFQMixin {
      * @return filledTakingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
      */
-    function fillRFQ(
-        OrderRFQLib.OrderRFQ calldata order,
-        bytes32 r,
-        bytes32 vs,
-        uint256 flagsAndAmount
-    ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash);
-
-    /**
-     * @notice Fills order's quote, fully or partially (whichever is possible)
-     * @param order Order quote to fill
-     * @param r R component of signature
-     * @param vs VS component of signature
-     * @param flagsAndAmount Fill configuration flags with amount packed in one slot
-     * - Bits 0-253 contain the amount to fill
-     * - Bit 254 is used to indicate whether weth should be unwrapped to eth
-     * - Bit 255 is used to indicate whether maker (1) or taker amount (0) is given in the amount parameter
-     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
-     * @return filledMakingAmount Actual amount transferred from maker to taker
-     * @return filledTakingAmount Actual amount transferred from taker to maker
-     * @return orderHash Hash of the filled order
-     */
     function fillOrderRFQ(
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        uint256 flagsAndAmount,
-        bytes calldata interaction
+        uint256 flagsAndAmount
     ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash);
 
     /**
@@ -88,8 +66,8 @@ interface IOrderRFQMixin {
      * @param r R component of signature
      * @param vs VS component of signature
      * @param flagsAndAmount Fill configuration flags with amount packed in one slot
-     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param target Address that will receive swap funds
+     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @return filledMakingAmount Actual amount transferred from maker to taker
      * @return filledTakingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -99,8 +77,8 @@ interface IOrderRFQMixin {
         bytes32 r,
         bytes32 vs,
         uint256 flagsAndAmount,
-        bytes calldata interaction,
-        address target
+        address target,
+        bytes calldata interaction
     ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash);
 
     /**
@@ -111,8 +89,8 @@ interface IOrderRFQMixin {
      * @param r R component of signature
      * @param vs VS component of signature
      * @param flagsAndAmount Fill configuration flags with amount packed in one slot
-     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param target Address that will receive swap funds
+     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
      * @return filledMakingAmount Actual amount transferred from maker to taker
      * @return filledTakingAmount Actual amount transferred from taker to maker
@@ -124,8 +102,8 @@ interface IOrderRFQMixin {
         bytes32 r,
         bytes32 vs,
         uint256 flagsAndAmount,
-        bytes calldata interaction,
         address target,
+        bytes calldata interaction,
         bytes calldata permit
     ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash);
 
@@ -137,8 +115,8 @@ interface IOrderRFQMixin {
      * @param signature Signature to confirm quote ownership
      * @param maker Smart contract that signed the order
      * @param flagsAndAmount Fill configuration flags with amount packed in one slot
-     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param target Address that will receive swap funds
+     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
      * @return filledMakingAmount Actual amount transferred from maker to taker
      * @return filledTakingAmount Actual amount transferred from taker to maker
@@ -150,8 +128,8 @@ interface IOrderRFQMixin {
         bytes calldata signature,
         Address maker,
         uint256 flagsAndAmount,
-        bytes calldata interaction,
         address target,
+        bytes calldata interaction,
         bytes calldata permit
     ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash);
 }
