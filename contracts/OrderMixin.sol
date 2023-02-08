@@ -22,7 +22,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     using SafeERC20 for IERC20;
     using OrderLib for OrderLib.Order;
     using AddressLib for Address;
-    using TraitsLib for Traits;
+    using ConstraintsLib for Constraints;
     using InputLib for Input;
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
@@ -135,8 +135,9 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         if (target == address(0)) {
             target = msg.sender;
         }
-        if (!order.traits.isAllowedSender(msg.sender)) revert PrivateOrder();
-        if (order.traits.isExpired()) revert OrderExpired();
+        if (!order.constraints.isAllowedSender(msg.sender)) revert PrivateOrder();
+        if (order.constraints.isExpired()) revert OrderExpired();
+        if (!nonceEquals(order.maker.get(), order.constraints.series(), order.constraints.nonce())) revert WrongSeriesNonce();
 
         orderHash = hashOrder(order);
         uint256 remainingMakingAmount = _remaining[orderHash];
@@ -171,7 +172,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         // Compute maker and taker assets amount
         {  // Stack too deep
             uint256 amount = input.amount();
-            if (!order.traits.allowPartialFills()) {
+            if (!order.constraints.allowPartialFills()) {
                 actualMakingAmount = order.makingAmount;
                 actualTakingAmount = order.takingAmount;
             }
@@ -239,7 +240,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                 msg.sender, actualMakingAmount, actualTakingAmount, interactionData
             );
 
-            if (offeredTakingAmount > actualTakingAmount && order.traits.allowImproveRate()) {
+            if (offeredTakingAmount > actualTakingAmount && order.constraints.allowImproveRateViaInteraction()) {
                 actualTakingAmount = offeredTakingAmount;
             }
         }

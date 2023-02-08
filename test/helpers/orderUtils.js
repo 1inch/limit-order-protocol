@@ -2,12 +2,12 @@ const { constants, trim0x } = require('@1inch/solidity-utils');
 const { ethers } = require('ethers');
 
 const OrderRFQ = [
-    { name: 'info', type: 'uint256' },
     { name: 'makerAsset', type: 'address' },
     { name: 'takerAsset', type: 'address' },
-    { name: 'traits', type: 'uint256' },
     { name: 'makingAmount', type: 'uint256' },
     { name: 'takingAmount', type: 'uint256' },
+    { name: 'constraints', type: 'uint256' },
+    { name: 'info', type: 'uint256' },
 ];
 
 const ABIOrderRFQ = {
@@ -22,7 +22,7 @@ const Order = [
     { name: 'takerAsset', type: 'address' },
     { name: 'maker', type: 'address' },
     { name: 'receiver', type: 'address' },
-    { name: 'traits', type: 'uint256' },
+    { name: 'constraints', type: 'uint256' },
     { name: 'makingAmount', type: 'uint256' },
     { name: 'takingAmount', type: 'uint256' },
     { name: 'offsets', type: 'uint256' },
@@ -92,7 +92,7 @@ function buildOrder (
         takerAsset,
         maker,
         receiver,
-        traits: allowedSender,
+        constraints: allowedSender,
         makingAmount: makingAmount.toString(),
         takingAmount: takingAmount.toString(),
         offsets: offsets.toString(),
@@ -101,21 +101,21 @@ function buildOrder (
 }
 
 function buildOrderRFQ (
-    info,
+    nonce,
     makerAsset,
     takerAsset,
     makingAmount,
     takingAmount,
-    traits = constants.ZERO_ADDRESS,
+    constraints = constants.ZERO_ADDRESS,
     expirationTimestamp = 0,
 ) {
     return {
-        info,
         makerAsset,
         takerAsset,
-        traits: '0x' + (BigInt(traits) | (BigInt(expirationTimestamp) << 160n)).toString(16),
         makingAmount,
         takingAmount,
+        constraints: '0x' + (BigInt(constraints) | (BigInt(expirationTimestamp) << 160n) | (BigInt(nonce) << 200n)).toString(16),
+        info: '0',
     };
 }
 

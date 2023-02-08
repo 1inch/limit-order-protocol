@@ -20,7 +20,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
     using SafeERC20 for IERC20;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
     using AddressLib for Address;
-    using TraitsLib for Traits;
+    using ConstraintsLib for Constraints;
     using InputLib for Input;
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
@@ -42,15 +42,15 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
     /**
      * @notice See {IOrderRFQMixin-cancelOrderRFQ}.
      */
-    function cancelOrderRFQ(uint256 orderInfo) external {
-        _invalidateOrder(msg.sender, orderInfo, 0);
+    function cancelOrderRFQ(uint256 nonce) external {
+        _invalidateOrder(msg.sender, nonce, 0);
     }
 
     /**
      * @notice See {IOrderRFQMixin-cancelOrderRFQ}.
      */
-    function cancelOrderRFQ(uint256 orderInfo, uint256 additionalMask) external {
-        _invalidateOrder(msg.sender, orderInfo, additionalMask);
+    function cancelOrderRFQ(uint256 nonce, uint256 additionalMask) external {
+        _invalidateOrder(msg.sender, nonce, additionalMask);
     }
 
     /**
@@ -132,15 +132,14 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         }
 
         // Validate order
-        if (!order.traits.isAllowedSender(msg.sender)) revert RFQPrivateOrder();
-        if (order.traits.isExpired()) revert RFQOrderExpired();
-        _invalidateOrder(maker, order.info, 0);
+        if (!order.constraints.isAllowedSender(msg.sender)) revert RFQPrivateOrder();
+        if (order.constraints.isExpired()) revert RFQOrderExpired();
+        _invalidateOrder(maker, order.constraints.nonce(), 0);
 
         // Compute maker and taker assets amount
         {  // Stack too deep
             uint256 amount = input.amount();
-            if (amount == 0 || !order.traits.allowPartialFills()) {
-                // zero amount means whole order
+            if (amount == 0 || !order.constraints.allowPartialFills()) {
                 makingAmount = order.makingAmount;
                 takingAmount = order.takingAmount;
             }
@@ -176,7 +175,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
             uint256 offeredTakingAmount = IInteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
                 msg.sender, makingAmount, takingAmount, interactionData
             );
-            if (offeredTakingAmount > takingAmount && order.traits.allowImproveRate()) {
+            if (offeredTakingAmount > takingAmount && order.constraints.allowImproveRateViaInteraction()) {
                 takingAmount = offeredTakingAmount;
             }
         }
@@ -192,9 +191,9 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         }
     }
 
-    function _invalidateOrder(address maker, uint256 orderInfo, uint256 additionalMask) private {
-        uint256 invalidatorSlot = uint64(orderInfo) >> 8;
-        uint256 invalidatorBits = (1 << uint8(orderInfo)) | additionalMask;
+    function _invalidateOrder(address maker, uint256 nonce, uint256 additionalMask) private {
+        uint256 invalidatorSlot = nonce >> 8;
+        uint256 invalidatorBits = (1 << uint8(nonce)) | additionalMask;
         mapping(uint256 => uint256) storage invalidatorStorage = _invalidator[maker];
         uint256 invalidator = invalidatorStorage[invalidatorSlot];
         if (invalidator & invalidatorBits == invalidatorBits) revert InvalidatedOrder();

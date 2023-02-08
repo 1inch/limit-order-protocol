@@ -5,26 +5,26 @@ pragma solidity 0.8.17;
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 
-import "./libraries/TraitsLib.sol";
+import "./libraries/ConstraintsLib.sol";
 
 library OrderRFQLib {
     struct OrderRFQ {
-        uint256 info;  // lowest 64 bits is the order id, next 64 bits is the expiration timestamp
         Address makerAsset;
         Address takerAsset;
-        Traits traits;
         uint256 makingAmount;
         uint256 takingAmount;
+        Constraints constraints;
+        uint256 info;
     }
 
     bytes32 constant internal _LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
         "OrderRFQ("
-            "uint256 info,"
             "address makerAsset,"
             "address takerAsset,"
-            "uint256 traits,"
             "uint256 makingAmount,"
-            "uint256 takingAmount"
+            "uint256 takingAmount,"
+            "uint256 constraints,"
+            "uint256 info"
         ")"
     );
 

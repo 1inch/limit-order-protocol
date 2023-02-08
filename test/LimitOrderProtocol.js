@@ -602,28 +602,11 @@ describe('LimitOrderProtocol', function () {
             await swap.connect(addr1).or(offsets, data);
         });
 
-        it('benchmark gas real case', async function () {
-            const { swap } = await loadFixture(deployContractsAndInit);
-            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0x70000000n]);
-            const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0]);
-
-            const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
-            await swap.connect(addr1).and(offsets, data);
-        });
-
-        it('benchmark gas real case (optimized)', async function () {
-            const { swap } = await loadFixture(deployContractsAndInit);
-            const timestamp = 0x70000000n;
-            const nonce = 0n;
-
-            await swap.connect(addr1).timestampBelowAndNonceEquals(BigInt(addr1.address) | (nonce << 160n) | (timestamp << 208n));
-        });
-
         it('`or` should pass', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const tsBelow = swap.interface.encodeFunctionData('timestampBelow', ['0xff0000']);
-            const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0]);
+            const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0, 0]);
             const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
             const predicate = swap.interface.encodeFunctionData('or', [offsets, data]);
 
@@ -658,7 +641,7 @@ describe('LimitOrderProtocol', function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff0000n]);
-            const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 1]);
+            const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0, 1]);
             const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
             const predicate = swap.interface.encodeFunctionData('or', [offsets, data]);
             const order = buildOrder(
@@ -684,7 +667,7 @@ describe('LimitOrderProtocol', function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff000000n]);
-            const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0]);
+            const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0, 0]);
             const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
             const predicate = swap.interface.encodeFunctionData('and', [offsets, data]);
             const order = buildOrder(
@@ -718,7 +701,7 @@ describe('LimitOrderProtocol', function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff000000n]);
-            const nonceCall = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0]);
+            const nonceCall = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0, 0]);
             const { offsets, data } = joinStaticCalls([tsBelow, nonceCall]);
             const predicate = swap.interface.encodeFunctionData('and', [offsets, data]);
             const order = buildOrder(
@@ -750,15 +733,15 @@ describe('LimitOrderProtocol', function () {
 
         it('advance nonce', async function () {
             const { swap } = await loadFixture(deployContractsAndInit);
-            await swap.increaseNonce();
-            expect(await swap.nonce(addr.address)).to.equal('1');
+            await swap.increaseNonce(0);
+            expect(await swap.nonce(addr.address, 0)).to.equal('1');
         });
 
         it('`and` should fail', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff0000n]);
-            const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0]);
+            const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0, 0]);
             const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
             const predicate = swap.interface.encodeFunctionData('and', [offsets, data]);
             const order = buildOrder(
@@ -798,9 +781,6 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: 1,
                     takingAmount: 1,
                     from: addr1.address,
-                },
-                {
-                    predicate: swap.interface.encodeFunctionData('timestampBelow', ['0xff00000000']),
                 },
             );
             const signature = await signOrder(order, chainId, swap.address, addr1);

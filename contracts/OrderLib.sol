@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 
-import "./libraries/TraitsLib.sol";
+import "./libraries/ConstraintsLib.sol";
 import "./helpers/AmountCalculator.sol";
 
 library OrderLib {
@@ -18,7 +18,7 @@ library OrderLib {
         Address takerAsset;
         Address maker;
         Address receiver;
-        Traits traits;
+        Constraints constraints;
         uint256 makingAmount;
         uint256 takingAmount;
         uint256 offsets;
@@ -40,7 +40,7 @@ library OrderLib {
             "address takerAsset,"
             "address maker,"
             "address receiver,"
-            "uint256 traits,"
+            "uint256 constraints,"
             "uint256 makingAmount,"
             "uint256 takingAmount,"
             "uint256 offsets,"

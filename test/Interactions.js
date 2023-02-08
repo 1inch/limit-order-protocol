@@ -53,9 +53,6 @@ describe('Interactions', function () {
                     takingAmount: ether('0.1'),
                     from: addr.address,
                 },
-                {
-                    predicate: swap.interface.encodeFunctionData('timestampBelow', [0xff00000000]),
-                },
             );
 
             const backOrder = buildOrder(
@@ -65,9 +62,6 @@ describe('Interactions', function () {
                     makingAmount: ether('0.1'),
                     takingAmount: ether('100'),
                     from: addr1.address,
-                },
-                {
-                    predicate: swap.interface.encodeFunctionData('timestampBelow', [0xff00000000]),
                 },
             );
 
@@ -120,9 +114,6 @@ describe('Interactions', function () {
                     takingAmount: ether('0.01'),
                     from: addr1.address,
                 },
-                {
-                    predicate: swap.interface.encodeFunctionData('timestampBelow', [0xff00000000]),
-                },
             );
 
             const backOrder = buildOrder(
@@ -132,9 +123,6 @@ describe('Interactions', function () {
                     makingAmount: ether('15'),
                     takingAmount: ether('0.015'),
                     from: addr1.address,
-                },
-                {
-                    predicate: swap.interface.encodeFunctionData('timestampBelow', [0xff00000000]),
                 },
             );
 
@@ -190,9 +178,6 @@ describe('Interactions', function () {
                     takingAmount: ether('0.01'),
                     from: addr1.address,
                 },
-                {
-                    predicate: swap.interface.encodeFunctionData('timestampBelow', [0xff00000000]),
-                },
             );
 
             const order2 = buildOrder(
@@ -203,9 +188,6 @@ describe('Interactions', function () {
                     takingAmount: ether('0.015'),
                     from: addr1.address,
                 },
-                {
-                    predicate: swap.interface.encodeFunctionData('timestampBelow', [0xff00000000]),
-                },
             );
 
             const backOrder = buildOrder(
@@ -215,9 +197,6 @@ describe('Interactions', function () {
                     makingAmount: ether('0.025'),
                     takingAmount: ether('25'),
                     from: addr.address,
-                },
-                {
-                    predicate: swap.interface.encodeFunctionData('timestampBelow', [0xff00000000]),
                 },
             );
 
