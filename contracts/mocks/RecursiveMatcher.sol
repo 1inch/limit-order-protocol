@@ -73,7 +73,7 @@ contract RecursiveMatcher is IInteractionNotificationReceiver {
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory reason) = msg.sender.call(
                 abi.encodePacked(
-                    interactiveData[0] & _RFQ_FLAG != 0x0?
+                    interactiveData[0] & _RFQ_FLAG != 0x0 ?
                         IOrderRFQMixin.fillOrderRFQTo.selector :
                         IOrderMixin.fillOrder.selector,
                     interactiveData[1:]
