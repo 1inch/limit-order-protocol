@@ -4,6 +4,7 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { buildOrderRFQ, signOrderRFQ, compactSignature, makingAmount, takingAmount, unwrapWeth } = require('./helpers/orderUtils');
 const { getPermit } = require('./helpers/eip712');
 const { deploySwapTokens } = require('./helpers/fixtures');
+const { constants } = require('ethers');
 
 describe('RFQ Orders in LimitOrderProtocol', function () {
     const emptyInteraction = '0x';
@@ -173,25 +174,6 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
         });
 
-        it('should fill RFQ order when not expired (compact)', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ('0xFF000000000000000000000001', dai.address, weth.address, 1, 1);
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
-
-            const makerDai = await dai.balanceOf(addr1.address);
-            const takerDai = await dai.balanceOf(addr.address);
-            const makerWeth = await weth.balanceOf(addr1.address);
-            const takerWeth = await weth.balanceOf(addr.address);
-
-            const { r, vs } = compactSignature(signature);
-            await swap.fillOrderRFQ(order, r, vs, takingAmount(1));
-
-            expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
-            expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
-            expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.add(1));
-            expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
-        });
-
         it('should partial fill RFQ order', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
             const order = buildOrderRFQ('0xFF000000000000000000000001', dai.address, weth.address, 2, 2);
@@ -211,45 +193,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
         });
 
-        it('should partial fill RFQ order (compact)', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ('0xFF000000000000000000000001', dai.address, weth.address, 2, 2);
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
-
-            const makerDai = await dai.balanceOf(addr1.address);
-            const takerDai = await dai.balanceOf(addr.address);
-            const makerWeth = await weth.balanceOf(addr1.address);
-            const takerWeth = await weth.balanceOf(addr.address);
-
-            const { r, vs } = compactSignature(signature);
-            await swap.fillOrderRFQ(order, r, vs, takingAmount(1));
-
-            expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
-            expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
-            expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.add(1));
-            expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
-        });
-
         it('should fully fill RFQ order', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ('0xFF000000000000000000000001', dai.address, weth.address, 1, 1);
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
-
-            const makerDai = await dai.balanceOf(addr1.address);
-            const takerDai = await dai.balanceOf(addr.address);
-            const makerWeth = await weth.balanceOf(addr1.address);
-            const takerWeth = await weth.balanceOf(addr.address);
-
-            const { r, vs } = compactSignature(signature);
-            await swap.fillOrderRFQ(order, r, vs, 0);
-
-            expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
-            expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
-            expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.add(1));
-            expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
-        });
-
-        it('should fully fill RFQ order wih (compact)', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
             const order = buildOrderRFQ('0xFF000000000000000000000001', dai.address, weth.address, 1, 1);
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
@@ -279,37 +223,15 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(swap, 'RFQSwapWithZeroAmount');
         });
 
-        it('should not partial fill RFQ order when 0 (compact)', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ('0xFF000000000000000000000001', dai.address, weth.address, 5, 10);
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
-
-            const { r, vs } = compactSignature(signature);
-            await expect(
-                swap.fillOrderRFQ(order, r, vs, takingAmount(1)),
-            ).to.be.revertedWithCustomError(swap, 'RFQSwapWithZeroAmount');
-        });
-
         it('should not fill RFQ order when expired', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ('308276084001730439550074881', dai.address, weth.address, 1, 1);
+            const order = buildOrderRFQ('0x01', dai.address, weth.address, 1, 1, constants.AddressZero, await time.latest());
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
             await expect(
                 swap.fillOrderRFQ(order, r, vs, makingAmount(1)),
-            ).to.be.revertedWithCustomError(swap, 'OrderExpired');
-        });
-
-        it('should not fill RFQ order when expired (compact)', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ('308276084001730439550074881', dai.address, weth.address, 1, 1);
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
-
-            const { r, vs } = compactSignature(signature);
-            await expect(
-                swap.fillOrderRFQ(order, r, vs, takingAmount(1)),
-            ).to.be.revertedWithCustomError(swap, 'OrderExpired');
+            ).to.be.revertedWithCustomError(swap, 'RFQOrderExpired');
         });
     });
 

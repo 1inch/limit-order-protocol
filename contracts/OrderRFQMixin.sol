@@ -19,7 +19,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
     using SafeERC20 for IERC20;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
     using AddressLib for Address;
-    using TraitsRFQLib for TraitsRFQ;
+    using TraitsLib for Traits;
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
     uint256 private constant _MAKER_AMOUNT_FLAG = 1 << 255;
@@ -136,17 +136,9 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         }
 
         // Validate order
-        {  // Stack too deep
-            address allowedSender = order.traits.allowedSender();
-            if (allowedSender != address(0) && allowedSender != msg.sender) revert RFQPrivateOrder();
-        }
-
-        // Check time expiration and id invalidation
-        {  // Stack too deep
-            uint256 expiration = uint128(order.info) >> 64;
-            if (expiration != 0 && block.timestamp > expiration) revert OrderExpired(); // solhint-disable-line not-rely-on-time
-            _invalidateOrder(maker, order.info, 0);
-        }
+        if (!order.traits.isAllowedSender(msg.sender)) revert RFQPrivateOrder();
+        if (order.traits.isExpired()) revert RFQOrderExpired();
+        _invalidateOrder(maker, order.info, 0);
 
         {  // Stack too deep
             uint256 amount = flagsAndAmount & _AMOUNT_MASK;

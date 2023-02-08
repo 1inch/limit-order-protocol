@@ -5,32 +5,14 @@ pragma solidity 0.8.17;
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 
-type TraitsRFQ is uint256;
-
-library TraitsRFQLib {
-    uint256 private constant _LOW_160_BIT_MASK = type(uint160).max;
-    uint256 private constant _NO_PARIAL_FILLS_FLAG = 1 << 255;
-    uint256 private constant _NO_IMPROVE_RATE_FLAG = 1 << 254;
-
-    function allowedSender(TraitsRFQ traits) internal pure returns (address) {
-        return address(uint160(TraitsRFQ.unwrap(traits) & _LOW_160_BIT_MASK));
-    }
-
-    function allowPartialFills(TraitsRFQ traits) internal pure returns (bool) {
-        return (TraitsRFQ.unwrap(traits) & _NO_PARIAL_FILLS_FLAG) == 0;
-    }
-
-    function allowImproveRate(TraitsRFQ traits) internal pure returns (bool) {
-        return (TraitsRFQ.unwrap(traits) & _NO_IMPROVE_RATE_FLAG) == 0;
-    }
-}
+import "./TraitsLib.sol";
 
 library OrderRFQLib {
     struct OrderRFQ {
         uint256 info;  // lowest 64 bits is the order id, next 64 bits is the expiration timestamp
         Address makerAsset;
         Address takerAsset;
-        TraitsRFQ traits;
+        Traits traits;
         uint256 makingAmount;
         uint256 takingAmount;
     }

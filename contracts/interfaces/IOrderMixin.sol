@@ -12,6 +12,7 @@ interface IOrderMixin {
     error ZeroTargetIsForbidden();
     error RemainingAmountIsZero();
     error PrivateOrder();
+    error OrderExpired();
     error BadSignature();
     error ReentrancyDetected();
     error PredicateIsNotTrue();

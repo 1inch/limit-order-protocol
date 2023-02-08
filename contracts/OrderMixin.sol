@@ -21,6 +21,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     using SafeERC20 for IERC20;
     using OrderLib for OrderLib.Order;
     using AddressLib for Address;
+    using TraitsLib for Traits;
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
     uint256 private constant _ORDER_DOES_NOT_EXIST = 0;
@@ -141,9 +142,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         actualMakingAmount = makingAmount;
         actualTakingAmount = takingAmount;
 
+        if (!order.traits.isAllowedSender(msg.sender)) revert PrivateOrder();
+        if (order.traits.isExpired()) revert OrderExpired();
+
         uint256 remainingMakingAmount = _remaining[orderHash];
         if (remainingMakingAmount == _ORDER_FILLED) revert RemainingAmountIsZero();
-        if (order.allowedSender.get() != address(0) && order.allowedSender.get() != msg.sender) revert PrivateOrder();
         if (remainingMakingAmount == _ORDER_DOES_NOT_EXIST) {
             // First fill: validate order and permit maker asset
             if (!ECDSA.recoverOrIsValidSignature(order.maker.get(), orderHash, signature)) revert BadSignature();

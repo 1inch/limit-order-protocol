@@ -7,7 +7,7 @@ import "../OrderRFQLib.sol";
 interface IOrderRFQMixin {
     error RFQPrivateOrder();
     error RFQBadSignature();
-    error OrderExpired();
+    error RFQOrderExpired();
     error MakingAmountExceeded();
     error TakingAmountExceeded();
     error RFQSwapWithZeroAmount();

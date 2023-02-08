@@ -5,6 +5,7 @@ pragma solidity 0.8.17;
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 
+import "./TraitsLib.sol";
 import "./helpers/AmountCalculator.sol";
 
 library OrderLib {
@@ -18,7 +19,7 @@ library OrderLib {
         Address takerAsset;
         Address maker;
         Address receiver;
-        Address allowedSender;  // equals to Zero address on public orders
+        Traits traits;
         uint256 makingAmount;
         uint256 takingAmount;
         uint256 offsets;
@@ -40,7 +41,7 @@ library OrderLib {
             "address takerAsset,"
             "address maker,"
             "address receiver,"
-            "address allowedSender,"
+            "uint256 traits,"
             "uint256 makingAmount,"
             "uint256 takingAmount,"
             "uint256 offsets,"

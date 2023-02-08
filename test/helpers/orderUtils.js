@@ -23,7 +23,7 @@ const Order = [
     { name: 'takerAsset', type: 'address' },
     { name: 'maker', type: 'address' },
     { name: 'receiver', type: 'address' },
-    { name: 'allowedSender', type: 'address' },
+    { name: 'traits', type: 'uint256' },
     { name: 'makingAmount', type: 'uint256' },
     { name: 'takingAmount', type: 'uint256' },
     { name: 'offsets', type: 'uint256' },
@@ -93,7 +93,7 @@ function buildOrder (
         takerAsset,
         maker,
         receiver,
-        allowedSender,
+        traits: allowedSender,
         makingAmount: makingAmount.toString(),
         takingAmount: takingAmount.toString(),
         offsets: offsets.toString(),
@@ -108,12 +108,13 @@ function buildOrderRFQ (
     makingAmount,
     takingAmount,
     traits = constants.ZERO_ADDRESS,
+    expirationTimestamp = 0,
 ) {
     return {
         info,
         makerAsset,
         takerAsset,
-        traits,
+        traits: '0x' + (BigInt(traits) | (BigInt(expirationTimestamp) << 160n)).toString(16),
         makingAmount,
         takingAmount,
     };
