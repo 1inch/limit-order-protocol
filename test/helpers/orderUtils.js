@@ -3,12 +3,12 @@ const { assert } = require('chai');
 const { ethers } = require('ethers');
 
 const OrderRFQ = [
+    { name: 'salt', type: 'uint256' },
     { name: 'makerAsset', type: 'address' },
     { name: 'takerAsset', type: 'address' },
     { name: 'makingAmount', type: 'uint256' },
     { name: 'takingAmount', type: 'uint256' },
     { name: 'constraints', type: 'uint256' },
-    { name: 'info', type: 'uint256' },
 ];
 
 const ABIOrderRFQ = {
@@ -21,11 +21,11 @@ const Order = [
     { name: 'salt', type: 'uint256' },
     { name: 'makerAsset', type: 'address' },
     { name: 'takerAsset', type: 'address' },
-    { name: 'maker', type: 'address' },
-    { name: 'receiver', type: 'address' },
-    { name: 'constraints', type: 'uint256' },
     { name: 'makingAmount', type: 'uint256' },
     { name: 'takingAmount', type: 'uint256' },
+    { name: 'constraints', type: 'uint256' },
+    { name: 'maker', type: 'address' },
+    { name: 'receiver', type: 'address' },
     { name: 'offsets', type: 'uint256' },
     { name: 'interactions', type: 'bytes' },
 ];
@@ -76,13 +76,6 @@ function buildOrder (
         postInteraction = '0x',
     } = {},
 ) {
-    if (getMakingAmount === '') {
-        getMakingAmount = '0x78'; // "x"
-    }
-    if (getTakingAmount === '') {
-        getTakingAmount = '0x78'; // "x"
-    }
-
     const allInteractions = [
         makerAssetData,
         takerAssetData,
@@ -130,7 +123,7 @@ function buildOrderRFQ (
         makingAmount,
         takingAmount,
         constraints,
-        info: '0',
+        salt: '0',
     };
 }
 

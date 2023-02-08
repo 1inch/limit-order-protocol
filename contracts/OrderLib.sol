@@ -16,21 +16,13 @@ library OrderLib {
         uint256 salt;
         Address makerAsset;
         Address takerAsset;
-        Address maker;
-        Address receiver;
-        Constraints constraints;
         uint256 makingAmount;
         uint256 takingAmount;
+        Constraints constraints;
+        Address maker;
+        Address receiver;
         uint256 offsets;
-        // bytes makerAssetData;
-        // bytes takerAssetData;
-        // bytes getMakingAmount; // this.staticcall(abi.encodePacked(bytes, swapTakerAmount)) => (swapMakerAmount)
-        // bytes getTakingAmount; // this.staticcall(abi.encodePacked(bytes, swapMakerAmount)) => (swapTakerAmount)
-        // bytes predicate;       // this.staticcall(bytes) => (bool)
-        // bytes permit;          // On first fill: permit.1.call(abi.encodePacked(permit.selector, permit.2))
-        // bytes preInteraction;
-        // bytes postInteraction;
-        bytes interactions; // concat(makerAssetData, takerAssetData, getMakingAmount, getTakingAmount, predicate, permit, preIntercation, postInteraction)
+        bytes interactions;
     }
 
     bytes32 constant internal _LIMIT_ORDER_TYPEHASH = keccak256(
@@ -38,11 +30,11 @@ library OrderLib {
             "uint256 salt,"
             "address makerAsset,"
             "address takerAsset,"
-            "address maker,"
-            "address receiver,"
-            "uint256 constraints,"
             "uint256 makingAmount,"
             "uint256 takingAmount,"
+            "uint256 constraints,"
+            "address maker,"
+            "address receiver,"
             "uint256 offsets,"
             "bytes interactions"
         ")"

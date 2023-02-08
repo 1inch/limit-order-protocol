@@ -96,7 +96,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         bytes calldata interaction,
         Input input,
         uint256 threshold
-    ) external payable returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
+    ) external payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
         return fillOrderTo(order, signature, interaction, input, threshold, msg.sender);
     }
 
@@ -111,7 +111,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         uint256 threshold,
         address target,
         bytes calldata permit
-    ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
+    ) external returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
         if (permit.length < 20) revert PermitLengthTooLow();
         {  // Stack too deep
             address token = address(bytes20(permit));

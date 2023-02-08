@@ -9,22 +9,22 @@ import "./libraries/ConstraintsLib.sol";
 
 library OrderRFQLib {
     struct OrderRFQ {
+        uint256 salt;
         Address makerAsset;
         Address takerAsset;
         uint256 makingAmount;
         uint256 takingAmount;
         Constraints constraints;
-        uint256 info;
     }
 
     bytes32 constant internal _LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
         "OrderRFQ("
+            "uint256 salt,"
             "address makerAsset,"
             "address takerAsset,"
             "uint256 makingAmount,"
             "uint256 takingAmount,"
-            "uint256 constraints,"
-            "uint256 info"
+            "uint256 constraints"
         ")"
     );
 
