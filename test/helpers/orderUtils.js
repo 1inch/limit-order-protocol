@@ -1,6 +1,5 @@
 const { constants, trim0x } = require('@1inch/solidity-utils');
 const { ethers } = require('ethers');
-const { setn } = require('./utils');
 
 const OrderRFQ = [
     { name: 'info', type: 'uint256' },
@@ -154,16 +153,16 @@ function compactSignature (signature) {
     };
 }
 
-function unwrapWeth (amount) {
-    return setn(BigInt(amount), 254, 1).toString();
+function makeMakingAmount (amount) {
+    return (BigInt(amount) | (1n << 255n)).toString();
 }
 
-function makingAmount (amount) {
-    return setn(BigInt(amount), 255, 1).toString();
+function makeUnwrapWeth (amount) {
+    return (BigInt(amount) | (1n << 254n)).toString();
 }
 
-function takingAmount (amount) {
-    return BigInt(amount).toString();
+function skipOrderPermit (amount) {
+    return (BigInt(amount) | (1n << 253n)).toString();
 }
 
 module.exports = {
@@ -176,9 +175,9 @@ module.exports = {
     signOrder,
     signOrderRFQ,
     compactSignature,
-    makingAmount,
-    takingAmount,
-    unwrapWeth,
+    makeMakingAmount,
+    makeUnwrapWeth,
+    skipOrderPermit,
     name,
     version,
 };

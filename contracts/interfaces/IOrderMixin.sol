@@ -3,20 +3,19 @@
 pragma solidity 0.8.17;
 
 import "../OrderLib.sol";
+import "../libraries/InputLib.sol";
 
 interface IOrderMixin {
     error UnknownOrder();
     error AccessDenied();
     error AlreadyFilled();
     error PermitLengthTooLow();
-    error ZeroTargetIsForbidden();
     error RemainingAmountIsZero();
     error PrivateOrder();
     error OrderExpired();
     error BadSignature();
     error ReentrancyDetected();
     error PredicateIsNotTrue();
-    error OnlyOneAmountShouldBeZero();
     error TakingAmountTooHigh();
     error MakingAmountTooLow();
     error SwapWithZeroAmount();
@@ -62,10 +61,10 @@ interface IOrderMixin {
 
     /**
      * @notice Checks order predicate
-     * @param order Order to check predicate for
+     * @param predicate Order predicate to check
      * @return result Predicate evaluation result. True if predicate allows to fill the order, false otherwise
      */
-    function checkPredicate(OrderLib.Order calldata order) external view returns(bool result);
+    function checkPredicate(bytes calldata predicate) external view returns(bool result);
 
     /**
      * @notice Returns order hash according to EIP712 standard
@@ -96,8 +95,7 @@ interface IOrderMixin {
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
      * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
-     * @param makingAmount Making amount
-     * @param takingAmount Taking amount
+     * @param input Fill configuration flags with amount packed in one slot
      * @param skipPermitAndThresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @return actualMakingAmount Actual amount transferred from maker to taker
      * @return actualTakingAmount Actual amount transferred from taker to maker
@@ -107,8 +105,7 @@ interface IOrderMixin {
         OrderLib.Order calldata order,
         bytes calldata signature,
         bytes calldata interaction,
-        uint256 makingAmount,
-        uint256 takingAmount,
+        Input input,
         uint256 skipPermitAndThresholdAmount
     ) external payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);
 
@@ -120,8 +117,7 @@ interface IOrderMixin {
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
      * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
-     * @param makingAmount Making amount
-     * @param takingAmount Taking amount
+     * @param input Fill configuration flags with amount packed in one slot
      * @param skipPermitAndThresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
      * @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
@@ -133,8 +129,7 @@ interface IOrderMixin {
         OrderLib.Order calldata order,
         bytes calldata signature,
         bytes calldata interaction,
-        uint256 makingAmount,
-        uint256 takingAmount,
+        Input input,
         uint256 skipPermitAndThresholdAmount,
         address target,
         bytes calldata permit
@@ -145,8 +140,7 @@ interface IOrderMixin {
      * @param order_ Order quote to fill
      * @param signature Signature to confirm quote ownership
      * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
-     * @param makingAmount Making amount
-     * @param takingAmount Taking amount
+     * @param input Fill configuration flags with amount packed in one slot
      * @param skipPermitAndThresholdAmount Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
      * @return actualMakingAmount Actual amount transferred from maker to taker
@@ -157,8 +151,7 @@ interface IOrderMixin {
         OrderLib.Order calldata order_,
         bytes calldata signature,
         bytes calldata interaction,
-        uint256 makingAmount,
-        uint256 takingAmount,
+        Input input,
         uint256 skipPermitAndThresholdAmount,
         address target
     ) external payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);

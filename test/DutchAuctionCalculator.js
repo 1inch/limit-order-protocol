@@ -2,7 +2,7 @@ const { expect, trim0x, time, assertRoughlyEqualValues } = require('@1inch/solid
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { cutLastArg, ether } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
-const { buildOrder, signOrder } = require('./helpers/orderUtils');
+const { buildOrder, signOrder, makeMakingAmount } = require('./helpers/orderUtils');
 const { ethers } = require('hardhat');
 
 describe('Dutch auction', function () {
@@ -61,7 +61,7 @@ describe('Dutch auction', function () {
         const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
         await time.increaseTo(ts + 43200n); // 50% auction time
-        await swap.connect(addr1).fillOrder(order, signature, '0x', ether('100'), '0', ether('0.08'));
+        await swap.connect(addr1).fillOrder(order, signature, '0x', makeMakingAmount(ether('100')), ether('0.08'));
 
         expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
         expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));
@@ -73,7 +73,7 @@ describe('Dutch auction', function () {
         const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
         await time.increaseTo(ts + 43200n); // 50% auction time
-        await swap.connect(addr1).fillOrder(order, signature, '0x', '0', ether('0.075'), ether('100'));
+        await swap.connect(addr1).fillOrder(order, signature, '0x', ether('0.075'), ether('100'));
 
         expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
         expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));
@@ -84,7 +84,7 @@ describe('Dutch auction', function () {
     it('swap with makingAmount 0% time passed', async function () {
         const { dai, weth, swap, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
-        await swap.connect(addr1).fillOrder(order, signature, '0x', ether('100'), '0', ether('0.1'));
+        await swap.connect(addr1).fillOrder(order, signature, '0x', makeMakingAmount(ether('100')), ether('0.1'));
 
         expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
         expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));
@@ -95,7 +95,7 @@ describe('Dutch auction', function () {
     it('swap with takingAmount 0% time passed', async function () {
         const { dai, weth, swap, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
-        await swap.connect(addr1).fillOrder(order, signature, '0x', '0', ether('0.1'), ether('100'));
+        await swap.connect(addr1).fillOrder(order, signature, '0x', ether('0.1'), ether('100'));
 
         expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
         expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));
@@ -107,7 +107,7 @@ describe('Dutch auction', function () {
         const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
         await time.increaseTo(ts + 86500n); // >100% auction time
-        await swap.connect(addr1).fillOrder(order, signature, '0x', ether('100'), '0', ether('0.05'));
+        await swap.connect(addr1).fillOrder(order, signature, '0x', makeMakingAmount(ether('100')), ether('0.05'));
 
         expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
         expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));
@@ -119,7 +119,7 @@ describe('Dutch auction', function () {
         const { dai, weth, swap, ts, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
         await time.increaseTo(ts + 86500n); // >100% auction time
-        await swap.connect(addr1).fillOrder(order, signature, '0x', '0', ether('0.05'), ether('100'));
+        await swap.connect(addr1).fillOrder(order, signature, '0x', ether('0.05'), ether('100'));
 
         expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
         expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));

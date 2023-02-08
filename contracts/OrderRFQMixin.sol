@@ -12,6 +12,7 @@ import "./helpers/AmountCalculator.sol";
 import "./interfaces/IInteractionNotificationReceiver.sol";
 import "./interfaces/IOrderRFQMixin.sol";
 import "./libraries/Errors.sol";
+import "./libraries/InputLib.sol";
 import "./OrderRFQLib.sol";
 
 /// @title RFQ Limit Order mixin
@@ -20,14 +21,9 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
     using AddressLib for Address;
     using TraitsLib for Traits;
+    using InputLib for Input;
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
-    uint256 private constant _MAKER_AMOUNT_FLAG = 1 << 255;
-    uint256 private constant _UNWRAP_WETH_FLAG = 1 << 254;
-    uint256 private constant _AMOUNT_MASK = ~(
-        _MAKER_AMOUNT_FLAG |
-        _UNWRAP_WETH_FLAG
-    );
 
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     mapping(address => mapping(uint256 => uint256)) private _invalidator;
@@ -64,9 +60,9 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        uint256 flagsAndAmount
+        Input input
     ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
-        return fillOrderRFQTo(order, r, vs, flagsAndAmount, msg.sender, msg.data[:0]);
+        return fillOrderRFQTo(order, r, vs, input, msg.sender, msg.data[:0]);
     }
 
     /**
@@ -76,14 +72,14 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        uint256 flagsAndAmount,
+        Input input,
         address target,
         bytes calldata interaction
     ) public payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
         address maker = ECDSA.recover(orderHash, r, vs);
         if (maker == address(0)) revert RFQBadSignature();
-        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker, flagsAndAmount, interaction, target);
+        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker, input, interaction, target);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
@@ -94,13 +90,13 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        uint256 flagsAndAmount,
+        Input input,
         address target,
         bytes calldata interaction,
         bytes calldata permit
     ) external returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
         IERC20(order.takerAsset.get()).safePermit(permit);
-        return fillOrderRFQTo(order, r, vs, flagsAndAmount, target, interaction);
+        return fillOrderRFQTo(order, r, vs, input, target, interaction);
     }
 
     /**
@@ -110,7 +106,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
         Address maker,
-        uint256 flagsAndAmount,
+        Input input,
         address target,
         bytes calldata interaction,
         bytes calldata permit
@@ -120,14 +116,14 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         }
         orderHash = order.hash(_domainSeparatorV4());
         if (!ECDSA.isValidSignature(maker.get(), orderHash, signature)) revert RFQBadSignature();
-        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker.get(), flagsAndAmount, interaction, target);
+        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker.get(), input, interaction, target);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
     function _fillOrderRFQTo(
         OrderRFQLib.OrderRFQ calldata order,
         address maker,
-        uint256 flagsAndAmount,
+        Input input,
         bytes calldata interaction,
         address target
     ) private returns(uint256 makingAmount, uint256 takingAmount) {
@@ -140,15 +136,15 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         if (order.traits.isExpired()) revert RFQOrderExpired();
         _invalidateOrder(maker, order.info, 0);
 
+        // Compute maker and taker assets amount
         {  // Stack too deep
-            uint256 amount = flagsAndAmount & _AMOUNT_MASK;
-            // Compute partial fill if needed
+            uint256 amount = input.amount();
             if (amount == 0 || !order.traits.allowPartialFills()) {
                 // zero amount means whole order
                 makingAmount = order.makingAmount;
                 takingAmount = order.takingAmount;
             }
-            else if (flagsAndAmount & _MAKER_AMOUNT_FLAG != 0) {
+            else if (input.isMakingAmount()) {
                 if (amount > order.makingAmount) revert MakingAmountExceeded();
                 makingAmount = amount;
                 takingAmount = AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, makingAmount);
@@ -163,7 +159,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         if (makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
 
         // Maker => Taker
-        if (order.makerAsset.get() == address(_WETH) && flagsAndAmount & _UNWRAP_WETH_FLAG != 0) {
+        if (order.makerAsset.get() == address(_WETH) && input.needUnwrapWeth()) {
             _WETH.transferFrom(maker, address(this), makingAmount);
             _WETH.withdraw(makingAmount);
             // solhint-disable-next-line avoid-low-level-calls
@@ -186,7 +182,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         }
 
         // Taker => Maker
-        if (order.takerAsset.get() == address(_WETH) && msg.value > 0) {
+        if (order.takerAsset.get() == address(_WETH) && msg.value > 0) { // TODO: check balance to get ETH in interaction?
             if (msg.value != takingAmount) revert Errors.InvalidMsgValue();
             _WETH.deposit{ value: takingAmount }();
             _WETH.transfer(maker, takingAmount);

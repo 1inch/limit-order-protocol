@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 
-import "./TraitsLib.sol";
+import "./libraries/TraitsLib.sol";
 
 library OrderRFQLib {
     struct OrderRFQ {

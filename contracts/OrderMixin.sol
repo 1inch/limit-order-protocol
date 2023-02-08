@@ -14,6 +14,7 @@ import "./interfaces/IInteractionNotificationReceiver.sol";
 import "./interfaces/IPreInteractionNotificationReceiver.sol";
 import "./interfaces/IPostInteractionNotificationReceiver.sol";
 import "./libraries/Errors.sol";
+import "./libraries/InputLib.sol";
 import "./OrderLib.sol";
 
 /// @title Regular Limit Order mixin
@@ -22,12 +23,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     using OrderLib for OrderLib.Order;
     using AddressLib for Address;
     using TraitsLib for Traits;
+    using InputLib for Input;
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
     uint256 private constant _ORDER_DOES_NOT_EXIST = 0;
     uint256 private constant _ORDER_FILLED = 1;
-    uint256 private constant _SKIP_PERMIT_FLAG = 1 << 255;
-    uint256 private constant _THRESHOLD_MASK = ~_SKIP_PERMIT_FLAG;
 
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     /// @notice Stores unfilled amounts for each order plus one.
@@ -94,11 +94,10 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         OrderLib.Order calldata order,
         bytes calldata signature,
         bytes calldata interaction,
-        uint256 makingAmount,
-        uint256 takingAmount,
-        uint256 skipPermitAndThresholdAmount
+        Input input,
+        uint256 threshold
     ) external payable returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
-        return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, skipPermitAndThresholdAmount, msg.sender);
+        return fillOrderTo(order, signature, interaction, input, threshold, msg.sender);
     }
 
     /**
@@ -108,9 +107,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         OrderLib.Order calldata order,
         bytes calldata signature,
         bytes calldata interaction,
-        uint256 makingAmount,
-        uint256 takingAmount,
-        uint256 skipPermitAndThresholdAmount,
+        Input input,
+        uint256 threshold,
         address target,
         bytes calldata permit
     ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
@@ -120,31 +118,27 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             bytes calldata permitData = permit[20:];
             IERC20(token).safePermit(permitData);
         }
-        return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, skipPermitAndThresholdAmount, target);
+        return fillOrderTo(order, signature, interaction, input, threshold, target);
     }
 
     /**
      * @notice See {IOrderMixin-fillOrderTo}.
      */
     function fillOrderTo(
-        OrderLib.Order calldata order_,
+        OrderLib.Order calldata order,
         bytes calldata signature,
         bytes calldata interaction,
-        uint256 makingAmount,
-        uint256 takingAmount,
-        uint256 skipPermitAndThresholdAmount,
+        Input input,
+        uint256 threshold,
         address target
     ) public payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
-        if (target == address(0)) revert ZeroTargetIsForbidden();
-        orderHash = hashOrder(order_);
-
-        OrderLib.Order calldata order = order_; // Helps with "Stack too deep"
-        actualMakingAmount = makingAmount;
-        actualTakingAmount = takingAmount;
-
+        if (target == address(0)) {
+            target = msg.sender;
+        }
         if (!order.traits.isAllowedSender(msg.sender)) revert PrivateOrder();
         if (order.traits.isExpired()) revert OrderExpired();
 
+        orderHash = hashOrder(order);
         uint256 remainingMakingAmount = _remaining[orderHash];
         if (remainingMakingAmount == _ORDER_FILLED) revert RemainingAmountIsZero();
         if (remainingMakingAmount == _ORDER_DOES_NOT_EXIST) {
@@ -152,46 +146,58 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             if (!ECDSA.recoverOrIsValidSignature(order.maker.get(), orderHash, signature)) revert BadSignature();
             remainingMakingAmount = order.makingAmount;
 
-            bytes calldata permit = order.permit();
-            if (skipPermitAndThresholdAmount & _SKIP_PERMIT_FLAG == 0 && permit.length >= 20) {
-                // proceed only if taker is willing to execute permit and its length is enough to store address
-                address token = address(bytes20(permit));
-                bytes calldata permitCalldata = permit[20:];
-                IERC20(token).safePermit(permitCalldata);
-                if (_remaining[orderHash] != _ORDER_DOES_NOT_EXIST) revert ReentrancyDetected();
+            if (!input.skipOrderPermit()) {
+                bytes calldata permit = order.permit();
+                if (permit.length >= 20) {
+                    // proceed only if taker is willing to execute permit and its length is enough to store address
+                    address token = address(bytes20(permit));
+                    bytes calldata permitCalldata = permit[20:];
+                    IERC20(token).safePermit(permitCalldata); // TODO: inline both arguments
+                    if (_remaining[orderHash] != _ORDER_DOES_NOT_EXIST) revert ReentrancyDetected();
+                }
             }
         } else {
             unchecked { remainingMakingAmount -= 1; }
         }
 
         // Check if order is valid
-        if (order.predicate().length > 0) {
-            if (!checkPredicate(order)) revert PredicateIsNotTrue();
+        {  // Stack too deep
+            bytes calldata predicate = order.predicate();
+            if (predicate.length > 0) {
+                if (!checkPredicate(predicate)) revert PredicateIsNotTrue();
+            }
         }
 
         // Compute maker and taker assets amount
-        if ((actualTakingAmount == 0) == (actualMakingAmount == 0)) {
-            revert OnlyOneAmountShouldBeZero();
-        } else if (actualTakingAmount == 0) {
-            if (actualMakingAmount > remainingMakingAmount) {
-                actualMakingAmount = remainingMakingAmount;
+        {  // Stack too deep
+            uint256 amount = input.amount();
+            if (!order.traits.allowPartialFills()) {
+                actualMakingAmount = order.makingAmount;
+                actualTakingAmount = order.takingAmount;
             }
-            actualTakingAmount = order.getTakingAmount(actualMakingAmount, remainingMakingAmount, orderHash);
-            uint256 thresholdAmount = skipPermitAndThresholdAmount & _THRESHOLD_MASK;
-            // check that actual rate is not worse than what was expected
-            // actualTakingAmount / actualMakingAmount <= thresholdAmount / makingAmount
-            if (actualTakingAmount * makingAmount > thresholdAmount * actualMakingAmount) revert TakingAmountTooHigh();
-        } else {
-            actualMakingAmount = order.getMakingAmount(actualTakingAmount, remainingMakingAmount, orderHash);
-            if (actualMakingAmount > remainingMakingAmount) {
-                actualMakingAmount = remainingMakingAmount;
+            else if (amount == 0 || input.isMakingAmount()) {
+                if (amount == 0 || amount > remainingMakingAmount) {
+                    actualMakingAmount = remainingMakingAmount;
+                } else {
+                    actualMakingAmount = amount;
+                }
                 actualTakingAmount = order.getTakingAmount(actualMakingAmount, remainingMakingAmount, orderHash);
-                if (actualTakingAmount > takingAmount) revert TakingAmountIncreased();
+                // check that actual rate is not worse than what was expected
+                // actualTakingAmount / actualMakingAmount <= threshold / amount
+                if (actualTakingAmount * amount > threshold * actualMakingAmount) revert TakingAmountTooHigh();
             }
-            uint256 thresholdAmount = skipPermitAndThresholdAmount & _THRESHOLD_MASK;
-            // check that actual rate is not worse than what was expected
-            // actualMakingAmount / actualTakingAmount >= thresholdAmount / takingAmount
-            if (actualMakingAmount * takingAmount < thresholdAmount * actualTakingAmount) revert MakingAmountTooLow();
+            else {
+                actualTakingAmount = amount;
+                actualMakingAmount = order.getMakingAmount(actualTakingAmount, remainingMakingAmount, orderHash);
+                if (actualMakingAmount > remainingMakingAmount) {
+                    actualMakingAmount = remainingMakingAmount;
+                    actualTakingAmount = order.getTakingAmount(actualMakingAmount, remainingMakingAmount, orderHash);
+                    if (actualTakingAmount > amount) revert TakingAmountIncreased(); // TODO: check if this is necessary, threshold check should be enough
+                }
+                // check that actual rate is not worse than what was expected
+                // actualMakingAmount / actualTakingAmount >= threshold / amount
+                if (actualMakingAmount * amount < threshold * actualTakingAmount) revert MakingAmountTooLow();
+            }
         }
 
         if (actualMakingAmount == 0 || actualTakingAmount == 0) revert SwapWithZeroAmount();
@@ -201,7 +207,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             remainingMakingAmount = remainingMakingAmount - actualMakingAmount;
             _remaining[orderHash] = remainingMakingAmount + 1;
         }
-        emit OrderFilled(order_.maker.get(), orderHash, remainingMakingAmount);
+        emit OrderFilled(order.maker.get(), orderHash, remainingMakingAmount);
 
         // Maker can handle funds interactively
         { // Stack too deep
@@ -233,10 +239,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                 msg.sender, actualMakingAmount, actualTakingAmount, interactionData
             );
 
-            if (offeredTakingAmount > actualTakingAmount &&
-                !OrderLib.getterIsFrozen(order.getMakingAmount()) &&
-                !OrderLib.getterIsFrozen(order.getTakingAmount()))
-            {
+            if (offeredTakingAmount > actualTakingAmount && order.traits.allowImproveRate()) {
                 actualTakingAmount = offeredTakingAmount;
             }
         }
@@ -279,8 +282,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     /**
      * @notice See {IOrderMixin-checkPredicate}.
      */
-    function checkPredicate(OrderLib.Order calldata order) public view returns(bool) {
-        (bool success, uint256 res) = _selfStaticCall(order.predicate());
+    function checkPredicate(bytes calldata predicate) public view returns(bool) {
+        (bool success, uint256 res) = _selfStaticCall(predicate);
         return success && res == 1;
     }
 

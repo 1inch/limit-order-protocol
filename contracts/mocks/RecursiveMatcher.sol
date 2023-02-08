@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/IInteractionNotificationReceiver.sol";
 import "../interfaces/IOrderMixin.sol";
 import "../interfaces/IOrderRFQMixin.sol";
+import "../libraries/InputLib.sol";
 
 contract RecursiveMatcher is IInteractionNotificationReceiver {
     bytes1 private constant _FINALIZE_INTERACTION = 0x01;
@@ -19,16 +20,14 @@ contract RecursiveMatcher is IInteractionNotificationReceiver {
         OrderLib.Order calldata order,
         bytes calldata signature,
         bytes calldata interaction,
-        uint256 makingAmount,
-        uint256 takingAmount,
+        Input input,
         uint256 thresholdAmount
     ) external {
         orderMixin.fillOrder(
             order,
             signature,
             interaction,
-            makingAmount,
-            takingAmount,
+            input,
             thresholdAmount
         );
     }
@@ -38,14 +37,14 @@ contract RecursiveMatcher is IInteractionNotificationReceiver {
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        uint256 flagsAndAmount,
+        Input input,
         bytes calldata interaction
     ) external {
         orderRFQMixin.fillOrderRFQTo(
             order,
             r,
             vs,
-            flagsAndAmount,
+            input,
             address(this),
             interaction
         );
@@ -82,7 +81,7 @@ contract RecursiveMatcher is IInteractionNotificationReceiver {
                 //     OrderRFQLib.OrderRFQ memory order,
                 //     bytes32 r,
                 //     bytes32 vs,
-                //     uint256 flagsAndAmount,
+                //     uint256 input,
                 //     address target,
                 //     bytes memory interaction
                 // ) = abi.decode(interactiveData[1:], (OrderRFQLib.OrderRFQ, bytes32, bytes32, uint256, address, bytes));
@@ -91,7 +90,7 @@ contract RecursiveMatcher is IInteractionNotificationReceiver {
                 //     order,
                 //     r,
                 //     vs,
-                //     flagsAndAmount,
+                //     input,
                 //     target,
                 //     interaction
                 // );

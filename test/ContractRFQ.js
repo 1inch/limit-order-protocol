@@ -1,6 +1,6 @@
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { expect } = require('@1inch/solidity-utils');
-const { ABIOrderRFQ, buildOrderRFQ, makingAmount } = require('./helpers/orderUtils');
+const { ABIOrderRFQ, buildOrderRFQ, makeMakingAmount } = require('./helpers/orderUtils');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
 const { deploySwap, deployUSDC, deployUSDT } = require('./helpers/fixtures');
@@ -46,7 +46,7 @@ describe('ContractRFQ', function () {
         const order = buildOrderRFQ('1', usdc.address, usdt.address, 1000000000, 1000700000);
 
         const signature = abiCoder.encode([ABIOrderRFQ], [order]);
-        await swap.fillContractOrderRFQToWithPermit(order, signature, rfq.address, makingAmount(1000000), constants.AddressZero, emptyInteraction, '0x');
+        await swap.fillContractOrderRFQToWithPermit(order, signature, rfq.address, makeMakingAmount(1000000), constants.AddressZero, emptyInteraction, '0x');
 
         expect(await usdc.balanceOf(rfq.address)).to.equal(makerUsdc.sub(1000000));
         expect(await usdc.balanceOf(addr.address)).to.equal(takerUsdc.add(1000000));
@@ -55,6 +55,6 @@ describe('ContractRFQ', function () {
 
         const order2 = buildOrderRFQ('2', usdc.address, usdt.address, 1000000000, 1000700000);
         const signature2 = abiCoder.encode([ABIOrderRFQ], [order2]);
-        await swap.fillContractOrderRFQToWithPermit(order2, signature2, rfq.address, makingAmount(1000000), constants.AddressZero, emptyInteraction, '0x');
+        await swap.fillContractOrderRFQToWithPermit(order2, signature2, rfq.address, makeMakingAmount(1000000), constants.AddressZero, emptyInteraction, '0x');
     });
 });
