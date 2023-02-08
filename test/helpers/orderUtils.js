@@ -1,4 +1,5 @@
 const { constants, trim0x } = require('@1inch/solidity-utils');
+const { assert } = require('chai');
 const { ethers } = require('ethers');
 
 const OrderRFQ = [
@@ -38,13 +39,29 @@ const ABIOrder = {
 const name = '1inch Limit Order Protocol';
 const version = '3';
 
+function buildConstraints ({
+    allowedSender = constants.ZERO_ADDRESS,
+    expiry = 0,
+    nonce = 0,
+    series = 0,
+} = {}) {
+    assert(series >= 0 && series < 256, 'Series should be less than 256');
+    const res = '0x' +
+        BigInt(series).toString(16).padStart(2, '0') +
+        BigInt(nonce).toString(16).padStart(10, '0') +
+        BigInt(expiry).toString(16).padStart(10, '0') +
+        BigInt(allowedSender).toString(16).padStart(40, '0');
+    assert(res.length === 64, 'Constraints should be 64 bytes long');
+    return res;
+}
+
 function buildOrder (
     {
         makerAsset,
         takerAsset,
         makingAmount,
         takingAmount,
-        allowedSender = constants.ZERO_ADDRESS,
+        constraints = '0',
         receiver = constants.ZERO_ADDRESS,
         from: maker = constants.ZERO_ADDRESS,
     },
@@ -92,7 +109,7 @@ function buildOrder (
         takerAsset,
         maker,
         receiver,
-        constraints: allowedSender,
+        constraints,
         makingAmount: makingAmount.toString(),
         takingAmount: takingAmount.toString(),
         offsets: offsets.toString(),
@@ -101,20 +118,18 @@ function buildOrder (
 }
 
 function buildOrderRFQ (
-    nonce,
     makerAsset,
     takerAsset,
     makingAmount,
     takingAmount,
-    constraints = constants.ZERO_ADDRESS,
-    expirationTimestamp = 0,
+    constraints = '0',
 ) {
     return {
         makerAsset,
         takerAsset,
         makingAmount,
         takingAmount,
-        constraints: '0x' + (BigInt(constraints) | (BigInt(expirationTimestamp) << 160n) | (BigInt(nonce) << 200n)).toString(16),
+        constraints,
         info: '0',
     };
 }
@@ -168,6 +183,7 @@ function skipOrderPermit (amount) {
 module.exports = {
     ABIOrder,
     ABIOrderRFQ,
+    buildConstraints,
     buildOrder,
     buildOrderRFQ,
     buildOrderData,

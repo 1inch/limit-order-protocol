@@ -19,10 +19,11 @@ describe('SeriesNonceManager', function () {
 
     it('Advance nonce - should add to nonce specified amount', async function () {
         const { seriesNonceManager } = await loadFixture(deploySeriesNonceManager);
-        const series = 0;
-        await seriesNonceManager.advanceNonce(series, 2);
-        const nonceSeries0 = await seriesNonceManager.nonce(addr.address, series);
-        const nonceSeries1 = await seriesNonceManager.nonce(addr.address, 1);
+        const series0 = 0;
+        const series1 = 1;
+        await seriesNonceManager.advanceNonce(series0, 2);
+        const nonceSeries0 = await seriesNonceManager.nonce(addr.address, series0);
+        const nonceSeries1 = await seriesNonceManager.nonce(addr.address, series1);
         expect(nonceSeries0).to.equal(2);
         expect(nonceSeries1).to.equal(0);
     });

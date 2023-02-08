@@ -22,7 +22,7 @@ library ConstraintsLib {
 
     function isExpired(Constraints constraints) internal view returns (bool) {
         uint256 expiration = (Constraints.unwrap(constraints) >> _EXPIRATION_OFFSET) & _EXPIRATION_MASK;
-        return expiration != 0 && block.timestamp >= expiration;  // solhint-disable-line not-rely-on-time
+        return expiration != 0 && expiration < block.timestamp;  // solhint-disable-line not-rely-on-time
     }
 
     function nonce(Constraints constraints) internal pure returns (uint256) {

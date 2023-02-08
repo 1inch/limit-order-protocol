@@ -1,6 +1,6 @@
 const { ethers } = require('hardhat');
 const { expect, time, constants, profileEVM, trim0x } = require('@1inch/solidity-utils');
-const { buildOrder, buildOrderData, signOrder, makeMakingAmount, skipOrderPermit } = require('./helpers/orderUtils');
+const { buildOrder, buildOrderData, signOrder, makeMakingAmount, skipOrderPermit, buildConstraints } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, cutLastArg, ether } = require('./helpers/utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
@@ -546,7 +546,7 @@ describe('LimitOrderProtocol', function () {
                 makingAmount: 1,
                 takingAmount: 1,
                 from: addr1.address,
-                allowedSender: addr.address,
+                constraints: buildConstraints({ allowedSender: addr.address }),
             });
             const signature = await signOrder(order, chainId, swap.address, addr1);
 
@@ -572,7 +572,7 @@ describe('LimitOrderProtocol', function () {
                 makingAmount: 1,
                 takingAmount: 1,
                 from: addr1.address,
-                allowedSender: addr1.address,
+                constraints: buildConstraints({ allowedSender: addr1.address }),
             });
             const signature = await signOrder(order, chainId, swap.address, addr1);
 
@@ -637,13 +637,9 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
         });
 
-        it('`or` should fail', async function () {
+        it('reverts on expiration constraint', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
-            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff0000n]);
-            const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0, 1]);
-            const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
-            const predicate = swap.interface.encodeFunctionData('or', [offsets, data]);
             const order = buildOrder(
                 {
                     makerAsset: dai.address,
@@ -651,25 +647,19 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: 1,
                     takingAmount: 1,
                     from: addr1.address,
-                },
-                {
-                    predicate,
+                    constraints: buildConstraints({ expiry: 0xff0000n }),
                 },
             );
             const signature = await signOrder(order, chainId, swap.address, addr1);
 
             await expect(
                 swap.fillOrder(order, signature, '0x', makeMakingAmount(1), 1),
-            ).to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
+            ).to.be.revertedWithCustomError(swap, 'OrderExpired');
         });
 
         it('`and` should pass', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
-            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff000000n]);
-            const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0, 0]);
-            const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
-            const predicate = swap.interface.encodeFunctionData('and', [offsets, data]);
             const order = buildOrder(
                 {
                     makerAsset: dai.address,
@@ -677,9 +667,7 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: 1,
                     takingAmount: 1,
                     from: addr1.address,
-                },
-                {
-                    predicate,
+                    constraints: buildConstraints({ expiry: 0xff000000n }),
                 },
             );
             const signature = await signOrder(order, chainId, swap.address, addr1);
@@ -700,10 +688,6 @@ describe('LimitOrderProtocol', function () {
         it('nonce + ts example', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
-            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff000000n]);
-            const nonceCall = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0, 0]);
-            const { offsets, data } = joinStaticCalls([tsBelow, nonceCall]);
-            const predicate = swap.interface.encodeFunctionData('and', [offsets, data]);
             const order = buildOrder(
                 {
                     makerAsset: dai.address,
@@ -711,9 +695,7 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: 1,
                     takingAmount: 1,
                     from: addr1.address,
-                },
-                {
-                    predicate,
+                    constraints: buildConstraints({ expiry: 0xff000000n }),
                 },
             );
             const signature = await signOrder(order, chainId, swap.address, addr1);
@@ -808,16 +790,14 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: 1,
                     takingAmount: 1,
                     from: addr1.address,
-                },
-                {
-                    predicate: swap.interface.encodeFunctionData('timestampBelow', ['0xff0000']),
+                    constraints: buildConstraints({ expiry: 0xff0000n }),
                 },
             );
             const signature = await signOrder(order, chainId, swap.address, addr1);
 
             await expect(
                 swap.fillOrder(order, signature, '0x', makeMakingAmount(1), 1),
-            ).to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
+            ).to.be.revertedWithCustomError(swap, 'OrderExpired');
         });
 
         it('should fill partially if not enough coins (taker)', async function () {

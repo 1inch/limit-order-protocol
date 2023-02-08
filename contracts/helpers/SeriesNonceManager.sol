@@ -34,7 +34,7 @@ contract SeriesNonceManager {
     function advanceNonce(uint256 series, uint256 amount) public {
         if (amount == 0 || amount > 255) revert AdvanceNonceFailed();
         unchecked {
-            uint256 key = uint160(msg.sender) | (uint256(series) << 160);
+            uint256 key = uint160(msg.sender) | (series << 160);
             uint256 newNonce = _nonces[key] + amount;
             _nonces[key] = newNonce;
             emit NonceIncreased(msg.sender, series, newNonce);
@@ -44,6 +44,6 @@ contract SeriesNonceManager {
     /// @notice Checks if `makerAddress` has specified `makerNonce` for `series`
     /// @return Result True if `makerAddress` has specified nonce. Otherwise, false
     function nonceEquals(address maker, uint256 series, uint256 nonce) public view returns(bool) {
-        return nonce == 0 || _nonces[uint160(maker) | (uint256(series) << 160)] == nonce;
+        return nonce == 0 || _nonces[uint160(maker) | (series << 160)] == nonce;
     }
 }
