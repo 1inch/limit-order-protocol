@@ -9,7 +9,6 @@ interface IOrderMixin {
     error WrongNonce();
     error WrongSeriesNonce();
     error UnknownOrder();
-    error AccessDenied();
     error AlreadyFilled();
     error PermitLengthTooLow();
     error RemainingAmountIsZero();
@@ -42,24 +41,27 @@ interface IOrderMixin {
 
     /**
      * @notice Returns unfilled amount for order. Throws if order does not exist
+     * @param maker Maker address
      * @param orderHash Order's hash. Can be obtained by the `hashOrder` function
      * @return amount Unfilled amount
      */
-    function remaining(bytes32 orderHash) external view returns(uint256 amount);
+    function remaining(address maker, bytes32 orderHash) external view returns(uint256 amount);
 
     /**
      * @notice Returns unfilled amount for order
+     * @param maker Maker address
      * @param orderHash Order's hash. Can be obtained by the `hashOrder` function
      * @return rawAmount Unfilled amount of order plus one if order exists. Otherwise 0
      */
-    function remainingRaw(bytes32 orderHash) external view returns(uint256 rawAmount);
+    function remainingRaw(address maker, bytes32 orderHash) external view returns(uint256 rawAmount);
 
     /**
      * @notice Same as `remainingRaw` but for multiple orders
+     * @param makers Array of makers addresses
      * @param orderHashes Array of hashes
      * @return rawAmounts Array of amounts for each order plus one if order exists or 0 otherwise
      */
-    function remainingsRaw(bytes32[] memory orderHashes) external view returns(uint256[] memory rawAmounts);
+    function remainingsRaw(address[] calldata makers, bytes32[] calldata orderHashes) external view returns(uint256[] memory rawAmounts);
 
     /**
      * @notice Checks order predicate
@@ -84,13 +86,20 @@ interface IOrderMixin {
     function simulate(address target, bytes calldata data) external;
 
     /**
-     * @notice Cancels order.
+     * @notice Cancels order of msg.sender
      * @dev Order is cancelled by setting remaining amount to _ORDER_FILLED value
-     * @param order Order quote to cancel
+     * @param orderHash Hash of the order to cancel
      * @return orderRemaining Unfilled amount of order before cancellation
-     * @return orderHash Hash of the filled order
      */
-    function cancelOrder(OrderLib.Order calldata order) external returns(uint256 orderRemaining, bytes32 orderHash);
+    function cancelOrder(bytes32 orderHash) external returns(uint256 orderRemaining);
+
+    /**
+     * @notice Cancels multiple orders of msg.sender
+     * @dev Order is cancelled by setting remaining amount to _ORDER_FILLED value
+     * @param orderHashes Array of hashes of orders to cancel
+     * @return orderRemaining Array of unfilled amounts of orders before cancellation
+     */
+    function cancelOrders(bytes32[] calldata orderHashes) external returns(uint256[] memory orderRemaining);
 
     /**
      * @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData

@@ -505,24 +505,25 @@ describe('LimitOrderProtocol', function () {
         // TODO: need same test for RFQ
         it('should cancel own order', async function () {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
-            await swap.connect(addr1).cancelOrder(order);
             const data = buildOrderData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
-            expect(await swap.remaining(orderHash)).to.equal('0');
+            await swap.connect(addr1).cancelOrder(orderHash);
+            expect(await swap.remaining(addr1.address, orderHash)).to.equal('0');
         });
 
-        it('should not cancel foreign order', async function () {
-            const { swap, order } = await loadFixture(orderCancelationInit);
-            await expect(
-                swap.cancelOrder(order),
-            ).to.be.revertedWithCustomError(swap, 'AccessDenied');
+        it('should cancel any hash', async function () {
+            const { swap } = await loadFixture(orderCancelationInit);
+            await swap.connect(addr1).cancelOrder('0x0000000000000000000000000000000000000000000000000000000000000001');
+            expect(await swap.remaining(addr1.address, '0x0000000000000000000000000000000000000000000000000000000000000001')).to.equal('0');
         });
 
         it('should not fill cancelled order', async function () {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
             const signature = await signOrder(order, chainId, swap.address, addr1);
+            const data = buildOrderData(chainId, swap.address, order);
+            const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
 
-            await swap.connect(addr1).cancelOrder(order);
+            await swap.connect(addr1).cancelOrder(orderHash);
 
             await expect(
                 swap.fillOrder(order, signature, '0x', makeMakingAmount(1), 1),
