@@ -79,8 +79,8 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
     ) public payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
         address maker = ECDSA.recover(orderHash, r, vs);
-        if (maker == address(0)) revert RFQBadSignature();
-        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker, input, interaction, target);
+        if (maker == address(0)) revert RFQBadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
+        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker, input, target, interaction);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
@@ -117,7 +117,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         }
         orderHash = order.hash(_domainSeparatorV4());
         if (!ECDSA.isValidSignature(maker.get(), orderHash, signature)) revert RFQBadSignature();
-        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker.get(), input, interaction, target);
+        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker.get(), input, target, interaction);
         emit OrderFilledRFQ(orderHash, filledMakingAmount);
     }
 
@@ -125,8 +125,8 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         OrderRFQLib.OrderRFQ calldata order,
         address maker,
         Input input,
-        bytes calldata interaction,
-        address target
+        address target,
+        bytes calldata interaction
     ) private returns(uint256 makingAmount, uint256 takingAmount) {
         if (target == address(0)) {
             target = msg.sender;
@@ -145,18 +145,18 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
                 takingAmount = order.takingAmount;
             }
             else if (input.isMakingAmount()) {
-                if (amount > order.makingAmount) revert MakingAmountExceeded();
                 makingAmount = amount;
                 takingAmount = AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, makingAmount);
+                if (makingAmount > order.makingAmount) revert MakingAmountExceeded();
+                if (takingAmount == 0) revert RFQSwapWithZeroAmount();
             }
             else {
-                if (amount > order.takingAmount) revert TakingAmountExceeded();
                 takingAmount = amount;
                 makingAmount = AmountCalculator.getMakingAmount(order.makingAmount, order.takingAmount, takingAmount);
+                if (takingAmount > order.takingAmount) revert TakingAmountExceeded();
+                if (makingAmount == 0) revert RFQSwapWithZeroAmount();
             }
         }
-
-        if (makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
 
         // Maker => Taker
         if (order.makerAsset.get() == address(_WETH) && input.needUnwrapWeth()) {
