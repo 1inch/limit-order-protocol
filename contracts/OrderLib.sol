@@ -144,9 +144,7 @@ library OrderLib {
     ) private view returns(uint256) {
         if (getter.length < 20) revert WrongGetter();
 
-        address target = address(bytes20(getter));
-        bytes calldata data = getter[20:];
-        (bool success, bytes memory result) = target.staticcall(abi.encodePacked(data, requestedAmount, remainingMakingAmount, orderHash));
+        (bool success, bytes memory result) = address(bytes20(getter)).staticcall(abi.encodePacked(getter[20:], requestedAmount, remainingMakingAmount, orderHash));
         if (!success || result.length != 32) revert GetAmountCallFailed();
         return abi.decode(result, (uint256));
     }

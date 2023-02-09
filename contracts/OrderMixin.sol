@@ -120,11 +120,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         bytes calldata permit
     ) external returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
         if (permit.length < 20) revert PermitLengthTooLow();
-        {  // Stack too deep
-            address token = address(bytes20(permit));
-            bytes calldata permitData = permit[20:];
-            IERC20(token).safePermit(permitData);
-        }
+        IERC20(address(bytes20(permit))).safePermit(permit[20:]);
         return fillOrderTo(order, signature, interaction, input, threshold, target);
     }
 
@@ -159,9 +155,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                 bytes calldata permit = order.permit();
                 if (permit.length >= 20) {
                     // proceed only if taker is willing to execute permit and its length is enough to store address
-                    address token = address(bytes20(permit));
-                    bytes calldata permitCalldata = permit[20:];
-                    IERC20(token).safePermit(permitCalldata); // TODO: inline both arguments
+                    IERC20(address(bytes20(permit))).safePermit(permit[20:]);
                     if (remainingPtr[orderHash] != _ORDER_DOES_NOT_EXIST) revert ReentrancyDetected();
                 }
             }
@@ -223,10 +217,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             bytes calldata preInteraction = order.preInteraction();
             if (preInteraction.length >= 20) {
                 // proceed only if interaction length is enough to store address
-                address interactionTarget = address(bytes20(preInteraction));
-                bytes calldata interactionData = preInteraction[20:];
-                IPreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                    orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
+                IPreInteractionNotificationReceiver(address(bytes20(preInteraction))).fillOrderPreInteraction(
+                    orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, preInteraction[20:]
                 );
             }
         }
@@ -247,12 +239,9 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
 
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
-            address interactionTarget = address(bytes20(interaction));
-            bytes calldata interactionData = interaction[20:];
-            uint256 offeredTakingAmount = IInteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
-                msg.sender, actualMakingAmount, actualTakingAmount, interactionData
+            uint256 offeredTakingAmount = IInteractionNotificationReceiver(address(bytes20(interaction))).fillOrderInteraction(
+                msg.sender, actualMakingAmount, actualTakingAmount, interaction[20:]
             );
-
             if (offeredTakingAmount > actualTakingAmount && order.constraints.allowImproveRateViaInteraction()) {
                 actualTakingAmount = offeredTakingAmount;
             }
@@ -285,10 +274,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         bytes calldata postInteraction = order.postInteraction();
         if (postInteraction.length >= 20) {
             // proceed only if interaction length is enough to store address
-            address interactionTarget = address(bytes20(postInteraction));
-            bytes calldata interactionData = postInteraction[20:];
-            IPostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
-                 orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
+            IPostInteractionNotificationReceiver(address(bytes20(postInteraction))).fillOrderPostInteraction(
+                 orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, postInteraction[20:]
             );
         }
     }

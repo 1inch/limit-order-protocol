@@ -38,11 +38,8 @@ contract HashChecker is IPreInteractionNotificationReceiver, Ownable {
         if (hashes[orderHash] == false) revert IncorrectOrderHash();
 
         if (nextInteractiveData.length != 0) {
-            address interactionTarget = address(bytes20(nextInteractiveData));
-            bytes calldata interactionData = nextInteractiveData[20:];
-
-            IPreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
-                orderHash, maker, taker, makingAmount, takingAmount, remainingMakerAmount, interactionData
+            IPreInteractionNotificationReceiver(address(bytes20(nextInteractiveData))).fillOrderPreInteraction(
+                orderHash, maker, taker, makingAmount, takingAmount, remainingMakerAmount, nextInteractiveData[20:]
             );
         }
     }
