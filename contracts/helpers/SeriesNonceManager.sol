@@ -18,7 +18,12 @@ contract SeriesNonceManager {
     //    },
     //    ...
     // }
-    mapping(uint256 => mapping(address => uint256)) public nonce;
+    mapping(uint256 => uint256) private _nonces;
+
+    /// @notice Returns nonce for `maker` and `series`
+    function nonce(address maker, uint8 series) public view returns(uint256) {
+        return _nonces[uint160(maker) | (uint256(series) << 160)];
+    }
 
     /// @notice Advances nonce by one
     function increaseNonce(uint8 series) external {
@@ -29,29 +34,16 @@ contract SeriesNonceManager {
     function advanceNonce(uint256 series, uint256 amount) public {
         if (amount == 0 || amount > 255) revert AdvanceNonceFailed();
         unchecked {
-            uint256 newNonce = nonce[series][msg.sender] + amount;
-            nonce[series][msg.sender] = newNonce;
+            uint256 key = uint160(msg.sender) | (series << 160);
+            uint256 newNonce = _nonces[key] + amount;
+            _nonces[key] = newNonce;
             emit NonceIncreased(msg.sender, series, newNonce);
         }
     }
 
     /// @notice Checks if `makerAddress` has specified `makerNonce` for `series`
     /// @return Result True if `makerAddress` has specified nonce. Otherwise, false
-    function nonceEquals(uint256 series, address makerAddress, uint256 makerNonce) public view returns(bool) {
-        return nonce[series][makerAddress] == makerNonce;
-    }
-
-    /// @notice Checks passed time against block timestamp
-    /// @return Result True if current block timestamp is lower than `time`. Otherwise, false
-    function timestampBelow(uint256 time) public view returns(bool) {
-        return block.timestamp < time;  // solhint-disable-line not-rely-on-time
-    }
-
-    function timestampBelowAndNonceEquals(uint256 timeNonceSeriesAccount) external view returns(bool) {
-        uint256 _time = uint40(timeNonceSeriesAccount >> 216);
-        uint256 _nonce = uint40(timeNonceSeriesAccount >> 176);
-        uint256 _series = uint16(timeNonceSeriesAccount >> 160);
-        address _account = address(uint160(timeNonceSeriesAccount));
-        return timestampBelow(_time) && nonceEquals(_series, _account, _nonce);
+    function nonceEquals(address maker, uint256 series, uint256 nonce) public view returns(bool) {
+        return nonce == 0 || _nonces[uint160(maker) | (series << 160)] == nonce;
     }
 }

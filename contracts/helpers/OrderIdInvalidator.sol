@@ -45,6 +45,7 @@ contract OrderIdInvalidator is IPreInteractionNotificationReceiver {
         bytes memory interactionData
     ) external onlyLimitOrderProtocol {
         uint32 orderId;
+        /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
             orderId := mload(interactionData)
         }

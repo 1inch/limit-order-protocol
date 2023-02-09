@@ -1,14 +1,14 @@
 const { constants, trim0x } = require('@1inch/solidity-utils');
+const { assert } = require('chai');
 const { ethers } = require('ethers');
-const { setn } = require('./utils');
 
 const OrderRFQ = [
-    { name: 'info', type: 'uint256' },
+    { name: 'salt', type: 'uint256' },
     { name: 'makerAsset', type: 'address' },
     { name: 'takerAsset', type: 'address' },
-    { name: 'allowedSender', type: 'address' },
     { name: 'makingAmount', type: 'uint256' },
     { name: 'takingAmount', type: 'uint256' },
+    { name: 'constraints', type: 'uint256' },
 ];
 
 const ABIOrderRFQ = {
@@ -21,11 +21,11 @@ const Order = [
     { name: 'salt', type: 'uint256' },
     { name: 'makerAsset', type: 'address' },
     { name: 'takerAsset', type: 'address' },
-    { name: 'maker', type: 'address' },
-    { name: 'receiver', type: 'address' },
-    { name: 'allowedSender', type: 'address' },
     { name: 'makingAmount', type: 'uint256' },
     { name: 'takingAmount', type: 'uint256' },
+    { name: 'constraints', type: 'uint256' },
+    { name: 'maker', type: 'address' },
+    { name: 'receiver', type: 'address' },
     { name: 'offsets', type: 'uint256' },
     { name: 'interactions', type: 'bytes' },
 ];
@@ -39,13 +39,29 @@ const ABIOrder = {
 const name = '1inch Limit Order Protocol';
 const version = '3';
 
+function buildConstraints ({
+    allowedSender = constants.ZERO_ADDRESS,
+    expiry = 0,
+    nonce = 0,
+    series = 0,
+} = {}) {
+    assert(series >= 0 && series < 256, 'Series should be less than 256');
+    const res = '0x' +
+        BigInt(series).toString(16).padStart(2, '0') +
+        BigInt(nonce).toString(16).padStart(10, '0') +
+        BigInt(expiry).toString(16).padStart(10, '0') +
+        BigInt(allowedSender).toString(16).padStart(40, '0');
+    assert(res.length === 64, 'Constraints should be 64 bytes long');
+    return res;
+}
+
 function buildOrder (
     {
         makerAsset,
         takerAsset,
         makingAmount,
         takingAmount,
-        allowedSender = constants.ZERO_ADDRESS,
+        constraints = '0',
         receiver = constants.ZERO_ADDRESS,
         from: maker = constants.ZERO_ADDRESS,
     },
@@ -60,13 +76,6 @@ function buildOrder (
         postInteraction = '0x',
     } = {},
 ) {
-    if (getMakingAmount === '') {
-        getMakingAmount = '0x78'; // "x"
-    }
-    if (getTakingAmount === '') {
-        getTakingAmount = '0x78'; // "x"
-    }
-
     const allInteractions = [
         makerAssetData,
         takerAssetData,
@@ -93,7 +102,7 @@ function buildOrder (
         takerAsset,
         maker,
         receiver,
-        allowedSender,
+        constraints,
         makingAmount: makingAmount.toString(),
         takingAmount: takingAmount.toString(),
         offsets: offsets.toString(),
@@ -102,20 +111,19 @@ function buildOrder (
 }
 
 function buildOrderRFQ (
-    info,
     makerAsset,
     takerAsset,
     makingAmount,
     takingAmount,
-    allowedSender = constants.ZERO_ADDRESS,
+    constraints = '0',
 ) {
     return {
-        info,
         makerAsset,
         takerAsset,
-        allowedSender,
         makingAmount,
         takingAmount,
+        constraints,
+        salt: '0',
     };
 }
 
@@ -153,21 +161,22 @@ function compactSignature (signature) {
     };
 }
 
-function unwrapWeth (amount) {
-    return setn(BigInt(amount), 254, 1).toString();
+function makeMakingAmount (amount) {
+    return (BigInt(amount) | (1n << 255n)).toString();
 }
 
-function makingAmount (amount) {
-    return setn(BigInt(amount), 255, 1).toString();
+function makeUnwrapWeth (amount) {
+    return (BigInt(amount) | (1n << 254n)).toString();
 }
 
-function takingAmount (amount) {
-    return BigInt(amount).toString();
+function skipOrderPermit (amount) {
+    return (BigInt(amount) | (1n << 253n)).toString();
 }
 
 module.exports = {
     ABIOrder,
     ABIOrderRFQ,
+    buildConstraints,
     buildOrder,
     buildOrderRFQ,
     buildOrderData,
@@ -175,9 +184,9 @@ module.exports = {
     signOrder,
     signOrderRFQ,
     compactSignature,
-    makingAmount,
-    takingAmount,
-    unwrapWeth,
+    makeMakingAmount,
+    makeUnwrapWeth,
+    skipOrderPermit,
     name,
     version,
 };

@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.17;
 
-import "./NonceManager.sol";
+import "./SeriesNonceManager.sol";
 
 /// @title A helper contract for executing boolean functions on arbitrary target call results
-contract PredicateHelper is NonceManager {
+contract PredicateHelper is SeriesNonceManager {
     error ArbitraryStaticCallFailed();
 
     /// @notice Calls every target with corresponding data
@@ -76,21 +76,9 @@ contract PredicateHelper is NonceManager {
         return res;
     }
 
-    function timestampBelowAndNonceEquals(uint256 timeNonceAccount) public view returns(bool) {
-        uint256 _time = uint48(timeNonceAccount >> 208);
-        uint256 _nonce = uint48(timeNonceAccount >> 160);
-        address _account = address(uint160(timeNonceAccount));
-        return timestampBelow(_time) && nonceEquals(_account, _nonce);
-    }
-
     function _selfStaticCall(bytes calldata data) internal view returns(bool, uint256) {
         bytes4 selector = bytes4(data[:4]);
         uint256 arg = uint256(bytes32(data[4:36]));
-
-        // special case for the most often used predicate
-        if (selector == this.timestampBelowAndNonceEquals.selector) {  // 0x2cc2878d
-            return (true, timestampBelowAndNonceEquals(arg) ? 1 : 0);
-        }
 
         if (selector < this.arbitraryStaticCall.selector) {  // 0xbf15fcd8
             if (selector < this.eq.selector) {  // 0x6fe7b0ba
@@ -116,8 +104,8 @@ contract PredicateHelper is NonceManager {
             } else {
                 if (selector == this.lt.selector) {  // 0xca4ece22
                     return (true, lt(arg, data[100:]) ? 1 : 0);
-                } else if (selector == this.nonceEquals.selector) {  // 0xcf6fc6e3
-                    return (true, nonceEquals(address(uint160(arg)), uint256(bytes32(data[0x24:]))) ? 1 : 0);
+                } else if (selector == this.nonceEquals.selector) {  // 0xd13584de
+                    return (true, nonceEquals(address(uint160(arg)), uint256(bytes32(data[0x24:])), uint256(bytes32(data[0x44:]))) ? 1 : 0);
                 }
             }
         }

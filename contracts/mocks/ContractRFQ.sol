@@ -74,6 +74,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
         if (signature.length != 32 * 6) revert MalformedSignature();
 
         OrderRFQLib.OrderRFQ calldata order;
+        /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
             order := signature.offset
         }

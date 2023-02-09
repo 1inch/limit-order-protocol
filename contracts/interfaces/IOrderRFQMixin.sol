@@ -3,14 +3,16 @@
 pragma solidity 0.8.17;
 
 import "../OrderRFQLib.sol";
+import "../libraries/InputLib.sol";
 
 interface IOrderRFQMixin {
     error RFQPrivateOrder();
     error RFQBadSignature();
-    error OrderExpired();
+    error RFQOrderExpired();
     error MakingAmountExceeded();
     error TakingAmountExceeded();
     error RFQSwapWithZeroAmount();
+    error RFQPartialFillNotAllowed();
     error InvalidatedOrder();
 
     /**
@@ -47,7 +49,7 @@ interface IOrderRFQMixin {
      * @param order Order quote to fill
      * @param r R component of signature
      * @param vs VS component of signature
-     * @param flagsAndAmount Fill configuration flags with amount packed in one slot
+     * @param input Fill configuration flags with amount packed in one slot
      * @return filledMakingAmount Actual amount transferred from maker to taker
      * @return filledTakingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -56,7 +58,7 @@ interface IOrderRFQMixin {
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        uint256 flagsAndAmount
+        Input input
     ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash);
 
     /**
@@ -64,7 +66,7 @@ interface IOrderRFQMixin {
      * @param order Order quote to fill
      * @param r R component of signature
      * @param vs VS component of signature
-     * @param flagsAndAmount Fill configuration flags with amount packed in one slot
+     * @param input Fill configuration flags with amount packed in one slot
      * @param target Address that will receive swap funds
      * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @return filledMakingAmount Actual amount transferred from maker to taker
@@ -75,7 +77,7 @@ interface IOrderRFQMixin {
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        uint256 flagsAndAmount,
+        Input input,
         address target,
         bytes calldata interaction
     ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash);
@@ -87,7 +89,7 @@ interface IOrderRFQMixin {
      * @param order Order quote to fill
      * @param r R component of signature
      * @param vs VS component of signature
-     * @param flagsAndAmount Fill configuration flags with amount packed in one slot
+     * @param input Fill configuration flags with amount packed in one slot
      * @param target Address that will receive swap funds
      * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
@@ -100,7 +102,7 @@ interface IOrderRFQMixin {
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        uint256 flagsAndAmount,
+        Input input,
         address target,
         bytes calldata interaction,
         bytes calldata permit
@@ -113,7 +115,7 @@ interface IOrderRFQMixin {
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
      * @param maker Smart contract that signed the order
-     * @param flagsAndAmount Fill configuration flags with amount packed in one slot
+     * @param input Fill configuration flags with amount packed in one slot
      * @param target Address that will receive swap funds
      * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
@@ -126,7 +128,7 @@ interface IOrderRFQMixin {
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
         Address maker,
-        uint256 flagsAndAmount,
+        Input input,
         address target,
         bytes calldata interaction,
         bytes calldata permit
