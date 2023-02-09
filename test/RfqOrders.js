@@ -1,9 +1,10 @@
 const { ethers } = require('hardhat');
-const { expect, time, profileEVM } = require('@1inch/solidity-utils');
+const { expect, time, profileEVM, trackReceivedTokenAndTx } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { buildOrderRFQ, signOrderRFQ, compactSignature, makeMakingAmount, makeUnwrapWeth, buildConstraints } = require('./helpers/orderUtils');
 const { getPermit } = require('./helpers/eip712');
 const { deploySwapTokens } = require('./helpers/fixtures');
+const { constants } = require('ethers');
 
 describe('RFQ Orders in LimitOrderProtocol', function () {
     const emptyInteraction = '0x';
@@ -273,7 +274,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth);
         });
 
-        it('should reverted with takerAsset WETH and incorrect msg.value', async function () {
+        it('should revert if taker provided insufficient ETH', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
             const order = buildOrderRFQ(dai.address, weth.address, 900, 3, buildConstraints({ nonce: 1 }));
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
@@ -282,9 +283,17 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             await expect(
                 swap.fillOrderRFQ(order, r, vs, makeMakingAmount(900), { value: 2 }),
             ).to.be.revertedWithCustomError(swap, 'InvalidMsgValue');
-            await expect(
-                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(900), { value: 4 }),
-            ).to.be.revertedWithCustomError(swap, 'InvalidMsgValue');
+        });
+
+        it('should refund taker with exceeding ETH', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(initContracts);
+            const order = buildOrderRFQ(dai.address, weth.address, 900, 3, buildConstraints({ nonce: 1 }));
+            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+
+            const { r, vs } = compactSignature(signature);
+            const promise = () => swap.fillOrderRFQ(order, r, vs, makeMakingAmount(900), { value: 4 });
+            const [ethDiff] = await trackReceivedTokenAndTx(ethers.provider, { address: constants.AddressZero }, addr.address, promise);
+            expect(ethDiff).to.equal(-3n);
         });
 
         it('should reverted with takerAsset non-WETH and msg.value greater than 0', async function () {

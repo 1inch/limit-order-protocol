@@ -178,7 +178,14 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
 
         // Taker => Maker
         if (order.takerAsset.get() == address(_WETH) && msg.value > 0) { // TODO: check balance to get ETH in interaction?
-            if (msg.value != takingAmount) revert Errors.InvalidMsgValue();
+            if (msg.value < takingAmount) revert Errors.InvalidMsgValue();
+            if (msg.value > takingAmount) {
+                unchecked {
+                    // solhint-disable-next-line avoid-low-level-calls
+                    (bool success, ) = msg.sender.call{value: msg.value - takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
+                    if (!success) revert Errors.ETHTransferFailed();
+                }
+            }
             _WETH.safeDeposit(takingAmount);
             _WETH.safeTransfer(maker, takingAmount);
         } else {

@@ -265,7 +265,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         // Taker => Maker
         if (order.takerAsset.get() == address(_WETH) && msg.value > 0) { // TODO: check balance to get ETH in interaction?
             if (msg.value < takingAmount) revert Errors.InvalidMsgValue();
-            if (msg.value > takingAmount) { // TODO: why? interaction have argument regarding amount
+            if (msg.value > takingAmount) {
                 unchecked {
                     // solhint-disable-next-line avoid-low-level-calls
                     (bool success, ) = msg.sender.call{value: msg.value - takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
