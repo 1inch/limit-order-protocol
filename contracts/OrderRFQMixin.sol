@@ -62,7 +62,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         bytes32 r,
         bytes32 vs,
         Input input
-    ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         return fillOrderRFQTo(order, r, vs, input, msg.sender, msg.data[:0]);
     }
 
@@ -76,12 +76,12 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         Input input,
         address target,
         bytes calldata interaction
-    ) public payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+    ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
         address maker = ECDSA.recover(orderHash, r, vs);
         if (maker == address(0)) revert RFQBadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
-        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker, input, target, interaction);
-        emit OrderFilledRFQ(orderHash, filledMakingAmount);
+        (makingAmount, takingAmount) = _fillOrderRFQTo(order, maker, input, target, interaction);
+        emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
     /**
@@ -95,15 +95,15 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         address target,
         bytes calldata interaction,
         bytes calldata permit
-    ) external returns(uint256 /* filledMakingAmount */, uint256 /* filledTakingAmount */, bytes32 /* orderHash */) {
+    ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
         IERC20(order.takerAsset.get()).safePermit(permit);
         return fillOrderRFQTo(order, r, vs, input, target, interaction);
     }
 
     /**
-     * @notice See {IOrderRFQMixin-fillContractOrderRFQToWithPermit}.
+     * @notice See {IOrderRFQMixin-fillContractOrderRFQ}.
      */
-    function fillContractOrderRFQToWithPermit(
+    function fillContractOrderRFQ(
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
         Address maker,
@@ -111,14 +111,14 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         address target,
         bytes calldata interaction,
         bytes calldata permit
-    ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash) {
+    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         if (permit.length > 0) {
             IERC20(order.takerAsset.get()).safePermit(permit);
         }
         orderHash = order.hash(_domainSeparatorV4());
         if (!ECDSA.isValidSignature(maker.get(), orderHash, signature)) revert RFQBadSignature();
-        (filledMakingAmount, filledTakingAmount) = _fillOrderRFQTo(order, maker.get(), input, target, interaction);
-        emit OrderFilledRFQ(orderHash, filledMakingAmount);
+        (makingAmount, takingAmount) = _fillOrderRFQTo(order, maker.get(), input, target, interaction);
+        emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
     function _fillOrderRFQTo(

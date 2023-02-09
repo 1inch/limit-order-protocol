@@ -103,7 +103,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         bytes calldata interaction,
         Input input,
         uint256 threshold
-    ) external payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
+    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         return fillOrderTo(order, signature, interaction, input, threshold, msg.sender);
     }
 
@@ -118,7 +118,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         uint256 threshold,
         address target,
         bytes calldata permit
-    ) external returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
+    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         if (permit.length < 20) revert PermitLengthTooLow();
         IERC20(address(bytes20(permit))).safePermit(permit[20:]);
         return fillOrderTo(order, signature, interaction, input, threshold, target);
@@ -134,14 +134,17 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         Input input,
         uint256 threshold,
         address target
-    ) public payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash) {
+    ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         if (target == address(0)) {
             target = msg.sender;
         }
+
+        // Validate order
         if (!order.constraints.isAllowedSender(msg.sender)) revert PrivateOrder();
         if (order.constraints.isExpired()) revert OrderExpired();
         if (!nonceEquals(order.maker.get(), order.constraints.series(), order.constraints.nonce())) revert WrongSeriesNonce();
 
+        // Check remaining amount
         orderHash = hashOrder(order);
         mapping(bytes32 => uint256) storage remainingPtr = _remaining[order.maker.get()];
         uint256 remainingMakingAmount = remainingPtr[orderHash];
@@ -163,7 +166,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             unchecked { remainingMakingAmount -= 1; }
         }
 
-        // Check if order is valid
+        // Check if orders predicate allows filling
         {  // Stack too deep
             bytes calldata predicate = order.predicate();
             if (predicate.length > 0) {
@@ -175,39 +178,51 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         {  // Stack too deep
             uint256 amount = input.amount();
             if (!order.constraints.allowPartialFills()) {
-                actualMakingAmount = order.makingAmount;
-                actualTakingAmount = order.takingAmount;
+                makingAmount = order.makingAmount;
+                takingAmount = order.takingAmount;
             }
             else if (amount == 0 || input.isMakingAmount()) {
                 if (amount == 0 || amount > remainingMakingAmount) {
-                    actualMakingAmount = remainingMakingAmount;
+                    makingAmount = remainingMakingAmount;
                 } else {
-                    actualMakingAmount = amount;
+                    makingAmount = amount;
                 }
-                actualTakingAmount = order.getTakingAmount(actualMakingAmount, remainingMakingAmount, orderHash);
+                takingAmount = order.getTakingAmount(makingAmount, remainingMakingAmount, orderHash);
                 // check that actual rate is not worse than what was expected
-                // actualTakingAmount / actualMakingAmount <= threshold / amount
-                if (actualTakingAmount * amount > threshold * actualMakingAmount) revert TakingAmountTooHigh();
+                // takingAmount / makingAmount <= threshold / amount
+                if (amount == makingAmount) {
+                    // It's gas optimization due this check doesn't involve SafeMath
+                    if (takingAmount > threshold) revert TakingAmountTooHigh();
+                }
+                else {
+                    if (takingAmount * amount > threshold * makingAmount) revert TakingAmountTooHigh();
+                }
             }
             else {
-                actualTakingAmount = amount;
-                actualMakingAmount = order.getMakingAmount(actualTakingAmount, remainingMakingAmount, orderHash);
-                if (actualMakingAmount > remainingMakingAmount) {
-                    actualMakingAmount = remainingMakingAmount;
-                    actualTakingAmount = order.getTakingAmount(actualMakingAmount, remainingMakingAmount, orderHash);
-                    if (actualTakingAmount > amount) revert TakingAmountIncreased(); // TODO: check if this is necessary, threshold check should be enough
+                takingAmount = amount;
+                makingAmount = order.getMakingAmount(takingAmount, remainingMakingAmount, orderHash);
+                if (makingAmount > remainingMakingAmount) {
+                    // Try to decrease taking amount because computed making amount exceeds remaining amount
+                    makingAmount = remainingMakingAmount;
+                    takingAmount = order.getTakingAmount(makingAmount, remainingMakingAmount, orderHash);
+                    if (takingAmount > amount) revert TakingAmountIncreased(); // TODO: check if this is necessary, threshold check should be enough
                 }
                 // check that actual rate is not worse than what was expected
-                // actualMakingAmount / actualTakingAmount >= threshold / amount
-                if (actualMakingAmount * amount < threshold * actualTakingAmount) revert MakingAmountTooLow();
+                // makingAmount / takingAmount >= threshold / amount
+                if (amount == takingAmount) {
+                    // It's gas optimization due this check doesn't involve SafeMath
+                    if (makingAmount < threshold) revert MakingAmountTooLow();
+                }
+                else {
+                    if (makingAmount * amount < threshold * takingAmount) revert MakingAmountTooLow();
+                }
             }
         }
-
-        if (actualMakingAmount == 0 || actualTakingAmount == 0) revert SwapWithZeroAmount();
+        if (makingAmount == 0 || takingAmount == 0) revert SwapWithZeroAmount();
 
         // Update remaining amount in storage
         unchecked {
-            remainingMakingAmount = remainingMakingAmount - actualMakingAmount;
+            remainingMakingAmount = remainingMakingAmount - makingAmount;
             remainingPtr[orderHash] = remainingMakingAmount + 1;
         }
         emit OrderFilled(order.maker.get(), orderHash, remainingMakingAmount);
@@ -218,21 +233,21 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             if (preInteraction.length >= 20) {
                 // proceed only if interaction length is enough to store address
                 IPreInteractionNotificationReceiver(address(bytes20(preInteraction))).fillOrderPreInteraction(
-                    orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, preInteraction[20:]
+                    orderHash, order.maker.get(), msg.sender, makingAmount, takingAmount, remainingMakingAmount, preInteraction[20:]
                 );
             }
         }
 
         // Maker => Taker
         if (order.makerAsset.get() == address(_WETH) && input.needUnwrapWeth()) {
-            _WETH.safeTransferFrom(order.maker.get(), address(this), actualMakingAmount);
-            _WETH.safeWithdrawTo(actualMakingAmount, target);
+            _WETH.safeTransferFrom(order.maker.get(), address(this), makingAmount);
+            _WETH.safeWithdrawTo(makingAmount, target);
         } else {
             if (!_callTransferFrom(
                 order.makerAsset.get(),
                 order.maker.get(),
                 target,
-                actualMakingAmount,
+                makingAmount,
                 order.makerAssetData()
             )) revert TransferFromMakerToTakerFailed();
         }
@@ -240,32 +255,32 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
             uint256 offeredTakingAmount = IInteractionNotificationReceiver(address(bytes20(interaction))).fillOrderInteraction(
-                msg.sender, actualMakingAmount, actualTakingAmount, interaction[20:]
+                msg.sender, makingAmount, takingAmount, interaction[20:]
             );
-            if (offeredTakingAmount > actualTakingAmount && order.constraints.allowImproveRateViaInteraction()) {
-                actualTakingAmount = offeredTakingAmount;
+            if (offeredTakingAmount > takingAmount && order.constraints.allowImproveRateViaInteraction()) {
+                takingAmount = offeredTakingAmount;
             }
         }
 
         // Taker => Maker
         if (order.takerAsset.get() == address(_WETH) && msg.value > 0) { // TODO: check balance to get ETH in interaction?
-            if (msg.value < actualTakingAmount) revert Errors.InvalidMsgValue();
-            if (msg.value > actualTakingAmount) { // TODO: why? interaction have argument regarding amount
+            if (msg.value < takingAmount) revert Errors.InvalidMsgValue();
+            if (msg.value > takingAmount) { // TODO: why? interaction have argument regarding amount
                 unchecked {
                     // solhint-disable-next-line avoid-low-level-calls
-                    (bool success, ) = msg.sender.call{value: msg.value - actualTakingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
+                    (bool success, ) = msg.sender.call{value: msg.value - takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
                     if (!success) revert Errors.ETHTransferFailed();
                 }
             }
-            _WETH.safeDeposit(actualTakingAmount);
-            _WETH.safeTransfer(order.receiver.get() == address(0) ? order.maker.get() : order.receiver.get(), actualTakingAmount);
+            _WETH.safeDeposit(takingAmount);
+            _WETH.safeTransfer(order.receiver.get() == address(0) ? order.maker.get() : order.receiver.get(), takingAmount);
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
             if (!_callTransferFrom(
                 order.takerAsset.get(),
                 msg.sender,
                 order.receiver.get() == address(0) ? order.maker.get() : order.receiver.get(),
-                actualTakingAmount,
+                takingAmount,
                 order.takerAssetData()
             )) revert TransferFromTakerToMakerFailed();
         }
@@ -275,7 +290,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         if (postInteraction.length >= 20) {
             // proceed only if interaction length is enough to store address
             IPostInteractionNotificationReceiver(address(bytes20(postInteraction))).fillOrderPostInteraction(
-                 orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, postInteraction[20:]
+                 orderHash, order.maker.get(), msg.sender, makingAmount, takingAmount, remainingMakingAmount, postInteraction[20:]
             );
         }
     }

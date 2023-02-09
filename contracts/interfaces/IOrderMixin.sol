@@ -108,8 +108,8 @@ interface IOrderMixin {
      * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param input Fill configuration flags with amount packed in one slot
      * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
-     * @return actualMakingAmount Actual amount transferred from maker to taker
-     * @return actualTakingAmount Actual amount transferred from taker to maker
+     * @return makingAmount Actual amount transferred from maker to taker
+     * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
      */
     function fillOrder(
@@ -118,7 +118,7 @@ interface IOrderMixin {
         bytes calldata interaction,
         Input input,
         uint256 threshold
-    ) external payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);
+    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
      * @notice Same as `fillOrderTo` but calls permit first,
@@ -132,8 +132,8 @@ interface IOrderMixin {
      * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
      * @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
-     * @return actualMakingAmount Actual amount transferred from maker to taker
-     * @return actualTakingAmount Actual amount transferred from taker to maker
+     * @return makingAmount Actual amount transferred from maker to taker
+     * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
      */
     function fillOrderToWithPermit(
@@ -144,7 +144,7 @@ interface IOrderMixin {
         uint256 threshold,
         address target,
         bytes calldata permit
-    ) external returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);
+    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
      * @notice Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
@@ -154,8 +154,8 @@ interface IOrderMixin {
      * @param input Fill configuration flags with amount packed in one slot
      * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
-     * @return actualMakingAmount Actual amount transferred from maker to taker
-     * @return actualTakingAmount Actual amount transferred from taker to maker
+     * @return makingAmount Actual amount transferred from maker to taker
+     * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
      */
     function fillOrderTo(
@@ -165,5 +165,5 @@ interface IOrderMixin {
         Input input,
         uint256 threshold,
         address target
-    ) external payable returns(uint256 actualMakingAmount, uint256 actualTakingAmount, bytes32 orderHash);
+    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 }

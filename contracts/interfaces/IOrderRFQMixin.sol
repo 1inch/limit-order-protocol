@@ -50,8 +50,8 @@ interface IOrderRFQMixin {
      * @param r R component of signature
      * @param vs VS component of signature
      * @param input Fill configuration flags with amount packed in one slot
-     * @return filledMakingAmount Actual amount transferred from maker to taker
-     * @return filledTakingAmount Actual amount transferred from taker to maker
+     * @return makingAmount Actual amount transferred from maker to taker
+     * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
      */
     function fillOrderRFQ(
@@ -59,7 +59,7 @@ interface IOrderRFQMixin {
         bytes32 r,
         bytes32 vs,
         Input input
-    ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash);
+    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
      * @notice Same as `fillOrderRFQ` but allows to specify funds destination instead of `msg.sender`
@@ -69,8 +69,8 @@ interface IOrderRFQMixin {
      * @param input Fill configuration flags with amount packed in one slot
      * @param target Address that will receive swap funds
      * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
-     * @return filledMakingAmount Actual amount transferred from maker to taker
-     * @return filledTakingAmount Actual amount transferred from taker to maker
+     * @return makingAmount Actual amount transferred from maker to taker
+     * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
      */
     function fillOrderRFQTo(
@@ -80,7 +80,7 @@ interface IOrderRFQMixin {
         Input input,
         address target,
         bytes calldata interaction
-    ) external payable returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash);
+    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
      * @notice Same as `fillOrderRFQTo` but calls permit first.
@@ -93,8 +93,8 @@ interface IOrderRFQMixin {
      * @param target Address that will receive swap funds
      * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
-     * @return filledMakingAmount Actual amount transferred from maker to taker
-     * @return filledTakingAmount Actual amount transferred from taker to maker
+     * @return makingAmount Actual amount transferred from maker to taker
+     * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
      * @dev See tests for examples
      */
@@ -106,7 +106,7 @@ interface IOrderRFQMixin {
         address target,
         bytes calldata interaction,
         bytes calldata permit
-    ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash);
+    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
      * @notice Same as `fillOrderRFQTo` but calls permit first.
@@ -119,12 +119,12 @@ interface IOrderRFQMixin {
      * @param target Address that will receive swap funds
      * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
-     * @return filledMakingAmount Actual amount transferred from maker to taker
-     * @return filledTakingAmount Actual amount transferred from taker to maker
+     * @return makingAmount Actual amount transferred from maker to taker
+     * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
      * @dev See tests for examples
      */
-    function fillContractOrderRFQToWithPermit(
+    function fillContractOrderRFQ(
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
         Address maker,
@@ -132,5 +132,5 @@ interface IOrderRFQMixin {
         address target,
         bytes calldata interaction,
         bytes calldata permit
-    ) external returns(uint256 filledMakingAmount, uint256 filledTakingAmount, bytes32 orderHash);
+    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 }
