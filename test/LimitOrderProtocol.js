@@ -129,7 +129,7 @@ describe('LimitOrderProtocol', function () {
 
             expect(
                 await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
-            ).to.be.deep.equal([2, 1, 7, 7, 0]);
+            ).to.be.deep.equal([2, 1, 7, 8, 0]);
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -162,7 +162,7 @@ describe('LimitOrderProtocol', function () {
 
             expect(
                 await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
-            ).to.be.deep.equal([2, 1, 7, 7, 0]);
+            ).to.be.deep.equal([2, 1, 7, 8, 0]);
 
             // await gasspectEVM(receipt.hash);
 

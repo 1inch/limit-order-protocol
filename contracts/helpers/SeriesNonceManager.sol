@@ -41,9 +41,9 @@ contract SeriesNonceManager {
         }
     }
 
-    /// @notice Checks if `makerAddress` has specified `makerNonce` for `series`
-    /// @return Result True if `makerAddress` has specified nonce. Otherwise, false
-    function nonceEquals(address maker, uint256 series, uint256 nonce) public view returns(bool) {
-        return nonce == 0 || _nonces[uint160(maker) | (series << 160)] == nonce;
+    /// @notice Checks if `maker` has specified `makerNonce` for `series`
+    /// @return Result True if `maker` has specified nonce. Otherwise, false
+    function nonceEquals(address maker, uint256 series, uint256 makerNonce) public view returns(bool) {
+        return _nonces[uint160(maker) | (series << 160)] == makerNonce;
     }
 }
