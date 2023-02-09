@@ -1,4 +1,4 @@
-# PreInteractionNotificationReceiver
+# PreInteraction
 
 
 Interface for interactor which acts between `maker => taker` and `taker => maker` transfers.
@@ -7,9 +7,9 @@ Interface for interactor which acts between `maker => taker` and `taker => maker
 
 
 ## Functions
-### fillOrderPreInteraction
+### preInteraction
 ```solidity
-function fillOrderPreInteraction(
+function preInteraction(
   address taker,
   address makerAsset,
   address takerAsset,

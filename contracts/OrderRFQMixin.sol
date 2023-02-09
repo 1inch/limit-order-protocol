@@ -9,7 +9,9 @@ import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 
 import "./helpers/AmountCalculator.sol";
-import "./interfaces/IInteractionNotificationReceiver.sol";
+import "./interfaces/ITakerInteraction.sol";
+import "./interfaces/IPreInteractionRFQ.sol";
+import "./interfaces/IPostInteractionRFQ.sol";
 import "./interfaces/IOrderRFQMixin.sol";
 import "./libraries/Errors.sol";
 import "./libraries/InputLib.sol";
@@ -80,7 +82,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         orderHash = order.hash(_domainSeparatorV4());
         address maker = ECDSA.recover(orderHash, r, vs);
         if (maker == address(0)) revert RFQBadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
-        (makingAmount, takingAmount) = _fillOrderRFQTo(order, maker, input, target, interaction);
+        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, maker, input, target, interaction);
         emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
@@ -117,12 +119,13 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         }
         orderHash = order.hash(_domainSeparatorV4());
         if (!ECDSA.isValidSignature(maker.get(), orderHash, signature)) revert RFQBadSignature();
-        (makingAmount, takingAmount) = _fillOrderRFQTo(order, maker.get(), input, target, interaction);
+        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, maker.get(), input, target, interaction);
         emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
     function _fillOrderRFQTo(
         OrderRFQLib.OrderRFQ calldata order,
+        bytes32 orderHash,
         address maker,
         Input input,
         address target,
@@ -159,6 +162,27 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
             if (makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
         }
 
+        // Maker can handle funds interactively
+        if (order.constraints.needPreInteractionCall()) {
+            // IPreInteractionRFQ(maker).preInteractionRFQ(order, orderHash, maker, msg.sender, makingAmount, takingAmount);
+            bytes4 selector = IPreInteractionRFQ.preInteractionRFQ.selector;
+            /// @solidity memory-safe-assembly
+            assembly { // solhint-disable-line no-inline-assembly
+                let ptr := mload(0x40)
+                mstore(ptr, selector)
+                calldatacopy(add(ptr, 4), order, 0xc0) // 6 * 0x20
+                mstore(add(ptr, 0xc4), orderHash)
+                mstore(add(ptr, 0xe4), maker)
+                mstore(add(ptr, 0x104), caller())
+                mstore(add(ptr, 0x124), makingAmount)
+                mstore(add(ptr, 0x144), takingAmount)
+                if iszero(call(gas(), maker, 0, ptr, 0x164, 0, 0)) {
+                    returndatacopy(ptr, 0, returndatasize())
+                    revert(ptr, returndatasize())
+                }
+            }
+        }
+
         // Maker => Taker
         if (order.makerAsset.get() == address(_WETH) && input.needUnwrapWeth()) {
             _WETH.safeTransferFrom(maker, address(this), makingAmount);
@@ -169,7 +193,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
 
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
-            uint256 offeredTakingAmount = IInteractionNotificationReceiver(address(bytes20(interaction))).fillOrderInteraction(
+            uint256 offeredTakingAmount = ITakerInteraction(address(bytes20(interaction))).fillOrderInteraction(
                 msg.sender, makingAmount, takingAmount, interaction[20:]
             );
             if (offeredTakingAmount > takingAmount && order.constraints.allowImproveRateViaInteraction()) {
@@ -192,6 +216,27 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
             IERC20(order.takerAsset.get()).safeTransferFrom(msg.sender, maker, takingAmount);
+        }
+
+        // Maker can handle funds interactively
+        if (order.constraints.needPostInteractionCall()) {
+            // IPostInteractionRFQ(maker).postInteractionRFQ(order, orderHash, maker, msg.sender, makingAmount, takingAmount);
+            bytes4 selector = IPostInteractionRFQ.postInteractionRFQ.selector;
+            /// @solidity memory-safe-assembly
+            assembly { // solhint-disable-line no-inline-assembly
+                let ptr := mload(0x40)
+                mstore(ptr, selector)
+                calldatacopy(add(ptr, 4), order, 0xc0) // 6 * 0x20
+                mstore(add(ptr, 0xc4), orderHash)
+                mstore(add(ptr, 0xe4), maker)
+                mstore(add(ptr, 0x104), caller())
+                mstore(add(ptr, 0x124), makingAmount)
+                mstore(add(ptr, 0x144), takingAmount)
+                if iszero(call(gas(), maker, 0, ptr, 0x164, 0, 0)) {
+                    returndatacopy(ptr, 0, returndatasize())
+                    revert(ptr, returndatasize())
+                }
+            }
         }
     }
 
