@@ -177,11 +177,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         // Compute maker and taker assets amount
         {  // Stack too deep
             uint256 amount = input.amount();
-            if (!order.constraints.allowPartialFills()) {
-                makingAmount = order.makingAmount;
-                takingAmount = order.takingAmount;
-            }
-            else if (amount == 0 || input.isMakingAmount()) {
+            if (amount == 0 || input.isMakingAmount()) {
+                // Taker gonna fill rest of the order or specified maker amount
                 if (amount == 0 || amount > remainingMakingAmount) {
                     makingAmount = remainingMakingAmount;
                 } else {
@@ -199,6 +196,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                 }
             }
             else {
+                // Taker gonna fill specified taker amount
                 takingAmount = amount;
                 makingAmount = order.getMakingAmount(takingAmount, remainingMakingAmount, orderHash);
                 if (makingAmount > remainingMakingAmount) {
