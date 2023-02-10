@@ -10,7 +10,7 @@ import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 
 import "./helpers/AmountCalculator.sol";
-import "./helpers/SeriesNonceManager.sol";
+import "./helpers/PredicateHelper.sol";
 import "./interfaces/ITakerInteraction.sol";
 import "./interfaces/IPreInteractionRFQ.sol";
 import "./interfaces/IPostInteractionRFQ.sol";
@@ -22,10 +22,11 @@ import "./libraries/RemainingInvalidatorLib.sol";
 import "./OrderRFQLib.sol";
 
 /// @title RFQ Limit Order mixin
-abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, SeriesNonceManager {
+abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, PredicateHelper {
     using SafeERC20 for IERC20;
     using SafeERC20 for IWETH;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
+    using OrderRFQLib for bytes;
     using AddressLib for Address;
     using ConstraintsLib for Constraints;
     using InputLib for Input;
@@ -82,6 +83,21 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Ser
         _bitInvalidator[msg.sender].massInvalidate(orderConstraints.nonce(), additionalMask);
     }
 
+     /**
+     * @notice See {IOrderRFQMixin-hashOrder}.
+     */
+    function hashOrder(OrderRFQLib.OrderRFQ calldata order) public view returns(bytes32) {
+        return order.hash(_domainSeparatorV4());
+    }
+
+    /**
+     * @notice See {IOrderRFQMixin-checkPredicate}.
+     */
+    function checkPredicateRFQ(bytes calldata predicate) public view returns(bool) {
+        (bool success, uint256 res) = _selfStaticCall(predicate);
+        return success && res == 1;
+    }
+
     /**
      * @notice See {IOrderRFQMixin-fillOrderRFQ}.
      */
@@ -89,9 +105,10 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Ser
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        Input input
+        Input input,
+        uint256 threshold
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        return fillOrderRFQTo(order, r, vs, input, msg.sender, msg.data[:0]);
+        return fillOrderRFQTo(order, r, vs, input, threshold, msg.sender, msg.data[:0]);
     }
 
     /**
@@ -102,25 +119,42 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Ser
         bytes32 r,
         bytes32 vs,
         Input input,
+        uint256 threshold,
         address target,
         bytes calldata interaction
     ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+        return fillOrderRFQToExt(
+            order,
+            r,
+            vs,
+            input,
+            threshold,
+            target,
+            interaction,
+            msg.data[:0]
+        );
+    }
+
+    function fillOrderRFQToExt(
+        OrderRFQLib.OrderRFQ calldata order,
+        bytes32 r,
+        bytes32 vs,
+        Input input,
+        uint256 threshold,
+        address target,
+        bytes calldata interaction,
+        bytes calldata extension
+    ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
 
-        // Prevalidate order depending on constraints
-        uint256 remainingMakingAmount = order.makingAmount;
-        if (order.constraints.useBitInvalidator()) {
+        // Check signature and apply order permit only on the first fill
+        (uint256 remainingMakingAmount, bool requireSignature) = _checkRemainingMakingAmount(order, orderHash);
+        if (requireSignature) {
             if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert RFQBadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
-        } else {
-            RemainingInvalidator invalidator = _remainingInvalidator[orderHash];
-            remainingMakingAmount = invalidator.remaining();
-            if (invalidator.doesNotExist()) {
-                if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert RFQBadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
-            }
+            _applyOrderPermitIfNeeded(order, orderHash, input.skipOrderPermit(), extension);
         }
 
-        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, remainingMakingAmount, input, target, interaction);
-        emit OrderFilledRFQ(orderHash, makingAmount);
+        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, extension, remainingMakingAmount, input, threshold, target, interaction);
     }
 
     /**
@@ -131,12 +165,13 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Ser
         bytes32 r,
         bytes32 vs,
         Input input,
+        uint256 threshold,
         address target,
         bytes calldata interaction,
         bytes calldata permit
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         IERC20(order.takerAsset.get()).safePermit(permit);
-        return fillOrderRFQTo(order, r, vs, input, target, interaction);
+        return fillOrderRFQTo(order, r, vs, input, threshold, target, interaction);
     }
 
     /**
@@ -146,36 +181,61 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Ser
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
         Input input,
+        uint256 threshold,
         address target,
         bytes calldata interaction,
         bytes calldata permit
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+        return fillContractOrderRFQExt(
+            order,
+            signature,
+            input,
+            threshold,
+            target,
+            interaction,
+            permit,
+            msg.data[:0]
+        );
+    }
+
+    function fillContractOrderRFQExt(
+        OrderRFQLib.OrderRFQ calldata order,
+        bytes calldata signature,
+        Input input,
+        uint256 threshold,
+        address target,
+        bytes calldata interaction,
+        bytes calldata permit,
+        bytes calldata extension
+    ) public returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         if (permit.length > 0) {
             IERC20(order.takerAsset.get()).safePermit(permit);
         }
         orderHash = order.hash(_domainSeparatorV4());
 
-        // Prevalidate order depending on constraints
-        uint256 remainingMakingAmount = order.makingAmount;
-        if (order.constraints.useBitInvalidator()) {
+        // Check signature and apply order permit only on the first fill
+        (uint256 remainingMakingAmount, bool requireSignature) = _checkRemainingMakingAmount(order, orderHash);
+        if (requireSignature) {
             if (!ECDSA.isValidSignature(order.maker.get(), orderHash, signature)) revert RFQBadSignature();
-        } else {
-            RemainingInvalidator invalidator = _remainingInvalidator[orderHash];
-            remainingMakingAmount = invalidator.remaining();
-            if (invalidator.doesNotExist()) {
-                if (!ECDSA.isValidSignature(order.maker.get(), orderHash, signature)) revert RFQBadSignature();
-            }
+            _applyOrderPermitIfNeeded(order, orderHash, input.skipOrderPermit(), extension);
         }
 
-        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, remainingMakingAmount, input, target, interaction);
-        emit OrderFilledRFQ(orderHash, makingAmount);
+        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, extension, remainingMakingAmount, input, threshold, target, interaction);
     }
+
+    error RFQPredicateIsNotTrue();
+    error RFQTakingAmountTooHigh();
+    error RFQMakingAmountTooLow();
+    error RFQTransferFromMakerToTakerFailed();
+    error RFQTransferFromTakerToMakerFailed();
 
     function _fillOrderRFQTo(
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 orderHash,
+        bytes calldata extension,
         uint256 remainingMakingAmount,
         Input input,
+        uint256 threshold,
         address target,
         bytes calldata interaction
     ) private returns(uint256 makingAmount, uint256 takingAmount) {
@@ -183,12 +243,21 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Ser
             target = msg.sender;
         }
 
+        address receiver = extension.getReceiver();
+
         // Validate order
-        address maker = order.maker.get();
         if (!order.constraints.isAllowedSender(msg.sender)) revert RFQPrivateOrder();
         if (order.constraints.isExpired()) revert RFQOrderExpired();
         if (order.constraints.needCheckEpochManager()) {
-            if (!nonceEquals(maker, order.constraints.series(), order.constraints.epoch())) revert RFQWrongSeriesNonce();
+            if (!nonceEquals(order.maker.get(), order.constraints.series(), order.constraints.epoch())) revert RFQWrongSeriesNonce();
+        }
+
+        // Check if orders predicate allows filling
+        if (order.constraints.hasExtension()) {
+            bytes calldata predicate = extension.predicate();
+            if (predicate.length > 0) {
+                if (!checkPredicateRFQ(predicate)) revert RFQPredicateIsNotTrue();
+            }
         }
 
         // Compute maker and taker assets amount
@@ -196,16 +265,34 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Ser
             uint256 amount = input.amount();
             if (input.isMakingAmount()) {
                 makingAmount = Math.min(amount, remainingMakingAmount);
-                takingAmount = AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, makingAmount);
+                takingAmount = order.calculateTakingAmount(extension, makingAmount, remainingMakingAmount, orderHash);
+                // check that actual rate is not worse than what was expected
+                // takingAmount / makingAmount <= threshold / amount
+                if (amount == makingAmount) {
+                    // It's gas optimization due this check doesn't involve SafeMath
+                    if (takingAmount > threshold) revert RFQTakingAmountTooHigh();
+                }
+                else {
+                    if (takingAmount * amount > threshold * makingAmount) revert RFQTakingAmountTooHigh();
+                }
             }
             else {
                 takingAmount = amount;
-                makingAmount = AmountCalculator.getMakingAmount(order.makingAmount, order.takingAmount, takingAmount);
+                makingAmount = order.calculateMakingAmount(extension,takingAmount, remainingMakingAmount, orderHash);
                 if (makingAmount > remainingMakingAmount) {
                     // Try to decrease taking amount because computed making amount exceeds remaining amount
                     makingAmount = remainingMakingAmount;
-                    takingAmount = AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, makingAmount);
+                    takingAmount = order.calculateTakingAmount(extension,makingAmount, remainingMakingAmount, orderHash);
                     if (takingAmount > amount) revert RFQTakingAmountIncreased();
+                }
+                // check that actual rate is not worse than what was expected
+                // makingAmount / takingAmount >= threshold / amount
+                if (amount == takingAmount) {
+                    // It's gas optimization due this check doesn't involve SafeMath
+                    if (makingAmount < threshold) revert RFQMakingAmountTooLow();
+                }
+                else {
+                    if (makingAmount * amount < threshold * takingAmount) revert RFQMakingAmountTooLow();
                 }
             }
             if (makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
@@ -213,37 +300,59 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Ser
 
         // Invalidate order depending on constraints
         if (order.constraints.useBitInvalidator()) {
-            _bitInvalidator[maker].checkAndInvalidate(order.constraints.nonce());
+            _bitInvalidator[order.maker.get()].checkAndInvalidate(order.constraints.nonce());
         } else {
             _remainingInvalidator[orderHash] = RemainingInvalidatorLib.remains(remainingMakingAmount, makingAmount);
         }
 
-        // Maker can handle funds interactively
+        // Pre interaction, where maker can prepare funds interactively
         if (order.constraints.needPreInteractionCall()) {
-            // IPreInteractionRFQ(maker).preInteractionRFQ(order, orderHash, msg.sender, makingAmount, takingAmount);
-            bytes4 selector = IPreInteractionRFQ.preInteractionRFQ.selector;
-            /// @solidity memory-safe-assembly
-            assembly { // solhint-disable-line no-inline-assembly
-                let ptr := mload(0x40)
-                mstore(ptr, selector)
-                calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
-                mstore(add(ptr, 0xe4), orderHash)
-                mstore(add(ptr, 0x104), caller())
-                mstore(add(ptr, 0x124), makingAmount)
-                mstore(add(ptr, 0x144), takingAmount)
-                if iszero(call(gas(), maker, 0, ptr, 0x164, 0, 0)) {
-                    returndatacopy(ptr, 0, returndatasize())
-                    revert(ptr, returndatasize())
+            address preInteractionTarget = order.maker.get();
+            bytes calldata preInteractionData = msg.data[:0];
+            if (order.constraints.hasExtension()) {
+                preInteractionData = extension.preInteraction();
+                if (preInteractionData.length > 20) {
+                    preInteractionTarget = address(bytes20(preInteractionData));
+                    preInteractionData = preInteractionData[20:];
                 }
             }
+            IPreInteractionRFQ(preInteractionTarget).preInteractionRFQ(
+                order, orderHash, msg.sender, makingAmount, takingAmount, preInteractionData
+            );
+            // bytes4 selector = IPreInteractionRFQ.preInteractionRFQ.selector;
+            /// @solidity memory-safe-assembly
+            // assembly { // solhint-disable-line no-inline-assembly
+            //     let ptr := mload(0x40)
+            //     mstore(ptr, selector)
+            //     calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
+            //     mstore(add(ptr, 0xe4), orderHash)
+            //     mstore(add(ptr, 0x104), caller())
+            //     mstore(add(ptr, 0x124), makingAmount)
+            //     mstore(add(ptr, 0x144), takingAmount)
+            //     if iszero(call(gas(), receiver, 0, ptr, 0x164, 0, 0)) {
+            //         returndatacopy(ptr, 0, returndatasize())
+            //         revert(ptr, returndatasize())
+            //     }
+            // }
         }
 
         // Maker => Taker
         if (order.makerAsset.get() == address(_WETH) && input.needUnwrapWeth()) {
-            _WETH.safeTransferFrom(maker, address(this), makingAmount);
+            _WETH.safeTransferFrom(order.maker.get(), address(this), makingAmount);
             _WETH.safeWithdrawTo(makingAmount, target);
         } else {
-            IERC20(order.makerAsset.get()).safeTransferFrom(maker, target, makingAmount);
+            bytes calldata makerAssetData = extension.makerAssetData();
+            if (makerAssetData.length > 0) {
+                if (!_callTransferFromWithSuffix(
+                    order.makerAsset.get(),
+                    order.maker.get(),
+                    target,
+                    makingAmount,
+                    makerAssetData
+                )) revert RFQTransferFromMakerToTakerFailed();
+            } else {
+                IERC20(order.makerAsset.get()).safeTransferFrom(order.maker.get(), target, makingAmount);
+            }
         }
 
         if (interaction.length >= 20) {
@@ -267,30 +376,99 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Ser
                 }
             }
             _WETH.safeDeposit(takingAmount);
-            _WETH.safeTransfer(maker, takingAmount);
+            _WETH.safeTransfer(receiver, takingAmount);
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
-            IERC20(order.takerAsset.get()).safeTransferFrom(msg.sender, maker, takingAmount);
+            bytes calldata takerAssetData = extension.takerAssetData();
+            if (takerAssetData.length > 0) {
+                if (!_callTransferFromWithSuffix(
+                    order.takerAsset.get(),
+                    msg.sender,
+                    receiver,
+                    takingAmount,
+                    takerAssetData
+                )) revert RFQTransferFromTakerToMakerFailed();
+            } else {
+                IERC20(order.takerAsset.get()).safeTransferFrom(msg.sender, receiver, takingAmount);
+            }
         }
 
-        // Maker can handle funds interactively
+        // Post interaction, where maker can handle funds interactively
         if (order.constraints.needPostInteractionCall()) {
-            // IPostInteractionRFQ(maker).postInteractionRFQ(order, orderHash, msg.sender, makingAmount, takingAmount);
-            bytes4 selector = IPostInteractionRFQ.postInteractionRFQ.selector;
-            /// @solidity memory-safe-assembly
-            assembly { // solhint-disable-line no-inline-assembly
-                let ptr := mload(0x40)
-                mstore(ptr, selector)
-                calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
-                mstore(add(ptr, 0xe4), orderHash)
-                mstore(add(ptr, 0x104), caller())
-                mstore(add(ptr, 0x124), makingAmount)
-                mstore(add(ptr, 0x144), takingAmount)
-                if iszero(call(gas(), maker, 0, ptr, 0x164, 0, 0)) {
-                    returndatacopy(ptr, 0, returndatasize())
-                    revert(ptr, returndatasize())
+            address postInteractionTarget = order.maker.get();
+            bytes calldata postInteractionData = extension.preInteraction();
+            if (order.constraints.hasExtension()) {
+                postInteractionData = extension.preInteraction();
+                if (postInteractionData.length > 20) {
+                    postInteractionTarget = address(bytes20(postInteractionData));
+                    postInteractionData = postInteractionData[20:];
                 }
             }
+            IPostInteractionRFQ(postInteractionTarget).postInteractionRFQ(
+                order, orderHash, msg.sender, makingAmount, takingAmount, postInteractionData
+            );
+            // bytes4 selector = IPostInteractionRFQ.postInteractionRFQ.selector;
+            // /// @solidity memory-safe-assembly
+            // assembly { // solhint-disable-line no-inline-assembly
+            //     let ptr := mload(0x40)
+            //     mstore(ptr, selector)
+            //     calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
+            //     mstore(add(ptr, 0xe4), orderHash)
+            //     mstore(add(ptr, 0x104), caller())
+            //     mstore(add(ptr, 0x124), makingAmount)
+            //     mstore(add(ptr, 0x144), takingAmount)
+            //     if iszero(call(gas(), receiver, 0, ptr, 0x164, 0, 0)) {
+            //         returndatacopy(ptr, 0, returndatasize())
+            //         revert(ptr, returndatasize())
+            //     }
+            // }
+        }
+
+        emit OrderFilledRFQ(orderHash, makingAmount);
+    }
+
+    function _checkRemainingMakingAmount(OrderRFQLib.OrderRFQ calldata order, bytes32 orderHash) private view returns(uint256 remainingMakingAmount, bool requireSignature) {
+        if (order.constraints.useBitInvalidator()) {
+            requireSignature = true;
+            remainingMakingAmount = order.makingAmount;
+        } else {
+            RemainingInvalidator invalidator = _remainingInvalidator[orderHash];
+            if (invalidator.doesNotExist()) {
+                requireSignature = true;
+                remainingMakingAmount = order.makingAmount;
+            } else {
+                remainingMakingAmount = invalidator.remaining();
+            }
+        }
+    }
+
+    function _applyOrderPermitIfNeeded(OrderRFQLib.OrderRFQ calldata order, bytes32 orderHash, bool skipOrderPermit, bytes calldata extension) private {
+        if (order.constraints.hasExtension()) {
+            if (!order.validateExtension(extension)) revert RFQExtensionInvalid();
+
+            if (!skipOrderPermit) {
+                bytes calldata orderPermit = extension.permit();
+                if (orderPermit.length >= 20) {
+                    // proceed only if taker is willing to execute permit and its length is enough to store address
+                    IERC20(address(bytes20(orderPermit))).safePermit(orderPermit[20:]);
+                    if (!_remainingInvalidator[orderHash].doesNotExist()) revert RFQReentrancyDetected();
+                }
+            }
+        }
+    }
+
+    function _callTransferFromWithSuffix(address asset, address from, address to, uint256 amount, bytes calldata suffix) private returns(bool success) {
+        bytes4 selector = IERC20.transferFrom.selector;
+        /// @solidity memory-safe-assembly
+        assembly { // solhint-disable-line no-inline-assembly
+            let data := mload(0x40)
+            mstore(data, selector)
+            mstore(add(data, 0x04), from)
+            mstore(add(data, 0x24), to)
+            mstore(add(data, 0x44), amount)
+            calldatacopy(add(data, 0x64), suffix.offset, suffix.length)
+            let status := call(gas(), asset, 0, data, add(0x64, suffix.length), 0x0, 0x20)
+            success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
         }
     }
 }

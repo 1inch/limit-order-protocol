@@ -20,6 +20,11 @@ library ConstraintsLib {
     uint256 private constant _PRE_INTERACTION_CALL_FLAG = 1 << 252;
     uint256 private constant _POST_INTERACTION_CALL_FLAG = 1 << 251;
     uint256 private constant _NEED_CHECK_EPOCH_MANAGER_FLAG = 1 << 250;
+    uint256 private constant _HAS_EXTENSION_FLAG = 1 << 249;
+
+    function hasExtension(Constraints constraints) internal pure returns (bool) {
+        return (Constraints.unwrap(constraints) & _HAS_EXTENSION_FLAG) != 0;
+    }
 
     function isAllowedSender(Constraints constraints, address sender) internal pure returns (bool) {
         address allowedSender = address(uint160(Constraints.unwrap(constraints) & _ALLOWED_SENDER_MASK));

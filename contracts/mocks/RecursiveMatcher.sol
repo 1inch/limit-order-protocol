@@ -38,6 +38,7 @@ contract RecursiveMatcher is ITakerInteraction {
         bytes32 r,
         bytes32 vs,
         Input input,
+        uint256 threshold,
         bytes calldata interaction
     ) external {
         orderRFQMixin.fillOrderRFQTo(
@@ -45,6 +46,7 @@ contract RecursiveMatcher is ITakerInteraction {
             r,
             vs,
             input,
+            threshold,
             address(this),
             interaction
         );

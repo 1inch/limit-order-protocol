@@ -12,12 +12,14 @@ interface IPreInteractionRFQ {
      * @param taker Taker address
      * @param makingAmount Actual making amount
      * @param takingAmount Actual taking amount
+     * @param extraData Extra data
      */
     function preInteractionRFQ(
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 orderHash,
         address taker,
         uint256 makingAmount,
-        uint256 takingAmount
+        uint256 takingAmount,
+        bytes calldata extraData
     ) external;
 }

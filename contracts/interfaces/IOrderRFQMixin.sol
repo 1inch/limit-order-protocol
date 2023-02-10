@@ -17,6 +17,8 @@ interface IOrderRFQMixin {
     error RFQPartialFillNotAllowed();
     error InvalidatedOrder();
     error OrderIsnotSuitableForMassInvalidation();
+    error RFQExtensionInvalid();
+    error RFQReentrancyDetected();
 
     /**
      * @notice Emitted when RFQ gets filled
@@ -70,6 +72,7 @@ interface IOrderRFQMixin {
      * @param r R component of signature
      * @param vs VS component of signature
      * @param input Fill configuration flags with amount packed in one slot
+     * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -78,7 +81,8 @@ interface IOrderRFQMixin {
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        Input input
+        Input input,
+        uint256 threshold
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
@@ -87,6 +91,7 @@ interface IOrderRFQMixin {
      * @param r R component of signature
      * @param vs VS component of signature
      * @param input Fill configuration flags with amount packed in one slot
+     * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
      * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @return makingAmount Actual amount transferred from maker to taker
@@ -98,6 +103,7 @@ interface IOrderRFQMixin {
         bytes32 r,
         bytes32 vs,
         Input input,
+        uint256 threshold,
         address target,
         bytes calldata interaction
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
@@ -110,6 +116,7 @@ interface IOrderRFQMixin {
      * @param r R component of signature
      * @param vs VS component of signature
      * @param input Fill configuration flags with amount packed in one slot
+     * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
      * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
@@ -123,6 +130,7 @@ interface IOrderRFQMixin {
         bytes32 r,
         bytes32 vs,
         Input input,
+        uint256 threshold,
         address target,
         bytes calldata interaction,
         bytes calldata permit
@@ -135,6 +143,7 @@ interface IOrderRFQMixin {
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
      * @param input Fill configuration flags with amount packed in one slot
+     * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
      * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
@@ -147,6 +156,7 @@ interface IOrderRFQMixin {
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
         Input input,
+        uint256 threshold,
         address target,
         bytes calldata interaction,
         bytes calldata permit

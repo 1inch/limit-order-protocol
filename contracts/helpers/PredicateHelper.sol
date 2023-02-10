@@ -110,7 +110,7 @@ contract PredicateHelper is SeriesNonceManager {
             }
         }
 
-        return _staticcallForUint(address(this), data);
+        return _staticcallForUint(address(this), data); // TODO: what method are we calling?
     }
 
     function _staticcallForUint(address target, bytes calldata input) private view returns(bool success, uint256 res) {
