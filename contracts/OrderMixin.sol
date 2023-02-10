@@ -3,6 +3,7 @@
 pragma solidity 0.8.17;
 
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
@@ -177,21 +178,13 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         // Compute maker and taker assets amount
         {  // Stack too deep
             uint256 amount = input.amount();
-            if (amount == 0 || input.isMakingAmount()) {
+            if (input.isMakingAmount()) {
                 // Taker gonna fill rest of the order or specified maker amount
-                if (amount == 0 || amount > remainingMakingAmount) {
-                    makingAmount = remainingMakingAmount;
-                } else {
-                    makingAmount = amount;
-                }
+                makingAmount = Math.min(amount, remainingMakingAmount);
                 takingAmount = order.getTakingAmount(makingAmount, remainingMakingAmount, orderHash);
                 // check that actual rate is not worse than what was expected
                 // takingAmount / makingAmount <= threshold / amount
-                if (amount == 0) {
-                    // Check that taker get at least threshold amount of maker asset
-                    if (makingAmount < threshold) revert MakingAmountTooLow();
-                }
-                else if (amount == makingAmount) {
+                if (amount == makingAmount) {
                     // It's gas optimization due this check doesn't involve SafeMath
                     if (takingAmount > threshold) revert TakingAmountTooHigh();
                 }
