@@ -114,7 +114,6 @@ interface IOrderRFQMixin {
      * Also allows to specify funds destination instead of `msg.sender`
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
-     * @param maker Smart contract that signed the order
      * @param input Fill configuration flags with amount packed in one slot
      * @param target Address that will receive swap funds
      * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
@@ -127,7 +126,6 @@ interface IOrderRFQMixin {
     function fillContractOrderRFQ(
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
-        Address maker,
         Input input,
         address target,
         bytes calldata interaction,

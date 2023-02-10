@@ -4,6 +4,7 @@ const { ethers } = require('ethers');
 
 const OrderRFQ = [
     { name: 'salt', type: 'uint256' },
+    { name: 'maker', type: 'address' },
     { name: 'makerAsset', type: 'address' },
     { name: 'takerAsset', type: 'address' },
     { name: 'makingAmount', type: 'uint256' },
@@ -111,6 +112,7 @@ function buildOrder (
 }
 
 function buildOrderRFQ (
+    maker,
     makerAsset,
     takerAsset,
     makingAmount,
@@ -118,12 +120,13 @@ function buildOrderRFQ (
     constraints = '0',
 ) {
     return {
+        salt: '0',
+        maker,
         makerAsset,
         takerAsset,
         makingAmount,
         takingAmount,
         constraints,
-        salt: '0',
     };
 }
 

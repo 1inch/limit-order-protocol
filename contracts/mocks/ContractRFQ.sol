@@ -71,7 +71,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     }
 
     function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns(bytes4) {
-        if (signature.length != 32 * 6) revert MalformedSignature();
+        if (signature.length != 7 * 0x20) revert MalformedSignature();
 
         OrderRFQLib.OrderRFQ calldata order;
         /// @solidity memory-safe-assembly
@@ -79,6 +79,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
             order := signature.offset
         }
 
+        // TODO: use 3 different custom reverts
         if (
             (
                 (order.makerAsset.get() != address(token0) || order.takerAsset.get() != address(token1)) &&

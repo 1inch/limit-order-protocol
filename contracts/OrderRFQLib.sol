@@ -10,6 +10,7 @@ import "./libraries/ConstraintsLib.sol";
 library OrderRFQLib {
     struct OrderRFQ {
         uint256 salt;
+        Address maker;
         Address makerAsset;
         Address takerAsset;
         uint256 makingAmount;
@@ -20,6 +21,7 @@ library OrderRFQLib {
     bytes32 constant internal _LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
         "OrderRFQ("
             "uint256 salt,"
+            "address maker,"
             "address makerAsset,"
             "address takerAsset,"
             "uint256 makingAmount,"
@@ -36,8 +38,8 @@ library OrderRFQLib {
 
             // keccak256(abi.encode(_LIMIT_ORDER_RFQ_TYPEHASH, order));
             mstore(ptr, typehash)
-            calldatacopy(add(ptr, 0x20), order, 0xc0)
-            result := keccak256(ptr, 0xe0)
+            calldatacopy(add(ptr, 0x20), order, 0xe0)
+            result := keccak256(ptr, 0x100)
         }
         result = ECDSA.toTypedDataHash(domainSeparator, result);
     }

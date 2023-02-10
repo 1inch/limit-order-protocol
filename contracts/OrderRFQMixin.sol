@@ -80,9 +80,8 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         bytes calldata interaction
     ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
-        address maker = ECDSA.recover(orderHash, r, vs);
-        if (maker == address(0)) revert RFQBadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
-        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, maker, input, target, interaction);
+        if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert RFQBadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
+        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, input, target, interaction);
         emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
@@ -108,7 +107,6 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
     function fillContractOrderRFQ(
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
-        Address maker,
         Input input,
         address target,
         bytes calldata interaction,
@@ -118,15 +116,14 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
             IERC20(order.takerAsset.get()).safePermit(permit);
         }
         orderHash = order.hash(_domainSeparatorV4());
-        if (!ECDSA.isValidSignature(maker.get(), orderHash, signature)) revert RFQBadSignature();
-        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, maker.get(), input, target, interaction);
+        if (!ECDSA.isValidSignature(order.maker.get(), orderHash, signature)) revert RFQBadSignature();
+        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, input, target, interaction);
         emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
     function _fillOrderRFQTo(
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 orderHash,
-        address maker,
         Input input,
         address target,
         bytes calldata interaction
@@ -136,6 +133,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         }
 
         // Validate order
+        address maker = order.maker.get();
         if (!order.constraints.isAllowedSender(msg.sender)) revert RFQPrivateOrder();
         if (order.constraints.isExpired()) revert RFQOrderExpired();
 
@@ -164,15 +162,14 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
 
         // Maker can handle funds interactively
         if (order.constraints.needPreInteractionCall()) {
-            // IPreInteractionRFQ(maker).preInteractionRFQ(order, orderHash, maker, msg.sender, makingAmount, takingAmount);
+            // IPreInteractionRFQ(maker).preInteractionRFQ(order, orderHash, msg.sender, makingAmount, takingAmount);
             bytes4 selector = IPreInteractionRFQ.preInteractionRFQ.selector;
             /// @solidity memory-safe-assembly
             assembly { // solhint-disable-line no-inline-assembly
                 let ptr := mload(0x40)
                 mstore(ptr, selector)
-                calldatacopy(add(ptr, 4), order, 0xc0) // 6 * 0x20
-                mstore(add(ptr, 0xc4), orderHash)
-                mstore(add(ptr, 0xe4), maker)
+                calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
+                mstore(add(ptr, 0xe4), orderHash)
                 mstore(add(ptr, 0x104), caller())
                 mstore(add(ptr, 0x124), makingAmount)
                 mstore(add(ptr, 0x144), takingAmount)
@@ -220,15 +217,14 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
 
         // Maker can handle funds interactively
         if (order.constraints.needPostInteractionCall()) {
-            // IPostInteractionRFQ(maker).postInteractionRFQ(order, orderHash, maker, msg.sender, makingAmount, takingAmount);
+            // IPostInteractionRFQ(maker).postInteractionRFQ(order, orderHash, msg.sender, makingAmount, takingAmount);
             bytes4 selector = IPostInteractionRFQ.postInteractionRFQ.selector;
             /// @solidity memory-safe-assembly
             assembly { // solhint-disable-line no-inline-assembly
                 let ptr := mload(0x40)
                 mstore(ptr, selector)
-                calldatacopy(add(ptr, 4), order, 0xc0) // 6 * 0x20
-                mstore(add(ptr, 0xc4), orderHash)
-                mstore(add(ptr, 0xe4), maker)
+                calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
+                mstore(add(ptr, 0xe4), orderHash)
                 mstore(add(ptr, 0x104), caller())
                 mstore(add(ptr, 0x124), makingAmount)
                 mstore(add(ptr, 0x144), takingAmount)
