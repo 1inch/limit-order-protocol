@@ -1,7 +1,7 @@
 const { ethers } = require('hardhat');
 const { expect, time, profileEVM, trackReceivedTokenAndTx } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { buildOrderRFQ, signOrderRFQ, compactSignature, makeMakingAmount, makeUnwrapWeth, buildConstraints } = require('./helpers/orderUtils');
+const { buildOrderRFQ, signOrderRFQ, compactSignature, makeMakingAmount, makeUnwrapWeth, buildConstraints, buildOrderRFQData } = require('./helpers/orderUtils');
 const { getPermit } = require('./helpers/eip712');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { constants } = require('ethers');
@@ -127,25 +127,35 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
     describe('OrderRFQ Cancelation', function () {
         it('should cancel own order', async function () {
-            const { swap } = await loadFixture(initContracts);
-            await swap.functions['cancelOrderRFQ(uint256)']('1');
-            const invalidator = await swap.invalidatorForOrderRFQ(addr.address, '0');
+            const { swap, dai, weth, chainId } = await loadFixture(initContracts);
+            const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 1, 1, buildConstraints({ nonce: 1 }));
+            const data = buildOrderRFQData(chainId, swap.address, order);
+            const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
+
+            await swap.cancelOrderRFQ(order.constraints, orderHash);
+            const invalidator = await swap.bitInvalidatorForOrderRFQ(addr.address, '0');
             expect(invalidator).to.equal('2');
         });
 
         it('should cancel own order with huge number', async function () {
-            const { swap } = await loadFixture(initContracts);
-            await swap.functions['cancelOrderRFQ(uint256)']('1023');
-            const invalidator = await swap.invalidatorForOrderRFQ(addr.address, '3');
+            const { swap, dai, weth, chainId } = await loadFixture(initContracts);
+            const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 1, 1, buildConstraints({ nonce: 1023 }));
+            const data = buildOrderRFQData(chainId, swap.address, order);
+            const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
+
+            await swap.cancelOrderRFQ(order.constraints, orderHash);
+            const invalidator = await swap.bitInvalidatorForOrderRFQ(addr.address, '1023');
             expect(invalidator).to.equal(1n << 255n);
         });
 
         it('should not fill cancelled order', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
             const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 1, 1, buildConstraints({ nonce: 1 }));
+            const data = buildOrderRFQData(chainId, swap.address, order);
+            const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
 
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
-            await swap.connect(addr1).functions['cancelOrderRFQ(uint256)']('1');
+            await swap.connect(addr1).cancelOrderRFQ(order.constraints, orderHash);
 
             const { r, vs } = compactSignature(signature);
             await expect(
@@ -204,7 +214,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerWeth = await weth.balanceOf(addr.address);
 
             const { r, vs } = compactSignature(signature);
-            await swap.fillOrderRFQ(order, r, vs, 0);
+            await swap.fillOrderRFQ(order, r, vs, 1);
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));

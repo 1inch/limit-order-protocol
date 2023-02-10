@@ -6,14 +6,17 @@ import "../OrderRFQLib.sol";
 import "../libraries/InputLib.sol";
 
 interface IOrderRFQMixin {
+    error RFQTakingAmountIncreased();
     error RFQPrivateOrder();
     error RFQBadSignature();
     error RFQOrderExpired();
+    error RFQWrongSeriesNonce();
     error MakingAmountExceeded();
     error TakingAmountExceeded();
     error RFQSwapWithZeroAmount();
     error RFQPartialFillNotAllowed();
     error InvalidatedOrder();
+    error OrderIsnotSuitableForMassInvalidation();
 
     /**
      * @notice Emitted when RFQ gets filled
@@ -31,18 +34,35 @@ interface IOrderRFQMixin {
      * @param slot Slot number to return bitmask for
      * @return result Each bit represents whether corresponding was already invalidated
      */
-    function invalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256);
+    function bitInvalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256 /* result */);
+
+    /**
+     * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
+     * @param orderHash Hash of the order
+     * @return remaining Remaining amount of the order
+     */
+    function remainingInvalidatorForOrderRFQ(bytes32 orderHash) external view returns(uint256 remaining);
+
+    /**
+     * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
+     * @param orderHash Hash of the order
+     * @return remainingRaw Remaining amount of the order plus 1 if order was partially filled, otherwise 0
+     */
+    function rawRemainingInvalidatorForOrderRFQ(bytes32 orderHash) external view returns(uint256 remainingRaw);
 
     /**
      * @notice Cancels order's quote
-     * @param orderInfo Order info (only order id in lowest 64 bits is used)
+     * @param orderConstraints Order constraints
+     * @param orderHash Hash of the order to cancel
      */
-    function cancelOrderRFQ(uint256 orderInfo) external;
+    function cancelOrderRFQ(Constraints orderConstraints, bytes32 orderHash) external;
 
     /**
-     * @notice Cancels multiple order's quotes
+     * @notice Cancels all quotes of the maker (works for bit-invalidating orders only)
+     * @param orderConstraints Order constraints
+     * @param additionalMask Additional bitmask to invalidate orders
      */
-    function cancelOrderRFQ(uint256 orderInfo, uint256 additionalMask) external;
+    function massCancelOrderRFQ(Constraints orderConstraints, uint256 additionalMask) external;
 
     /**
      * @notice Fills order's quote, fully or partially (whichever is possible)

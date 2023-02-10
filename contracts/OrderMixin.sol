@@ -2,8 +2,8 @@
 
 pragma solidity 0.8.17;
 
-import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
@@ -141,18 +141,19 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         }
 
         // Validate order
+        address maker = order.maker.get();
         if (!order.constraints.isAllowedSender(msg.sender)) revert PrivateOrder();
         if (order.constraints.isExpired()) revert OrderExpired();
-        if (!nonceEquals(order.maker.get(), order.constraints.series(), order.constraints.nonce())) revert WrongSeriesNonce();
+        if (!nonceEquals(maker, order.constraints.series(), order.constraints.nonce())) revert WrongSeriesNonce();
 
         // Check remaining amount
         orderHash = hashOrder(order);
-        mapping(bytes32 => uint256) storage remainingPtr = _remaining[order.maker.get()];
+        mapping(bytes32 => uint256) storage remainingPtr = _remaining[maker];
         uint256 remainingMakingAmount = remainingPtr[orderHash];
         if (remainingMakingAmount == _ORDER_FILLED) revert RemainingAmountIsZero();
         if (remainingMakingAmount == _ORDER_DOES_NOT_EXIST) {
             // First fill: validate order and permit maker asset
-            if (!ECDSA.recoverOrIsValidSignature(order.maker.get(), orderHash, signature)) revert BadSignature();
+            if (!ECDSA.recoverOrIsValidSignature(maker, orderHash, signature)) revert BadSignature();
             remainingMakingAmount = order.makingAmount;
 
             if (!input.skipOrderPermit()) {
@@ -220,7 +221,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             remainingMakingAmount = remainingMakingAmount - makingAmount;
             remainingPtr[orderHash] = remainingMakingAmount + 1;
         }
-        emit OrderFilled(order.maker.get(), orderHash, remainingMakingAmount);
+        emit OrderFilled(maker, orderHash, remainingMakingAmount);
 
         // Maker can handle funds interactively
         { // Stack too deep
@@ -228,19 +229,19 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             if (preInteraction.length >= 20) {
                 // proceed only if interaction length is enough to store address
                 IPreInteraction(address(bytes20(preInteraction))).preInteraction(
-                    orderHash, order.maker.get(), msg.sender, makingAmount, takingAmount, remainingMakingAmount, preInteraction[20:]
+                    orderHash, maker, msg.sender, makingAmount, takingAmount, remainingMakingAmount, preInteraction[20:]
                 );
             }
         }
 
         // Maker => Taker
         if (order.makerAsset.get() == address(_WETH) && input.needUnwrapWeth()) {
-            _WETH.safeTransferFrom(order.maker.get(), address(this), makingAmount);
+            _WETH.safeTransferFrom(maker, address(this), makingAmount);
             _WETH.safeWithdrawTo(makingAmount, target);
         } else {
             if (!_callTransferFrom(
                 order.makerAsset.get(),
-                order.maker.get(),
+                maker,
                 target,
                 makingAmount,
                 order.makerAssetData()
@@ -268,13 +269,13 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                 }
             }
             _WETH.safeDeposit(takingAmount);
-            _WETH.safeTransfer(order.receiver.get() == address(0) ? order.maker.get() : order.receiver.get(), takingAmount);
+            _WETH.safeTransfer(order.receiver.get() == address(0) ? maker : order.receiver.get(), takingAmount);
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
             if (!_callTransferFrom(
                 order.takerAsset.get(),
                 msg.sender,
-                order.receiver.get() == address(0) ? order.maker.get() : order.receiver.get(),
+                order.receiver.get() == address(0) ? maker : order.receiver.get(),
                 takingAmount,
                 order.takerAssetData()
             )) revert TransferFromTakerToMakerFailed();
@@ -285,7 +286,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         if (postInteraction.length >= 20) {
             // proceed only if interaction length is enough to store address
             IPostInteraction(address(bytes20(postInteraction))).postInteraction(
-                 orderHash, order.maker.get(), msg.sender, makingAmount, takingAmount, remainingMakingAmount, postInteraction[20:]
+                 orderHash, maker, msg.sender, makingAmount, takingAmount, remainingMakingAmount, postInteraction[20:]
             );
         }
     }

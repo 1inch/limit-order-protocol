@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.17;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
@@ -9,51 +10,76 @@ import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 
 import "./helpers/AmountCalculator.sol";
+import "./helpers/SeriesNonceManager.sol";
 import "./interfaces/ITakerInteraction.sol";
 import "./interfaces/IPreInteractionRFQ.sol";
 import "./interfaces/IPostInteractionRFQ.sol";
 import "./interfaces/IOrderRFQMixin.sol";
 import "./libraries/Errors.sol";
 import "./libraries/InputLib.sol";
+import "./libraries/BitInvalidatorLib.sol";
+import "./libraries/RemainingInvalidatorLib.sol";
 import "./OrderRFQLib.sol";
 
 /// @title RFQ Limit Order mixin
-abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
+abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, SeriesNonceManager {
     using SafeERC20 for IERC20;
     using SafeERC20 for IWETH;
     using OrderRFQLib for OrderRFQLib.OrderRFQ;
     using AddressLib for Address;
     using ConstraintsLib for Constraints;
     using InputLib for Input;
+    using BitInvalidatorLib for BitInvalidatorLib.Data;
+    using RemainingInvalidatorLib for RemainingInvalidator;
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
 
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
-    mapping(address => mapping(uint256 => uint256)) private _invalidator;
+    mapping(address => BitInvalidatorLib.Data) private _bitInvalidator;
+    mapping(bytes32 => RemainingInvalidator) private _remainingInvalidator;
 
     constructor(IWETH weth) OnlyWethReceiver(address(weth)) {
         _WETH = weth;
     }
 
     /**
-     * @notice See {IOrderRFQMixin-invalidatorForOrderRFQ}.
+     * @notice See {IOrderRFQMixin-bitInvalidatorForOrderRFQ}.
      */
-    function invalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256 /* result */) {
-        return _invalidator[maker][slot];
+    function bitInvalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256 /* result */) {
+        return _bitInvalidator[maker].checkSlot(slot);
+    }
+
+    /**
+     * @notice See {IOrderRFQMixin-remainingInvalidatorForOrderRFQ}.
+     */
+    function remainingInvalidatorForOrderRFQ(bytes32 orderHash) external view returns(uint256 remaining) {
+        return _remainingInvalidator[orderHash].remaining();
+    }
+
+    /**
+     * @notice See {IOrderRFQMixin-rawRemainingInvalidatorForOrderRFQ}.
+     */
+    function rawRemainingInvalidatorForOrderRFQ(bytes32 orderHash) external view returns(uint256 remainingRaw) {
+        return RemainingInvalidator.unwrap(_remainingInvalidator[orderHash]);
     }
 
     /**
      * @notice See {IOrderRFQMixin-cancelOrderRFQ}.
      */
-    function cancelOrderRFQ(uint256 nonce) external {
-        _invalidateOrder(msg.sender, nonce, 0);
+    function cancelOrderRFQ(Constraints orderConstraints, bytes32 orderHash) external {
+        if (orderConstraints.allowPartialFills() && orderConstraints.allowMultipleFills()) {
+            _remainingInvalidator[orderHash] = RemainingInvalidatorLib.invalid();
+        } else {
+            _bitInvalidator[msg.sender].massInvalidate(orderConstraints.nonce(), 0);
+        }
     }
 
     /**
-     * @notice See {IOrderRFQMixin-cancelOrderRFQ}.
+     * @notice See {IOrderRFQMixin-massCancelOrderRFQ}.
      */
-    function cancelOrderRFQ(uint256 nonce, uint256 additionalMask) external {
-        _invalidateOrder(msg.sender, nonce, additionalMask);
+    function massCancelOrderRFQ(Constraints orderConstraints, uint256 additionalMask) external {
+        if (orderConstraints.allowPartialFills() && orderConstraints.allowMultipleFills()) revert OrderIsnotSuitableForMassInvalidation();
+        _bitInvalidator[msg.sender].massInvalidate(orderConstraints.nonce(), additionalMask);
     }
 
     /**
@@ -80,8 +106,20 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         bytes calldata interaction
     ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
-        if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert RFQBadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
-        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, input, target, interaction);
+
+        // Prevalidate order depending on constraints
+        uint256 remainingMakingAmount = order.makingAmount;
+        if (order.constraints.useBitInvalidator()) {
+            if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert RFQBadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
+        } else {
+            RemainingInvalidator invalidator = _remainingInvalidator[orderHash];
+            remainingMakingAmount = invalidator.remaining();
+            if (invalidator.doesNotExist()) {
+                if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert RFQBadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
+            }
+        }
+
+        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, remainingMakingAmount, input, target, interaction);
         emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
@@ -116,14 +154,27 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
             IERC20(order.takerAsset.get()).safePermit(permit);
         }
         orderHash = order.hash(_domainSeparatorV4());
-        if (!ECDSA.isValidSignature(order.maker.get(), orderHash, signature)) revert RFQBadSignature();
-        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, input, target, interaction);
+
+        // Prevalidate order depending on constraints
+        uint256 remainingMakingAmount = order.makingAmount;
+        if (order.constraints.useBitInvalidator()) {
+            if (!ECDSA.isValidSignature(order.maker.get(), orderHash, signature)) revert RFQBadSignature();
+        } else {
+            RemainingInvalidator invalidator = _remainingInvalidator[orderHash];
+            remainingMakingAmount = invalidator.remaining();
+            if (invalidator.doesNotExist()) {
+                if (!ECDSA.isValidSignature(order.maker.get(), orderHash, signature)) revert RFQBadSignature();
+            }
+        }
+
+        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, remainingMakingAmount, input, target, interaction);
         emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
     function _fillOrderRFQTo(
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 orderHash,
+        uint256 remainingMakingAmount,
         Input input,
         address target,
         bytes calldata interaction
@@ -136,28 +187,35 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         address maker = order.maker.get();
         if (!order.constraints.isAllowedSender(msg.sender)) revert RFQPrivateOrder();
         if (order.constraints.isExpired()) revert RFQOrderExpired();
-
-        // Invalidate order by nonce bit set in storage
-        _invalidateOrder(maker, order.constraints.nonce(), 0);
+        if (order.constraints.needCheckEpochManager()) {
+            if (!nonceEquals(maker, order.constraints.series(), order.constraints.epoch())) revert RFQWrongSeriesNonce();
+        }
 
         // Compute maker and taker assets amount
         {  // Stack too deep
             uint256 amount = input.amount();
-            if (amount == 0 || !order.constraints.allowPartialFills()) {
-                makingAmount = order.makingAmount;
-                takingAmount = order.takingAmount;
-            }
-            else if (input.isMakingAmount()) {
-                makingAmount = amount;
+            if (input.isMakingAmount()) {
+                makingAmount = Math.min(amount, remainingMakingAmount);
                 takingAmount = AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, makingAmount);
-                if (makingAmount > order.makingAmount) revert MakingAmountExceeded();
             }
             else {
                 takingAmount = amount;
                 makingAmount = AmountCalculator.getMakingAmount(order.makingAmount, order.takingAmount, takingAmount);
-                if (takingAmount > order.takingAmount) revert TakingAmountExceeded();
+                if (makingAmount > remainingMakingAmount) {
+                    // Try to decrease taking amount because computed making amount exceeds remaining amount
+                    makingAmount = remainingMakingAmount;
+                    takingAmount = AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, makingAmount);
+                    if (takingAmount > amount) revert RFQTakingAmountIncreased();
+                }
             }
             if (makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
+        }
+
+        // Invalidate order depending on constraints
+        if (order.constraints.useBitInvalidator()) {
+            _bitInvalidator[maker].checkAndInvalidate(order.constraints.nonce());
+        } else {
+            _remainingInvalidator[orderHash] = RemainingInvalidatorLib.remains(remainingMakingAmount, makingAmount);
         }
 
         // Maker can handle funds interactively
@@ -234,14 +292,5 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
                 }
             }
         }
-    }
-
-    function _invalidateOrder(address maker, uint256 nonce, uint256 additionalMask) private {
-        uint256 invalidatorSlot = nonce >> 8;
-        uint256 invalidatorBits = (1 << uint8(nonce)) | additionalMask;
-        mapping(uint256 => uint256) storage invalidatorStorage = _invalidator[maker];
-        uint256 invalidator = invalidatorStorage[invalidatorSlot];
-        if (invalidator & invalidatorBits == invalidatorBits) revert InvalidatedOrder();
-        invalidatorStorage[invalidatorSlot] = invalidator | invalidatorBits;
     }
 }
