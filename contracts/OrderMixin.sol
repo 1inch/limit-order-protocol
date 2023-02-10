@@ -187,7 +187,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                 takingAmount = order.getTakingAmount(makingAmount, remainingMakingAmount, orderHash);
                 // check that actual rate is not worse than what was expected
                 // takingAmount / makingAmount <= threshold / amount
-                if (amount == makingAmount) {
+                if (amount == 0) {
+                    // Check that taker get at least threshold amount of maker asset
+                    if (makingAmount < threshold) revert MakingAmountTooLow();
+                }
+                else if (amount == makingAmount) {
                     // It's gas optimization due this check doesn't involve SafeMath
                     if (takingAmount > threshold) revert TakingAmountTooHigh();
                 }
