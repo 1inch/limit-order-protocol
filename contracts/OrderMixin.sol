@@ -212,10 +212,10 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                     if (makingAmount * amount < threshold * takingAmount) revert MakingAmountTooLow();
                 }
             }
+            if (makingAmount == 0 || takingAmount == 0) revert SwapWithZeroAmount();
         }
-        if (makingAmount == 0 || takingAmount == 0) revert SwapWithZeroAmount();
 
-        // Update remaining amount in storage
+        // Invalidate order by updating remaining amount in storage
         unchecked {
             remainingMakingAmount = remainingMakingAmount - makingAmount;
             remainingPtr[orderHash] = remainingMakingAmount + 1;

@@ -135,6 +135,8 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         // Validate order
         if (!order.constraints.isAllowedSender(msg.sender)) revert RFQPrivateOrder();
         if (order.constraints.isExpired()) revert RFQOrderExpired();
+
+        // Invalidate order by nonce bit set in storage
         _invalidateOrder(maker, order.constraints.nonce(), 0);
 
         // Compute maker and taker assets amount
@@ -148,14 +150,13 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
                 makingAmount = amount;
                 takingAmount = AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, makingAmount);
                 if (makingAmount > order.makingAmount) revert MakingAmountExceeded();
-                if (takingAmount == 0) revert RFQSwapWithZeroAmount();
             }
             else {
                 takingAmount = amount;
                 makingAmount = AmountCalculator.getMakingAmount(order.makingAmount, order.takingAmount, takingAmount);
                 if (takingAmount > order.takingAmount) revert TakingAmountExceeded();
-                if (makingAmount == 0) revert RFQSwapWithZeroAmount();
             }
+            if (makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount();
         }
 
         // Maker => Taker

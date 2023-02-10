@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 type Constraints is uint256;
 
 library ConstraintsLib {
-    uint256 private constant _SENDER_MASK = type(uint160).max;
+    uint256 private constant _ALLOWED_SENDER_MASK = type(uint160).max;
     uint256 private constant _EXPIRATION_OFFSET = 160;
     uint256 private constant _EXPIRATION_MASK = type(uint40).max;
     uint256 private constant _NONCE_OFFSET = 200;
@@ -16,7 +16,7 @@ library ConstraintsLib {
     uint256 private constant _NO_IMPROVE_RATE_FLAG = 1 << 254;
 
     function isAllowedSender(Constraints constraints, address sender) internal pure returns (bool) {
-        address allowedSender = address(uint160(Constraints.unwrap(constraints) & _SENDER_MASK));
+        address allowedSender = address(uint160(Constraints.unwrap(constraints) & _ALLOWED_SENDER_MASK));
         return allowedSender == address(0) || allowedSender == sender;
     }
 
