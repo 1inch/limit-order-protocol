@@ -19,7 +19,6 @@ library OrderLib {
         uint256 makingAmount;
         uint256 takingAmount;
         Constraints constraints;
-        Address maker;
         Address receiver;
         uint256 offsets;
         bytes interactions;
@@ -33,7 +32,6 @@ library OrderLib {
             "uint256 makingAmount,"
             "uint256 takingAmount,"
             "uint256 constraints,"
-            "address maker,"
             "address receiver,"
             "uint256 offsets,"
             "bytes interactions"
@@ -100,10 +98,10 @@ library OrderLib {
 
             // keccak256(abi.encode(_LIMIT_ORDER_TYPEHASH, orderWithoutInteractions, keccak256(order.interactions)));
             calldatacopy(ptr, interactions.offset, interactions.length)
-            mstore(add(ptr, 0x140), keccak256(ptr, interactions.length))
-            calldatacopy(add(ptr, 0x20), order, 0x120)
+            mstore(add(ptr, 0x120), keccak256(ptr, interactions.length))
+            calldatacopy(add(ptr, 0x20), order, 0x100)
             mstore(ptr, typehash)
-            result := keccak256(ptr, 0x160)
+            result := keccak256(ptr, 0x140)
         }
         result = ECDSA.toTypedDataHash(domainSeparator, result);
     }

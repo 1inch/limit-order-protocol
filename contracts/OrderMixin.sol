@@ -100,29 +100,27 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
      */
     function fillOrder(
         OrderLib.Order calldata order,
-        bytes calldata signature,
-        bytes calldata interaction,
+        bytes32 r,
+        bytes32 vs,
         Input input,
         uint256 threshold
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        return fillOrderTo(order, signature, interaction, input, threshold, msg.sender);
+        return fillOrderTo(order, r, vs, input, threshold, msg.sender, msg.data[:0]);
     }
 
+    error RefillWorksOnlyForPrefilledOrders();
+
     /**
-     * @notice See {IOrderMixin-fillOrderToWithPermit}.
+     * @notice See {IOrderMixin-refillOrder}.
      */
-    function fillOrderToWithPermit(
+    function refillOrder(
         OrderLib.Order calldata order,
-        bytes calldata signature,
-        bytes calldata interaction,
+        Address maker,
         Input input,
-        uint256 threshold,
-        address target,
-        bytes calldata permit
-    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        if (permit.length < 20) revert PermitLengthTooLow();
-        IERC20(address(bytes20(permit))).safePermit(permit[20:]);
-        return fillOrderTo(order, signature, interaction, input, threshold, target);
+        uint256 threshold
+    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+        orderHash = order.hash(_domainSeparatorV4());
+        (makingAmount, takingAmount) =  _fillOrderTo(order, orderHash, true, maker.get(), input, threshold, msg.sender, msg.data[:0]);
     }
 
     /**
@@ -130,12 +128,86 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
      */
     function fillOrderTo(
         OrderLib.Order calldata order,
-        bytes calldata signature,
-        bytes calldata interaction,
+        bytes32 r,
+        bytes32 vs,
         Input input,
         uint256 threshold,
-        address target
+        address target,
+        bytes calldata interaction
     ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+        orderHash = order.hash(_domainSeparatorV4());
+        address maker = ECDSA.recover(orderHash, r, vs);
+        if (maker == address(0)) revert BadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
+        if (!input.skipOrderPermit()) {
+            bytes calldata orderPermit = order.permit();
+            if (orderPermit.length >= 20) {
+                // proceed only if taker is willing to execute permit and its length is enough to store address
+                IERC20(address(bytes20(orderPermit))).safePermit(orderPermit[20:]);
+            }
+        }
+        (makingAmount, takingAmount) =  _fillOrderTo(order, orderHash, false, maker, input, threshold, target, interaction);
+        // TODO: consider extracting event with remainng amount
+    }
+
+    /**
+     * @notice See {IOrderMixin-fillOrderToWithPermit}.
+     */
+    function fillOrderToWithPermit(
+        OrderLib.Order calldata order,
+        bytes32 r,
+        bytes32 vs,
+        Input input,
+        uint256 threshold,
+        address target,
+        bytes calldata interaction,
+        bytes calldata permit
+    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+        IERC20(address(bytes20(permit))).safePermit(permit[20:]);
+        return fillOrderTo(order, r, vs, input, threshold, target, interaction);
+    }
+
+    /**
+     * @notice See {IOrderMixin-fillContractOrder}.
+     */
+    function fillContractOrder(
+        OrderLib.Order calldata order,
+        bytes calldata signature,
+        Address maker,
+        Input input,
+        uint256 threshold,
+        address target,
+        bytes calldata interaction,
+        bytes calldata permit
+    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+        if (permit.length > 0) {
+            IERC20(order.takerAsset.get()).safePermit(permit);
+        }
+        orderHash = order.hash(_domainSeparatorV4());
+        if (!ECDSA.isValidSignature(maker.get(), orderHash, signature)) revert BadSignature();
+        if (!input.skipOrderPermit()) {
+            bytes calldata orderPermit = order.permit();
+            if (orderPermit.length >= 20) {
+                // proceed only if taker is willing to execute permit and its length is enough to store address
+                IERC20(address(bytes20(orderPermit))).safePermit(orderPermit[20:]);
+            }
+        }
+        (makingAmount, takingAmount) = _fillOrderTo(order, orderHash, false, maker.get(), input, threshold, target, interaction);
+        // TODO: consider extracting event with remainng amount
+    }
+
+    /**
+     * @notice See {IOrderMixin-fillOrderTo}.
+     */
+    function _fillOrderTo(
+        OrderLib.Order calldata order,
+        bytes32 orderHash,
+        bool shouldBePrefilled,
+        address maker,
+        Input input,
+        uint256 threshold,
+        address target,
+        bytes calldata interaction
+    ) private returns(uint256 makingAmount, uint256 takingAmount) {
         if (target == address(0)) {
             target = msg.sender;
         }
@@ -143,26 +215,15 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         // Validate order
         if (!order.constraints.isAllowedSender(msg.sender)) revert PrivateOrder();
         if (order.constraints.isExpired()) revert OrderExpired();
-        if (!nonceEquals(order.maker.get(), order.constraints.series(), order.constraints.nonce())) revert WrongSeriesNonce();
+        if (!nonceEquals(maker, order.constraints.series(), order.constraints.nonce())) revert WrongSeriesNonce();
 
         // Check remaining amount
-        orderHash = hashOrder(order);
-        mapping(bytes32 => uint256) storage remainingPtr = _remaining[order.maker.get()];
+        mapping(bytes32 => uint256) storage remainingPtr = _remaining[maker];
         uint256 remainingMakingAmount = remainingPtr[orderHash];
         if (remainingMakingAmount == _ORDER_FILLED) revert RemainingAmountIsZero();
         if (remainingMakingAmount == _ORDER_DOES_NOT_EXIST) {
-            // First fill: validate order and permit maker asset
-            if (!ECDSA.recoverOrIsValidSignature(order.maker.get(), orderHash, signature)) revert BadSignature();
+            if (shouldBePrefilled) revert RefillWorksOnlyForPrefilledOrders();
             remainingMakingAmount = order.makingAmount;
-
-            if (!input.skipOrderPermit()) {
-                bytes calldata permit = order.permit();
-                if (permit.length >= 20) {
-                    // proceed only if taker is willing to execute permit and its length is enough to store address
-                    IERC20(address(bytes20(permit))).safePermit(permit[20:]);
-                    if (remainingPtr[orderHash] != _ORDER_DOES_NOT_EXIST) revert ReentrancyDetected();
-                }
-            }
         } else {
             unchecked { remainingMakingAmount -= 1; }
         }
@@ -220,7 +281,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             remainingMakingAmount = remainingMakingAmount - makingAmount;
             remainingPtr[orderHash] = remainingMakingAmount + 1;
         }
-        emit OrderFilled(order.maker.get(), orderHash, remainingMakingAmount);
+        emit OrderFilled(maker, orderHash, remainingMakingAmount);
 
         // Maker can handle funds interactively
         { // Stack too deep
@@ -228,19 +289,19 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             if (preInteraction.length >= 20) {
                 // proceed only if interaction length is enough to store address
                 IPreInteraction(address(bytes20(preInteraction))).preInteraction(
-                    orderHash, order.maker.get(), msg.sender, makingAmount, takingAmount, remainingMakingAmount, preInteraction[20:]
+                    orderHash, maker, msg.sender, makingAmount, takingAmount, remainingMakingAmount, preInteraction[20:]
                 );
             }
         }
 
         // Maker => Taker
         if (order.makerAsset.get() == address(_WETH) && input.needUnwrapWeth()) {
-            _WETH.safeTransferFrom(order.maker.get(), address(this), makingAmount);
+            _WETH.safeTransferFrom(maker, address(this), makingAmount);
             _WETH.safeWithdrawTo(makingAmount, target);
         } else {
             if (!_callTransferFrom(
                 order.makerAsset.get(),
-                order.maker.get(),
+                maker,
                 target,
                 makingAmount,
                 order.makerAssetData()
@@ -268,13 +329,13 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                 }
             }
             _WETH.safeDeposit(takingAmount);
-            _WETH.safeTransfer(order.receiver.get() == address(0) ? order.maker.get() : order.receiver.get(), takingAmount);
+            _WETH.safeTransfer(order.receiver.get() == address(0) ? maker : order.receiver.get(), takingAmount);
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
             if (!_callTransferFrom(
                 order.takerAsset.get(),
                 msg.sender,
-                order.receiver.get() == address(0) ? order.maker.get() : order.receiver.get(),
+                order.receiver.get() == address(0) ? maker : order.receiver.get(),
                 takingAmount,
                 order.takerAssetData()
             )) revert TransferFromTakerToMakerFailed();
@@ -285,7 +346,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         if (postInteraction.length >= 20) {
             // proceed only if interaction length is enough to store address
             IPostInteraction(address(bytes20(postInteraction))).postInteraction(
-                 orderHash, order.maker.get(), msg.sender, makingAmount, takingAmount, remainingMakingAmount, postInteraction[20:]
+                 orderHash, maker, msg.sender, makingAmount, takingAmount, remainingMakingAmount, postInteraction[20:]
             );
         }
     }

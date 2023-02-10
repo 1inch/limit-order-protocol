@@ -104,8 +104,8 @@ interface IOrderMixin {
     /**
      * @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
      * @param order Order quote to fill
-     * @param signature Signature to confirm quote ownership
-     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
+     * @param r R part of the signature
+     * @param vs V and S parts of the signature
      * @param input Fill configuration flags with amount packed in one slot
      * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @return makingAmount Actual amount transferred from maker to taker
@@ -114,10 +114,47 @@ interface IOrderMixin {
      */
     function fillOrder(
         OrderLib.Order calldata order,
-        bytes calldata signature,
-        bytes calldata interaction,
+        bytes32 r,
+        bytes32 vs,
         Input input,
         uint256 threshold
+    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
+
+    /**
+     * @notice Same as `fillOrder` but works only on prefiller orders
+     * @param order Order quote to fill
+     * @param maker Maker address
+     * @param input Fill configuration flags with amount packed in one slot
+     * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     */
+    function refillOrder(
+        OrderLib.Order calldata order,
+        Address maker,
+        Input input,
+        uint256 threshold
+    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
+
+    /**
+     * @notice Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
+     * @param order_ Order quote to fill
+     * @param r R part of the signature
+     * @param vs V and S parts of the signature
+     * @param input Fill configuration flags with amount packed in one slot
+     * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     * @param target Address that will receive swap funds
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
+     * @return makingAmount Actual amount transferred from maker to taker
+     * @return takingAmount Actual amount transferred from taker to maker
+     * @return orderHash Hash of the filled order
+     */
+    function fillOrderTo(
+        OrderLib.Order calldata order_,
+        bytes32 r,
+        bytes32 vs,
+        Input input,
+        uint256 threshold,
+        address target,
+        bytes calldata interaction
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
@@ -126,11 +163,12 @@ interface IOrderMixin {
      * Also allows to specify funds destination instead of `msg.sender`
      * @dev See tests for examples
      * @param order Order quote to fill
-     * @param signature Signature to confirm quote ownership
-     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
+     * @param r R part of the signature
+     * @param vs V and S parts of the signature
      * @param input Fill configuration flags with amount packed in one slot
      * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
@@ -138,32 +176,40 @@ interface IOrderMixin {
      */
     function fillOrderToWithPermit(
         OrderLib.Order calldata order,
-        bytes calldata signature,
-        bytes calldata interaction,
+        bytes32 r,
+        bytes32 vs,
         Input input,
         uint256 threshold,
         address target,
+        bytes calldata interaction,
         bytes calldata permit
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
-     * @notice Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
-     * @param order_ Order quote to fill
+     * @notice Same as `fillOrderTo` but calls permit first,
+     * allowing to approve token spending and make a swap in one transaction.
+     * Also allows to specify funds destination instead of `msg.sender`
+     * @dev See tests for examples
+     * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
-     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
+     * @param maker Smart contract that signed the order
      * @param input Fill configuration flags with amount packed in one slot
      * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
+     * @param permit Should consist of abiencoded token address and encoded `IERC20Permit.permit` call.
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
      */
-    function fillOrderTo(
-        OrderLib.Order calldata order_,
+    function fillContractOrder(
+        OrderLib.Order calldata order,
         bytes calldata signature,
-        bytes calldata interaction,
+        Address maker,
         Input input,
         uint256 threshold,
-        address target
-    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
+        address target,
+        bytes calldata interaction,
+        bytes calldata permit
+    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 }

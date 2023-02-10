@@ -1,6 +1,6 @@
 const { expect, trim0x } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { buildOrder, signOrder, makeMakingAmount } = require('./helpers/orderUtils');
+const { buildOrder, signOrder, makeMakingAmount, compactSignature } = require('./helpers/orderUtils');
 const { cutLastArg, ether, setn } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
@@ -64,7 +64,6 @@ describe('ChainLinkExample', function () {
                 takerAsset: dai.address,
                 makingAmount: ether('1').toString(),
                 takingAmount: ether('4000').toString(),
-                from: addr1.address,
             },
             {
                 getMakingAmount: cutLastArg(buildSinglePriceGetter(chainlink, daiOracle, false, '990000000')), // maker offset is 0.99
@@ -79,7 +78,8 @@ describe('ChainLinkExample', function () {
         const makerWeth = await weth.balanceOf(addr1.address);
         const takerWeth = await weth.balanceOf(addr.address);
 
-        await swap.fillOrder(order, signature, '0x', makeMakingAmount(ether('1')), ether('4040.01')); // taking threshold = 4000 + 1% + eps
+        const { r, vs } = compactSignature(signature);
+        await swap.fillOrder(order, r, vs, makeMakingAmount(ether('1')), ether('4040.01')); // taking threshold = 4000 + 1% + eps
 
         expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(ether('4040')));
         expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(ether('4040')));
@@ -103,7 +103,6 @@ describe('ChainLinkExample', function () {
                 takerAsset: dai.address,
                 makingAmount,
                 takingAmount,
-                from: addr1.address,
             }, {
                 getMakingAmount: '0x',
                 getTakingAmount: '0x',
@@ -117,7 +116,8 @@ describe('ChainLinkExample', function () {
         const makerInch = await inch.balanceOf(addr1.address);
         const takerInch = await inch.balanceOf(addr.address);
 
-        await swap.fillOrder(order, signature, '0x', makeMakingAmount(makingAmount), takingAmount.add(ether('0.01'))); // taking threshold = exact taker amount + eps
+        const { r, vs } = compactSignature(signature);
+        await swap.fillOrder(order, r, vs, makeMakingAmount(makingAmount), takingAmount.add(ether('0.01'))); // taking threshold = exact taker amount + eps
 
         expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(takingAmount));
         expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(takingAmount));
@@ -138,7 +138,6 @@ describe('ChainLinkExample', function () {
                 takerAsset: dai.address,
                 makingAmount,
                 takingAmount,
-                from: addr1.address,
             },
             {
                 getMakingAmount: '0x',
@@ -148,8 +147,9 @@ describe('ChainLinkExample', function () {
         );
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
+        const { r, vs } = compactSignature(signature);
         await expect(
-            swap.fillOrder(order, signature, '0x', makeMakingAmount(makingAmount), takingAmount.add(ether('0.01'))), // taking threshold = exact taker amount + eps
+            swap.fillOrder(order, r, vs, makeMakingAmount(makingAmount), takingAmount.add(ether('0.01'))), // taking threshold = exact taker amount + eps
         ).to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
     });
 
@@ -169,7 +169,6 @@ describe('ChainLinkExample', function () {
                 takerAsset: dai.address,
                 makingAmount,
                 takingAmount,
-                from: addr1.address,
             },
             {
                 getMakingAmount: '0x',
@@ -184,7 +183,8 @@ describe('ChainLinkExample', function () {
         const makerWeth = await weth.balanceOf(addr1.address);
         const takerWeth = await weth.balanceOf(addr.address);
 
-        await swap.fillOrder(order, signature, '0x', makeMakingAmount(makingAmount), takingAmount);
+        const { r, vs } = compactSignature(signature);
+        await swap.fillOrder(order, r, vs, makeMakingAmount(makingAmount), takingAmount);
 
         expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(takingAmount));
         expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(takingAmount));

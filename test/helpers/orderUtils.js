@@ -24,7 +24,6 @@ const Order = [
     { name: 'makingAmount', type: 'uint256' },
     { name: 'takingAmount', type: 'uint256' },
     { name: 'constraints', type: 'uint256' },
-    { name: 'maker', type: 'address' },
     { name: 'receiver', type: 'address' },
     { name: 'offsets', type: 'uint256' },
     { name: 'interactions', type: 'bytes' },
@@ -63,7 +62,6 @@ function buildOrder (
         takingAmount,
         constraints = '0',
         receiver = constants.ZERO_ADDRESS,
-        from: maker = constants.ZERO_ADDRESS,
     },
     {
         makerAssetData = '0x',
@@ -100,7 +98,6 @@ function buildOrder (
         salt: '1',
         makerAsset,
         takerAsset,
-        maker,
         receiver,
         constraints,
         makingAmount: makingAmount.toString(),

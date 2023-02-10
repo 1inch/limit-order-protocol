@@ -18,17 +18,21 @@ contract RecursiveMatcher is ITakerInteraction {
     function matchOrders(
         IOrderMixin orderMixin,
         OrderLib.Order calldata order,
-        bytes calldata signature,
-        bytes calldata interaction,
+        bytes32 r,
+        bytes32 vs,
         Input input,
-        uint256 thresholdAmount
+        uint256 threshold,
+        address target,
+        bytes calldata interaction
     ) external {
-        orderMixin.fillOrder(
+        orderMixin.fillOrderTo(
             order,
-            signature,
-            interaction,
+            r,
+            vs,
             input,
-            thresholdAmount
+            threshold,
+            target,
+            interaction
         );
     }
 
@@ -74,7 +78,7 @@ contract RecursiveMatcher is ITakerInteraction {
                 abi.encodePacked(
                     interactiveData[0] & _RFQ_FLAG != 0x0 ?
                         IOrderRFQMixin.fillOrderRFQTo.selector :
-                        IOrderMixin.fillOrder.selector,
+                        IOrderMixin.fillOrderTo.selector,
                     interactiveData[1:]
                 )
             );
