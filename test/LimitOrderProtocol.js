@@ -104,6 +104,23 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(swap, 'MakingAmountTooLow');
         });
 
+        it('should fail when amount is zero', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 100,
+                takingAmount: 1,
+                from: addr1.address,
+            });
+            const signature = await signOrder(order, chainId, swap.address, addr1);
+
+            await expect(
+                swap.fillOrder(order, signature, '0x', 0, 0),
+            ).to.be.revertedWithCustomError(swap, 'SwapWithZeroAmount');
+        });
+
         it('should swap fully based on signature', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 1 DAI => 1 WETH
