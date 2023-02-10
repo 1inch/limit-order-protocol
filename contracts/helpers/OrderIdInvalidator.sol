@@ -42,13 +42,9 @@ contract OrderIdInvalidator is IPreInteraction {
         uint256 /*makingAmount*/,
         uint256 /*takingAmount*/,
         uint256 /*remainingAmount*/,
-        bytes memory interactionData
+        bytes calldata interactionData
     ) external onlyLimitOrderProtocol {
-        uint32 orderId;
-        /// @solidity memory-safe-assembly
-        assembly { // solhint-disable-line no-inline-assembly
-            orderId := mload(interactionData)
-        }
+        uint32 orderId = uint32(bytes4(interactionData));
         bytes32 storedOrderHash = _ordersIdsHashes[maker][orderId];
         if (storedOrderHash == 0x0) {
             _ordersIdsHashes[maker][orderId] = orderHash;

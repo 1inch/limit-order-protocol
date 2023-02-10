@@ -97,7 +97,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver {
         address target,
         bytes calldata interaction,
         bytes calldata permit
-    ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
+    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         IERC20(order.takerAsset.get()).safePermit(permit);
         return fillOrderRFQTo(order, r, vs, input, target, interaction);
     }
