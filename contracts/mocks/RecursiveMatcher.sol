@@ -3,12 +3,12 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "../interfaces/IInteractionNotificationReceiver.sol";
+import "../interfaces/ITakerInteraction.sol";
 import "../interfaces/IOrderMixin.sol";
 import "../interfaces/IOrderRFQMixin.sol";
 import "../libraries/InputLib.sol";
 
-contract RecursiveMatcher is IInteractionNotificationReceiver {
+contract RecursiveMatcher is ITakerInteraction {
     bytes1 private constant _FINALIZE_INTERACTION = 0x01;
     bytes1 private constant _RFQ_FLAG = 0x02; // set this flag, if RFQ order is filling
 

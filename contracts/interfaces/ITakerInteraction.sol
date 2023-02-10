@@ -6,7 +6,7 @@ pragma solidity 0.8.17;
  * @title Interface for interactor which acts after `taker -> maker` transfers.
  * @notice The order filling steps are `preInteraction` =>` Transfer "maker -> taker"` => **`Interaction`** => `Transfer "taker -> maker"` => `postInteraction`
  */
-interface IInteractionNotificationReceiver {
+interface ITakerInteraction {
     /**
      * @notice Callback method that gets called after all funds transfers
      * @param taker Taker address (tx sender)
@@ -19,6 +19,6 @@ interface IInteractionNotificationReceiver {
         address taker,
         uint256 makingAmount,
         uint256 takingAmount,
-        bytes memory interactionData
+        bytes calldata interactionData
     ) external returns(uint256 offeredTakingAmount);
 }

@@ -3,11 +3,11 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces/IPreInteractionNotificationReceiver.sol";
+import "../interfaces/IPreInteraction.sol";
 import "../OrderLib.sol";
 
 
-contract HashChecker is IPreInteractionNotificationReceiver, Ownable {
+contract HashChecker is IPreInteraction, Ownable {
     using OrderLib for OrderLib.Order;
 
     error IncorrectOrderHash();
@@ -26,7 +26,7 @@ contract HashChecker is IPreInteractionNotificationReceiver, Ownable {
         hashes[orderHash] = status;
     }
 
-    function fillOrderPreInteraction(
+    function preInteraction(
         bytes32 orderHash,
         address maker,
         address taker,
@@ -38,7 +38,7 @@ contract HashChecker is IPreInteractionNotificationReceiver, Ownable {
         if (hashes[orderHash] == false) revert IncorrectOrderHash();
 
         if (nextInteractiveData.length != 0) {
-            IPreInteractionNotificationReceiver(address(bytes20(nextInteractiveData))).fillOrderPreInteraction(
+            IPreInteraction(address(bytes20(nextInteractiveData))).preInteraction(
                 orderHash, maker, taker, makingAmount, takingAmount, remainingMakerAmount, nextInteractiveData[20:]
             );
         }

@@ -105,7 +105,7 @@ interface IOrderMixin {
      * @notice Fills an order. If one doesn't exist (first fill) it will be created using order.makerAssetData
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
-     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param input Fill configuration flags with amount packed in one slot
      * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @return makingAmount Actual amount transferred from maker to taker
@@ -127,7 +127,7 @@ interface IOrderMixin {
      * @dev See tests for examples
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
-     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param input Fill configuration flags with amount packed in one slot
      * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
@@ -150,7 +150,7 @@ interface IOrderMixin {
      * @notice Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
      * @param order_ Order quote to fill
      * @param signature Signature to confirm quote ownership
-     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param input Fill configuration flags with amount packed in one slot
      * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds

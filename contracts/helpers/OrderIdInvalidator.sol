@@ -2,13 +2,13 @@
 
 pragma solidity 0.8.17;
 
-import "../interfaces/IPreInteractionNotificationReceiver.sol";
+import "../interfaces/IPreInteraction.sol";
 
 /**
  * @notice OrderIdInvalidator stores pairs (orderId, orderHash)
  * that allows to execute only one order with the same orderId
  */
-contract OrderIdInvalidator is IPreInteractionNotificationReceiver {
+contract OrderIdInvalidator is IPreInteraction {
     error AccessDenied();
     error InvalidOrderHash();
 
@@ -35,7 +35,7 @@ contract OrderIdInvalidator is IPreInteractionNotificationReceiver {
      * @param maker Order maker address.
      * @param interactionData Interaction calldata with uint256 orderId for orders replacement and validation.
      */
-    function fillOrderPreInteraction(
+    function preInteraction(
         bytes32 orderHash,
         address maker,
         address /*taker*/,

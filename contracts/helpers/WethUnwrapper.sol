@@ -5,10 +5,10 @@ pragma solidity 0.8.17;
 import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 
-import "../interfaces/IPostInteractionNotificationReceiver.sol";
+import "../interfaces/IPostInteraction.sol";
 import "../libraries/Errors.sol";
 
-contract WethUnwrapper is OnlyWethReceiver, IPostInteractionNotificationReceiver {
+contract WethUnwrapper is OnlyWethReceiver, IPostInteraction {
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
@@ -17,7 +17,7 @@ contract WethUnwrapper is OnlyWethReceiver, IPostInteractionNotificationReceiver
         _WETH = weth;
     }
 
-    function fillOrderPostInteraction(
+    function postInteraction(
         bytes32 /* orderHash */,
         address maker,
         address /* taker */,

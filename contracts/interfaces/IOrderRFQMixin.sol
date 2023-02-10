@@ -68,7 +68,7 @@ interface IOrderRFQMixin {
      * @param vs VS component of signature
      * @param input Fill configuration flags with amount packed in one slot
      * @param target Address that will receive swap funds
-     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -91,7 +91,7 @@ interface IOrderRFQMixin {
      * @param vs VS component of signature
      * @param input Fill configuration flags with amount packed in one slot
      * @param target Address that will receive swap funds
-     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
@@ -117,7 +117,7 @@ interface IOrderRFQMixin {
      * @param maker Smart contract that signed the order
      * @param input Fill configuration flags with amount packed in one slot
      * @param target Address that will receive swap funds
-     * @param interaction A call data for InteractiveNotificationReceiver. Taker may execute interaction after getting maker assets and before sending taker assets.
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
