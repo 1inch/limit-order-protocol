@@ -1,6 +1,7 @@
 const { constants, trim0x } = require('@1inch/solidity-utils');
 const { assert } = require('chai');
 const { ethers } = require('ethers');
+const { keccak256 } = require('ethers/lib/utils');
 
 const OrderRFQ = [
     { name: 'salt', type: 'uint256' },
@@ -18,55 +19,43 @@ const ABIOrderRFQ = {
     components: OrderRFQ,
 };
 
-const Order = [
-    { name: 'salt', type: 'uint256' },
-    { name: 'makerAsset', type: 'address' },
-    { name: 'takerAsset', type: 'address' },
-    { name: 'makingAmount', type: 'uint256' },
-    { name: 'takingAmount', type: 'uint256' },
-    { name: 'constraints', type: 'uint256' },
-    { name: 'maker', type: 'address' },
-    { name: 'receiver', type: 'address' },
-    { name: 'offsets', type: 'uint256' },
-    { name: 'interactions', type: 'bytes' },
-];
-
-const ABIOrder = {
-    type: 'tuple',
-    name: 'order',
-    components: Order,
-};
-
 const name = '1inch Limit Order Protocol';
 const version = '3';
 
 function buildConstraints ({
     allowedSender = constants.ZERO_ADDRESS,
+    allowMultipleFills = true,
     expiry = 0,
     nonce = 0,
     series = 0,
 } = {}) {
     assert(series >= 0 && series < 256, 'Series should be less than 256');
-    const res = '0x' +
+
+    let res = '0x' +
         BigInt(series).toString(16).padStart(2, '0') +
         BigInt(nonce).toString(16).padStart(10, '0') +
         BigInt(expiry).toString(16).padStart(10, '0') +
         BigInt(allowedSender).toString(16).padStart(40, '0');
+
     assert(res.length === 64, 'Constraints should be 64 bytes long');
+
+    if (allowMultipleFills) {
+        res = '0x' + (BigInt(res) | (1n << 254n)).toString(16).padStart(64, '0');
+    }
     return res;
 }
 
-function buildOrder (
+function buildOrderRFQ (
     {
+        maker,
         makerAsset,
         takerAsset,
         makingAmount,
         takingAmount,
         constraints = '0',
-        receiver = constants.ZERO_ADDRESS,
-        from: maker = constants.ZERO_ADDRESS,
     },
     {
+        receiver = '0x',
         makerAssetData = '0x',
         takerAssetData = '0x',
         getMakingAmount = '0x',
@@ -75,7 +64,7 @@ function buildOrder (
         permit = '0x',
         preInteraction = '0x',
         postInteraction = '0x',
-    } = {},
+    } = {}
 ) {
     const allInteractions = [
         makerAssetData,
@@ -88,7 +77,7 @@ function buildOrder (
         postInteraction,
     ];
 
-    const interactions = '0x' + allInteractions.map(trim0x).join('');
+    const allInteractionsConcat = allInteractions.map(trim0x).join('');
 
     // https://stackoverflow.com/a/55261098/440168
     const cumulativeSum = (sum => value => { sum += value; return sum; })(0);
@@ -97,44 +86,32 @@ function buildOrder (
         .map(cumulativeSum)
         .reduce((acc, a, i) => acc + (BigInt(a) << BigInt(32 * i)), 0n);
 
-    return {
-        salt: '1',
-        makerAsset,
-        takerAsset,
-        maker,
-        receiver,
-        constraints,
-        makingAmount: makingAmount.toString(),
-        takingAmount: takingAmount.toString(),
-        offsets: offsets.toString(),
-        interactions,
-    };
-}
+    let extension = '0x';
+    if (trim0x(receiver).length > 0) {
+        extension += trim0x(receiver);
+        if (allInteractionsConcat.length > 0) {
+            extension += offsets.toString(16).padStart(64, '0') + allInteractionsConcat;
+        }
+    }
+    else if (allInteractionsConcat.length > 0) {
+        extension += trim0x(constants.ZERO_ADDRESS) + offsets.toString(16).padStart(64, '0') + allInteractionsConcat;
+    }
 
-function buildOrderRFQ (
-    maker,
-    makerAsset,
-    takerAsset,
-    makingAmount,
-    takingAmount,
-    constraints = '0',
-) {
+    let salt = '1';
+    if (trim0x(extension).length > 0) {
+        salt = keccak256(extension);
+        constraints = BigInt(constraints) | (1n << 249n);
+    }
+
     return {
-        salt: '0',
+        salt,
         maker,
         makerAsset,
         takerAsset,
         makingAmount,
         takingAmount,
         constraints,
-    };
-}
-
-function buildOrderData (chainId, verifyingContract, order) {
-    return {
-        domain: { name, version, chainId, verifyingContract },
-        types: { Order },
-        value: order,
+        extension,
     };
 }
 
@@ -144,11 +121,6 @@ function buildOrderRFQData (chainId, verifyingContract, order) {
         types: { OrderRFQ },
         value: order,
     };
-}
-
-async function signOrder (order, chainId, target, wallet) {
-    const orderData = buildOrderData(chainId, target, order);
-    return await wallet._signTypedData(orderData.domain, orderData.types, orderData.value);
 }
 
 async function signOrderRFQ (order, chainId, target, wallet) {
@@ -177,14 +149,10 @@ function skipOrderPermit (amount) {
 }
 
 module.exports = {
-    ABIOrder,
     ABIOrderRFQ,
     buildConstraints,
-    buildOrder,
     buildOrderRFQ,
-    buildOrderData,
     buildOrderRFQData,
-    signOrder,
     signOrderRFQ,
     compactSignature,
     makeMakingAmount,

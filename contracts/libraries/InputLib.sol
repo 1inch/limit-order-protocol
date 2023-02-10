@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 type Input is uint256;
 
-// TODO: what about NFT tokenId?
+// TODO: what about NFT tokenId? Move flags to threshhold
 library InputLib {
     uint256 private constant _MAKER_AMOUNT_FLAG = 1 << 255;
     uint256 private constant _UNWRAP_WETH_FLAG = 1 << 254;

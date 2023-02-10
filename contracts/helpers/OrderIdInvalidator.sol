@@ -2,13 +2,15 @@
 
 pragma solidity 0.8.17;
 
-import "../interfaces/IPreInteraction.sol";
+import "../interfaces/IPreInteractionRFQ.sol";
 
 /**
  * @notice OrderIdInvalidator stores pairs (orderId, orderHash)
  * that allows to execute only one order with the same orderId
  */
-contract OrderIdInvalidator is IPreInteraction {
+contract OrderIdInvalidator is IPreInteractionRFQ {
+    using AddressLib for Address;
+
     error AccessDenied();
     error InvalidOrderHash();
 
@@ -29,25 +31,18 @@ contract OrderIdInvalidator is IPreInteraction {
         _limitOrderProtocol = limitOrderProtocol_;
     }
 
-    /**
-     * @notice Callback method that gets called before any funds transfers
-     * @param orderHash Hash of the order being processed
-     * @param maker Order maker address.
-     * @param interactionData Interaction calldata with uint256 orderId for orders replacement and validation.
-     */
-    function preInteraction(
+    function preInteractionRFQ(
+        OrderRFQLib.OrderRFQ calldata order,
         bytes32 orderHash,
-        address maker,
-        address /*taker*/,
-        uint256 /*makingAmount*/,
-        uint256 /*takingAmount*/,
-        uint256 /*remainingAmount*/,
-        bytes calldata interactionData
+        address /* taker */,
+        uint256 /* makingAmount */,
+        uint256 /* takingAmount */,
+        bytes calldata extraData
     ) external onlyLimitOrderProtocol {
-        uint32 orderId = uint32(bytes4(interactionData));
-        bytes32 storedOrderHash = _ordersIdsHashes[maker][orderId];
+        uint32 orderId = uint32(bytes4(extraData));
+        bytes32 storedOrderHash = _ordersIdsHashes[order.maker.get()][orderId];
         if (storedOrderHash == 0x0) {
-            _ordersIdsHashes[maker][orderId] = orderHash;
+            _ordersIdsHashes[order.maker.get()][orderId] = orderHash;
         } else if (storedOrderHash != orderHash) {
             revert InvalidOrderHash();
         }

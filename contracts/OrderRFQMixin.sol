@@ -112,6 +112,20 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
     }
 
     /**
+     * @notice See {IOrderRFQMixin-fillOrderRFQ}.
+     */
+    function fillOrderRFQExt(
+        OrderRFQLib.OrderRFQ calldata order,
+        bytes32 r,
+        bytes32 vs,
+        Input input,
+        uint256 threshold,
+        bytes calldata extension
+    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+        return fillOrderRFQToExt(order, r, vs, input, threshold, msg.sender, msg.data[:0], extension);
+    }
+
+    /**
      * @notice See {IOrderRFQMixin-fillOrderRFQTo}.
      */
     function fillOrderRFQTo(
@@ -123,16 +137,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
         address target,
         bytes calldata interaction
     ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        return fillOrderRFQToExt(
-            order,
-            r,
-            vs,
-            input,
-            threshold,
-            target,
-            interaction,
-            msg.data[:0]
-        );
+        return fillOrderRFQToExt(order, r, vs, input, threshold, target, interaction, msg.data[:0]);
     }
 
     function fillOrderRFQToExt(
@@ -154,7 +159,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
             _applyOrderPermitIfNeeded(order, orderHash, input.skipOrderPermit(), extension);
         }
 
-        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, extension, remainingMakingAmount, input, threshold, target, interaction);
+        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, extension, remainingMakingAmount, input, threshold, target, _wrap(interaction));
     }
 
     /**
@@ -186,16 +191,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
         bytes calldata interaction,
         bytes calldata permit
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        return fillContractOrderRFQExt(
-            order,
-            signature,
-            input,
-            threshold,
-            target,
-            interaction,
-            permit,
-            msg.data[:0]
-        );
+        return fillContractOrderRFQExt(order, signature, input, threshold, target, interaction, permit, msg.data[:0]);
     }
 
     function fillContractOrderRFQExt(
@@ -220,14 +216,8 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
             _applyOrderPermitIfNeeded(order, orderHash, input.skipOrderPermit(), extension);
         }
 
-        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, extension, remainingMakingAmount, input, threshold, target, interaction);
+        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, extension, remainingMakingAmount, input, threshold, target, _wrap(interaction));
     }
-
-    error RFQPredicateIsNotTrue();
-    error RFQTakingAmountTooHigh();
-    error RFQMakingAmountTooLow();
-    error RFQTransferFromMakerToTakerFailed();
-    error RFQTransferFromTakerToMakerFailed();
 
     function _fillOrderRFQTo(
         OrderRFQLib.OrderRFQ calldata order,
@@ -237,13 +227,11 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
         Input input,
         uint256 threshold,
         address target,
-        bytes calldata interaction
+        WrappedCalldata interactionWrapped // Stack too deep
     ) private returns(uint256 makingAmount, uint256 takingAmount) {
         if (target == address(0)) {
             target = msg.sender;
         }
-
-        address receiver = extension.getReceiver();
 
         // Validate order
         if (!order.constraints.isAllowedSender(msg.sender)) revert RFQPrivateOrder();
@@ -257,6 +245,11 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
             bytes calldata predicate = extension.predicate();
             if (predicate.length > 0) {
                 if (!checkPredicateRFQ(predicate)) revert RFQPredicateIsNotTrue();
+            }
+        } else {
+            assembly {
+                extension.offset := calldatasize()
+                extension.length := 0
             }
         }
 
@@ -306,34 +299,34 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
         }
 
         // Pre interaction, where maker can prepare funds interactively
-        if (order.constraints.needPreInteractionCall()) {
-            address preInteractionTarget = order.maker.get();
-            bytes calldata preInteractionData = msg.data[:0];
-            if (order.constraints.hasExtension()) {
+        {  // Stack too deep
+            bytes calldata preInteractionData = extension.preInteraction();
+            if (order.constraints.needPreInteractionCall() || preInteractionData.length >= 20) {
+                address preInteractionTarget = order.maker.get();
                 preInteractionData = extension.preInteraction();
-                if (preInteractionData.length > 20) {
+                if (preInteractionData.length >= 20) {
                     preInteractionTarget = address(bytes20(preInteractionData));
                     preInteractionData = preInteractionData[20:];
                 }
+                IPreInteractionRFQ(preInteractionTarget).preInteractionRFQ(
+                    order, orderHash, msg.sender, makingAmount, takingAmount, preInteractionData
+                );
+                // bytes4 selector = IPreInteractionRFQ.preInteractionRFQ.selector;
+                /// @solidity memory-safe-assembly
+                // assembly { // solhint-disable-line no-inline-assembly
+                //     let ptr := mload(0x40)
+                //     mstore(ptr, selector)
+                //     calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
+                //     mstore(add(ptr, 0xe4), orderHash)
+                //     mstore(add(ptr, 0x104), caller())
+                //     mstore(add(ptr, 0x124), makingAmount)
+                //     mstore(add(ptr, 0x144), takingAmount)
+                //     if iszero(call(gas(), shr(96, calldataload(extension)), 0, ptr, 0x164, 0, 0)) {
+                //         returndatacopy(ptr, 0, returndatasize())
+                //         revert(ptr, returndatasize())
+                //     }
+                // }
             }
-            IPreInteractionRFQ(preInteractionTarget).preInteractionRFQ(
-                order, orderHash, msg.sender, makingAmount, takingAmount, preInteractionData
-            );
-            // bytes4 selector = IPreInteractionRFQ.preInteractionRFQ.selector;
-            /// @solidity memory-safe-assembly
-            // assembly { // solhint-disable-line no-inline-assembly
-            //     let ptr := mload(0x40)
-            //     mstore(ptr, selector)
-            //     calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
-            //     mstore(add(ptr, 0xe4), orderHash)
-            //     mstore(add(ptr, 0x104), caller())
-            //     mstore(add(ptr, 0x124), makingAmount)
-            //     mstore(add(ptr, 0x144), takingAmount)
-            //     if iszero(call(gas(), receiver, 0, ptr, 0x164, 0, 0)) {
-            //         returndatacopy(ptr, 0, returndatasize())
-            //         revert(ptr, returndatasize())
-            //     }
-            // }
         }
 
         // Maker => Taker
@@ -355,13 +348,16 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
             }
         }
 
-        if (interaction.length >= 20) {
-            // proceed only if interaction length is enough to store address
-            uint256 offeredTakingAmount = ITakerInteraction(address(bytes20(interaction))).fillOrderInteraction(
-                msg.sender, makingAmount, takingAmount, interaction[20:]
-            );
-            if (offeredTakingAmount > takingAmount && order.constraints.allowImproveRateViaInteraction()) {
-                takingAmount = offeredTakingAmount;
+        {  // Stack too deep
+            bytes calldata interaction = _unwrap(interactionWrapped);
+            if (interaction.length >= 20) {
+                // proceed only if interaction length is enough to store address
+                uint256 offeredTakingAmount = ITakerInteraction(address(bytes20(interaction))).fillOrderInteraction(
+                    msg.sender, makingAmount, takingAmount, interaction[20:]
+                );
+                if (offeredTakingAmount > takingAmount && order.constraints.allowImproveRateViaInteraction()) {
+                    takingAmount = offeredTakingAmount;
+                }
             }
         }
 
@@ -376,7 +372,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
                 }
             }
             _WETH.safeDeposit(takingAmount);
-            _WETH.safeTransfer(receiver, takingAmount);
+            _WETH.safeTransfer(extension.getReceiver(order), takingAmount);
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
             bytes calldata takerAssetData = extension.takerAssetData();
@@ -384,44 +380,44 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
                 if (!_callTransferFromWithSuffix(
                     order.takerAsset.get(),
                     msg.sender,
-                    receiver,
+                    extension.getReceiver(order),
                     takingAmount,
                     takerAssetData
                 )) revert RFQTransferFromTakerToMakerFailed();
             } else {
-                IERC20(order.takerAsset.get()).safeTransferFrom(msg.sender, receiver, takingAmount);
+                IERC20(order.takerAsset.get()).safeTransferFrom(msg.sender, extension.getReceiver(order), takingAmount);
             }
         }
 
         // Post interaction, where maker can handle funds interactively
-        if (order.constraints.needPostInteractionCall()) {
-            address postInteractionTarget = order.maker.get();
-            bytes calldata postInteractionData = extension.preInteraction();
-            if (order.constraints.hasExtension()) {
+        {
+            bytes calldata postInteractionData = extension.postInteraction();
+            if (order.constraints.needPostInteractionCall() || postInteractionData.length >= 20) {
+                address postInteractionTarget = order.maker.get();
                 postInteractionData = extension.preInteraction();
-                if (postInteractionData.length > 20) {
+                if (postInteractionData.length >= 20) {
                     postInteractionTarget = address(bytes20(postInteractionData));
                     postInteractionData = postInteractionData[20:];
                 }
+                IPostInteractionRFQ(postInteractionTarget).postInteractionRFQ(
+                    order, orderHash, msg.sender, makingAmount, takingAmount, postInteractionData
+                );
+                // bytes4 selector = IPostInteractionRFQ.postInteractionRFQ.selector;
+                // /// @solidity memory-safe-assembly
+                // assembly { // solhint-disable-line no-inline-assembly
+                //     let ptr := mload(0x40)
+                //     mstore(ptr, selector)
+                //     calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
+                //     mstore(add(ptr, 0xe4), orderHash)
+                //     mstore(add(ptr, 0x104), caller())
+                //     mstore(add(ptr, 0x124), makingAmount)
+                //     mstore(add(ptr, 0x144), takingAmount)
+                //     if iszero(call(gas(), shr(96, calldataload(extension)), 0, ptr, 0x164, 0, 0)) {
+                //         returndatacopy(ptr, 0, returndatasize())
+                //         revert(ptr, returndatasize())
+                //     }
+                // }
             }
-            IPostInteractionRFQ(postInteractionTarget).postInteractionRFQ(
-                order, orderHash, msg.sender, makingAmount, takingAmount, postInteractionData
-            );
-            // bytes4 selector = IPostInteractionRFQ.postInteractionRFQ.selector;
-            // /// @solidity memory-safe-assembly
-            // assembly { // solhint-disable-line no-inline-assembly
-            //     let ptr := mload(0x40)
-            //     mstore(ptr, selector)
-            //     calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
-            //     mstore(add(ptr, 0xe4), orderHash)
-            //     mstore(add(ptr, 0x104), caller())
-            //     mstore(add(ptr, 0x124), makingAmount)
-            //     mstore(add(ptr, 0x144), takingAmount)
-            //     if iszero(call(gas(), receiver, 0, ptr, 0x164, 0, 0)) {
-            //         returndatacopy(ptr, 0, returndatasize())
-            //         revert(ptr, returndatasize())
-            //     }
-            // }
         }
 
         emit OrderFilledRFQ(orderHash, makingAmount);
@@ -469,6 +465,23 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
             calldatacopy(add(data, 0x64), suffix.offset, suffix.length)
             let status := call(gas(), asset, 0, data, add(0x64, suffix.length), 0x0, 0x20)
             success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
+        }
+    }
+
+    type WrappedCalldata is uint256;
+
+    function _wrap(bytes calldata cd) private pure returns(WrappedCalldata wrapped) {
+        /// @solidity memory-safe-assembly
+        assembly {  // solhint-disable-line no-inline-assembly
+            wrapped := or(shl(128, cd.offset), cd.length)
+        }
+    }
+
+    function _unwrap(WrappedCalldata wrapped) private pure returns(bytes calldata cd) {
+        /// @solidity memory-safe-assembly
+        assembly {  // solhint-disable-line no-inline-assembly
+            cd.offset := shr(128, wrapped)
+            cd.length := and(wrapped, 0xffffffffffffffffffffffffffffffff)
         }
     }
 }

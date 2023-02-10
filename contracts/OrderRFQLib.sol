@@ -9,6 +9,8 @@ import "./libraries/ConstraintsLib.sol";
 import "./helpers/AmountCalculator.sol";
 
 library OrderRFQLib {
+    using AddressLib for Address;
+
     error RFQWrongGetter();
     error RFQGetAmountCallFailed();
 
@@ -107,8 +109,14 @@ library OrderRFQLib {
         return (uint256(keccak256(extension)) & type(uint160).max) == (order.salt & type(uint160).max) && extension.length >= 20;
     }
 
-    function getReceiver(bytes calldata extension) internal pure returns(address receiver) {
-        return address(bytes20(extension));
+    function getReceiver(bytes calldata extension, OrderRFQ calldata order) internal pure returns(address receiver) {
+        if (extension.length < 20) {
+            return order.maker.get();
+        }
+        receiver = address(bytes20(extension));
+        if (receiver == address(0)) {
+            receiver = order.maker.get();
+        }
     }
 
     function makerAssetData(bytes calldata extension) internal pure returns(bytes calldata) {
@@ -143,7 +151,7 @@ library OrderRFQLib {
         return _get(extension, DynamicField.PostInteraction);
     }
 
-    function _get(bytes calldata extension, DynamicField field) private pure returns(bytes calldata res) {
+    function _get(bytes calldata extension, DynamicField field) private pure returns(bytes calldata) {
         if (extension.length < 52) return msg.data[:0];
         uint256 offsets;
         /// @solidity memory-safe-assembly
@@ -151,9 +159,11 @@ library OrderRFQLib {
             offsets := calldataload(add(extension.offset, 20))
         }
         uint256 bitShift = uint256(field) << 5; // field * 32
-        return extension[
-            uint32((offsets << 32) >> bitShift):
-            uint32(offsets >> bitShift)
-        ];
+        unchecked {
+            return extension[
+                uint32((offsets << 32) >> bitShift) + 52:
+                uint32(offsets >> bitShift) + 52
+            ];
+        }
     }
 }

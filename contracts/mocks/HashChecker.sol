@@ -3,12 +3,12 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces/IPreInteraction.sol";
-import "../OrderLib.sol";
+import "../interfaces/IPreInteractionRFQ.sol";
+import "../OrderRFQLib.sol";
 
 
-contract HashChecker is IPreInteraction, Ownable {
-    using OrderLib for OrderLib.Order;
+contract HashChecker is IPreInteractionRFQ, Ownable {
+    using OrderRFQLib for OrderRFQLib.OrderRFQ;
 
     error IncorrectOrderHash();
 
@@ -21,25 +21,29 @@ contract HashChecker is IPreInteraction, Ownable {
         limitOrderProtocolDomainSeparator = abi.decode(data, (bytes32));
     }
 
-    function setHashOrderStatus(OrderLib.Order calldata order, bool status) external onlyOwner {
+    function setHashOrderStatus(OrderRFQLib.OrderRFQ calldata order, bool status) external onlyOwner {
         bytes32 orderHash = order.hash(limitOrderProtocolDomainSeparator);
         hashes[orderHash] = status;
     }
 
-    function preInteraction(
+    function preInteractionRFQ(
+        OrderRFQLib.OrderRFQ calldata order,
         bytes32 orderHash,
-        address maker,
         address taker,
         uint256 makingAmount,
         uint256 takingAmount,
-        uint256 remainingMakerAmount,
-        bytes calldata nextInteractiveData
+        bytes calldata extraData
     ) external override {
         if (hashes[orderHash] == false) revert IncorrectOrderHash();
 
-        if (nextInteractiveData.length != 0) {
-            IPreInteraction(address(bytes20(nextInteractiveData))).preInteraction(
-                orderHash, maker, taker, makingAmount, takingAmount, remainingMakerAmount, nextInteractiveData[20:]
+        if (extraData.length != 0) {
+            IPreInteractionRFQ(address(bytes20(extraData))).preInteractionRFQ(
+                order,
+                orderHash,
+                taker,
+                makingAmount,
+                takingAmount,
+                extraData[20:]
             );
         }
     }

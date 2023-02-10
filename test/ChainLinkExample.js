@@ -1,6 +1,6 @@
 const { expect, trim0x } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { buildOrder, signOrder, makeMakingAmount } = require('./helpers/orderUtils');
+const { buildOrder, signOrder, makeMakingAmount, compactSignature, signOrderRFQ, buildOrderRFQ } = require('./helpers/orderUtils');
 const { cutLastArg, ether, setn } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
@@ -58,13 +58,13 @@ describe('ChainLinkExample', function () {
         const { dai, weth, swap, chainId, chainlink, daiOracle } = await loadFixture(deployContractsAndInit);
 
         // chainlink rate is 1 eth = 4000 dai
-        const order = buildOrder(
+        const order = buildOrderRFQ(
             {
                 makerAsset: weth.address,
                 takerAsset: dai.address,
                 makingAmount: ether('1').toString(),
                 takingAmount: ether('4000').toString(),
-                from: addr1.address,
+                maker: addr1.address,
             },
             {
                 getMakingAmount: cutLastArg(buildSinglePriceGetter(chainlink, daiOracle, false, '990000000')), // maker offset is 0.99
@@ -72,14 +72,15 @@ describe('ChainLinkExample', function () {
             },
         );
 
-        const signature = await signOrder(order, chainId, swap.address, addr1);
+        const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
         const makerDai = await dai.balanceOf(addr1.address);
         const takerDai = await dai.balanceOf(addr.address);
         const makerWeth = await weth.balanceOf(addr1.address);
         const takerWeth = await weth.balanceOf(addr.address);
 
-        await swap.fillOrder(order, signature, '0x', makeMakingAmount(ether('1')), ether('4040.01')); // taking threshold = 4000 + 1% + eps
+        const { r, vs } = compactSignature(signature);
+        await swap.fillOrderRFQExt(order, r, vs, makeMakingAmount(ether('1')), ether('4040.01'), order.extension); // taking threshold = 4000 + 1% + eps
 
         expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(ether('4040')));
         expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(ether('4040')));
@@ -97,27 +98,28 @@ describe('ChainLinkExample', function () {
             chainlink.interface.encodeFunctionData('doublePrice', [inchOracle.address, daiOracle.address, buildInverseWithSpread(false, '1000000000'), '0', ether('1')]),
         ]);
 
-        const order = buildOrder(
+        const order = buildOrderRFQ(
             {
                 makerAsset: inch.address,
                 takerAsset: dai.address,
                 makingAmount,
                 takingAmount,
-                from: addr1.address,
+                maker: addr1.address,
             }, {
                 getMakingAmount: '0x',
                 getTakingAmount: '0x',
                 predicate: swap.interface.encodeFunctionData('lt', [ether('6.32'), priceCall]),
             },
         );
-        const signature = await signOrder(order, chainId, swap.address, addr1);
+        const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
         const makerDai = await dai.balanceOf(addr1.address);
         const takerDai = await dai.balanceOf(addr.address);
         const makerInch = await inch.balanceOf(addr1.address);
         const takerInch = await inch.balanceOf(addr.address);
 
-        await swap.fillOrder(order, signature, '0x', makeMakingAmount(makingAmount), takingAmount.add(ether('0.01'))); // taking threshold = exact taker amount + eps
+        const { r, vs } = compactSignature(signature);
+        await swap.fillOrderRFQExt(order, r, vs, makeMakingAmount(makingAmount), takingAmount.add(ether('0.01')), order.extension); // taking threshold = exact taker amount + eps
 
         expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(takingAmount));
         expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(takingAmount));
@@ -132,13 +134,13 @@ describe('ChainLinkExample', function () {
         const takingAmount = ether('631');
         const priceCall = buildDoublePriceGetter(chainlink, inchOracle, daiOracle, '1000000000', ether('1'));
 
-        const order = buildOrder(
+        const order = buildOrderRFQ(
             {
                 makerAsset: inch.address,
                 takerAsset: dai.address,
                 makingAmount,
                 takingAmount,
-                from: addr1.address,
+                maker: addr1.address,
             },
             {
                 getMakingAmount: '0x',
@@ -146,11 +148,12 @@ describe('ChainLinkExample', function () {
                 predicate: swap.interface.encodeFunctionData('lt', [ether('6.31'), priceCall]),
             },
         );
-        const signature = await signOrder(order, chainId, swap.address, addr1);
+        const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
+        const { r, vs } = compactSignature(signature);
         await expect(
-            swap.fillOrder(order, signature, '0x', makeMakingAmount(makingAmount), takingAmount.add(ether('0.01'))), // taking threshold = exact taker amount + eps
-        ).to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
+            swap.fillOrderRFQExt(order, r, vs, makeMakingAmount(makingAmount), takingAmount.add(ether('0.01')), order.extension), // taking threshold = exact taker amount + eps
+        ).to.be.revertedWithCustomError(swap, 'RFQPredicateIsNotTrue');
     });
 
     it('eth -> dai stop loss order', async function () {
@@ -163,13 +166,13 @@ describe('ChainLinkExample', function () {
             daiOracle.interface.encodeFunctionData('latestAnswer'),
         ]);
 
-        const order = buildOrder(
+        const order = buildOrderRFQ(
             {
                 makerAsset: weth.address,
                 takerAsset: dai.address,
                 makingAmount,
                 takingAmount,
-                from: addr1.address,
+                maker: addr1.address,
             },
             {
                 getMakingAmount: '0x',
@@ -177,14 +180,15 @@ describe('ChainLinkExample', function () {
                 predicate: swap.interface.encodeFunctionData('lt', [ether('0.0002501'), latestAnswerCall]),
             },
         );
-        const signature = await signOrder(order, chainId, swap.address, addr1);
+        const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
         const makerDai = await dai.balanceOf(addr1.address);
         const takerDai = await dai.balanceOf(addr.address);
         const makerWeth = await weth.balanceOf(addr1.address);
         const takerWeth = await weth.balanceOf(addr.address);
 
-        await swap.fillOrder(order, signature, '0x', makeMakingAmount(makingAmount), takingAmount);
+        const { r, vs } = compactSignature(signature);
+        await swap.fillOrderRFQExt(order, r, vs, makeMakingAmount(makingAmount), takingAmount, order.extension);
 
         expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(takingAmount));
         expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(takingAmount));

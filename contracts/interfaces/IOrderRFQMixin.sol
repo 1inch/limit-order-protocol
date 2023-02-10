@@ -19,6 +19,11 @@ interface IOrderRFQMixin {
     error OrderIsnotSuitableForMassInvalidation();
     error RFQExtensionInvalid();
     error RFQReentrancyDetected();
+    error RFQPredicateIsNotTrue();
+    error RFQTakingAmountTooHigh();
+    error RFQMakingAmountTooLow();
+    error RFQTransferFromMakerToTakerFailed();
+    error RFQTransferFromTakerToMakerFailed();
 
     /**
      * @notice Emitted when RFQ gets filled
