@@ -40,7 +40,14 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
 
             for (const nonce of [1, 2]) {
-                const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 1, 1, buildConstraints({ nonce }));
+                const order = buildOrderRFQ({
+                    maker: addr1.address,
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    constraints: buildConstraints({ nonce }),
+                });
                 const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
                 const makerDai = await dai.balanceOf(addr1.address);
@@ -49,7 +56,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const takerWeth = await weth.balanceOf(addr.address);
 
                 const { r, vs } = compactSignature(signature);
-                const receipt = await swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1));
+                const receipt = await swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1), 1);
 
                 expect(
                     await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
@@ -69,7 +76,14 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
         describe('fillOrderRFQToWithPermit', function () {
             it('DAI => WETH', async function () {
                 const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-                const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 1, 1, buildConstraints({ nonce: 1 }));
+                const order = buildOrderRFQ({
+                    maker: addr1.address,
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    constraints: buildConstraints({ nonce: 1 }),
+                });
                 const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
@@ -80,7 +94,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const takerWeth = await weth.balanceOf(addr.address);
 
                 const { r, vs } = compactSignature(signature);
-                await swap.fillOrderRFQToWithPermit(order, r, vs, makeMakingAmount(1), addr.address, emptyInteraction, permit);
+                await swap.fillOrderRFQToWithPermit(order, r, vs, makeMakingAmount(1), 1, addr.address, emptyInteraction, permit);
 
                 expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
                 expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -90,36 +104,57 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
             it('rejects reused signature', async function () {
                 const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-                const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 1, 1, buildConstraints({ nonce: 1 }));
+                const order = buildOrderRFQ({
+                    maker: addr1.address,
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    constraints: buildConstraints({ nonce: 1 }),
+                });
                 const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
                 const { r, vs } = compactSignature(signature);
-                const requestFunc = () => swap.fillOrderRFQToWithPermit(order, r, vs, 1, addr.address, emptyInteraction, permit);
+                const requestFunc = () => swap.fillOrderRFQToWithPermit(order, r, vs, 1, 1, addr.address, emptyInteraction, permit);
                 await requestFunc();
                 await expect(requestFunc()).to.be.revertedWith('ERC20Permit: invalid signature');
             });
 
             it('rejects other signature', async function () {
                 const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-                const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 1, 1, buildConstraints({ nonce: 1 }));
+                const order = buildOrderRFQ({
+                    maker: addr1.address,
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    constraints: buildConstraints({ nonce: 1 }),
+                });
                 const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
                 const permit = await getPermit(addr.address, addr2, weth, '1', chainId, swap.address, '1');
                 const { r, vs } = compactSignature(signature);
-                const requestFunc = () => swap.fillOrderRFQToWithPermit(order, r, vs, 1, addr.address, emptyInteraction, permit);
+                const requestFunc = () => swap.fillOrderRFQToWithPermit(order, r, vs, 1, 1, addr.address, emptyInteraction, permit);
                 await expect(requestFunc()).to.be.revertedWith('ERC20Permit: invalid signature');
             });
 
             it('rejects expired permit', async function () {
                 const deadline = (await time.latest()) - time.duration.weeks(1);
                 const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-                const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 1, 1, buildConstraints({ nonce: 1 }));
+                const order = buildOrderRFQ({
+                    maker: addr1.address,
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    constraints: buildConstraints({ nonce: 1 }),
+                });
                 const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
                 const permit = await getPermit(addr.address, addr1, weth, '1', chainId, swap.address, '1', deadline);
                 const { r, vs } = compactSignature(signature);
-                const requestFunc = () => swap.fillOrderRFQToWithPermit(order, r, vs, 1, addr.address, emptyInteraction, permit);
+                const requestFunc = () => swap.fillOrderRFQToWithPermit(order, r, vs, 1, 1, addr.address, emptyInteraction, permit);
                 await expect(requestFunc()).to.be.revertedWith('ERC20Permit: expired deadline');
             });
         });
@@ -128,7 +163,14 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
     describe('OrderRFQ Cancelation', function () {
         it('should cancel own order', async function () {
             const { swap, dai, weth, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 1, 1, buildConstraints({ nonce: 1 }));
+            const order = buildOrderRFQ({
+                maker: addr1.address,
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 1,
+                takingAmount: 1,
+                constraints: buildConstraints({ nonce: 1 }),
+            });
             const data = buildOrderRFQData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
 
@@ -139,7 +181,14 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
         it('should cancel own order with huge number', async function () {
             const { swap, dai, weth, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 1, 1, buildConstraints({ nonce: 1023 }));
+            const order = buildOrderRFQ({
+                maker: addr1.address,
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 1,
+                takingAmount: 1,
+                constraints: buildConstraints({ nonce: 1023 }),
+            });
             const data = buildOrderRFQData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
 
@@ -150,7 +199,14 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
         it('should not fill cancelled order', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 1, 1, buildConstraints({ nonce: 1 }));
+            const order = buildOrderRFQ({
+                maker: addr1.address,
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 1,
+                takingAmount: 1,
+                constraints: buildConstraints({ nonce: 1 }),
+            });
             const data = buildOrderRFQData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
 
@@ -159,7 +215,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
             const { r, vs } = compactSignature(signature);
             await expect(
-                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1)),
+                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1), 1),
             ).to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
         });
     });
@@ -167,7 +223,14 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
     describe('Expiration', function () {
         it('should fill RFQ order when not expired', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 1, 1, buildConstraints({ nonce: 1 }));
+            const order = buildOrderRFQ({
+                maker: addr1.address,
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 1,
+                takingAmount: 1,
+                constraints: buildConstraints({ nonce: 1 }),
+            });
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -176,7 +239,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerWeth = await weth.balanceOf(addr.address);
 
             const { r, vs } = compactSignature(signature);
-            await swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1));
+            await swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1), 1);
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -186,7 +249,14 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
         it('should partial fill RFQ order', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 2, 2, buildConstraints({ nonce: 1 }));
+            const order = buildOrderRFQ({
+                maker: addr1.address,
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 2,
+                takingAmount: 2,
+                constraints: buildConstraints({ nonce: 1 }),
+            });
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -195,7 +265,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerWeth = await weth.balanceOf(addr.address);
 
             const { r, vs } = compactSignature(signature);
-            await swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1));
+            await swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1), 1);
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -205,7 +275,14 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
         it('should fully fill RFQ order', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 1, 1, buildConstraints({ nonce: 1 }));
+            const order = buildOrderRFQ({
+                maker: addr1.address,
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 1,
+                takingAmount: 1,
+                constraints: buildConstraints({ nonce: 1 }),
+            });
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -214,7 +291,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerWeth = await weth.balanceOf(addr.address);
 
             const { r, vs } = compactSignature(signature);
-            await swap.fillOrderRFQ(order, r, vs, 1);
+            await swap.fillOrderRFQ(order, r, vs, 1, 1);
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -224,23 +301,37 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
         it('should not partial fill RFQ order when 0', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 5, 10, buildConstraints({ nonce: 1 }));
+            const order = buildOrderRFQ({
+                maker: addr1.address,
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 5,
+                takingAmount: 10,
+                constraints: buildConstraints({ nonce: 1 }),
+            });
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
             await expect(
-                swap.fillOrderRFQ(order, r, vs, 1),
+                swap.fillOrderRFQ(order, r, vs, 1, 0),
             ).to.be.revertedWithCustomError(swap, 'RFQSwapWithZeroAmount');
         });
 
         it('should not fill RFQ order when expired', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 1, 1, buildConstraints({ expiry: await time.latest() }));
+            const order = buildOrderRFQ({
+                maker: addr1.address,
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 1,
+                takingAmount: 1,
+                constraints: buildConstraints({ expiry: await time.latest() }),
+            });
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
             await expect(
-                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1)),
+                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1), 1),
             ).to.be.revertedWithCustomError(swap, 'RFQOrderExpired');
         });
     });
@@ -248,7 +339,15 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
     describe('ETH fill', function () {
         it('should fill with ETH', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 900, 3, buildConstraints({ nonce: 1 }));
+            const order = buildOrderRFQ({
+                maker: addr1.address,
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 900,
+                takingAmount: 3,
+                constraints: buildConstraints({ nonce: 1 }),
+            });
+
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -257,7 +356,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerWeth = await weth.balanceOf(addr.address);
 
             const { r, vs } = compactSignature(signature);
-            await swap.fillOrderRFQ(order, r, vs, 3, { value: 3 });
+            await swap.fillOrderRFQ(order, r, vs, 3, 900, { value: 3 });
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(900));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(900));
@@ -267,7 +366,14 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
         it('should receive ETH after fill', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ(addr1.address, weth.address, dai.address, 3, 900, buildConstraints({ nonce: 1 }));
+            const order = buildOrderRFQ({
+                maker: addr1.address,
+                makerAsset: weth.address,
+                takerAsset: dai.address,
+                makingAmount: 3,
+                takingAmount: 900,
+                constraints: buildConstraints({ nonce: 1 }),
+            });
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -276,7 +382,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerWeth = await weth.balanceOf(addr.address);
 
             const { r, vs } = compactSignature(signature);
-            await swap.fillOrderRFQ(order, r, vs, makeUnwrapWeth(makeMakingAmount(3)));
+            await swap.fillOrderRFQ(order, r, vs, makeUnwrapWeth(makeMakingAmount(3)), 900);
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(900));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(900));
@@ -286,22 +392,36 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
         it('should revert if taker provided insufficient ETH', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 900, 3, buildConstraints({ nonce: 1 }));
+            const order = buildOrderRFQ({
+                maker: addr1.address,
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 900,
+                takingAmount: 3,
+                constraints: buildConstraints({ nonce: 1 }),
+            });
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
             await expect(
-                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(900), { value: 2 }),
+                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(900), 3, { value: 2 }),
             ).to.be.revertedWithCustomError(swap, 'InvalidMsgValue');
         });
 
         it('should refund taker with exceeding ETH', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
-            const order = buildOrderRFQ(addr1.address, dai.address, weth.address, 900, 3, buildConstraints({ nonce: 1 }));
+            const order = buildOrderRFQ({
+                maker: addr1.address,
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 900,
+                takingAmount: 3,
+                constraints: buildConstraints({ nonce: 1 }),
+            });
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
-            const promise = () => swap.fillOrderRFQ(order, r, vs, makeMakingAmount(900), { value: 4 });
+            const promise = () => swap.fillOrderRFQ(order, r, vs, makeMakingAmount(900), 3, { value: 4 });
             const [ethDiff] = await trackReceivedTokenAndTx(ethers.provider, { address: constants.AddressZero }, addr.address, promise);
             expect(ethDiff).to.equal(-3n);
         });
@@ -309,12 +429,19 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
         it('should reverted with takerAsset non-WETH and msg.value greater than 0', async function () {
             const { dai, swap, chainId, usdc } = await loadFixture(initContracts);
 
-            const order = buildOrderRFQ(addr1.address, dai.address, usdc.address, 900, 900, buildConstraints({ nonce: 1 }));
+            const order = buildOrderRFQ({
+                maker: addr1.address,
+                makerAsset: dai.address,
+                takerAsset: usdc.address,
+                makingAmount: 900,
+                takingAmount: 900,
+                constraints: buildConstraints({ nonce: 1 }),
+            });
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
             await expect(
-                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(900), { value: 1 }),
+                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(900), 900, { value: 1 }),
             ).to.be.revertedWithCustomError(swap, 'InvalidMsgValue');
         });
     });
