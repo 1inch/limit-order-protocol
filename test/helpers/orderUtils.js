@@ -23,8 +23,17 @@ const ABIOrderRFQ = {
 const name = '1inch Limit Order Protocol';
 const version = '3';
 
+const _NO_PARTIAL_FILLS_FLAG = 255n;
+const _ALLOW_MULTIPLE_FILLS_FLAG = 254n;
+const _NO_PRICE_IMPROVEMENT_FLAG = 253n;
+const _NEED_EPOCH_CHECK_FLAG = 250n;
+const _HAS_EXTENSION_FLAG = 249n;
+
 function buildConstraints ({
     allowedSender = constants.ZERO_ADDRESS,
+    shouldCheckEpoch = true,
+    allowPartialFill = true,
+    allowPriceImprovement = true,
     allowMultipleFills = true,
     expiry = 0,
     nonce = 0,
@@ -41,7 +50,16 @@ function buildConstraints ({
     assert(res.length === 64, 'Constraints should be 64 bytes long');
 
     if (allowMultipleFills) {
-        res = '0x' + (BigInt(res) | (1n << 254n)).toString(16).padStart(64, '0');
+        res = '0x' + setn(BigInt(res), _ALLOW_MULTIPLE_FILLS_FLAG, allowMultipleFills).toString(16).padStart(64, '0');
+    }
+    if (allowPartialFill) {
+        res = '0x' + setn(BigInt(res), _NO_PARTIAL_FILLS_FLAG, !allowPartialFill).toString(16).padStart(64, '0');
+    }
+    if (allowPriceImprovement) {
+        res = '0x' + setn(BigInt(res), _NO_PRICE_IMPROVEMENT_FLAG, !allowPriceImprovement).toString(16).padStart(64, '0');
+    }
+    if (shouldCheckEpoch) {
+        res = '0x' + setn(BigInt(res), _NEED_EPOCH_CHECK_FLAG, shouldCheckEpoch).toString(16).padStart(64, '0');
     }
     return res;
 }
@@ -67,6 +85,11 @@ function buildOrderRFQ (
         postInteraction = '0x',
     } = {},
 ) {
+    constraints = '0x' + setn(BigInt(constraints), _ALLOW_MULTIPLE_FILLS_FLAG, false).toString(16).padStart(64, '0');
+    constraints = '0x' + setn(BigInt(constraints), _NO_PARTIAL_FILLS_FLAG, false).toString(16).padStart(64, '0');
+    constraints = '0x' + setn(BigInt(constraints), _NO_PRICE_IMPROVEMENT_FLAG, false).toString(16).padStart(64, '0');
+    constraints = '0x' + setn(BigInt(constraints), _NEED_EPOCH_CHECK_FLAG, false).toString(16).padStart(64, '0');
+
     return buildOrder(
         {
             maker,
@@ -74,7 +97,7 @@ function buildOrderRFQ (
             takerAsset,
             makingAmount,
             takingAmount,
-            constraints: setn(BigInt(constraints), 254, 0),
+            constraints,
         },
         {
             receiver,
@@ -144,7 +167,7 @@ function buildOrder (
     let salt = '1';
     if (trim0x(extension).length > 0) {
         salt = keccak256(extension);
-        constraints = BigInt(constraints) | (1n << 249n);
+        constraints = BigInt(constraints) | (1n << _HAS_EXTENSION_FLAG);
     }
 
     return {
@@ -167,7 +190,7 @@ function buildOrderData (chainId, verifyingContract, order) {
     };
 }
 
-async function signOrderRFQ (order, chainId, target, wallet) {
+async function signOrder (order, chainId, target, wallet) {
     const orderData = buildOrderData(chainId, target, order);
     return await wallet._signTypedData(orderData.domain, orderData.types, orderData.value);
 }
@@ -198,7 +221,7 @@ module.exports = {
     buildOrder,
     buildOrderRFQ,
     buildOrderData,
-    signOrderRFQ,
+    signOrder,
     compactSignature,
     makeMakingAmount,
     makeUnwrapWeth,

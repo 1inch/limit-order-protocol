@@ -152,11 +152,19 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
     ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         orderHash = order.hash(_domainSeparatorV4());
 
+        // Validate extension
+        if (order.constraints.hasExtension()) {
+            if (extension.length == 0) revert MissingOrderExtension();
+            if (!order.validateExtension(extension)) revert RFQExtensionInvalid();
+        }
+
         // Check signature and apply order permit only on the first fill
-        (uint256 remainingMakingAmount, bool requireSignature) = _checkRemainingMakingAmount(order, orderHash);
-        if (requireSignature) {
+        uint256 remainingMakingAmount = _checkRemainingMakingAmount(order, orderHash);
+        if (remainingMakingAmount == order.makingAmount) {
             if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert RFQBadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
-            _applyOrderPermitIfNeeded(order, orderHash, input.skipOrderPermit(), extension);
+            if (!input.skipOrderPermit()) {
+                _applyOrderPermit(order, orderHash, extension);
+            }
         }
 
         (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, extension, remainingMakingAmount, input, threshold, target, _wrap(interaction));
@@ -209,11 +217,19 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
         }
         orderHash = order.hash(_domainSeparatorV4());
 
+        // Validate extension
+        if (order.constraints.hasExtension()) {
+            if (extension.length == 0) revert MissingOrderExtension();
+            if (!order.validateExtension(extension)) revert RFQExtensionInvalid();
+        }
+
         // Check signature and apply order permit only on the first fill
-        (uint256 remainingMakingAmount, bool requireSignature) = _checkRemainingMakingAmount(order, orderHash);
-        if (requireSignature) {
+        uint256 remainingMakingAmount = _checkRemainingMakingAmount(order, orderHash);
+        if (remainingMakingAmount == order.makingAmount) {
             if (!ECDSA.isValidSignature(order.maker.get(), orderHash, signature)) revert RFQBadSignature();
-            _applyOrderPermitIfNeeded(order, orderHash, input.skipOrderPermit(), extension);
+            if (!input.skipOrderPermit()) {
+                _applyOrderPermit(order, orderHash, extension);
+            }
         }
 
         (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, extension, remainingMakingAmount, input, threshold, target, _wrap(interaction));
@@ -424,38 +440,23 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
         emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
-    function _checkRemainingMakingAmount(OrderRFQLib.OrderRFQ calldata order, bytes32 orderHash) private view returns(uint256 remainingMakingAmount, bool requireSignature) {
+    function _checkRemainingMakingAmount(OrderRFQLib.OrderRFQ calldata order, bytes32 orderHash) private view returns(uint256) {
         if (order.constraints.useBitInvalidator()) {
-            requireSignature = true;
-            remainingMakingAmount = order.makingAmount;
-        } else {
-            RemainingInvalidator invalidator = _remainingInvalidator[order.maker.get()][orderHash];
-            if (invalidator.isFullyFilled()) {
-                revert RFQInvalidatedOrder();
-            }
-            else if (invalidator.doesNotExist()) {
-                requireSignature = true;
-                remainingMakingAmount = order.makingAmount;
-            }
-            else {
-                remainingMakingAmount = invalidator.remaining();
-            }
+            return order.makingAmount;
         }
+        RemainingInvalidator invalidator = _remainingInvalidator[order.maker.get()][orderHash];
+        if (invalidator.doesNotExist()) {
+            return order.makingAmount;
+        }
+        return invalidator.remaining();
     }
 
-    function _applyOrderPermitIfNeeded(OrderRFQLib.OrderRFQ calldata order, bytes32 orderHash, bool skipOrderPermit, bytes calldata extension) private {
-        if (order.constraints.hasExtension()) {
-            if (extension.length == 0) revert MissingOrderExtension();
-            if (!order.validateExtension(extension)) revert RFQExtensionInvalid();
-
-            if (!skipOrderPermit) {
-                bytes calldata orderPermit = extension.permit();
-                if (orderPermit.length >= 20) {
-                    // proceed only if taker is willing to execute permit and its length is enough to store address
-                    IERC20(address(bytes20(orderPermit))).safePermit(orderPermit[20:]);
-                    if (!_remainingInvalidator[order.maker.get()][orderHash].doesNotExist()) revert RFQReentrancyDetected();
-                }
-            }
+    function _applyOrderPermit(OrderRFQLib.OrderRFQ calldata order, bytes32 orderHash, bytes calldata extension) private {
+        bytes calldata orderPermit = extension.permit();
+        if (orderPermit.length >= 20) {
+            // proceed only if taker is willing to execute permit and its length is enough to store address
+            IERC20(address(bytes20(orderPermit))).safePermit(orderPermit[20:]);
+            if (!_remainingInvalidator[order.maker.get()][orderHash].doesNotExist()) revert RFQReentrancyDetected();
         }
     }
 

@@ -2,7 +2,7 @@ const { expect, trim0x, time, assertRoughlyEqualValues } = require('@1inch/solid
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { cutLastArg, ether } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
-const { makeMakingAmount, compactSignature, buildOrder, signOrderRFQ } = require('./helpers/orderUtils');
+const { makeMakingAmount, compactSignature, buildOrder, signOrder } = require('./helpers/orderUtils');
 const { ethers } = require('hardhat');
 
 describe('Dutch auction', function () {
@@ -48,7 +48,7 @@ describe('Dutch auction', function () {
                 )), 64),
             },
         );
-        const signature = await signOrderRFQ(order, chainId, swap.address, addr);
+        const signature = await signOrder(order, chainId, swap.address, addr);
 
         const makerDaiBefore = await dai.balanceOf(addr.address);
         const takerDaiBefore = await dai.balanceOf(addr1.address);

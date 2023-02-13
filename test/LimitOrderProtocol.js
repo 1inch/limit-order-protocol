@@ -1,6 +1,6 @@
 const { ethers } = require('hardhat');
 const { expect, time, constants, profileEVM, trim0x } = require('@1inch/solidity-utils');
-const { makeMakingAmount, skipOrderPermit, buildConstraints, buildOrder, signOrderRFQ, compactSignature, buildOrderData } = require('./helpers/orderUtils');
+const { makeMakingAmount, skipOrderPermit, buildConstraints, buildOrder, signOrder, compactSignature, buildOrderData } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, cutLastArg, ether } = require('./helpers/utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
@@ -48,7 +48,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 1,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const sentOrder = buildOrder({
                 makerAsset: dai.address,
                 takerAsset: weth.address,
@@ -73,7 +73,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 2,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
             await expect(
@@ -93,7 +93,7 @@ describe('LimitOrderProtocol', function () {
                     maker: addr1.address,
                 },
             );
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
             await expect(
@@ -111,7 +111,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 1,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
             await expect(
@@ -131,7 +131,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 1,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
 
             const makerDai = await dai.balanceOf(addr1.address);
             const takerDai = await dai.balanceOf(addr.address);
@@ -163,7 +163,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 2,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
 
             const makerDai = await dai.balanceOf(addr1.address);
             const takerDai = await dai.balanceOf(addr.address);
@@ -197,7 +197,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 10,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
 
             const makerDai = await dai.balanceOf(addr1.address);
             const takerDai = await dai.balanceOf(addr.address);
@@ -225,7 +225,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 10,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
             await expect(
@@ -245,7 +245,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 2,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
 
             const makerDai = await dai.balanceOf(addr1.address);
             const takerDai = await dai.balanceOf(addr.address);
@@ -285,7 +285,7 @@ describe('LimitOrderProtocol', function () {
                 },
             );
 
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
 
             const makerDai = await dai.balanceOf(addr1.address);
             const takerDai = await dai.balanceOf(addr.address);
@@ -315,7 +315,7 @@ describe('LimitOrderProtocol', function () {
                     takingAmount: 1,
                     maker: addr1.address,
                 });
-                const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+                const signature = await signOrder(order, chainId, swap.address, addr1);
 
                 return { dai, weth, swap, chainId, order, signature };
             };
@@ -397,7 +397,7 @@ describe('LimitOrderProtocol', function () {
                     },
                 );
                 order.permit = permit;
-                const signature = await signOrderRFQ(order, chainId, swap.address, addr);
+                const signature = await signOrder(order, chainId, swap.address, addr);
                 const { r, vs } = compactSignature(signature);
 
                 return { dai, weth, swap, order, signature, r, vs, permit };
@@ -456,7 +456,7 @@ describe('LimitOrderProtocol', function () {
                 maker: addr1.address,
             });
             order.getTakingAmount = '0x';
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -483,7 +483,7 @@ describe('LimitOrderProtocol', function () {
                 maker: addr1.address,
             });
             order.getMakingAmount = '0x';
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -537,7 +537,7 @@ describe('LimitOrderProtocol', function () {
 
         it('should not fill cancelled order', async function () {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
             const data = buildOrderData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
@@ -568,7 +568,7 @@ describe('LimitOrderProtocol', function () {
                 maker: addr1.address,
                 constraints: buildConstraints({ allowedSender: addr.address }),
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -595,7 +595,7 @@ describe('LimitOrderProtocol', function () {
                 maker: addr1.address,
                 constraints: buildConstraints({ allowedSender: addr1.address }),
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             await expect(
@@ -640,10 +640,10 @@ describe('LimitOrderProtocol', function () {
                     maker: addr1.address,
                 },
                 {
-                    predicate: swap.interface.encodeFunctionData('or', [offsets, data])
+                    predicate: swap.interface.encodeFunctionData('or', [offsets, data]),
                 },
             );
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -652,7 +652,7 @@ describe('LimitOrderProtocol', function () {
             const takerWeth = await weth.balanceOf(addr.address);
 
             await expect(
-                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1), 1)
+                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1), 1),
             ).to.revertedWithCustomError(swap, 'MissingOrderExtension');
 
             await swap.fillOrderRFQExt(order, r, vs, makeMakingAmount(1), 1, order.extension);
@@ -676,7 +676,7 @@ describe('LimitOrderProtocol', function () {
                     constraints: buildConstraints({ expiry: 0xff0000n }),
                 },
             );
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             await expect(
@@ -697,7 +697,7 @@ describe('LimitOrderProtocol', function () {
                     constraints: buildConstraints({ expiry: 0xff000000n }),
                 },
             );
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -726,7 +726,7 @@ describe('LimitOrderProtocol', function () {
                     constraints: buildConstraints({ expiry: 0xff000000n }),
                 },
             );
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -767,7 +767,7 @@ describe('LimitOrderProtocol', function () {
                     predicate: swap.interface.encodeFunctionData('and', [offsets, data]),
                 },
             );
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             await expect(
@@ -793,7 +793,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 1,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -820,7 +820,7 @@ describe('LimitOrderProtocol', function () {
                 maker: addr1.address,
                 constraints: buildConstraints({ expiry: 0xff0000n }),
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             await expect(
@@ -838,7 +838,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 2,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -864,7 +864,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 2,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -898,7 +898,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 3,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             const makerDai = await dai.balanceOf(addr1.address);
@@ -924,7 +924,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 3,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             await expect(
@@ -942,7 +942,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 3,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             await swap.fillOrderRFQ(order, r, vs, makeMakingAmount(900), 3, { value: 4 });
@@ -959,7 +959,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 900,
                 maker: addr1.address,
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             await expect(
@@ -1052,7 +1052,7 @@ describe('LimitOrderProtocol', function () {
                         )))),
                 },
             );
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             const makerTABalance = await takerAsset.asset.balanceOf(maker); // maker's takerAsset balance

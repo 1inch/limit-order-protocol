@@ -1,6 +1,6 @@
 const { expect, trim0x } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { makeMakingAmount, compactSignature, signOrderRFQ, buildOrder } = require('./helpers/orderUtils');
+const { makeMakingAmount, compactSignature, signOrder, buildOrder } = require('./helpers/orderUtils');
 const { cutLastArg, ether, setn } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
@@ -72,7 +72,7 @@ describe('ChainLinkExample', function () {
             },
         );
 
-        const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+        const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const makerDai = await dai.balanceOf(addr1.address);
         const takerDai = await dai.balanceOf(addr.address);
@@ -111,7 +111,7 @@ describe('ChainLinkExample', function () {
                 predicate: swap.interface.encodeFunctionData('lt', [ether('6.32'), priceCall]),
             },
         );
-        const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+        const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const makerDai = await dai.balanceOf(addr1.address);
         const takerDai = await dai.balanceOf(addr.address);
@@ -148,7 +148,7 @@ describe('ChainLinkExample', function () {
                 predicate: swap.interface.encodeFunctionData('lt', [ether('6.31'), priceCall]),
             },
         );
-        const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+        const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const { r, vs } = compactSignature(signature);
         await expect(
@@ -180,7 +180,7 @@ describe('ChainLinkExample', function () {
                 predicate: swap.interface.encodeFunctionData('lt', [ether('0.0002501'), latestAnswerCall]),
             },
         );
-        const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+        const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const makerDai = await dai.balanceOf(addr1.address);
         const takerDai = await dai.balanceOf(addr.address);

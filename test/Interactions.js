@@ -3,7 +3,7 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
-const { makeMakingAmount, signOrderRFQ, buildOrder, compactSignature, buildConstraints } = require('./helpers/orderUtils');
+const { makeMakingAmount, signOrder, buildOrder, compactSignature, buildConstraints } = require('./helpers/orderUtils');
 
 describe('Interactions', function () {
     let addr, addr1;
@@ -61,8 +61,8 @@ describe('Interactions', function () {
                 maker: addr1.address,
             });
 
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr);
-            const signatureBackOrder = await signOrderRFQ(backOrder, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr);
+            const signatureBackOrder = await signOrder(backOrder, chainId, swap.address, addr1);
 
             const matchingParams = matcher.address + '01' + abiCoder.encode(
                 ['address[]', 'bytes[]'],
@@ -120,11 +120,11 @@ describe('Interactions', function () {
                 makingAmount: ether('15'),
                 takingAmount: ether('0.015'),
                 maker: addr1.address,
-                constraints: buildConstraints({ nonce: 1 }),
+                constraints: buildConstraints({ nonce: 0 }),
             });
 
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
-            const signatureBackOrder = await signOrderRFQ(backOrder, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
+            const signatureBackOrder = await signOrder(backOrder, chainId, swap.address, addr1);
 
             const matchingParams = matcher.address + '01' + abiCoder.encode(
                 ['address[]', 'bytes[]'],
@@ -185,7 +185,7 @@ describe('Interactions', function () {
                 makingAmount: ether('15'),
                 takingAmount: ether('0.015'),
                 maker: addr1.address,
-                constraints: buildConstraints({ nonce: 1 }),
+                constraints: buildConstraints({ nonce: 0 }),
             });
 
             const backOrder = buildOrder({
@@ -194,11 +194,12 @@ describe('Interactions', function () {
                 makingAmount: ether('0.025'),
                 takingAmount: ether('25'),
                 maker: addr.address,
+                constraints: buildConstraints({ nonce: 0 }),
             });
 
-            const signature1 = await signOrderRFQ(order1, chainId, swap.address, addr1);
-            const signature2 = await signOrderRFQ(order2, chainId, swap.address, addr1);
-            const signatureBackOrder = await signOrderRFQ(backOrder, chainId, swap.address, addr);
+            const signature1 = await signOrder(order1, chainId, swap.address, addr1);
+            const signature2 = await signOrder(order2, chainId, swap.address, addr1);
+            const signatureBackOrder = await signOrder(backOrder, chainId, swap.address, addr);
 
             const matchingParams = matcher.address + '01' + abiCoder.encode(
                 ['address[]', 'bytes[]'],
@@ -265,7 +266,7 @@ describe('Interactions', function () {
                     preInteraction: hashChecker.address,
                 },
             );
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
 
             const makerDai = await dai.balanceOf(addr1.address);
             const takerDai = await dai.balanceOf(addr.address);
@@ -299,7 +300,7 @@ describe('Interactions', function () {
                 },
             );
 
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
             await expect(swap.fillOrderRFQExt(order, r, vs, makeMakingAmount(ether('100')), ether('0.1'), order.extension))
@@ -325,7 +326,7 @@ describe('Interactions', function () {
                     preInteraction: orderIdInvalidator.address + orderId.toString(16).padStart(8, '0'),
                 },
             );
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr);
+            const signature = await signOrder(order, chainId, swap.address, addr);
 
             const addrweth = await weth.balanceOf(addr.address);
             const addr1weth = await weth.balanceOf(addr1.address);
@@ -373,15 +374,15 @@ describe('Interactions', function () {
                     makingAmount: ether('50'),
                     takingAmount: ether('0.05'),
                     maker: addr.address,
-                    constraints: buildConstraints({ nonce: 1 }),
+                    constraints: buildConstraints({ nonce: 0 }),
                 },
                 {
                     preInteraction: orderIdInvalidator.address + orderId.toString(16).padStart(8, '0'),
                 },
             );
 
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr);
-            const signaturePartial = await signOrderRFQ(partialOrder, chainId, swap.address, addr);
+            const signature = await signOrder(order, chainId, swap.address, addr);
+            const signaturePartial = await signOrder(partialOrder, chainId, swap.address, addr);
 
             const addrweth = await weth.balanceOf(addr.address);
             const addr1weth = await weth.balanceOf(addr1.address);

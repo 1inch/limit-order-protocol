@@ -1,6 +1,6 @@
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { expect } = require('@1inch/solidity-utils');
-const { ABIOrderRFQ, buildOrder, makeMakingAmount, buildConstraints } = require('./helpers/orderUtils');
+const { ABIOrderRFQ, makeMakingAmount, buildConstraints, buildOrderRFQ } = require('./helpers/orderUtils');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
 const { deploySwap, deployUSDC, deployUSDT } = require('./helpers/fixtures');
@@ -43,7 +43,7 @@ describe('ContractRFQ', function () {
         const makerUsdt = await usdt.balanceOf(rfq.address);
         const takerUsdt = await usdt.balanceOf(addr.address);
 
-        const order = buildOrder({
+        const order = buildOrderRFQ({
             maker: rfq.address,
             makerAsset: usdc.address,
             takerAsset: usdt.address,
@@ -52,7 +52,7 @@ describe('ContractRFQ', function () {
             constraints: buildConstraints({ nonce: 1 }),
         });
 
-        const order2 = buildOrder({
+        const order2 = buildOrderRFQ({
             maker: rfq.address,
             makerAsset: usdc.address,
             takerAsset: usdt.address,

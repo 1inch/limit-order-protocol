@@ -3,7 +3,7 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
-const { buildOrder, signOrderRFQ, compactSignature, buildConstraints } = require('./helpers/orderUtils');
+const { buildOrderRFQ, signOrder, compactSignature, buildConstraints } = require('./helpers/orderUtils');
 const { constants } = require('ethers');
 
 describe('RfqInteractions', function () {
@@ -38,22 +38,22 @@ describe('RfqInteractions', function () {
         it('opposite direction recursive swap', async function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
 
-            const order = buildOrder({
+            const order = buildOrderRFQ({
                 maker: addr.address,
                 makerAsset: dai.address,
                 takerAsset: weth.address,
                 makingAmount: ether('100'),
                 takingAmount: ether('0.1'),
             });
-            const backOrder = buildOrder({
+            const backOrder = buildOrderRFQ({
                 maker: addr1.address,
                 makerAsset: weth.address,
                 takerAsset: dai.address,
                 makingAmount: ether('0.1'),
                 takingAmount: ether('100'),
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr);
-            const signatureBackOrder = await signOrderRFQ(backOrder, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr);
+            const signatureBackOrder = await signOrder(backOrder, chainId, swap.address, addr1);
 
             const matchingParams = matcher.address + '01' + abiCoder.encode(
                 ['address[]', 'bytes[]'],
@@ -96,7 +96,7 @@ describe('RfqInteractions', function () {
         it('unidirectional recursive swap', async function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
 
-            const order = buildOrder({
+            const order = buildOrderRFQ({
                 maker: addr1.address,
                 makerAsset: dai.address,
                 takerAsset: weth.address,
@@ -104,7 +104,7 @@ describe('RfqInteractions', function () {
                 takingAmount: ether('0.01'),
                 constraints: buildConstraints({ nonce: 1 }),
             });
-            const backOrder = buildOrder({
+            const backOrder = buildOrderRFQ({
                 maker: addr1.address,
                 makerAsset: dai.address,
                 takerAsset: weth.address,
@@ -112,8 +112,8 @@ describe('RfqInteractions', function () {
                 takingAmount: ether('0.015'),
                 constraints: buildConstraints({ nonce: 2 }),
             });
-            const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
-            const signatureBackOrder = await signOrderRFQ(backOrder, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
+            const signatureBackOrder = await signOrder(backOrder, chainId, swap.address, addr1);
 
             const matchingParams = matcher.address + '01' + abiCoder.encode(
                 ['address[]', 'bytes[]'],
@@ -159,7 +159,7 @@ describe('RfqInteractions', function () {
         it('triple recursive swap', async function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
 
-            const order1 = buildOrder({
+            const order1 = buildOrderRFQ({
                 maker: addr1.address,
                 makerAsset: dai.address,
                 takerAsset: weth.address,
@@ -167,7 +167,7 @@ describe('RfqInteractions', function () {
                 takingAmount: ether('0.01'),
                 constraints: buildConstraints({ nonce: 1 }),
             });
-            const order2 = buildOrder({
+            const order2 = buildOrderRFQ({
                 maker: addr1.address,
                 makerAsset: dai.address,
                 takerAsset: weth.address,
@@ -175,7 +175,7 @@ describe('RfqInteractions', function () {
                 takingAmount: ether('0.015'),
                 constraints: buildConstraints({ nonce: 2 }),
             });
-            const backOrder = buildOrder({
+            const backOrder = buildOrderRFQ({
                 maker: addr.address,
                 makerAsset: weth.address,
                 takerAsset: dai.address,
@@ -184,9 +184,9 @@ describe('RfqInteractions', function () {
                 constraints: buildConstraints({ nonce: 1 }),
             });
 
-            const signature1 = await signOrderRFQ(order1, chainId, swap.address, addr1);
-            const signature2 = await signOrderRFQ(order2, chainId, swap.address, addr1);
-            const signatureBackOrder = await signOrderRFQ(backOrder, chainId, swap.address, addr);
+            const signature1 = await signOrder(order1, chainId, swap.address, addr1);
+            const signature2 = await signOrder(order2, chainId, swap.address, addr1);
+            const signatureBackOrder = await signOrder(backOrder, chainId, swap.address, addr);
 
             const matchingParams = matcher.address + '01' + abiCoder.encode(
                 ['address[]', 'bytes[]'],
