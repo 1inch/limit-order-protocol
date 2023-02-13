@@ -6,8 +6,6 @@ const { ether } = require('./helpers/utils');
 const { buildOrderRFQ, signOrderRFQ, compactSignature, buildConstraints } = require('./helpers/orderUtils');
 const { constants } = require('ethers');
 
-const MAKER_AMOUNT_FLAG = 255n;
-
 describe('RfqInteractions', function () {
     let addr, addr1;
     const abiCoder = ethers.utils.defaultAbiCoder;

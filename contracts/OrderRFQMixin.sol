@@ -247,7 +247,8 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
                 if (!checkPredicateRFQ(predicate)) revert RFQPredicateIsNotTrue();
             }
         } else {
-            assembly {
+            /// @solidity memory-safe-assembly
+            assembly { // solhint-disable-line no-inline-assembly
                 extension.offset := calldatasize()
                 extension.length := 0
             }

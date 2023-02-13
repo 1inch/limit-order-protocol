@@ -1,6 +1,6 @@
 const { expect, trim0x } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { buildOrder, signOrder, makeMakingAmount, compactSignature, signOrderRFQ, buildOrderRFQ } = require('./helpers/orderUtils');
+const { makeMakingAmount, compactSignature, signOrderRFQ, buildOrderRFQ } = require('./helpers/orderUtils');
 const { cutLastArg, ether, setn } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');

@@ -1,12 +1,10 @@
 const { ethers } = require('hardhat');
 const { expect, time, constants, profileEVM, trim0x } = require('@1inch/solidity-utils');
-const { buildOrder, buildOrderData, signOrder, makeMakingAmount, skipOrderPermit, buildConstraints, buildOrderRFQ, signOrderRFQ, compactSignature, buildOrderRFQData } = require('./helpers/orderUtils');
+const { makeMakingAmount, skipOrderPermit, buildConstraints, buildOrderRFQ, signOrderRFQ, compactSignature, buildOrderRFQData } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, cutLastArg, ether } = require('./helpers/utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
-
-const ALLOW_MUTIPLE_FILLS_FLAG = 254n;
 
 describe('LimitOrderProtocol', function () {
     let addr, addr1, addr2;
@@ -521,7 +519,7 @@ describe('LimitOrderProtocol', function () {
             return { dai, weth, swap, chainId, order };
         };
 
-        // TODO: it could be canceled with another constraints, 1n << ALLOW_MUTIPLE_FILLS_FLAG for example
+        // TODO: it could be canceled with another constraints, 1n << ALLOW_MUTIPLE_FILLS_FLAG (254n) for example
         it('should cancel own order', async function () {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
             const data = buildOrderRFQData(chainId, swap.address, order);
@@ -531,7 +529,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should cancel any hash', async function () {
-            const { swap } = await loadFixture(orderCancelationInit);
+            const { swap, order } = await loadFixture(orderCancelationInit);
             await swap.connect(addr1).cancelOrderRFQ(order.constraints, '0x0000000000000000000000000000000000000000000000000000000000000001');
             expect(await swap.remainingInvalidatorForOrderRFQ('0x0000000000000000000000000000000000000000000000000000000000000001')).to.equal('0');
         });
@@ -1035,7 +1033,7 @@ describe('LimitOrderProtocol', function () {
                     takerAsset: takerAsset.asset.address,
                     makingAmount,
                     takingAmount,
-                    maker: maker,
+                    maker,
                 },
                 {
                     getMakingAmount: rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(

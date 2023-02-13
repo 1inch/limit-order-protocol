@@ -3,7 +3,7 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
-const { buildOrder, signOrder, makeMakingAmount, signOrderRFQ, buildOrderRFQ, compactSignature, buildConstraints } = require('./helpers/orderUtils');
+const { makeMakingAmount, signOrderRFQ, buildOrderRFQ, compactSignature, buildConstraints } = require('./helpers/orderUtils');
 
 describe('Interactions', function () {
     let addr, addr1;
@@ -319,7 +319,7 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr.address,
-                    constraints: buildConstraints({ allowMultipleFills: true })
+                    constraints: buildConstraints({ allowMultipleFills: true }),
                 },
                 {
                     preInteraction: orderIdInvalidator.address + orderId.toString(16).padStart(8, '0'),

@@ -64,7 +64,7 @@ function buildOrderRFQ (
         permit = '0x',
         preInteraction = '0x',
         postInteraction = '0x',
-    } = {}
+    } = {},
 ) {
     const allInteractions = [
         makerAssetData,
@@ -92,8 +92,7 @@ function buildOrderRFQ (
         if (allInteractionsConcat.length > 0) {
             extension += offsets.toString(16).padStart(64, '0') + allInteractionsConcat;
         }
-    }
-    else if (allInteractionsConcat.length > 0) {
+    } else if (allInteractionsConcat.length > 0) {
         extension += trim0x(constants.ZERO_ADDRESS) + offsets.toString(16).padStart(64, '0') + allInteractionsConcat;
     }
 
