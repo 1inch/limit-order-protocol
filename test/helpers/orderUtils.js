@@ -2,6 +2,7 @@ const { constants, trim0x } = require('@1inch/solidity-utils');
 const { assert } = require('chai');
 const { ethers } = require('ethers');
 const { keccak256 } = require('ethers/lib/utils');
+const { setn } = require('./utils');
 
 const OrderRFQ = [
     { name: 'salt', type: 'uint256' },
@@ -46,6 +47,50 @@ function buildConstraints ({
 }
 
 function buildOrderRFQ (
+    {
+        maker,
+        makerAsset,
+        takerAsset,
+        makingAmount,
+        takingAmount,
+        constraints = '0',
+    },
+    {
+        receiver = '0x',
+        makerAssetData = '0x',
+        takerAssetData = '0x',
+        getMakingAmount = '0x',
+        getTakingAmount = '0x',
+        predicate = '0x',
+        permit = '0x',
+        preInteraction = '0x',
+        postInteraction = '0x',
+    } = {},
+) {
+    return buildOrder(
+        {
+            maker,
+            makerAsset,
+            takerAsset,
+            makingAmount,
+            takingAmount,
+            constraints: setn(BigInt(constraints), 254, 0),
+        },
+        {
+            receiver,
+            makerAssetData,
+            takerAssetData,
+            getMakingAmount,
+            getTakingAmount,
+            predicate,
+            permit,
+            preInteraction,
+            postInteraction,
+        },
+    );
+}
+
+function buildOrder (
     {
         maker,
         makerAsset,
@@ -114,7 +159,7 @@ function buildOrderRFQ (
     };
 }
 
-function buildOrderRFQData (chainId, verifyingContract, order) {
+function buildOrderData (chainId, verifyingContract, order) {
     return {
         domain: { name, version, chainId, verifyingContract },
         types: { OrderRFQ },
@@ -123,7 +168,7 @@ function buildOrderRFQData (chainId, verifyingContract, order) {
 }
 
 async function signOrderRFQ (order, chainId, target, wallet) {
-    const orderData = buildOrderRFQData(chainId, target, order);
+    const orderData = buildOrderData(chainId, target, order);
     return await wallet._signTypedData(orderData.domain, orderData.types, orderData.value);
 }
 
@@ -150,8 +195,9 @@ function skipOrderPermit (amount) {
 module.exports = {
     ABIOrderRFQ,
     buildConstraints,
+    buildOrder,
     buildOrderRFQ,
-    buildOrderRFQData,
+    buildOrderData,
     signOrderRFQ,
     compactSignature,
     makeMakingAmount,

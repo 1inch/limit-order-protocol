@@ -1,6 +1,6 @@
 const { expect, trim0x } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { makeMakingAmount, compactSignature, signOrderRFQ, buildOrderRFQ } = require('./helpers/orderUtils');
+const { makeMakingAmount, compactSignature, signOrderRFQ, buildOrder } = require('./helpers/orderUtils');
 const { cutLastArg, ether, setn } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
@@ -58,7 +58,7 @@ describe('ChainLinkExample', function () {
         const { dai, weth, swap, chainId, chainlink, daiOracle } = await loadFixture(deployContractsAndInit);
 
         // chainlink rate is 1 eth = 4000 dai
-        const order = buildOrderRFQ(
+        const order = buildOrder(
             {
                 makerAsset: weth.address,
                 takerAsset: dai.address,
@@ -98,7 +98,7 @@ describe('ChainLinkExample', function () {
             chainlink.interface.encodeFunctionData('doublePrice', [inchOracle.address, daiOracle.address, buildInverseWithSpread(false, '1000000000'), '0', ether('1')]),
         ]);
 
-        const order = buildOrderRFQ(
+        const order = buildOrder(
             {
                 makerAsset: inch.address,
                 takerAsset: dai.address,
@@ -134,7 +134,7 @@ describe('ChainLinkExample', function () {
         const takingAmount = ether('631');
         const priceCall = buildDoublePriceGetter(chainlink, inchOracle, daiOracle, '1000000000', ether('1'));
 
-        const order = buildOrderRFQ(
+        const order = buildOrder(
             {
                 makerAsset: inch.address,
                 takerAsset: dai.address,
@@ -166,7 +166,7 @@ describe('ChainLinkExample', function () {
             daiOracle.interface.encodeFunctionData('latestAnswer'),
         ]);
 
-        const order = buildOrderRFQ(
+        const order = buildOrder(
             {
                 makerAsset: weth.address,
                 takerAsset: dai.address,

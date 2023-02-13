@@ -3,7 +3,7 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
-const { makeMakingAmount, signOrderRFQ, buildOrderRFQ, compactSignature, buildConstraints } = require('./helpers/orderUtils');
+const { makeMakingAmount, signOrderRFQ, buildOrder, compactSignature, buildConstraints } = require('./helpers/orderUtils');
 
 describe('Interactions', function () {
     let addr, addr1;
@@ -45,7 +45,7 @@ describe('Interactions', function () {
         it('opposite direction recursive swap', async function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
 
-            const order = buildOrderRFQ({
+            const order = buildOrder({
                 makerAsset: dai.address,
                 takerAsset: weth.address,
                 makingAmount: ether('100'),
@@ -53,7 +53,7 @@ describe('Interactions', function () {
                 maker: addr.address,
             });
 
-            const backOrder = buildOrderRFQ({
+            const backOrder = buildOrder({
                 makerAsset: weth.address,
                 takerAsset: dai.address,
                 makingAmount: ether('0.1'),
@@ -105,7 +105,7 @@ describe('Interactions', function () {
         it('unidirectional recursive swap', async function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
 
-            const order = buildOrderRFQ({
+            const order = buildOrder({
                 makerAsset: dai.address,
                 takerAsset: weth.address,
                 makingAmount: ether('10'),
@@ -114,7 +114,7 @@ describe('Interactions', function () {
                 constraints: buildConstraints({ nonce: 0 }),
             });
 
-            const backOrder = buildOrderRFQ({
+            const backOrder = buildOrder({
                 makerAsset: dai.address,
                 takerAsset: weth.address,
                 makingAmount: ether('15'),
@@ -170,7 +170,7 @@ describe('Interactions', function () {
         it('triple recursive swap', async function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
 
-            const order1 = buildOrderRFQ({
+            const order1 = buildOrder({
                 makerAsset: dai.address,
                 takerAsset: weth.address,
                 makingAmount: ether('10'),
@@ -179,7 +179,7 @@ describe('Interactions', function () {
                 constraints: buildConstraints({ nonce: 0 }),
             });
 
-            const order2 = buildOrderRFQ({
+            const order2 = buildOrder({
                 makerAsset: dai.address,
                 takerAsset: weth.address,
                 makingAmount: ether('15'),
@@ -188,7 +188,7 @@ describe('Interactions', function () {
                 constraints: buildConstraints({ nonce: 1 }),
             });
 
-            const backOrder = buildOrderRFQ({
+            const backOrder = buildOrder({
                 makerAsset: weth.address,
                 takerAsset: dai.address,
                 makingAmount: ether('0.025'),
@@ -253,7 +253,7 @@ describe('Interactions', function () {
         it('should check hash and fill', async function () {
             const { dai, weth, swap, chainId, hashChecker } = await loadFixture(initContracts);
 
-            const order = buildOrderRFQ(
+            const order = buildOrder(
                 {
                     makerAsset: dai.address,
                     takerAsset: weth.address,
@@ -286,7 +286,7 @@ describe('Interactions', function () {
         it('should revert transaction when orderHash not equal target', async function () {
             const { dai, weth, swap, chainId, hashChecker } = await loadFixture(initContracts);
 
-            const order = buildOrderRFQ(
+            const order = buildOrder(
                 {
                     makerAsset: dai.address,
                     takerAsset: weth.address,
@@ -312,7 +312,7 @@ describe('Interactions', function () {
             const { dai, weth, swap, chainId, orderIdInvalidator } = await loadFixture(initContracts);
             const orderId = 13341n;
 
-            const order = buildOrderRFQ(
+            const order = buildOrder(
                 {
                     makerAsset: dai.address,
                     takerAsset: weth.address,
@@ -352,7 +352,7 @@ describe('Interactions', function () {
             const { dai, weth, swap, chainId, orderIdInvalidator } = await loadFixture(initContracts);
             const orderId = 13341n;
 
-            const order = buildOrderRFQ(
+            const order = buildOrder(
                 {
                     makerAsset: dai.address,
                     takerAsset: weth.address,
@@ -366,7 +366,7 @@ describe('Interactions', function () {
                 },
             );
 
-            const partialOrder = buildOrderRFQ(
+            const partialOrder = buildOrder(
                 {
                     makerAsset: dai.address,
                     takerAsset: weth.address,
