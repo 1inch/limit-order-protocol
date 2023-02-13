@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/ITakerInteraction.sol";
 import "../interfaces/IOrderRFQMixin.sol";
 import "../interfaces/IOrderRFQMixin.sol";
-import "../libraries/InputLib.sol";
+import "../libraries/LimitsLib.sol";
 
 contract RecursiveMatcher is ITakerInteraction {
     bytes1 private constant _FINALIZE_INTERACTION = 0x01;
@@ -19,16 +19,16 @@ contract RecursiveMatcher is ITakerInteraction {
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        Input input,
-        uint256 threshold,
+        uint256 amount,
+        Limits limits,
         bytes calldata interaction
     ) external {
         orderRFQMixin.fillOrderRFQTo(
             order,
             r,
             vs,
-            input,
-            threshold,
+            amount,
+            limits,
             address(this),
             interaction
         );

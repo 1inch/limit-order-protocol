@@ -63,7 +63,7 @@ describe('Dutch auction', function () {
         await time.increaseTo(ts + 43200n); // 50% auction time
 
         const { r, vs } = compactSignature(signature);
-        await swap.connect(addr1).fillOrderRFQExt(order, r, vs, makeMakingAmount(ether('100')), ether('0.08'), order.extension);
+        await swap.connect(addr1).fillOrderRFQExt(order, r, vs, ether('100'), makeMakingAmount(ether('0.08')), order.extension);
 
         expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
         expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));
@@ -89,7 +89,7 @@ describe('Dutch auction', function () {
         const { dai, weth, swap, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
         const { r, vs } = compactSignature(signature);
-        await swap.connect(addr1).fillOrderRFQExt(order, r, vs, makeMakingAmount(ether('100')), ether('0.1'), order.extension);
+        await swap.connect(addr1).fillOrderRFQExt(order, r, vs, ether('100'), makeMakingAmount(ether('0.1')), order.extension);
 
         expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
         expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));
@@ -115,7 +115,7 @@ describe('Dutch auction', function () {
         await time.increaseTo(ts + 86500n); // >100% auction time
 
         const { r, vs } = compactSignature(signature);
-        await swap.connect(addr1).fillOrderRFQExt(order, r, vs, makeMakingAmount(ether('100')), ether('0.05'), order.extension);
+        await swap.connect(addr1).fillOrderRFQExt(order, r, vs, ether('100'), makeMakingAmount(ether('0.05')), order.extension);
 
         expect(await dai.balanceOf(addr.address)).to.equal(makerDaiBefore.sub(ether('100')));
         expect(await dai.balanceOf(addr1.address)).to.equal(takerDaiBefore.add(ether('100')));

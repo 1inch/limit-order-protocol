@@ -80,7 +80,7 @@ describe('ChainLinkExample', function () {
         const takerWeth = await weth.balanceOf(addr.address);
 
         const { r, vs } = compactSignature(signature);
-        await swap.fillOrderRFQExt(order, r, vs, makeMakingAmount(ether('1')), ether('4040.01'), order.extension); // taking threshold = 4000 + 1% + eps
+        await swap.fillOrderRFQExt(order, r, vs, ether('1'), makeMakingAmount(ether('4040.01')), order.extension); // taking threshold = 4000 + 1% + eps
 
         expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(ether('4040')));
         expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(ether('4040')));
@@ -119,7 +119,7 @@ describe('ChainLinkExample', function () {
         const takerInch = await inch.balanceOf(addr.address);
 
         const { r, vs } = compactSignature(signature);
-        await swap.fillOrderRFQExt(order, r, vs, makeMakingAmount(makingAmount), takingAmount.add(ether('0.01')), order.extension); // taking threshold = exact taker amount + eps
+        await swap.fillOrderRFQExt(order, r, vs, makingAmount, makeMakingAmount(takingAmount.add(ether('0.01'))), order.extension); // taking threshold = exact taker amount + eps
 
         expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(takingAmount));
         expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(takingAmount));
@@ -188,7 +188,7 @@ describe('ChainLinkExample', function () {
         const takerWeth = await weth.balanceOf(addr.address);
 
         const { r, vs } = compactSignature(signature);
-        await swap.fillOrderRFQExt(order, r, vs, makeMakingAmount(makingAmount), takingAmount, order.extension);
+        await swap.fillOrderRFQExt(order, r, vs, makingAmount, makeMakingAmount(takingAmount), order.extension);
 
         expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(takingAmount));
         expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(takingAmount));

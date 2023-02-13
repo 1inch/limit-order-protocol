@@ -35,7 +35,7 @@ library RemainingInvalidatorLib {
         }
     }
 
-    function invalid() internal pure returns(RemainingInvalidator) {
+    function fullyFilled() internal pure returns(RemainingInvalidator) {
         return RemainingInvalidator.wrap(1);
     }
 }

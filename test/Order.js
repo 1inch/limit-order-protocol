@@ -5,7 +5,7 @@ const { ethers } = require('hardhat');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 
-describe.only('LimitOrderProtocol', function () {
+describe('LimitOrderProtocol', function () {
     let addr, addr1;
 
     async function initContracts (dai, weth, swap) {
@@ -54,7 +54,7 @@ describe.only('LimitOrderProtocol', function () {
                 const takerWeth = await weth.balanceOf(addr.address);
 
                 const { r, vs } = compactSignature(signature);
-                const receipt = await swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1), 1);
+                const receipt = await swap.fillOrderRFQ(order, r, vs, 1, makeMakingAmount(1));
 
                 expect(
                     await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),

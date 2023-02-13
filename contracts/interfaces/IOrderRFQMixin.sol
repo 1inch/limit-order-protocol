@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import "../OrderRFQLib.sol";
-import "../libraries/InputLib.sol";
+import "../libraries/LimitsLib.sol";
 
 interface IOrderRFQMixin {
     error MissingOrderExtension();
@@ -76,8 +76,8 @@ interface IOrderRFQMixin {
      * @param order Order quote to fill
      * @param r R component of signature
      * @param vs VS component of signature
-     * @param input Fill configuration flags with amount packed in one slot
-     * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     * @param amount Taker amount to fill
+     * @param limits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -86,8 +86,8 @@ interface IOrderRFQMixin {
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        Input input,
-        uint256 threshold
+        uint256 amount,
+        Limits limits
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
@@ -95,8 +95,8 @@ interface IOrderRFQMixin {
      * @param order Order quote to fill
      * @param r R component of signature
      * @param vs VS component of signature
-     * @param input Fill configuration flags with amount packed in one slot
-     * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     * @param amount Taker amount to fill
+     * @param limits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
      * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @return makingAmount Actual amount transferred from maker to taker
@@ -107,8 +107,8 @@ interface IOrderRFQMixin {
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        Input input,
-        uint256 threshold,
+        uint256 amount,
+        Limits limits,
         address target,
         bytes calldata interaction
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
@@ -120,8 +120,8 @@ interface IOrderRFQMixin {
      * @param order Order quote to fill
      * @param r R component of signature
      * @param vs VS component of signature
-     * @param input Fill configuration flags with amount packed in one slot
-     * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     * @param amount Taker amount to fill
+     * @param limits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
      * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
@@ -134,8 +134,8 @@ interface IOrderRFQMixin {
         OrderRFQLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
-        Input input,
-        uint256 threshold,
+        uint256 amount,
+        Limits limits,
         address target,
         bytes calldata interaction,
         bytes calldata permit
@@ -147,8 +147,8 @@ interface IOrderRFQMixin {
      * Also allows to specify funds destination instead of `msg.sender`
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
-     * @param input Fill configuration flags with amount packed in one slot
-     * @param threshold Specifies maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     * @param amount Taker amount to fill
+     * @param limits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
      * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
@@ -160,8 +160,8 @@ interface IOrderRFQMixin {
     function fillContractOrderRFQ(
         OrderRFQLib.OrderRFQ calldata order,
         bytes calldata signature,
-        Input input,
-        uint256 threshold,
+        uint256 amount,
+        Limits limits,
         address target,
         bytes calldata interaction,
         bytes calldata permit
