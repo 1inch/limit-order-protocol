@@ -6,6 +6,7 @@ import "../OrderRFQLib.sol";
 import "../libraries/InputLib.sol";
 
 interface IOrderRFQMixin {
+    error MissingOrderExtension();
     error RFQTakingAmountIncreased();
     error RFQPrivateOrder();
     error RFQBadSignature();
@@ -15,7 +16,7 @@ interface IOrderRFQMixin {
     error TakingAmountExceeded();
     error RFQSwapWithZeroAmount();
     error RFQPartialFillNotAllowed();
-    error InvalidatedOrder();
+    error RFQInvalidatedOrder();
     error OrderIsnotSuitableForMassInvalidation();
     error RFQExtensionInvalid();
     error RFQReentrancyDetected();
@@ -48,14 +49,14 @@ interface IOrderRFQMixin {
      * @param orderHash Hash of the order
      * @return remaining Remaining amount of the order
      */
-    function remainingInvalidatorForOrderRFQ(bytes32 orderHash) external view returns(uint256 remaining);
+    function remainingInvalidatorForOrderRFQ(address maker, bytes32 orderHash) external view returns(uint256 remaining);
 
     /**
      * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
      * @param orderHash Hash of the order
      * @return remainingRaw Remaining amount of the order plus 1 if order was partially filled, otherwise 0
      */
-    function rawRemainingInvalidatorForOrderRFQ(bytes32 orderHash) external view returns(uint256 remainingRaw);
+    function rawRemainingInvalidatorForOrderRFQ(address maker, bytes32 orderHash) external view returns(uint256 remainingRaw);
 
     /**
      * @notice Cancels order's quote

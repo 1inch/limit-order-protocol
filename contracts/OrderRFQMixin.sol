@@ -37,7 +37,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
 
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     mapping(address => BitInvalidatorLib.Data) private _bitInvalidator;
-    mapping(bytes32 => RemainingInvalidator) private _remainingInvalidator;
+    mapping(address => mapping(bytes32 => RemainingInvalidator)) private _remainingInvalidator;
 
     constructor(IWETH weth) OnlyWethReceiver(address(weth)) {
         _WETH = weth;
@@ -53,15 +53,15 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
     /**
      * @notice See {IOrderRFQMixin-remainingInvalidatorForOrderRFQ}.
      */
-    function remainingInvalidatorForOrderRFQ(bytes32 orderHash) external view returns(uint256 remaining) {
-        return _remainingInvalidator[orderHash].remaining();
+    function remainingInvalidatorForOrderRFQ(address maker, bytes32 orderHash) external view returns(uint256 remaining) {
+        return _remainingInvalidator[maker][orderHash].remaining();
     }
 
     /**
      * @notice See {IOrderRFQMixin-rawRemainingInvalidatorForOrderRFQ}.
      */
-    function rawRemainingInvalidatorForOrderRFQ(bytes32 orderHash) external view returns(uint256 remainingRaw) {
-        return RemainingInvalidator.unwrap(_remainingInvalidator[orderHash]);
+    function rawRemainingInvalidatorForOrderRFQ(address maker, bytes32 orderHash) external view returns(uint256 remainingRaw) {
+        return RemainingInvalidator.unwrap(_remainingInvalidator[maker][orderHash]);
     }
 
     /**
@@ -69,7 +69,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
      */
     function cancelOrderRFQ(Constraints orderConstraints, bytes32 orderHash) external {
         if (orderConstraints.allowPartialFills() && orderConstraints.allowMultipleFills()) {
-            _remainingInvalidator[orderHash] = RemainingInvalidatorLib.invalid();
+            _remainingInvalidator[msg.sender][orderHash] = RemainingInvalidatorLib.invalid();
         } else {
             _bitInvalidator[msg.sender].massInvalidate(orderConstraints.nonce(), 0);
         }
@@ -296,7 +296,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
         if (order.constraints.useBitInvalidator()) {
             _bitInvalidator[order.maker.get()].checkAndInvalidate(order.constraints.nonce());
         } else {
-            _remainingInvalidator[orderHash] = RemainingInvalidatorLib.remains(remainingMakingAmount, makingAmount);
+            _remainingInvalidator[msg.sender][orderHash] = RemainingInvalidatorLib.remains(remainingMakingAmount, makingAmount);
         }
 
         // Pre interaction, where maker can prepare funds interactively
@@ -429,11 +429,15 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
             requireSignature = true;
             remainingMakingAmount = order.makingAmount;
         } else {
-            RemainingInvalidator invalidator = _remainingInvalidator[orderHash];
-            if (invalidator.doesNotExist()) {
+            RemainingInvalidator invalidator = _remainingInvalidator[order.maker.get()][orderHash];
+            if (invalidator.isFullyFilled()) {
+                revert RFQInvalidatedOrder();
+            }
+            else if (invalidator.doesNotExist()) {
                 requireSignature = true;
                 remainingMakingAmount = order.makingAmount;
-            } else {
+            }
+            else {
                 remainingMakingAmount = invalidator.remaining();
             }
         }
@@ -441,6 +445,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
 
     function _applyOrderPermitIfNeeded(OrderRFQLib.OrderRFQ calldata order, bytes32 orderHash, bool skipOrderPermit, bytes calldata extension) private {
         if (order.constraints.hasExtension()) {
+            if (extension.length == 0) revert MissingOrderExtension();
             if (!order.validateExtension(extension)) revert RFQExtensionInvalid();
 
             if (!skipOrderPermit) {
@@ -448,7 +453,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
                 if (orderPermit.length >= 20) {
                     // proceed only if taker is willing to execute permit and its length is enough to store address
                     IERC20(address(bytes20(orderPermit))).safePermit(orderPermit[20:]);
-                    if (!_remainingInvalidator[orderHash].doesNotExist()) revert RFQReentrancyDetected();
+                    if (!_remainingInvalidator[order.maker.get()][orderHash].doesNotExist()) revert RFQReentrancyDetected();
                 }
             }
         }

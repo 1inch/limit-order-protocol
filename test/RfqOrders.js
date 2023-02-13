@@ -216,7 +216,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(signature);
             await expect(
                 swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1), 1),
-            ).to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
+            ).to.be.revertedWithCustomError(swap, 'RFQInvalidatedOrder');
         });
     });
 

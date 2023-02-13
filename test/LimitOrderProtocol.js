@@ -515,6 +515,7 @@ describe('LimitOrderProtocol', function () {
                 makingAmount: 1,
                 takingAmount: 1,
                 maker: addr1.address,
+                constraints: buildConstraints({ allowMultipleFills: true }),
             });
             return { dai, weth, swap, chainId, order };
         };
@@ -525,13 +526,13 @@ describe('LimitOrderProtocol', function () {
             const data = buildOrderRFQData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
             await swap.connect(addr1).cancelOrderRFQ(order.constraints, orderHash);
-            expect(await swap.remainingInvalidatorForOrderRFQ(orderHash)).to.equal('0');
+            expect(await swap.remainingInvalidatorForOrderRFQ(addr1.address, orderHash)).to.equal('0');
         });
 
         it('should cancel any hash', async function () {
             const { swap, order } = await loadFixture(orderCancelationInit);
             await swap.connect(addr1).cancelOrderRFQ(order.constraints, '0x0000000000000000000000000000000000000000000000000000000000000001');
-            expect(await swap.remainingInvalidatorForOrderRFQ('0x0000000000000000000000000000000000000000000000000000000000000001')).to.equal('0');
+            expect(await swap.remainingInvalidatorForOrderRFQ(addr1.address, '0x0000000000000000000000000000000000000000000000000000000000000001')).to.equal('0');
         });
 
         it('should not fill cancelled order', async function () {
@@ -545,7 +546,7 @@ describe('LimitOrderProtocol', function () {
 
             await expect(
                 swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1), 1),
-            ).to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
+            ).to.be.revertedWithCustomError(swap, 'RFQInvalidatedOrder');
         });
     });
 
@@ -629,7 +630,6 @@ describe('LimitOrderProtocol', function () {
             const tsBelow = swap.interface.encodeFunctionData('timestampBelow', ['0xff0000']);
             const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0, 0]);
             const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
-            const predicate = swap.interface.encodeFunctionData('or', [offsets, data]);
 
             const order = buildOrderRFQ(
                 {
@@ -640,7 +640,7 @@ describe('LimitOrderProtocol', function () {
                     maker: addr1.address,
                 },
                 {
-                    predicate,
+                    predicate: swap.interface.encodeFunctionData('or', [offsets, data])
                 },
             );
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
@@ -651,7 +651,11 @@ describe('LimitOrderProtocol', function () {
             const makerWeth = await weth.balanceOf(addr1.address);
             const takerWeth = await weth.balanceOf(addr.address);
 
-            await swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1), 1);
+            await expect(
+                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1), 1)
+            ).to.revertedWithCustomError(swap, 'MissingOrderExtension');
+
+            await swap.fillOrderRFQExt(order, r, vs, makeMakingAmount(1), 1, order.extension);
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -750,7 +754,7 @@ describe('LimitOrderProtocol', function () {
             const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff0000n]);
             const eqNonce = swap.interface.encodeFunctionData('nonceEquals', [addr1.address, 0, 0]);
             const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
-            const predicate = swap.interface.encodeFunctionData('and', [offsets, data]);
+
             const order = buildOrderRFQ(
                 {
                     makerAsset: dai.address,
@@ -760,14 +764,14 @@ describe('LimitOrderProtocol', function () {
                     maker: addr1.address,
                 },
                 {
-                    predicate,
+                    predicate: swap.interface.encodeFunctionData('and', [offsets, data]),
                 },
             );
             const signature = await signOrderRFQ(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
             await expect(
-                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(1), 1),
+                swap.fillOrderRFQExt(order, r, vs, makeMakingAmount(1), 1, order.extension),
             ).to.be.revertedWithCustomError(swap, 'RFQPredicateIsNotTrue');
         });
     });
@@ -1034,6 +1038,7 @@ describe('LimitOrderProtocol', function () {
                     makingAmount,
                     takingAmount,
                     maker,
+                    constraints: buildConstraints({ allowMultipleFills: true }),
                 },
                 {
                     getMakingAmount: rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
@@ -1056,14 +1061,17 @@ describe('LimitOrderProtocol', function () {
 
             // Buy fillOrderParams[0].makingAmount tokens of makerAsset,
             // price should be fillOrderParams[0].takingAmount tokens of takerAsset
-            await swap.fillOrderRFQ(
-                order, r, vs,
+            await swap.fillOrderRFQExt(
+                order,
+                r,
+                vs,
                 isByMakerAsset
                     ? makeMakingAmount(makerAsset.ether(fillOrderParams[0].makingAmount))
                     : takerAsset.ether(fillOrderParams[0].takingAmount),
                 isByMakerAsset
                     ? takerAsset.ether(fillOrderParams[0].thresholdAmount)
                     : makerAsset.ether(fillOrderParams[0].thresholdAmount),
+                order.extension,
             );
             const rangeAmount1 = await getRangeAmount(
                 startPrice,
@@ -1086,12 +1094,15 @@ describe('LimitOrderProtocol', function () {
 
             // Buy fillOrderParams[1].makingAmount tokens of makerAsset more,
             // price should be fillOrderParams[1].takingAmount tokens of takerAsset
-            await swap.fillOrderRFQ(
-                order, r, vs,
+            await swap.fillOrderRFQExt(
+                order,
+                r,
+                vs,
                 isByMakerAsset
                     ? makeMakingAmount(makerAsset.ether(fillOrderParams[1].makingAmount))
                     : takerAsset.ether(fillOrderParams[1].takingAmount),
                 takerAsset.ether(fillOrderParams[1].thresholdAmount),
+                order.extension,
             );
             const rangeAmount2 = await getRangeAmount(
                 startPrice,
