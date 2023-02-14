@@ -12,8 +12,8 @@ import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 import "./helpers/AmountCalculator.sol";
 import "./helpers/PredicateHelper.sol";
 import "./interfaces/ITakerInteraction.sol";
-import "./interfaces/IPreInteractionRFQ.sol";
-import "./interfaces/IPostInteractionRFQ.sol";
+import "./interfaces/IPreInteraction.sol";
+import "./interfaces/IPostInteraction.sol";
 import "./interfaces/IOrderMixin.sol";
 import "./libraries/Errors.sol";
 import "./libraries/LimitsLib.sol";
@@ -307,11 +307,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 preInteractionTarget = address(bytes20(preInteractionData));
                 preInteractionData = preInteractionData[20:];
             }
-            IPreInteractionRFQ(preInteractionTarget).preInteractionRFQ(
+            IPreInteraction(preInteractionTarget).preInteraction(
                 order, orderHash, msg.sender, makingAmount, takingAmount, preInteractionData
             );
             // TODO: implement in assembly
-            // bytes4 selector = IPreInteractionRFQ.preInteractionRFQ.selector;
+            // bytes4 selector = IPreInteraction.preInteraction.selector;
             /// @solidity memory-safe-assembly
             // assembly { // solhint-disable-line no-inline-assembly
             //     let ptr := mload(0x40)
@@ -386,11 +386,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 postInteractionTarget = address(bytes20(postInteractionData));
                 postInteractionData = postInteractionData[20:];
             }
-            IPostInteractionRFQ(postInteractionTarget).postInteractionRFQ(
+            IPostInteraction(postInteractionTarget).postInteraction(
                 order, orderHash, msg.sender, makingAmount, takingAmount, postInteractionData
             );
             // TODO: implement in assembly
-            // bytes4 selector = IPostInteractionRFQ.postInteractionRFQ.selector;
+            // bytes4 selector = IPostInteraction.postInteraction.selector;
             // /// @solidity memory-safe-assembly
             // assembly { // solhint-disable-line no-inline-assembly
             //     let ptr := mload(0x40)

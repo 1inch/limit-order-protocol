@@ -3,11 +3,11 @@
 pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../interfaces/IPreInteractionRFQ.sol";
+import "../interfaces/IPreInteraction.sol";
 import "../OrderLib.sol";
 
 
-contract HashChecker is IPreInteractionRFQ, Ownable {
+contract HashChecker is IPreInteraction, Ownable {
     using OrderLib for OrderLib.OrderRFQ;
 
     error IncorrectOrderHash();
@@ -26,7 +26,7 @@ contract HashChecker is IPreInteractionRFQ, Ownable {
         hashes[orderHash] = status;
     }
 
-    function preInteractionRFQ(
+    function preInteraction(
         OrderLib.OrderRFQ calldata order,
         bytes32 orderHash,
         address taker,
@@ -37,7 +37,7 @@ contract HashChecker is IPreInteractionRFQ, Ownable {
         if (hashes[orderHash] == false) revert IncorrectOrderHash();
 
         if (extraData.length != 0) {
-            IPreInteractionRFQ(address(bytes20(extraData))).preInteractionRFQ(
+            IPreInteraction(address(bytes20(extraData))).preInteraction(
                 order,
                 orderHash,
                 taker,

@@ -2,13 +2,13 @@
 
 pragma solidity 0.8.17;
 
-import "../interfaces/IPreInteractionRFQ.sol";
+import "../interfaces/IPreInteraction.sol";
 
 /**
  * @notice OrderIdInvalidator stores pairs (orderId, orderHash)
  * that allows to execute only one order with the same orderId
  */
-contract OrderIdInvalidator is IPreInteractionRFQ {
+contract OrderIdInvalidator is IPreInteraction {
     using AddressLib for Address;
 
     error AccessDenied();
@@ -31,7 +31,7 @@ contract OrderIdInvalidator is IPreInteractionRFQ {
         _limitOrderProtocol = limitOrderProtocol_;
     }
 
-    function preInteractionRFQ(
+    function preInteraction(
         OrderLib.OrderRFQ calldata order,
         bytes32 orderHash,
         address /* taker */,
