@@ -16,14 +16,14 @@ contract RecursiveMatcher is ITakerInteraction {
 
     function matchOrdersRFQ(
         IOrderMixin orderRFQMixin,
-        OrderLib.OrderRFQ calldata order,
+        OrderLib.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
         Limits limits,
         bytes calldata interaction
     ) external {
-        orderRFQMixin.fillOrderRFQTo(
+        orderRFQMixin.fillOrderTo(
             order,
             r,
             vs,
@@ -55,7 +55,7 @@ contract RecursiveMatcher is ITakerInteraction {
         } else {
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory reason) = msg.sender.call(
-                abi.encodePacked(IOrderMixin.fillOrderRFQTo.selector, interactiveData[1:])
+                abi.encodePacked(IOrderMixin.fillOrderTo.selector, interactiveData[1:])
             );
             if (!success) revert FailedExternalCall(reason);
         }

@@ -69,7 +69,7 @@ describe('RfqInteractions', function () {
                 ],
             ).substring(2);
 
-            const interaction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderRFQTo', [
+            const interaction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderTo', [
                 backOrder,
                 compactSignature(signatureBackOrder).r,
                 compactSignature(signatureBackOrder).vs,
@@ -131,7 +131,7 @@ describe('RfqInteractions', function () {
                 ],
             ).substring(2);
 
-            const interaction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderRFQTo', [
+            const interaction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderTo', [
                 backOrder,
                 compactSignature(signatureBackOrder).r,
                 compactSignature(signatureBackOrder).vs,
@@ -202,7 +202,7 @@ describe('RfqInteractions', function () {
                 ],
             ).substring(2);
 
-            const internalInteraction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderRFQTo', [
+            const internalInteraction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderTo', [
                 backOrder,
                 compactSignature(signatureBackOrder).r,
                 compactSignature(signatureBackOrder).vs,
@@ -212,7 +212,7 @@ describe('RfqInteractions', function () {
                 matchingParams,
             ]).substring(10);
 
-            const externalInteraction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderRFQTo', [
+            const externalInteraction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderTo', [
                 order2,
                 compactSignature(signature2).r,
                 compactSignature(signature2).vs,

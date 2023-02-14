@@ -4,7 +4,7 @@ const { ethers } = require('ethers');
 const { keccak256 } = require('ethers/lib/utils');
 const { setn } = require('./utils');
 
-const OrderRFQ = [
+const Order = [
     { name: 'salt', type: 'uint256' },
     { name: 'maker', type: 'address' },
     { name: 'makerAsset', type: 'address' },
@@ -17,7 +17,7 @@ const OrderRFQ = [
 const ABIOrderRFQ = {
     type: 'tuple',
     name: 'order',
-    components: OrderRFQ,
+    components: Order,
 };
 
 const name = '1inch Limit Order Protocol';
@@ -195,7 +195,7 @@ function buildOrder (
 function buildOrderData (chainId, verifyingContract, order) {
     return {
         domain: { name, version, chainId, verifyingContract },
-        types: { OrderRFQ },
+        types: { Order },
         value: order,
     };
 }

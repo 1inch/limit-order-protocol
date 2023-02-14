@@ -17,6 +17,7 @@ interface IOrderMixin {
     error RFQSwapWithZeroAmount();
     error RFQPartialFillNotAllowed();
     error OrderIsnotSuitableForMassInvalidation();
+    error EpochManagerAndBitInvalidatorsAreIncompatible();
     error RFQReentrancyDetected();
     error RFQPredicateIsNotTrue();
     error RFQTakingAmountTooHigh();
@@ -29,7 +30,7 @@ interface IOrderMixin {
      * @param orderHash Hash of the order
      * @param makingAmount Amount of the maker asset that was transferred from maker to taker
      */
-    event OrderFilledRFQ(
+    event OrderFilled(
         bytes32 orderHash,
         uint256 makingAmount
     );
@@ -40,35 +41,35 @@ interface IOrderMixin {
      * @param slot Slot number to return bitmask for
      * @return result Each bit represents whether corresponding was already invalidated
      */
-    function bitInvalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256 /* result */);
+    function bitInvalidatorForOrder(address maker, uint256 slot) external view returns(uint256 /* result */);
 
     /**
      * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
      * @param orderHash Hash of the order
      * @return remaining Remaining amount of the order
      */
-    function remainingInvalidatorForOrderRFQ(address maker, bytes32 orderHash) external view returns(uint256 remaining);
+    function remainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 remaining);
 
     /**
      * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
      * @param orderHash Hash of the order
      * @return remainingRaw Remaining amount of the order plus 1 if order was partially filled, otherwise 0
      */
-    function rawRemainingInvalidatorForOrderRFQ(address maker, bytes32 orderHash) external view returns(uint256 remainingRaw);
+    function rawRemainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 remainingRaw);
 
     /**
      * @notice Cancels order's quote
      * @param orderConstraints Order constraints
      * @param orderHash Hash of the order to cancel
      */
-    function cancelOrderRFQ(Constraints orderConstraints, bytes32 orderHash) external;
+    function cancelOrder(Constraints orderConstraints, bytes32 orderHash) external;
 
     /**
      * @notice Cancels all quotes of the maker (works for bit-invalidating orders only)
      * @param orderConstraints Order constraints
      * @param additionalMask Additional bitmask to invalidate orders
      */
-    function massCancelOrderRFQ(Constraints orderConstraints, uint256 additionalMask) external;
+    function bitsInvalidateForOrder(Constraints orderConstraints, uint256 additionalMask) external;
 
     /**
      * @notice Fills order's quote, fully or partially (whichever is possible)
@@ -81,8 +82,8 @@ interface IOrderMixin {
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
      */
-    function fillOrderRFQ(
-        OrderLib.OrderRFQ calldata order,
+    function fillOrder(
+        OrderLib.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -90,7 +91,7 @@ interface IOrderMixin {
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
-     * @notice Same as `fillOrderRFQ` but allows to specify funds destination instead of `msg.sender`
+     * @notice Same as `fillOrder` but allows to specify funds destination instead of `msg.sender`
      * @param order Order quote to fill
      * @param r R component of signature
      * @param vs VS component of signature
@@ -102,8 +103,8 @@ interface IOrderMixin {
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
      */
-    function fillOrderRFQTo(
-        OrderLib.OrderRFQ calldata order,
+    function fillOrderTo(
+        OrderLib.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -113,7 +114,7 @@ interface IOrderMixin {
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
-     * @notice Same as `fillOrderRFQTo` but calls permit first.
+     * @notice Same as `fillOrderTo` but calls permit first.
      * It allows to approve token spending and make a swap in one transaction.
      * Also allows to specify funds destination instead of `msg.sender`
      * @param order Order quote to fill
@@ -129,8 +130,8 @@ interface IOrderMixin {
      * @return orderHash Hash of the filled order
      * @dev See tests for examples
      */
-    function fillOrderRFQToWithPermit(
-        OrderLib.OrderRFQ calldata order,
+    function fillOrderToWithPermit(
+        OrderLib.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -141,7 +142,7 @@ interface IOrderMixin {
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
-     * @notice Same as `fillOrderRFQTo` but calls permit first.
+     * @notice Same as `fillOrderTo` but calls permit first.
      * It allows to approve token spending and make a swap in one transaction.
      * Also allows to specify funds destination instead of `msg.sender`
      * @param order Order quote to fill
@@ -156,8 +157,8 @@ interface IOrderMixin {
      * @return orderHash Hash of the filled order
      * @dev See tests for examples
      */
-    function fillContractOrderRFQ(
-        OrderLib.OrderRFQ calldata order,
+    function fillContractOrder(
+        OrderLib.Order calldata order,
         bytes calldata signature,
         uint256 amount,
         Limits limits,

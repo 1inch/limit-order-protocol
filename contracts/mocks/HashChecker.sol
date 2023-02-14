@@ -8,7 +8,7 @@ import "../OrderLib.sol";
 
 
 contract HashChecker is IPreInteraction, Ownable {
-    using OrderLib for OrderLib.OrderRFQ;
+    using OrderLib for OrderLib.Order;
 
     error IncorrectOrderHash();
 
@@ -21,13 +21,13 @@ contract HashChecker is IPreInteraction, Ownable {
         limitOrderProtocolDomainSeparator = abi.decode(data, (bytes32));
     }
 
-    function setHashOrderStatus(OrderLib.OrderRFQ calldata order, bool status) external onlyOwner {
+    function setHashOrderStatus(OrderLib.Order calldata order, bool status) external onlyOwner {
         bytes32 orderHash = order.hash(limitOrderProtocolDomainSeparator);
         hashes[orderHash] = status;
     }
 
     function preInteraction(
-        OrderLib.OrderRFQ calldata order,
+        OrderLib.Order calldata order,
         bytes32 orderHash,
         address taker,
         uint256 makingAmount,

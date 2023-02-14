@@ -25,7 +25,7 @@ import "./OrderLib.sol";
 abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, PredicateHelper {
     using SafeERC20 for IERC20;
     using SafeERC20 for IWETH;
-    using OrderLib for OrderLib.OrderRFQ;
+    using OrderLib for OrderLib.Order;
     using OrderLib for bytes;
     using AddressLib for Address;
     using ConstraintsLib for Constraints;
@@ -44,30 +44,30 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     }
 
     /**
-     * @notice See {IOrderMixin-bitInvalidatorForOrderRFQ}.
+     * @notice See {IOrderMixin-bitInvalidatorForOrder}.
      */
-    function bitInvalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256 /* result */) {
+    function bitInvalidatorForOrder(address maker, uint256 slot) external view returns(uint256 /* result */) {
         return _bitInvalidator[maker].checkSlot(slot);
     }
 
     /**
-     * @notice See {IOrderMixin-remainingInvalidatorForOrderRFQ}.
+     * @notice See {IOrderMixin-remainingInvalidatorForOrder}.
      */
-    function remainingInvalidatorForOrderRFQ(address maker, bytes32 orderHash) external view returns(uint256 remaining) {
+    function remainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 remaining) {
         return _remainingInvalidator[maker][orderHash].remaining();
     }
 
     /**
-     * @notice See {IOrderMixin-rawRemainingInvalidatorForOrderRFQ}.
+     * @notice See {IOrderMixin-rawRemainingInvalidatorForOrder}.
      */
-    function rawRemainingInvalidatorForOrderRFQ(address maker, bytes32 orderHash) external view returns(uint256 remainingRaw) {
+    function rawRemainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 remainingRaw) {
         return RemainingInvalidator.unwrap(_remainingInvalidator[maker][orderHash]);
     }
 
     /**
-     * @notice See {IOrderMixin-cancelOrderRFQ}.
+     * @notice See {IOrderMixin-cancelOrder}.
      */
-    function cancelOrderRFQ(Constraints orderConstraints, bytes32 orderHash) external {
+    function cancelOrder(Constraints orderConstraints, bytes32 orderHash) external {
         if (orderConstraints.useBitInvalidator()) {
             _bitInvalidator[msg.sender].massInvalidate(orderConstraints.nonceOrEpoch(), 0);
         } else {
@@ -76,9 +76,9 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     }
 
     /**
-     * @notice See {IOrderMixin-massCancelOrderRFQ}.
+     * @notice See {IOrderMixin-bitsInvalidateForOrder}.
      */
-    function massCancelOrderRFQ(Constraints orderConstraints, uint256 additionalMask) external {
+    function bitsInvalidateForOrder(Constraints orderConstraints, uint256 additionalMask) external {
         if (!orderConstraints.useBitInvalidator()) revert OrderIsnotSuitableForMassInvalidation();
         _bitInvalidator[msg.sender].massInvalidate(orderConstraints.nonceOrEpoch(), additionalMask);
     }
@@ -86,7 +86,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      /**
      * @notice See {IOrderMixin-hashOrder}.
      */
-    function hashOrder(OrderLib.OrderRFQ calldata order) public view returns(bytes32) {
+    function hashOrder(OrderLib.Order calldata order) public view returns(bytes32) {
         return order.hash(_domainSeparatorV4());
     }
 
@@ -99,37 +99,37 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     }
 
     /**
-     * @notice See {IOrderMixin-fillOrderRFQ}.
+     * @notice See {IOrderMixin-fillOrder}.
      */
-    function fillOrderRFQ(
-        OrderLib.OrderRFQ calldata order,
+    function fillOrder(
+        OrderLib.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
         Limits limits
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        return fillOrderRFQTo(order, r, vs, amount, limits, msg.sender, msg.data[:0]);
+        return fillOrderTo(order, r, vs, amount, limits, msg.sender, msg.data[:0]);
     }
 
     /**
-     * @notice See {IOrderMixin-fillOrderRFQ}.
+     * @notice See {IOrderMixin-fillOrder}.
      */
-    function fillOrderRFQExt(
-        OrderLib.OrderRFQ calldata order,
+    function fillOrderExt(
+        OrderLib.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
         Limits limits,
         bytes calldata extension
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        return fillOrderRFQToExt(order, r, vs, amount, limits, msg.sender, msg.data[:0], extension);
+        return fillOrderToExt(order, r, vs, amount, limits, msg.sender, msg.data[:0], extension);
     }
 
     /**
-     * @notice See {IOrderMixin-fillOrderRFQTo}.
+     * @notice See {IOrderMixin-fillOrderTo}.
      */
-    function fillOrderRFQTo(
-        OrderLib.OrderRFQ calldata order,
+    function fillOrderTo(
+        OrderLib.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -137,11 +137,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         address target,
         bytes calldata interaction
     ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        return fillOrderRFQToExt(order, r, vs, amount, limits, target, interaction, msg.data[:0]);
+        return fillOrderToExt(order, r, vs, amount, limits, target, interaction, msg.data[:0]);
     }
 
-    function fillOrderRFQToExt(
-        OrderLib.OrderRFQ calldata order,
+    function fillOrderToExt(
+        OrderLib.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -162,14 +162,14 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             }
         }
 
-        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, extension, remainingMakingAmount, amount, limits, target, _wrap(interaction));
+        (makingAmount, takingAmount) = _fillOrderTo(order, orderHash, extension, remainingMakingAmount, amount, limits, target, _wrap(interaction));
     }
 
     /**
-     * @notice See {IOrderMixin-fillOrderRFQToWithPermit}.
+     * @notice See {IOrderMixin-fillOrderToWithPermit}.
      */
-    function fillOrderRFQToWithPermit(
-        OrderLib.OrderRFQ calldata order,
+    function fillOrderToWithPermit(
+        OrderLib.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -179,14 +179,14 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes calldata permit
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         IERC20(order.takerAsset.get()).safePermit(permit);
-        return fillOrderRFQTo(order, r, vs, amount, limits, target, interaction);
+        return fillOrderTo(order, r, vs, amount, limits, target, interaction);
     }
 
     /**
-     * @notice See {IOrderMixin-fillContractOrderRFQ}.
+     * @notice See {IOrderMixin-fillContractOrder}.
      */
-    function fillContractOrderRFQ(
-        OrderLib.OrderRFQ calldata order,
+    function fillContractOrder(
+        OrderLib.Order calldata order,
         bytes calldata signature,
         uint256 amount,
         Limits limits,
@@ -194,11 +194,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes calldata interaction,
         bytes calldata permit
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        return fillContractOrderRFQExt(order, signature, amount, limits, target, interaction, permit, msg.data[:0]);
+        return fillContractOrderExt(order, signature, amount, limits, target, interaction, permit, msg.data[:0]);
     }
 
-    function fillContractOrderRFQExt(
-        OrderLib.OrderRFQ calldata order,
+    function fillContractOrderExt(
+        OrderLib.Order calldata order,
         bytes calldata signature,
         uint256 amount,
         Limits limits,
@@ -222,13 +222,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             }
         }
 
-        (makingAmount, takingAmount) = _fillOrderRFQTo(order, orderHash, extension, remainingMakingAmount, amount, limits, target, _wrap(interaction));
+        (makingAmount, takingAmount) = _fillOrderTo(order, orderHash, extension, remainingMakingAmount, amount, limits, target, _wrap(interaction));
     }
 
-    error EpochManagerAndBitInvalidatorsAreIncompatible();
-
-    function _fillOrderRFQTo(
-        OrderLib.OrderRFQ calldata order,
+    function _fillOrderTo(
+        OrderLib.Order calldata order,
         bytes32 orderHash,
         bytes calldata extension,
         uint256 remainingMakingAmount,
@@ -407,10 +405,10 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             // }
         }
 
-        emit OrderFilledRFQ(orderHash, makingAmount);
+        emit OrderFilled(orderHash, makingAmount);
     }
 
-    function _checkRemainingMakingAmount(OrderLib.OrderRFQ calldata order, bytes32 orderHash) private view returns(uint256 remainingMakingAmount) {
+    function _checkRemainingMakingAmount(OrderLib.Order calldata order, bytes32 orderHash) private view returns(uint256 remainingMakingAmount) {
         if (order.constraints.useBitInvalidator()) {
             remainingMakingAmount = order.makingAmount;
         } else {
@@ -419,7 +417,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         if (remainingMakingAmount == 0) revert InvalidatedOrder();
     }
 
-    function _applyOrderPermit(OrderLib.OrderRFQ calldata order, bytes32 orderHash, bytes calldata extension) private {
+    function _applyOrderPermit(OrderLib.Order calldata order, bytes32 orderHash, bytes calldata extension) private {
         bytes calldata orderPermit = extension.permit();
         if (orderPermit.length >= 20) {
             // proceed only if taker is willing to execute permit and its length is enough to store address

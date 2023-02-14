@@ -18,7 +18,7 @@ library OrderLib {
     error UnexpectedOrderExtension();
     error ExtensionInvalid();
 
-    struct OrderRFQ {
+    struct Order {
         uint256 salt;
         Address maker;
         Address makerAsset;
@@ -29,7 +29,7 @@ library OrderLib {
     }
 
     bytes32 constant internal _LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
-        "OrderRFQ("
+        "Order("
             "uint256 salt,"
             "address maker,"
             "address makerAsset,"
@@ -51,7 +51,7 @@ library OrderLib {
         PostInteraction
     }
 
-    function hash(OrderRFQ calldata order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
+    function hash(Order calldata order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes32 typehash = _LIMIT_ORDER_RFQ_TYPEHASH;
         /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
@@ -66,7 +66,7 @@ library OrderLib {
     }
 
     function calculateMakingAmount(
-        OrderRFQ calldata order,
+        Order calldata order,
         bytes calldata extension,
         uint256 requestedTakingAmount,
         uint256 remainingMakingAmount,
@@ -81,7 +81,7 @@ library OrderLib {
     }
 
     function calculateTakingAmount(
-        OrderRFQ calldata order,
+        Order calldata order,
         bytes calldata extension,
         uint256 requestedMakingAmount,
         uint256 remainingMakingAmount,
@@ -108,7 +108,7 @@ library OrderLib {
         return abi.decode(result, (uint256));
     }
 
-    function validateExtension(OrderRFQ calldata order, bytes calldata extension) internal pure {
+    function validateExtension(Order calldata order, bytes calldata extension) internal pure {
         if (order.constraints.hasExtension()) {
             if (extension.length == 0) revert MissingOrderExtension();
             // Lowest 160 bits of the order salt must be equal to the lowest 160 bits of the extension hash
@@ -118,7 +118,7 @@ library OrderLib {
         }
     }
 
-    function getReceiver(bytes calldata extension, OrderRFQ calldata order) internal pure returns(address receiver) {
+    function getReceiver(bytes calldata extension, Order calldata order) internal pure returns(address receiver) {
         if (extension.length < 20) {
             return order.maker.get();
         }

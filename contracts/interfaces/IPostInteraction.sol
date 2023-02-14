@@ -15,7 +15,7 @@ interface IPostInteraction {
      * @param extraData Extra data
      */
     function postInteraction(
-        OrderLib.OrderRFQ calldata order,
+        OrderLib.Order calldata order,
         bytes32 orderHash,
         address taker,
         uint256 makingAmount,
