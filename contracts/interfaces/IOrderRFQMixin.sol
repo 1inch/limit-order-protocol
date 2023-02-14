@@ -6,6 +6,7 @@ import "../OrderRFQLib.sol";
 import "../libraries/LimitsLib.sol";
 
 interface IOrderRFQMixin {
+    error InvalidatedOrder();
     error RFQTakingAmountIncreased();
     error RFQPrivateOrder();
     error RFQBadSignature();

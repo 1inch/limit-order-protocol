@@ -546,7 +546,7 @@ describe('LimitOrderProtocol', function () {
 
             await expect(
                 swap.fillOrderRFQ(order, r, vs, 1, makeMakingAmount(1)),
-            ).to.be.revertedWithCustomError(swap, 'RFQInvalidatedOrder');
+            ).to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
         });
     });
 
@@ -928,7 +928,7 @@ describe('LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(signature);
 
             await expect(
-                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(900), 3, { value: 2 }),
+                swap.fillOrderRFQ(order, r, vs, 900, makeMakingAmount(3), { value: 2 }),
             ).to.be.revertedWithCustomError(swap, 'InvalidMsgValue');
         });
 
@@ -1067,10 +1067,10 @@ describe('LimitOrderProtocol', function () {
                 r,
                 vs,
                 isByMakerAsset
-                    ? makeMakingAmount(makerAsset.ether(fillOrderParams[0].makingAmount))
+                    ? makerAsset.ether(fillOrderParams[0].makingAmount)
                     : takerAsset.ether(fillOrderParams[0].takingAmount),
                 isByMakerAsset
-                    ? takerAsset.ether(fillOrderParams[0].thresholdAmount)
+                    ? makeMakingAmount(takerAsset.ether(fillOrderParams[0].thresholdAmount))
                     : makerAsset.ether(fillOrderParams[0].thresholdAmount),
                 order.extension,
             );

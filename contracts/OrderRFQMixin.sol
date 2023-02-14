@@ -410,11 +410,13 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
         emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
-    function _checkRemainingMakingAmount(OrderRFQLib.OrderRFQ calldata order, bytes32 orderHash) private view returns(uint256) {
+    function _checkRemainingMakingAmount(OrderRFQLib.OrderRFQ calldata order, bytes32 orderHash) private view returns(uint256 remainingMakingAmount) {
         if (order.constraints.useBitInvalidator()) {
-            return order.makingAmount;
+            remainingMakingAmount = order.makingAmount;
+        } else {
+            remainingMakingAmount = _remainingInvalidator[order.maker.get()][orderHash].remaining(order.makingAmount);
         }
-        return _remainingInvalidator[order.maker.get()][orderHash].remaining(order.makingAmount);
+        if (remainingMakingAmount == 0) revert InvalidatedOrder();
     }
 
     function _applyOrderPermit(OrderRFQLib.OrderRFQ calldata order, bytes32 orderHash, bytes calldata extension) private {
