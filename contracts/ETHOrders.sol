@@ -72,13 +72,9 @@ contract ETHOrders is EIP712("1inch Limit Order Protocol", "3"), IPostInteractio
         if (order.makingAmount != msg.value) revert InvalidOrder();
         if (orderMakers[orderHash] != address(0)) revert ExistingOrder();
         bytes calldata interaction = order.postInteraction();
-        if (interaction.length < 20) {
-            revert InvalidOrder();
-        }
+        if (interaction.length < 20) revert InvalidOrder();
         address interactionTarget = address(bytes20(interaction));
-        if (interactionTarget != address(this)) {
-            revert InvalidOrder();
-        }
+        if (interactionTarget != address(this)) revert InvalidOrder();
         orderHash = IOrderMixin(_limitOrderProtocol).hashOrder(order);
         orderMakers[orderHash] = msg.sender;
         ethOrderBalance[orderHash] = msg.value;
@@ -125,9 +121,7 @@ contract ETHOrders is EIP712("1inch Limit Order Protocol", "3"), IPostInteractio
         uint256 /* remainingAmount */,
         bytes memory /* interactionData */
     ) external onlyLimitOrderProtocol {
-        if (ethOrderBalance[orderHash] < makingAmount) {
-            revert NotEnoughBalance();
-        }
+        if (ethOrderBalance[orderHash] < makingAmount) revert NotEnoughBalance();
         ethOrderBalance[orderHash] -= makingAmount;
     }
 }
