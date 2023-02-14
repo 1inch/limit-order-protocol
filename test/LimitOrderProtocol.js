@@ -77,7 +77,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, vs } = compactSignature(signature);
             await expect(
-                swap.fillOrderRFQ(order, r, vs, makeMakingAmount(2), 1),
+                swap.fillOrderRFQ(order, r, vs, 2, makeMakingAmount(1)),
             ).to.be.revertedWithCustomError(swap, 'RFQTakingAmountTooHigh');
         });
 
@@ -428,7 +428,7 @@ describe('LimitOrderProtocol', function () {
                 const takerWeth = await weth.balanceOf(addr.address);
 
                 await addr1.sendTransaction({ to: weth.address, data: '0xd505accf' + permit.substring(42) });
-                await swap.connect(addr1).fillOrderRFQExt(order, r, vs, skipOrderPermit(1), 0, order.extension);
+                await swap.connect(addr1).fillOrderRFQExt(order, r, vs, 1, skipOrderPermit(0), order.extension);
 
                 expect(await dai.balanceOf(addr.address)).to.equal(makerDai.add(1));
                 expect(await dai.balanceOf(addr1.address)).to.equal(takerDai.sub(1));

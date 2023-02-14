@@ -29,6 +29,16 @@ library RemainingInvalidatorLib {
         }
     }
 
+    function remaining(RemainingInvalidator invalidator, uint256 orderMakerAmount) internal pure returns(uint256) {
+        uint256 value = RemainingInvalidator.unwrap(invalidator);
+        if (value == 0) {
+            return orderMakerAmount;
+        }
+        unchecked {
+            return value - 1;
+        }
+    }
+
     function remains(uint256 remainingMakingAmount, uint256 makingAmount) internal pure returns(RemainingInvalidator) {
         unchecked {
             return RemainingInvalidator.wrap(remainingMakingAmount - makingAmount + 1);

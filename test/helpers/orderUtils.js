@@ -26,6 +26,8 @@ const version = '3';
 const _NO_PARTIAL_FILLS_FLAG = 255n;
 const _ALLOW_MULTIPLE_FILLS_FLAG = 254n;
 const _NO_PRICE_IMPROVEMENT_FLAG = 253n;
+const _NEED_PREINTERACTION_FLAG = 252n;
+const _NEED_POSTINTERACTION_FLAG = 251n;
 const _NEED_EPOCH_CHECK_FLAG = 250n;
 const _HAS_EXTENSION_FLAG = 249n;
 
@@ -35,6 +37,8 @@ function buildConstraints ({
     allowPartialFill = true,
     allowPriceImprovement = true,
     allowMultipleFills = true,
+    needPreInteraction = false,
+    needPostInteraction = false,
     expiry = 0,
     nonce = 0,
     series = 0,
@@ -60,6 +64,12 @@ function buildConstraints ({
     }
     if (shouldCheckEpoch) {
         res = '0x' + setn(BigInt(res), _NEED_EPOCH_CHECK_FLAG, shouldCheckEpoch).toString(16).padStart(64, '0');
+    }
+    if (needPreInteraction) {
+        res = '0x' + setn(BigInt(res), _NEED_PREINTERACTION_FLAG, true).toString(16).padStart(64, '0');
+    }
+    if (needPostInteraction) {
+        res = '0x' + setn(BigInt(res), _NEED_POSTINTERACTION_FLAG, true).toString(16).padStart(64, '0');
     }
     return res;
 }

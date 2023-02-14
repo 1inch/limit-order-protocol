@@ -6,7 +6,6 @@ import "../OrderRFQLib.sol";
 import "../libraries/LimitsLib.sol";
 
 interface IOrderRFQMixin {
-    error MissingOrderExtension();
     error RFQTakingAmountIncreased();
     error RFQPrivateOrder();
     error RFQBadSignature();
@@ -17,7 +16,6 @@ interface IOrderRFQMixin {
     error RFQSwapWithZeroAmount();
     error RFQPartialFillNotAllowed();
     error OrderIsnotSuitableForMassInvalidation();
-    error RFQExtensionInvalid();
     error RFQReentrancyDetected();
     error RFQPredicateIsNotTrue();
     error RFQTakingAmountTooHigh();

@@ -294,6 +294,7 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr1.address,
+                    constraints: buildConstraints({ nonce: 0, needPreInteraction: true }),
                 },
                 {
                     preInteraction: hashChecker.address,
@@ -352,6 +353,7 @@ describe('Interactions', function () {
         it('should fail to execute order with same orderId, but with different orderHash', async function () {
             const { dai, weth, swap, chainId, orderIdInvalidator } = await loadFixture(initContracts);
             const orderId = 13341n;
+            const preInteraction = orderIdInvalidator.address + orderId.toString(16).padStart(8, '0');
 
             const order = buildOrder(
                 {
@@ -360,10 +362,10 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr.address,
-                    constraints: buildConstraints({ nonce: 0 }),
+                    constraints: buildConstraints({ nonce: 0, needPreInteraction: true }),
                 },
                 {
-                    preInteraction: orderIdInvalidator.address + orderId.toString(16).padStart(8, '0'),
+                    preInteraction,
                 },
             );
 
@@ -374,10 +376,10 @@ describe('Interactions', function () {
                     makingAmount: ether('50'),
                     takingAmount: ether('0.05'),
                     maker: addr.address,
-                    constraints: buildConstraints({ nonce: 0 }),
+                    constraints: buildConstraints({ nonce: 0, needPreInteraction: true }),
                 },
                 {
-                    preInteraction: orderIdInvalidator.address + orderId.toString(16).padStart(8, '0'),
+                    preInteraction,
                 },
             );
 

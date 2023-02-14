@@ -10,9 +10,13 @@ import "./helpers/AmountCalculator.sol";
 
 library OrderRFQLib {
     using AddressLib for Address;
+    using ConstraintsLib for Constraints;
 
     error RFQWrongGetter();
     error RFQGetAmountCallFailed();
+    error MissingOrderExtension();
+    error UnexpectedOrderExtension();
+    error ExtensionInvalid();
 
     struct OrderRFQ {
         uint256 salt;
@@ -104,9 +108,14 @@ library OrderRFQLib {
         return abi.decode(result, (uint256));
     }
 
-    function validateExtension(OrderRFQ calldata order, bytes calldata extension) internal pure returns(bool) {
-        // Lowest 160 bits of the order salt must be equal to the lowest 160 bits of the extension hash
-        return (uint256(keccak256(extension)) & type(uint160).max) == (order.salt & type(uint160).max) && extension.length >= 20;
+    function validateExtension(OrderRFQ calldata order, bytes calldata extension) internal pure {
+        if (order.constraints.hasExtension()) {
+            if (extension.length == 0) revert MissingOrderExtension();
+            // Lowest 160 bits of the order salt must be equal to the lowest 160 bits of the extension hash
+            if (uint256(keccak256(extension)) & type(uint160).max != order.salt & type(uint160).max) revert ExtensionInvalid();
+        } else {
+            if (extension.length > 0) revert UnexpectedOrderExtension();
+        }
     }
 
     function getReceiver(bytes calldata extension, OrderRFQ calldata order) internal pure returns(address receiver) {

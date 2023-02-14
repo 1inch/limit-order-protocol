@@ -7,7 +7,7 @@ type Constraints is uint256;
 library ConstraintsLib {
     error EpochNotAvailable();
 
-    uint256 private constant _ALLOWED_SENDER_MASK = type(uint160).max;
+    uint256 private constant _ALLOWED_SENDER_MASK = type(uint160).max; // TODO: can safely shrink to 80 bits
     uint256 private constant _EXPIRATION_OFFSET = 160;
     uint256 private constant _EXPIRATION_MASK = type(uint40).max;
     uint256 private constant _NONCE_OFFSET = 200;
@@ -36,12 +36,7 @@ library ConstraintsLib {
         return expiration != 0 && expiration < block.timestamp;  // solhint-disable-line not-rely-on-time
     }
 
-    function nonce(Constraints constraints) internal pure returns (uint256) {
-        return (Constraints.unwrap(constraints) >> _NONCE_OFFSET) & _NONCE_MASK;
-    }
-
-    function epoch(Constraints constraints) internal pure returns (uint256) {
-        if (useBitInvalidator(constraints)) revert EpochNotAvailable();
+    function nonceOrEpoch(Constraints constraints) internal pure returns (uint256) {
         return (Constraints.unwrap(constraints) >> _NONCE_OFFSET) & _NONCE_MASK;
     }
 
