@@ -14,19 +14,19 @@ import "./helpers/PredicateHelper.sol";
 import "./interfaces/ITakerInteraction.sol";
 import "./interfaces/IPreInteractionRFQ.sol";
 import "./interfaces/IPostInteractionRFQ.sol";
-import "./interfaces/IOrderRFQMixin.sol";
+import "./interfaces/IOrderMixin.sol";
 import "./libraries/Errors.sol";
 import "./libraries/LimitsLib.sol";
 import "./libraries/BitInvalidatorLib.sol";
 import "./libraries/RemainingInvalidatorLib.sol";
-import "./OrderRFQLib.sol";
+import "./OrderLib.sol";
 
 /// @title RFQ Limit Order mixin
-abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, PredicateHelper {
+abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, PredicateHelper {
     using SafeERC20 for IERC20;
     using SafeERC20 for IWETH;
-    using OrderRFQLib for OrderRFQLib.OrderRFQ;
-    using OrderRFQLib for bytes;
+    using OrderLib for OrderLib.OrderRFQ;
+    using OrderLib for bytes;
     using AddressLib for Address;
     using ConstraintsLib for Constraints;
     using LimitsLib for Limits;
@@ -44,28 +44,28 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
     }
 
     /**
-     * @notice See {IOrderRFQMixin-bitInvalidatorForOrderRFQ}.
+     * @notice See {IOrderMixin-bitInvalidatorForOrderRFQ}.
      */
     function bitInvalidatorForOrderRFQ(address maker, uint256 slot) external view returns(uint256 /* result */) {
         return _bitInvalidator[maker].checkSlot(slot);
     }
 
     /**
-     * @notice See {IOrderRFQMixin-remainingInvalidatorForOrderRFQ}.
+     * @notice See {IOrderMixin-remainingInvalidatorForOrderRFQ}.
      */
     function remainingInvalidatorForOrderRFQ(address maker, bytes32 orderHash) external view returns(uint256 remaining) {
         return _remainingInvalidator[maker][orderHash].remaining();
     }
 
     /**
-     * @notice See {IOrderRFQMixin-rawRemainingInvalidatorForOrderRFQ}.
+     * @notice See {IOrderMixin-rawRemainingInvalidatorForOrderRFQ}.
      */
     function rawRemainingInvalidatorForOrderRFQ(address maker, bytes32 orderHash) external view returns(uint256 remainingRaw) {
         return RemainingInvalidator.unwrap(_remainingInvalidator[maker][orderHash]);
     }
 
     /**
-     * @notice See {IOrderRFQMixin-cancelOrderRFQ}.
+     * @notice See {IOrderMixin-cancelOrderRFQ}.
      */
     function cancelOrderRFQ(Constraints orderConstraints, bytes32 orderHash) external {
         if (orderConstraints.allowPartialFills() && orderConstraints.allowMultipleFills()) {
@@ -76,7 +76,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
     }
 
     /**
-     * @notice See {IOrderRFQMixin-massCancelOrderRFQ}.
+     * @notice See {IOrderMixin-massCancelOrderRFQ}.
      */
     function massCancelOrderRFQ(Constraints orderConstraints, uint256 additionalMask) external {
         if (orderConstraints.allowPartialFills() && orderConstraints.allowMultipleFills()) revert OrderIsnotSuitableForMassInvalidation();
@@ -84,14 +84,14 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
     }
 
      /**
-     * @notice See {IOrderRFQMixin-hashOrder}.
+     * @notice See {IOrderMixin-hashOrder}.
      */
-    function hashOrder(OrderRFQLib.OrderRFQ calldata order) public view returns(bytes32) {
+    function hashOrder(OrderLib.OrderRFQ calldata order) public view returns(bytes32) {
         return order.hash(_domainSeparatorV4());
     }
 
     /**
-     * @notice See {IOrderRFQMixin-checkPredicate}.
+     * @notice See {IOrderMixin-checkPredicate}.
      */
     function checkPredicateRFQ(bytes calldata predicate) public view returns(bool) {
         (bool success, uint256 res) = _selfStaticCall(predicate);
@@ -99,10 +99,10 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
     }
 
     /**
-     * @notice See {IOrderRFQMixin-fillOrderRFQ}.
+     * @notice See {IOrderMixin-fillOrderRFQ}.
      */
     function fillOrderRFQ(
-        OrderRFQLib.OrderRFQ calldata order,
+        OrderLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -112,10 +112,10 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
     }
 
     /**
-     * @notice See {IOrderRFQMixin-fillOrderRFQ}.
+     * @notice See {IOrderMixin-fillOrderRFQ}.
      */
     function fillOrderRFQExt(
-        OrderRFQLib.OrderRFQ calldata order,
+        OrderLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -126,10 +126,10 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
     }
 
     /**
-     * @notice See {IOrderRFQMixin-fillOrderRFQTo}.
+     * @notice See {IOrderMixin-fillOrderRFQTo}.
      */
     function fillOrderRFQTo(
-        OrderRFQLib.OrderRFQ calldata order,
+        OrderLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -141,7 +141,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
     }
 
     function fillOrderRFQToExt(
-        OrderRFQLib.OrderRFQ calldata order,
+        OrderLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -166,10 +166,10 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
     }
 
     /**
-     * @notice See {IOrderRFQMixin-fillOrderRFQToWithPermit}.
+     * @notice See {IOrderMixin-fillOrderRFQToWithPermit}.
      */
     function fillOrderRFQToWithPermit(
-        OrderRFQLib.OrderRFQ calldata order,
+        OrderLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -183,10 +183,10 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
     }
 
     /**
-     * @notice See {IOrderRFQMixin-fillContractOrderRFQ}.
+     * @notice See {IOrderMixin-fillContractOrderRFQ}.
      */
     function fillContractOrderRFQ(
-        OrderRFQLib.OrderRFQ calldata order,
+        OrderLib.OrderRFQ calldata order,
         bytes calldata signature,
         uint256 amount,
         Limits limits,
@@ -198,7 +198,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
     }
 
     function fillContractOrderRFQExt(
-        OrderRFQLib.OrderRFQ calldata order,
+        OrderLib.OrderRFQ calldata order,
         bytes calldata signature,
         uint256 amount,
         Limits limits,
@@ -228,7 +228,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
     error EpochManagerAndBitInvalidatorsAreIncompatible();
 
     function _fillOrderRFQTo(
-        OrderRFQLib.OrderRFQ calldata order,
+        OrderLib.OrderRFQ calldata order,
         bytes32 orderHash,
         bytes calldata extension,
         uint256 remainingMakingAmount,
@@ -410,7 +410,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
         emit OrderFilledRFQ(orderHash, makingAmount);
     }
 
-    function _checkRemainingMakingAmount(OrderRFQLib.OrderRFQ calldata order, bytes32 orderHash) private view returns(uint256 remainingMakingAmount) {
+    function _checkRemainingMakingAmount(OrderLib.OrderRFQ calldata order, bytes32 orderHash) private view returns(uint256 remainingMakingAmount) {
         if (order.constraints.useBitInvalidator()) {
             remainingMakingAmount = order.makingAmount;
         } else {
@@ -419,7 +419,7 @@ abstract contract OrderRFQMixin is IOrderRFQMixin, EIP712, OnlyWethReceiver, Pre
         if (remainingMakingAmount == 0) revert InvalidatedOrder();
     }
 
-    function _applyOrderPermit(OrderRFQLib.OrderRFQ calldata order, bytes32 orderHash, bytes calldata extension) private {
+    function _applyOrderPermit(OrderLib.OrderRFQ calldata order, bytes32 orderHash, bytes calldata extension) private {
         bytes calldata orderPermit = extension.permit();
         if (orderPermit.length >= 20) {
             // proceed only if taker is willing to execute permit and its length is enough to store address

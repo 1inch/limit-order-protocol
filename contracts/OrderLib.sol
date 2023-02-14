@@ -8,7 +8,7 @@ import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 import "./libraries/ConstraintsLib.sol";
 import "./helpers/AmountCalculator.sol";
 
-library OrderRFQLib {
+library OrderLib {
     using AddressLib for Address;
     using ConstraintsLib for Constraints;
 

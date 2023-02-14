@@ -4,8 +4,8 @@ pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/ITakerInteraction.sol";
-import "../interfaces/IOrderRFQMixin.sol";
-import "../interfaces/IOrderRFQMixin.sol";
+import "../interfaces/IOrderMixin.sol";
+import "../interfaces/IOrderMixin.sol";
 import "../libraries/LimitsLib.sol";
 
 contract RecursiveMatcher is ITakerInteraction {
@@ -15,8 +15,8 @@ contract RecursiveMatcher is ITakerInteraction {
     error FailedExternalCall(bytes reason);
 
     function matchOrdersRFQ(
-        IOrderRFQMixin orderRFQMixin,
-        OrderRFQLib.OrderRFQ calldata order,
+        IOrderMixin orderRFQMixin,
+        OrderLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -55,7 +55,7 @@ contract RecursiveMatcher is ITakerInteraction {
         } else {
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory reason) = msg.sender.call(
-                abi.encodePacked(IOrderRFQMixin.fillOrderRFQTo.selector, interactiveData[1:])
+                abi.encodePacked(IOrderMixin.fillOrderRFQTo.selector, interactiveData[1:])
             );
             if (!success) revert FailedExternalCall(reason);
         }

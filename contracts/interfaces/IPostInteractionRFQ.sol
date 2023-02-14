@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-import "../OrderRFQLib.sol";
+import "../OrderLib.sol";
 
 interface IPostInteractionRFQ {
     /**
@@ -15,7 +15,7 @@ interface IPostInteractionRFQ {
      * @param extraData Extra data
      */
     function postInteractionRFQ(
-        OrderRFQLib.OrderRFQ calldata order,
+        OrderLib.OrderRFQ calldata order,
         bytes32 orderHash,
         address taker,
         uint256 makingAmount,

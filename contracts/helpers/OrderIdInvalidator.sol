@@ -32,7 +32,7 @@ contract OrderIdInvalidator is IPreInteractionRFQ {
     }
 
     function preInteractionRFQ(
-        OrderRFQLib.OrderRFQ calldata order,
+        OrderLib.OrderRFQ calldata order,
         bytes32 orderHash,
         address /* taker */,
         uint256 /* makingAmount */,

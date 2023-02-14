@@ -2,10 +2,10 @@
 
 pragma solidity 0.8.17;
 
-import "../OrderRFQLib.sol";
+import "../OrderLib.sol";
 import "../libraries/LimitsLib.sol";
 
-interface IOrderRFQMixin {
+interface IOrderMixin {
     error InvalidatedOrder();
     error RFQTakingAmountIncreased();
     error RFQPrivateOrder();
@@ -82,7 +82,7 @@ interface IOrderRFQMixin {
      * @return orderHash Hash of the filled order
      */
     function fillOrderRFQ(
-        OrderRFQLib.OrderRFQ calldata order,
+        OrderLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -103,7 +103,7 @@ interface IOrderRFQMixin {
      * @return orderHash Hash of the filled order
      */
     function fillOrderRFQTo(
-        OrderRFQLib.OrderRFQ calldata order,
+        OrderLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -130,7 +130,7 @@ interface IOrderRFQMixin {
      * @dev See tests for examples
      */
     function fillOrderRFQToWithPermit(
-        OrderRFQLib.OrderRFQ calldata order,
+        OrderLib.OrderRFQ calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -157,7 +157,7 @@ interface IOrderRFQMixin {
      * @dev See tests for examples
      */
     function fillContractOrderRFQ(
-        OrderRFQLib.OrderRFQ calldata order,
+        OrderLib.OrderRFQ calldata order,
         bytes calldata signature,
         uint256 amount,
         Limits limits,
