@@ -68,10 +68,10 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      * @notice See {IOrderMixin-cancelOrderRFQ}.
      */
     function cancelOrderRFQ(Constraints orderConstraints, bytes32 orderHash) external {
-        if (orderConstraints.allowPartialFills() && orderConstraints.allowMultipleFills()) {
-            _remainingInvalidator[msg.sender][orderHash] = RemainingInvalidatorLib.fullyFilled();
-        } else {
+        if (orderConstraints.useBitInvalidator()) {
             _bitInvalidator[msg.sender].massInvalidate(orderConstraints.nonceOrEpoch(), 0);
+        } else {
+            _remainingInvalidator[msg.sender][orderHash] = RemainingInvalidatorLib.fullyFilled();
         }
     }
 
@@ -79,7 +79,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      * @notice See {IOrderMixin-massCancelOrderRFQ}.
      */
     function massCancelOrderRFQ(Constraints orderConstraints, uint256 additionalMask) external {
-        if (orderConstraints.allowPartialFills() && orderConstraints.allowMultipleFills()) revert OrderIsnotSuitableForMassInvalidation();
+        if (!orderConstraints.useBitInvalidator()) revert OrderIsnotSuitableForMassInvalidation();
         _bitInvalidator[msg.sender].massInvalidate(orderConstraints.nonceOrEpoch(), additionalMask);
     }
 
