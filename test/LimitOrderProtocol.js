@@ -142,7 +142,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(swap, 'OnlyOneAmountShouldBeZero');
         });
 
-        it('should swap fully based on signature', async function () {
+        it('@skip-on-coverage should swap fully based on signature', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
@@ -175,7 +175,7 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
         });
 
-        it('should swap half based on signature', async function () {
+        it('@skip-on-coverage should swap half based on signature', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 2 DAI => 2 WETH
             // Swap:  1 DAI => 1 WETH
