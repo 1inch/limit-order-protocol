@@ -445,7 +445,7 @@ describe('LimitOrderProtocol', function () {
             return { dai, weth, swap, chainId };
         };
 
-        it('empty getTakingAmount should work on full fill', async function () {
+        it('empty takingAmountGetter should work on full fill', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
@@ -455,7 +455,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 10,
                 maker: addr1.address,
             });
-            order.getTakingAmount = '0x';
+            order.takingAmountGetter = '0x';
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
@@ -472,7 +472,7 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(10));
         });
 
-        it('empty getMakingAmount should work on full fill', async function () {
+        it('empty makingAmountGetter should work on full fill', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
@@ -482,7 +482,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: 10,
                 maker: addr1.address,
             });
-            order.getMakingAmount = '0x';
+            order.makingAmountGetter = '0x';
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
@@ -1042,11 +1042,11 @@ describe('LimitOrderProtocol', function () {
                     constraints: buildConstraints({ allowMultipleFills: true }),
                 },
                 {
-                    getMakingAmount: rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
+                    makingAmountGetter: rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
                         rangeAmountCalculator.interface.encodeFunctionData('getRangeMakerAmount', [startPrice, endPrice, makingAmount, 0, 0],
                             64,
                         )))),
-                    getTakingAmount: rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
+                    takingAmountGetter: rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
                         rangeAmountCalculator.interface.encodeFunctionData('getRangeTakerAmount', [startPrice, endPrice, makingAmount, 0, 0],
                             64,
                         )))),

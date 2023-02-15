@@ -299,14 +299,14 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
 
         // Pre interaction, where maker can prepare funds interactively
         if (order.constraints.needPreInteractionCall()) {
-            bytes calldata preInteractionData = extension.preInteraction();
-            address preInteractionTarget = order.maker.get();
-            if (preInteractionData.length > 0) {
-                preInteractionTarget = address(bytes20(preInteractionData));
-                preInteractionData = preInteractionData[20:];
+            bytes calldata data = extension.preInteractionTargetAndData();
+            address listener = order.maker.get();
+            if (data.length > 0) {
+                listener = address(bytes20(data));
+                data = data[20:];
             }
-            IPreInteraction(preInteractionTarget).preInteraction(
-                order, orderHash, msg.sender, makingAmount, takingAmount, preInteractionData
+            IPreInteraction(listener).preInteraction(
+                order, orderHash, msg.sender, makingAmount, takingAmount, data
             );
             // TODO: implement in assembly
             // bytes4 selector = IPreInteraction.preInteraction.selector;
@@ -378,14 +378,14 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
 
         // Post interaction, where maker can handle funds interactively
         if (order.constraints.needPostInteractionCall()) {
-            bytes calldata postInteractionData = extension.postInteraction();
-            address postInteractionTarget = order.maker.get();
-            if (postInteractionData.length > 0) {
-                postInteractionTarget = address(bytes20(postInteractionData));
-                postInteractionData = postInteractionData[20:];
+            bytes calldata data = extension.postInteractionTargetAndData();
+            address listener = order.maker.get();
+            if (data.length > 0) {
+                listener = address(bytes20(data));
+                data = data[20:];
             }
-            IPostInteraction(postInteractionTarget).postInteraction(
-                order, orderHash, msg.sender, makingAmount, takingAmount, postInteractionData
+            IPostInteraction(listener).postInteraction(
+                order, orderHash, msg.sender, makingAmount, takingAmount, data
             );
             // TODO: implement in assembly
             // bytes4 selector = IPostInteraction.postInteraction.selector;

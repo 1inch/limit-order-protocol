@@ -43,12 +43,12 @@ library OrderLib {
     enum DynamicField {
         MakerAssetData,
         TakerAssetData,
-        GetMakingAmount,
-        GetTakingAmount,
+        MakingAmountGetter,
+        TakingAmountGetter,
         Predicate,
         Permit,
-        PreInteraction,
-        PostInteraction
+        PreInteractionData,
+        PostInteractionData
     }
 
     function hash(Order calldata order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
@@ -72,10 +72,10 @@ library OrderLib {
         uint256 remainingMakingAmount,
         bytes32 orderHash
     ) internal view returns(uint256) {
-        bytes calldata getter = getMakingAmount(extension);
+        bytes calldata getter = makingAmountGetter(extension);
         if (getter.length == 0) {
             // Linear proportion
-            return AmountCalculator.getMakingAmount(order.makingAmount, order.takingAmount, requestedTakingAmount);
+            return AmountCalculator.makingAmountGetter(order.makingAmount, order.takingAmount, requestedTakingAmount);
         }
         return _callGetter(getter, requestedTakingAmount, remainingMakingAmount, orderHash);
     }
@@ -87,10 +87,10 @@ library OrderLib {
         uint256 remainingMakingAmount,
         bytes32 orderHash
     ) internal view returns(uint256) {
-        bytes calldata getter = getTakingAmount(extension);
+        bytes calldata getter = takingAmountGetter(extension);
         if (getter.length == 0) {
             // Linear proportion
-            return AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, requestedMakingAmount);
+            return AmountCalculator.takingAmountGetter(order.makingAmount, order.takingAmount, requestedMakingAmount);
         }
         return _callGetter(getter, requestedMakingAmount, remainingMakingAmount, orderHash);
     }
@@ -136,12 +136,12 @@ library OrderLib {
         return _get(extension, DynamicField.TakerAssetData);
     }
 
-    function getMakingAmount(bytes calldata extension) internal pure returns(bytes calldata) {
-        return _get(extension, DynamicField.GetMakingAmount);
+    function makingAmountGetter(bytes calldata extension) internal pure returns(bytes calldata) {
+        return _get(extension, DynamicField.MakingAmountGetter);
     }
 
-    function getTakingAmount(bytes calldata extension) internal pure returns(bytes calldata) {
-        return _get(extension, DynamicField.GetTakingAmount);
+    function takingAmountGetter(bytes calldata extension) internal pure returns(bytes calldata) {
+        return _get(extension, DynamicField.TakingAmountGetter);
     }
 
     function predicate(bytes calldata extension) internal pure returns(bytes calldata) {
@@ -152,15 +152,31 @@ library OrderLib {
         return _get(extension, DynamicField.Permit);
     }
 
-    function preInteraction(bytes calldata extension) internal pure returns(bytes calldata) {
-        return _get(extension, DynamicField.PreInteraction);
+    function preInteractionTargetAndData(bytes calldata extension) internal pure returns(bytes calldata) {
+        return _getTargetAndData(extension, DynamicField.PreInteractionData);
     }
 
-    function postInteraction(bytes calldata extension) internal pure returns(bytes calldata) {
-        return _get(extension, DynamicField.PostInteraction);
+    function postInteractionTargetAndData(bytes calldata extension) internal pure returns(bytes calldata) {
+        return _get(extension, DynamicField.PostInteractionData);
     }
 
     function _get(bytes calldata extension, DynamicField field) private pure returns(bytes calldata) {
+        if (extension.length < 52) return msg.data[:0];
+        uint256 offsets;
+        /// @solidity memory-safe-assembly
+        assembly {  // solhint-disable-line no-inline-assembly
+            offsets := calldataload(add(extension.offset, 20))
+        }
+        uint256 bitShift = uint256(field) << 5; // field * 32
+        unchecked {
+            return extension[
+                uint32((offsets << 32) >> bitShift) + 52:
+                uint32(offsets >> bitShift) + 52
+            ];
+        }
+    }
+
+    function _getTargetAndData(bytes calldata extension, DynamicField field) private pure returns(bytes calldata) {
         if (extension.length < 52) return msg.data[:0];
         uint256 offsets;
         /// @solidity memory-safe-assembly

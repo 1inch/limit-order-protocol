@@ -67,8 +67,8 @@ describe('ChainLinkExample', function () {
                 maker: addr1.address,
             },
             {
-                getMakingAmount: cutLastArg(buildSinglePriceGetter(chainlink, daiOracle, false, '990000000')), // maker offset is 0.99
-                getTakingAmount: cutLastArg(buildSinglePriceGetter(chainlink, daiOracle, true, '1010000000')), // taker offset is 1.01
+                makingAmountGetter: cutLastArg(buildSinglePriceGetter(chainlink, daiOracle, false, '990000000')), // maker offset is 0.99
+                takingAmountGetter: cutLastArg(buildSinglePriceGetter(chainlink, daiOracle, true, '1010000000')), // taker offset is 1.01
             },
         );
 
@@ -106,8 +106,8 @@ describe('ChainLinkExample', function () {
                 takingAmount,
                 maker: addr1.address,
             }, {
-                getMakingAmount: '0x',
-                getTakingAmount: '0x',
+                makingAmountGetter: '0x',
+                takingAmountGetter: '0x',
                 predicate: swap.interface.encodeFunctionData('lt', [ether('6.32'), priceCall]),
             },
         );
@@ -143,8 +143,8 @@ describe('ChainLinkExample', function () {
                 maker: addr1.address,
             },
             {
-                getMakingAmount: '0x',
-                getTakingAmount: '0x',
+                makingAmountGetter: '0x',
+                takingAmountGetter: '0x',
                 predicate: swap.interface.encodeFunctionData('lt', [ether('6.31'), priceCall]),
             },
         );
@@ -175,8 +175,8 @@ describe('ChainLinkExample', function () {
                 maker: addr1.address,
             },
             {
-                getMakingAmount: '0x',
-                getTakingAmount: '0x',
+                makingAmountGetter: '0x',
+                takingAmountGetter: '0x',
                 predicate: swap.interface.encodeFunctionData('lt', [ether('0.0002501'), latestAnswerCall]),
             },
         );
