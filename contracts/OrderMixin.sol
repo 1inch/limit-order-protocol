@@ -418,7 +418,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     }
 
     function _applyOrderPermit(OrderLib.Order calldata order, bytes32 orderHash, bytes calldata extension) private {
-        bytes calldata orderPermit = extension.permit();
+        bytes calldata orderPermit = extension.permitTargetAndData();
         if (orderPermit.length >= 20) {
             // proceed only if taker is willing to execute permit and its length is enough to store address
             IERC20(address(bytes20(orderPermit))).safePermit(orderPermit[20:]);

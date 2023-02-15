@@ -12,6 +12,7 @@ library OrderLib {
     using AddressLib for Address;
     using ConstraintsLib for Constraints;
 
+    error FieldOutOfBounds();
     error RFQWrongGetter();
     error RFQGetAmountCallFailed();
     error MissingOrderExtension();
@@ -148,47 +149,35 @@ library OrderLib {
         return _get(extension, DynamicField.Predicate);
     }
 
-    function permit(bytes calldata extension) internal pure returns(bytes calldata) {
+    function permitTargetAndData(bytes calldata extension) internal pure returns(bytes calldata) {
         return _get(extension, DynamicField.Permit);
     }
 
     function preInteractionTargetAndData(bytes calldata extension) internal pure returns(bytes calldata) {
-        return _getTargetAndData(extension, DynamicField.PreInteractionData);
+        return _get(extension, DynamicField.PreInteractionData);
     }
 
     function postInteractionTargetAndData(bytes calldata extension) internal pure returns(bytes calldata) {
         return _get(extension, DynamicField.PostInteractionData);
     }
 
-    function _get(bytes calldata extension, DynamicField field) private pure returns(bytes calldata) {
+    function _get(bytes calldata extension, DynamicField field) private pure returns(bytes calldata result) {
         if (extension.length < 52) return msg.data[:0];
-        uint256 offsets;
-        /// @solidity memory-safe-assembly
-        assembly {  // solhint-disable-line no-inline-assembly
-            offsets := calldataload(add(extension.offset, 20))
-        }
-        uint256 bitShift = uint256(field) << 5; // field * 32
-        unchecked {
-            return extension[
-                uint32((offsets << 32) >> bitShift) + 52:
-                uint32(offsets >> bitShift) + 52
-            ];
-        }
-    }
 
-    function _getTargetAndData(bytes calldata extension, DynamicField field) private pure returns(bytes calldata) {
-        if (extension.length < 52) return msg.data[:0];
-        uint256 offsets;
+        bytes4 exception = FieldOutOfBounds.selector;
         /// @solidity memory-safe-assembly
         assembly {  // solhint-disable-line no-inline-assembly
-            offsets := calldataload(add(extension.offset, 20))
-        }
-        uint256 bitShift = uint256(field) << 5; // field * 32
-        unchecked {
-            return extension[
-                uint32((offsets << 32) >> bitShift) + 52:
-                uint32(offsets >> bitShift) + 52
-            ];
+            let offsets := calldataload(add(extension.offset, 20))
+
+            let bitShift := shl(5, field) // field * 32
+            let begin := and(0xffffffff, shr(bitShift, shl(32, offsets)))
+            let end := and(0xffffffff, shr(bitShift, offsets))
+            result.offset := add(extension.offset, add(52, begin))
+            result.length := sub(end, begin)
+            if gt(add(result.offset, result.length), add(extension.offset, extension.length)) {
+                mstore(0, exception)
+                revert(0, 4)
+            }
         }
     }
 }
