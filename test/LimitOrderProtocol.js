@@ -331,7 +331,6 @@ describe('LimitOrderProtocol', function () {
 
     describe('Permit', function () {
         describe('fillOrderToWithPermit', function () {
-
             const deployContractsAndInitPermit = async function () {
                 const { dai, weth, swap, chainId } = await deploySwapTokens();
                 await initContracts(dai, weth, swap);
