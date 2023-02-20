@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
@@ -20,41 +20,7 @@ import "./OrderLib.sol";
 abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     using SafeERC20 for IERC20;
     using OrderLib for OrderLib.Order;
-    using CalldataLib for CalldataLib.Address;
-    using CalldataLib for bytes;
-
-    error UnknownOrder();
-    error AccessDenied();
-    error AlreadyFilled();
-    error PermitLengthTooLow();
-    error ZeroTargetIsForbidden();
-    error RemainingAmountIsZero();
-    error PrivateOrder();
-    error BadSignature();
-    error ReentrancyDetected();
-    error PredicateIsNotTrue();
-    error OnlyOneAmountShouldBeZero();
-    error TakingAmountTooHigh();
-    error MakingAmountTooLow();
-    error SwapWithZeroAmount();
-    error TransferFromMakerToTakerFailed();
-    error TransferFromTakerToMakerFailed();
-    error TakingAmountIncreased();
-    error SimulationResults(bool success, bytes res);
-
-    /// @notice Emitted every time order gets filled, including partial fills
-    event OrderFilled(
-        address indexed maker,
-        bytes32 orderHash,
-        uint256 remaining
-    );
-
-    /// @notice Emitted when order gets cancelled
-    event OrderCanceled(
-        address indexed maker,
-        bytes32 orderHash,
-        uint256 remainingRaw
-    );
+    using AddressLib for Address;
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
     uint256 private constant _ORDER_DOES_NOT_EXIST = 0;
@@ -149,7 +115,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
     ) external returns(uint256 /* actualMakingAmount */, uint256 /* actualTakingAmount */, bytes32 /* orderHash */) {
         if (permit.length < 20) revert PermitLengthTooLow();
         {  // Stack too deep
-            (address token, bytes calldata permitData) = permit.decodeTargetAndCalldata();
+            address token = address(bytes20(permit));
+            bytes calldata permitData = permit[20:];
             IERC20(token).safePermit(permitData);
         }
         return fillOrderTo(order, signature, interaction, makingAmount, takingAmount, skipPermitAndThresholdAmount, target);
@@ -185,7 +152,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             bytes calldata permit = order.permit();
             if (skipPermitAndThresholdAmount & _SKIP_PERMIT_FLAG == 0 && permit.length >= 20) {
                 // proceed only if taker is willing to execute permit and its length is enough to store address
-                (address token, bytes calldata permitCalldata) = permit.decodeTargetAndCalldata();
+                address token = address(bytes20(permit));
+                bytes calldata permitCalldata = permit[20:];
                 IERC20(token).safePermit(permitCalldata);
                 if (_remaining[orderHash] != _ORDER_DOES_NOT_EXIST) revert ReentrancyDetected();
             }
@@ -237,7 +205,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
             bytes calldata preInteraction = order.preInteraction();
             if (preInteraction.length >= 20) {
                 // proceed only if interaction length is enough to store address
-                (address interactionTarget, bytes calldata interactionData) = preInteraction.decodeTargetAndCalldata();
+                address interactionTarget = address(bytes20(preInteraction));
+                bytes calldata interactionData = preInteraction[20:];
                 IPreInteractionNotificationReceiver(interactionTarget).fillOrderPreInteraction(
                     orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
                 );
@@ -255,7 +224,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
 
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
-            (address interactionTarget, bytes calldata interactionData) = interaction.decodeTargetAndCalldata();
+            address interactionTarget = address(bytes20(interaction));
+            bytes calldata interactionData = interaction[20:];
             uint256 offeredTakingAmount = IInteractionNotificationReceiver(interactionTarget).fillOrderInteraction(
                 msg.sender, actualMakingAmount, actualTakingAmount, interactionData
             );
@@ -293,7 +263,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
         bytes calldata postInteraction = order.postInteraction();
         if (postInteraction.length >= 20) {
             // proceed only if interaction length is enough to store address
-            (address interactionTarget, bytes calldata interactionData) = postInteraction.decodeTargetAndCalldata();
+            address interactionTarget = address(bytes20(postInteraction));
+            bytes calldata interactionData = postInteraction[20:];
             IPostInteractionNotificationReceiver(interactionTarget).fillOrderPostInteraction(
                  orderHash, order.maker.get(), msg.sender, actualMakingAmount, actualTakingAmount, remainingMakingAmount, interactionData
             );

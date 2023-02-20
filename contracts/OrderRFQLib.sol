@@ -3,15 +3,14 @@
 pragma solidity 0.8.17;
 
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
-import "./libraries/CalldataLib.sol";
+import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 
 library OrderRFQLib {
     struct OrderRFQ {
         uint256 info;  // lowest 64 bits is the order id, next 64 bits is the expiration timestamp
-        CalldataLib.Address makerAsset;
-        CalldataLib.Address takerAsset;
-        CalldataLib.Address maker;
-        CalldataLib.Address allowedSender;  // equals to Zero address on public orders
+        Address makerAsset;
+        Address takerAsset;
+        Address allowedSender;  // equals to Zero address on public orders
         uint256 makingAmount;
         uint256 takingAmount;
     }
@@ -21,7 +20,6 @@ library OrderRFQLib {
             "uint256 info,"
             "address makerAsset,"
             "address takerAsset,"
-            "address maker,"
             "address allowedSender,"
             "uint256 makingAmount,"
             "uint256 takingAmount"
@@ -36,8 +34,8 @@ library OrderRFQLib {
 
             // keccak256(abi.encode(_LIMIT_ORDER_RFQ_TYPEHASH, order));
             mstore(ptr, typehash)
-            calldatacopy(add(ptr, 0x20), order, 0xe0)
-            result := keccak256(ptr, 0x100)
+            calldatacopy(add(ptr, 0x20), order, 0xc0)
+            result := keccak256(ptr, 0xe0)
         }
         result = ECDSA.toTypedDataHash(domainSeparator, result);
     }

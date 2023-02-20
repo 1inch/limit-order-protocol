@@ -5,6 +5,7 @@ require('solidity-coverage');
 require('hardhat-dependency-compiler');
 require('hardhat-deploy');
 require('hardhat-gas-reporter');
+require('hardhat-tracer');
 require('dotenv').config();
 
 const { networks, etherscan } = require('./hardhat.networks');
@@ -18,6 +19,7 @@ module.exports = {
                 enabled: true,
                 runs: 1000000,
             },
+            viaIR: true,
         },
     },
     networks,
