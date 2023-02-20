@@ -26,24 +26,22 @@ describe('Interactions', function () {
         await weth.approve(swap.address, ether('1'));
         await weth.connect(addr1).approve(swap.address, ether('1'));
 
-        const HashChecker = await ethers.getContractFactory('HashChecker');
-        const hashChecker = await HashChecker.deploy(swap.address);
-        await hashChecker.deployed();
-
-        const RecursiveMatcher = await ethers.getContractFactory('RecursiveMatcher');
-        const matcher = await RecursiveMatcher.deploy();
-        await matcher.deployed();
-
-        const OrderIdInvalidator = await ethers.getContractFactory('OrderIdInvalidator');
-        const orderIdInvalidator = await OrderIdInvalidator.deploy(swap.address);
-        await orderIdInvalidator.deployed();
-
-        return { dai, weth, swap, chainId, matcher, hashChecker, orderIdInvalidator };
+        return { dai, weth, swap, chainId };
     };
 
     describe('recursive swap', function () {
+        async function initContractsWithRecursiveMatcher () {
+            const { dai, weth, swap, chainId } = await initContracts();
+
+            const RecursiveMatcher = await ethers.getContractFactory('RecursiveMatcher');
+            const matcher = await RecursiveMatcher.deploy();
+            await matcher.deployed();
+
+            return { dai, weth, swap, chainId, matcher };
+        }
+
         it('opposite direction recursive swap', async function () {
-            const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
+            const { dai, weth, swap, chainId, matcher } = await loadFixture(initContractsWithRecursiveMatcher);
 
             const order = buildOrder(
                 {
@@ -111,7 +109,7 @@ describe('Interactions', function () {
         });
 
         it('unidirectional recursive swap', async function () {
-            const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
+            const { dai, weth, swap, chainId, matcher } = await loadFixture(initContractsWithRecursiveMatcher);
 
             const order = buildOrder(
                 {
@@ -182,7 +180,7 @@ describe('Interactions', function () {
         });
 
         it('triple recursive swap', async function () {
-            const { dai, weth, swap, chainId, matcher } = await loadFixture(initContracts);
+            const { dai, weth, swap, chainId, matcher } = await loadFixture(initContractsWithRecursiveMatcher);
 
             const order1 = buildOrder(
                 {
@@ -274,8 +272,18 @@ describe('Interactions', function () {
     });
 
     describe('check hash', function () {
+        async function initContractsWithHashChecker () {
+            const { dai, weth, swap, chainId } = await initContracts();
+
+            const HashChecker = await ethers.getContractFactory('HashChecker');
+            const hashChecker = await HashChecker.deploy(swap.address);
+            await hashChecker.deployed();
+
+            return { dai, weth, swap, chainId, hashChecker };
+        }
+
         it('should check hash and fill', async function () {
-            const { dai, weth, swap, chainId, hashChecker } = await loadFixture(initContracts);
+            const { dai, weth, swap, chainId, hashChecker } = await loadFixture(initContractsWithHashChecker);
 
             const preInteraction = hashChecker.address;
 
@@ -308,7 +316,7 @@ describe('Interactions', function () {
         });
 
         it('should revert transaction when orderHash not equal target', async function () {
-            const { dai, weth, swap, chainId, hashChecker } = await loadFixture(initContracts);
+            const { dai, weth, swap, chainId, hashChecker } = await loadFixture(initContractsWithHashChecker);
 
             const preInteraction = hashChecker.address;
 
@@ -332,8 +340,18 @@ describe('Interactions', function () {
     });
 
     describe('order id validation', function () {
+        async function initContractsWithIdInvalidator () {
+            const { dai, weth, swap, chainId } = await initContracts();
+
+            const OrderIdInvalidator = await ethers.getContractFactory('OrderIdInvalidator');
+            const orderIdInvalidator = await OrderIdInvalidator.deploy(swap.address);
+            await orderIdInvalidator.deployed();
+
+            return { dai, weth, swap, chainId, orderIdInvalidator };
+        }
+
         it('should execute order with 2 partial fills', async function () {
-            const { dai, weth, swap, chainId, orderIdInvalidator } = await loadFixture(initContracts);
+            const { dai, weth, swap, chainId, orderIdInvalidator } = await loadFixture(initContractsWithIdInvalidator);
             const orderId = 13341n;
 
             const order = buildOrder(
@@ -371,7 +389,7 @@ describe('Interactions', function () {
         });
 
         it('should fail to execute order with same orderId, but with different orderHash', async function () {
-            const { dai, weth, swap, chainId, orderIdInvalidator } = await loadFixture(initContracts);
+            const { dai, weth, swap, chainId, orderIdInvalidator } = await loadFixture(initContractsWithIdInvalidator);
             const orderId = 13341n;
 
             const order = buildOrder(
@@ -417,5 +435,57 @@ describe('Interactions', function () {
 
             await expect(swap.connect(addr1).fillOrder(partialOrder, signaturePartial, '0x', ether('50'), 0, ether('0.1'))).to.be.revertedWithCustomError(orderIdInvalidator, 'InvalidOrderHash');
         });
+    });
+
+    it('check the possibility of a dutch auction', async function () {
+        const { dai, weth, swap, chainId } = await initContracts();
+
+        const TakerIncreaser = await ethers.getContractFactory('TakerIncreaser');
+        const takerIncreaser = await TakerIncreaser.deploy();
+        await takerIncreaser.deployed();
+
+        const order = buildOrder(
+            {
+                makerAsset: weth.address,
+                takerAsset: dai.address,
+                makingAmount: ether('0.1'),
+                takingAmount: ether('50'),
+                from: addr1.address,
+            },
+            {
+                predicate: swap.interface.encodeFunctionData('timestampBelow', [0xff00000000]),
+            },
+        );
+
+        const signature = await signOrder(order, chainId, swap.address, addr1);
+
+        const interaction = takerIncreaser.address + abiCoder.encode(
+            ['address[]', 'bytes[]'],
+            [
+                [
+                    dai.address,
+                    dai.address,
+                    weth.address,
+                ],
+                [
+                    dai.interface.encodeFunctionData('transferFrom', [addr.address, takerIncreaser.address, ether('75')]),
+                    dai.interface.encodeFunctionData('approve', [swap.address, ether('75')]),
+                    weth.interface.encodeFunctionData('transfer', [addr.address, ether('0.1')]),
+                ],
+            ],
+        ).substring(2);
+        await dai.approve(takerIncreaser.address, ether('75'));
+
+        const addrweth = await weth.balanceOf(addr.address);
+        const addr1weth = await weth.balanceOf(addr1.address);
+        const addrdai = await dai.balanceOf(addr.address);
+        const addr1dai = await dai.balanceOf(addr1.address);
+
+        await takerIncreaser.fillOrder(swap.address, order, signature, interaction, ether('0.1'), 0, ether('50'));
+
+        expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.1')));
+        expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.1')));
+        expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('75')));
+        expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('75')));
     });
 });
