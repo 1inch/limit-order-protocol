@@ -437,7 +437,7 @@ describe('Interactions', function () {
         });
     });
 
-    it('check the possibility of a dutch auction with disable partial fill', async function () {
+    it('check the possibility of a dutch auction', async function () {
         const { dai, weth, swap, chainId } = await initContracts();
 
         const TakerIncreaser = await ethers.getContractFactory('TakerIncreaser');
@@ -453,8 +453,6 @@ describe('Interactions', function () {
                 from: addr1.address,
             },
             {
-                getMakingAmount: '', // <-- empty string turns into "x" to disable partial fill
-                getTakingAmount: '', // <-- empty string turns into "x" to disable partial fill
                 predicate: swap.interface.encodeFunctionData('timestampBelow', [0xff00000000]),
             },
         );

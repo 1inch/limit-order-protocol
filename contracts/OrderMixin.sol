@@ -230,7 +230,9 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper {
                 msg.sender, actualMakingAmount, actualTakingAmount, interactionData
             );
 
-            if (offeredTakingAmount > actualTakingAmount)
+            if (offeredTakingAmount > actualTakingAmount &&
+                !OrderLib.getterIsFrozen(order.getMakingAmount()) &&
+                !OrderLib.getterIsFrozen(order.getTakingAmount()))
             {
                 actualTakingAmount = offeredTakingAmount;
             }

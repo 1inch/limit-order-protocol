@@ -477,6 +477,8 @@ describe('LimitOrderProtocol', function () {
                 makingAmount: 10,
                 takingAmount: 10,
                 from: addr1.address,
+            }, {
+                getTakingAmount: '', // <-- empty string turns into "x" to disable partial fill
             });
             order.getTakingAmount = '0x';
             const signature = await signOrder(order, chainId, swap.address, addr1);
@@ -522,6 +524,8 @@ describe('LimitOrderProtocol', function () {
                 makingAmount: 10,
                 takingAmount: 10,
                 from: addr1.address,
+            }, {
+                getMakingAmount: '', // <-- empty string turns into "x" to disable partial fill
             });
             order.getMakingAmount = '0x';
             const signature = await signOrder(order, chainId, swap.address, addr1);
