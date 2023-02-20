@@ -40,7 +40,7 @@ contract TakerIncreaser is IInteractionNotificationReceiver {
             bytes[] memory calldatas
         ) = abi.decode(interactiveData, (address[], bytes[]));
 
-        if(targets.length != calldatas.length) revert IncorrectCalldataParams();
+        if (targets.length != calldatas.length) revert IncorrectCalldataParams();
         for(uint256 i = 0; i < targets.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = targets[i].call(calldatas[i]);
