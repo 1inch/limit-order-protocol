@@ -4,7 +4,6 @@ pragma solidity 0.8.17;
 
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "./OrderMixin.sol";
-import "./OrderRFQMixin.sol";
 
 /**
  * @title ##1inch Limit Order Protocol v3
@@ -25,15 +24,14 @@ import "./OrderRFQMixin.sol";
  * - Cancelation by order id
  * - Partial Fill (only once)
  *
- * See [OrderRFQMixin](OrderRFQMixin.md) for more details.
+ * See [OrderMixin](OrderMixin.md) for more details.
  */
 contract LimitOrderProtocol is
     EIP712("1inch Limit Order Protocol", "3"),
-    OrderMixin,
-    OrderRFQMixin
+    OrderMixin
 {
     // solhint-disable-next-line no-empty-blocks
-    constructor(IWETH _weth) OrderMixin(_weth) OrderRFQMixin(_weth) {}
+    constructor(IWETH _weth) OrderMixin(_weth) {}
 
     /// @dev Returns the domain separator for the current chain (EIP-712)
     // solhint-disable-next-line func-name-mixedcase

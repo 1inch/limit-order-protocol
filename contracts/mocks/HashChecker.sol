@@ -27,19 +27,23 @@ contract HashChecker is IPreInteraction, Ownable {
     }
 
     function preInteraction(
+        OrderLib.Order calldata order,
         bytes32 orderHash,
-        address maker,
         address taker,
         uint256 makingAmount,
         uint256 takingAmount,
-        uint256 remainingMakerAmount,
-        bytes calldata nextInteractiveData
+        bytes calldata extraData
     ) external override {
         if (hashes[orderHash] == false) revert IncorrectOrderHash();
 
-        if (nextInteractiveData.length != 0) {
-            IPreInteraction(address(bytes20(nextInteractiveData))).preInteraction(
-                orderHash, maker, taker, makingAmount, takingAmount, remainingMakerAmount, nextInteractiveData[20:]
+        if (extraData.length != 0) {
+            IPreInteraction(address(bytes20(extraData))).preInteraction(
+                order,
+                orderHash,
+                taker,
+                makingAmount,
+                takingAmount,
+                extraData[20:]
             );
         }
     }

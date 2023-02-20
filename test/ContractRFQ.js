@@ -1,6 +1,6 @@
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { expect } = require('@1inch/solidity-utils');
-const { ABIOrderRFQ, buildOrderRFQ, makeMakingAmount, buildConstraints } = require('./helpers/orderUtils');
+const { ABIOrderRFQ, makeMakingAmount, buildConstraints, buildOrderRFQ } = require('./helpers/orderUtils');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
 const { deploySwap, deployUSDC, deployUSDT } = require('./helpers/fixtures');
@@ -43,18 +43,33 @@ describe('ContractRFQ', function () {
         const makerUsdt = await usdt.balanceOf(rfq.address);
         const takerUsdt = await usdt.balanceOf(addr.address);
 
-        const order = buildOrderRFQ(usdc.address, usdt.address, 1000000000, 1000700000, buildConstraints({ nonce: 1 }));
+        const order = buildOrderRFQ({
+            maker: rfq.address,
+            makerAsset: usdc.address,
+            takerAsset: usdt.address,
+            makingAmount: 1000000000,
+            takingAmount: 1000700000,
+            constraints: buildConstraints({ nonce: 1 }),
+        });
+
+        const order2 = buildOrderRFQ({
+            maker: rfq.address,
+            makerAsset: usdc.address,
+            takerAsset: usdt.address,
+            makingAmount: 1000000000,
+            takingAmount: 1000700000,
+            constraints: buildConstraints({ nonce: 2 }),
+        });
 
         const signature = abiCoder.encode([ABIOrderRFQ], [order]);
-        await swap.fillContractOrderRFQ(order, signature, rfq.address, makeMakingAmount(1000000), constants.AddressZero, emptyInteraction, '0x');
+        await swap.fillContractOrder(order, signature, 1000000, makeMakingAmount(1n << 200n), constants.AddressZero, emptyInteraction, '0x');
 
         expect(await usdc.balanceOf(rfq.address)).to.equal(makerUsdc.sub(1000000));
         expect(await usdc.balanceOf(addr.address)).to.equal(takerUsdc.add(1000000));
         expect(await usdt.balanceOf(rfq.address)).to.equal(makerUsdt.add(1000700));
         expect(await usdt.balanceOf(addr.address)).to.equal(takerUsdt.sub(1000700));
 
-        const order2 = buildOrderRFQ(usdc.address, usdt.address, 1000000000, 1000700000, buildConstraints({ nonce: 2 }));
         const signature2 = abiCoder.encode([ABIOrderRFQ], [order2]);
-        await swap.fillContractOrderRFQ(order2, signature2, rfq.address, makeMakingAmount(1000000), constants.AddressZero, emptyInteraction, '0x');
+        await swap.fillContractOrder(order2, signature2, 1000000, makeMakingAmount(1n << 200n), constants.AddressZero, emptyInteraction, '0x');
     });
 });

@@ -7,12 +7,12 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 contract DutchAuctionCalculator {
     uint256 private constant _LOW_128_BITS = 0xffffffffffffffffffffffffffffffff;
 
-    function getMakingAmount(uint256 startTimeEndTime, uint256 takingAmountStart, uint256 takingAmountEnd, uint256 makingAmount, uint256 requestedTakingAmount) external view returns(uint256) {
+    function makingAmountGetter(uint256 startTimeEndTime, uint256 takingAmountStart, uint256 takingAmountEnd, uint256 makingAmount, uint256 requestedTakingAmount) external view returns(uint256) {
         uint256 calculatedTakingAmount = _calculateAuctionTakingAmount(startTimeEndTime, takingAmountStart, takingAmountEnd);
         return requestedTakingAmount * makingAmount / calculatedTakingAmount;
     }
 
-    function getTakingAmount(uint256 startTimeEndTime, uint256 takingAmountStart, uint256 takingAmountEnd, uint256 makingAmount, uint256 requestedMakingAmount) external view returns(uint256) {
+    function takingAmountGetter(uint256 startTimeEndTime, uint256 takingAmountStart, uint256 takingAmountEnd, uint256 makingAmount, uint256 requestedMakingAmount) external view returns(uint256) {
         uint256 calculatedTakingAmount = _calculateAuctionTakingAmount(startTimeEndTime, takingAmountStart, takingAmountEnd);
         return (requestedMakingAmount * calculatedTakingAmount + makingAmount - 1) / makingAmount;
     }
