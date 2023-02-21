@@ -35,7 +35,7 @@ contract RangeAmountCalculator {
         uint256 fillAmount,
         uint256 remainingMakingAmount
     ) public correctPrices(priceStart, priceEnd) pure returns(uint256) {
-        uint256 alreadymakingAmount = totalAmount - remainingMakingAmount;
+        uint256 alreadyFilledMakingAmount = totalAmount - remainingMakingAmount;
         /**
          * rangeTakerAmount = (
          *       f(makerAmountFilled) + f(makerAmountFilled + fillAmount)
@@ -44,7 +44,7 @@ contract RangeAmountCalculator {
          *  scaling to 1e18 happens to have better price accuracy
          */
         return (
-            (priceEnd - priceStart) * (2 * alreadymakingAmount + fillAmount) / totalAmount +
+            (priceEnd - priceStart) * (2 * alreadyFilledMakingAmount + fillAmount) / totalAmount +
             2 * priceStart
         ) * fillAmount / 2e18;
     }
@@ -56,16 +56,16 @@ contract RangeAmountCalculator {
         uint256 takingAmount,
         uint256 remainingMakingAmount
     ) public correctPrices(priceStart, priceEnd) pure returns(uint256) {
-        uint256 alreadymakingAmount = totalLiquidity - remainingMakingAmount;
+        uint256 alreadyFilledMakingAmount = totalLiquidity - remainingMakingAmount;
         uint256 b = priceStart;
         uint256 k = (priceEnd - priceStart) * 1e18 / totalLiquidity;
         uint256 bDivK = priceStart * totalLiquidity / (priceEnd - priceStart);
         return (Math.sqrt(
             (
                 b * bDivK +
-                alreadymakingAmount * (2 * b + k * alreadymakingAmount / 1e18) +
+                alreadyFilledMakingAmount * (2 * b + k * alreadyFilledMakingAmount / 1e18) +
                 2 * takingAmount * 1e18
             ) / k * 1e18
-        ) - bDivK) - alreadymakingAmount;
+        ) - bDivK) - alreadyFilledMakingAmount;
     }
 }
