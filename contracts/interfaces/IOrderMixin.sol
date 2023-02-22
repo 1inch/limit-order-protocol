@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity 0.8.18;
 
 import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 import "../libraries/ConstraintsLib.sol";
