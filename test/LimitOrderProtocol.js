@@ -454,7 +454,7 @@ describe('LimitOrderProtocol', function () {
                 takerAsset: weth.address,
                 makingAmount: 10,
                 takingAmount: 10,
-                constraints: buildConstraints({allowPartialFill: false}),
+                constraints: buildConstraints({ allowPartialFill: false }),
             });
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
@@ -481,7 +481,7 @@ describe('LimitOrderProtocol', function () {
                 takerAsset: weth.address,
                 makingAmount: 10,
                 takingAmount: 10,
-                constraints: buildConstraints({allowPartialFill: false}),
+                constraints: buildConstraints({ allowPartialFill: false }),
             });
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
@@ -490,7 +490,6 @@ describe('LimitOrderProtocol', function () {
                 swap.fillOrder(order, r, vs, 5, makeMakingAmount(5)),
             ).to.be.revertedWithCustomError(swap, 'WrongAmount');
         });
-
 
         it('empty makingAmountGetter should revert on partial fill', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
@@ -501,7 +500,7 @@ describe('LimitOrderProtocol', function () {
                 takerAsset: weth.address,
                 makingAmount: 10,
                 takingAmount: 10,
-                constraints: buildConstraints({allowPartialFill: false}),
+                constraints: buildConstraints({ allowPartialFill: false }),
             });
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
@@ -519,7 +518,7 @@ describe('LimitOrderProtocol', function () {
                 takerAsset: weth.address,
                 makingAmount: 10,
                 takingAmount: 10,
-                constraints: buildConstraints({allowPartialFill: false}),
+                constraints: buildConstraints({ allowPartialFill: false }),
             });
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
