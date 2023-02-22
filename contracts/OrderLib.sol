@@ -35,17 +35,6 @@ library OrderLib {
         ")"
     );
 
-    enum DynamicField {
-        MakerAssetData,
-        TakerAssetData,
-        MakingAmountGetter,
-        TakingAmountGetter,
-        Predicate,
-        Permit,
-        PreInteractionData,
-        PostInteractionData
-    }
-
     function hash(IOrderMixin.Order calldata order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes32 typehash = _LIMIT_ORDER_RFQ_TYPEHASH;
         /// @solidity memory-safe-assembly
