@@ -14,13 +14,6 @@ library BitInvalidatorLib {
         return self._raw[invalidatorSlot];
     }
 
-    function checkNonce(Data storage self, uint256 nonce) internal view returns(bool) {
-        uint256 invalidatorSlot = nonce >> 8;
-        uint256 invalidatorBit = 1 << (nonce & 0xff);
-        uint256 invalidator = self._raw[invalidatorSlot];
-        return invalidator & invalidatorBit == 0;
-    }
-
     function checkAndInvalidate(Data storage self, uint256 nonce) internal {
         uint256 invalidatorSlot = nonce >> 8;
         uint256 invalidatorBit = 1 << (nonce & 0xff);

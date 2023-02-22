@@ -11,14 +11,6 @@ library RemainingInvalidatorLib {
         return RemainingInvalidator.unwrap(invalidator) == 0;
     }
 
-    function isPartialFilled(RemainingInvalidator invalidator) internal pure returns(bool) {
-        return RemainingInvalidator.unwrap(invalidator) > 1;
-    }
-
-    function isFullyFilled(RemainingInvalidator invalidator) internal pure returns(bool) {
-        return RemainingInvalidator.unwrap(invalidator) == 1;
-    }
-
     function remaining(RemainingInvalidator invalidator) internal pure returns(uint256) {
         uint256 value = RemainingInvalidator.unwrap(invalidator);
         if (value == 0) {
