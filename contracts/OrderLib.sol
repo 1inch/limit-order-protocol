@@ -76,7 +76,7 @@ library OrderLib {
         bytes calldata getter = makingAmountGetter(extension);
         if (getter.length == 0) {
             // Linear proportion
-            return AmountCalculator.makingAmountGetter(order.makingAmount, order.takingAmount, requestedTakingAmount);
+            return AmountCalculator.getMakingAmount(order.makingAmount, order.takingAmount, requestedTakingAmount);
         }
         return _callGetter(getter, requestedTakingAmount, remainingMakingAmount, orderHash);
     }
@@ -91,7 +91,7 @@ library OrderLib {
         bytes calldata getter = takingAmountGetter(extension);
         if (getter.length == 0) {
             // Linear proportion
-            return AmountCalculator.takingAmountGetter(order.makingAmount, order.takingAmount, requestedMakingAmount);
+            return AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, requestedMakingAmount);
         }
         return _callGetter(getter, requestedMakingAmount, remainingMakingAmount, orderHash);
     }

@@ -40,10 +40,10 @@ describe('Dutch auction', function () {
                 maker: addr.address,
             },
             {
-                makingAmountGetter: dutchAuctionCalculator.address + cutLastArg(trim0x(dutchAuctionCalculator.interface.encodeFunctionData('makingAmountGetter',
+                makingAmountGetter: dutchAuctionCalculator.address + cutLastArg(trim0x(dutchAuctionCalculator.interface.encodeFunctionData('getMakingAmount',
                     [startEndTs.toString(), ether('0.1'), ether('0.05'), ether('100'), 0],
                 )), 64),
-                takingAmountGetter: dutchAuctionCalculator.address + cutLastArg(trim0x(dutchAuctionCalculator.interface.encodeFunctionData('takingAmountGetter',
+                takingAmountGetter: dutchAuctionCalculator.address + cutLastArg(trim0x(dutchAuctionCalculator.interface.encodeFunctionData('getTakingAmount',
                     [startEndTs.toString(), ether('0.1'), ether('0.05'), ether('100'), 0],
                 )), 64),
             },
