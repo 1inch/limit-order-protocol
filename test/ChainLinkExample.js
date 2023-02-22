@@ -153,7 +153,7 @@ describe('ChainLinkExample', function () {
         const { r, vs } = compactSignature(signature);
         await expect(
             swap.fillOrderExt(order, r, vs, makeMakingAmount(makingAmount), takingAmount.add(ether('0.01')), order.extension), // taking threshold = exact taker amount + eps
-        ).to.be.revertedWithCustomError(swap, 'RFQPredicateIsNotTrue');
+        ).to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
     });
 
     it('eth -> dai stop loss order', async function () {

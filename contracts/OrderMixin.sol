@@ -21,7 +21,7 @@ import "./libraries/BitInvalidatorLib.sol";
 import "./libraries/RemainingInvalidatorLib.sol";
 import "./OrderLib.sol";
 
-/// @title RFQ Limit Order mixin
+/// @title Limit Order mixin
 abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, PredicateHelper {
     using SafeERC20 for IERC20;
     using SafeERC20 for IWETH;
@@ -156,7 +156,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         // Check signature and apply order permit only on the first fill
         uint256 remainingMakingAmount = _checkRemainingMakingAmount(order, orderHash);
         if (remainingMakingAmount == order.makingAmount) {
-            if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert RFQBadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
+            if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert BadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
             if (!limits.skipOrderPermit()) {
                 _applyOrderPermit(order, orderHash, extension);
             }
@@ -216,7 +216,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         // Check signature and apply order permit only on the first fill
         uint256 remainingMakingAmount = _checkRemainingMakingAmount(order, orderHash);
         if (remainingMakingAmount == order.makingAmount) {
-            if (!ECDSA.isValidSignature(order.maker.get(), orderHash, signature)) revert RFQBadSignature();
+            if (!ECDSA.isValidSignature(order.maker.get(), orderHash, signature)) revert BadSignature();
             if (!limits.skipOrderPermit()) {
                 _applyOrderPermit(order, orderHash, extension);
             }
@@ -240,18 +240,18 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         }
 
         // Validate order
-        if (!order.constraints.isAllowedSender(msg.sender)) revert RFQPrivateOrder();
-        if (order.constraints.isExpired()) revert RFQOrderExpired();
+        if (!order.constraints.isAllowedSender(msg.sender)) revert PrivateOrder();
+        if (order.constraints.isExpired()) revert OrderExpired();
         if (order.constraints.needCheckEpochManager()) {
             if (order.constraints.useBitInvalidator()) revert EpochManagerAndBitInvalidatorsAreIncompatible();
-            if (!nonceEquals(order.maker.get(), order.constraints.series(), order.constraints.nonceOrEpoch())) revert RFQWrongSeriesNonce();
+            if (!nonceEquals(order.maker.get(), order.constraints.series(), order.constraints.nonceOrEpoch())) revert WrongSeriesNonce();
         }
 
         // Check if orders predicate allows filling
         if (order.constraints.hasExtension()) {
             bytes calldata predicate = extension.predicate();
             if (predicate.length > 0) {
-                if (!checkPredicateRFQ(predicate)) revert RFQPredicateIsNotTrue();
+                if (!checkPredicateRFQ(predicate)) revert PredicateIsNotTrue();
             }
         }
 
@@ -263,10 +263,10 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             // takingAmount / makingAmount <= threshold / amount
             if (amount == makingAmount) {
                 // It's gas optimization due this check doesn't involve SafeMath
-                if (takingAmount > limits.threshold()) revert RFQTakingAmountTooHigh();
+                if (takingAmount > limits.threshold()) revert TakingAmountTooHigh();
             }
             else {
-                if (takingAmount * amount > limits.threshold() * makingAmount) revert RFQTakingAmountTooHigh();
+                if (takingAmount * amount > limits.threshold() * makingAmount) revert TakingAmountTooHigh();
             }
         }
         else {
@@ -276,19 +276,19 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 // Try to decrease taking amount because computed making amount exceeds remaining amount
                 makingAmount = remainingMakingAmount;
                 takingAmount = order.calculateTakingAmount(extension, makingAmount, remainingMakingAmount, orderHash);
-                if (takingAmount > amount) revert RFQTakingAmountIncreased();
+                if (takingAmount > amount) revert TakingAmountExceeded();
             }
             // check that actual rate is not worse than what was expected
             // makingAmount / takingAmount >= threshold / amount
             if (amount == takingAmount) {
                 // It's gas optimization due this check doesn't involve SafeMath
-                if (makingAmount < limits.threshold()) revert RFQMakingAmountTooLow();
+                if (makingAmount < limits.threshold()) revert MakingAmountTooLow();
             }
             else {
-                if (makingAmount * amount < limits.threshold() * takingAmount) revert RFQMakingAmountTooLow();
+                if (makingAmount * amount < limits.threshold() * takingAmount) revert MakingAmountTooLow();
             }
         }
-        if (makingAmount == 0 || takingAmount == 0) revert RFQSwapWithZeroAmount(); // TODO: chekc if bit OR is cheaper
+        if (makingAmount == 0 || takingAmount == 0) revert SwapWithZeroAmount(); // TODO: chekc if bit OR is cheaper
 
         // Invalidate order depending on constraints
         if (order.constraints.useBitInvalidator()) {
@@ -337,7 +337,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 target,
                 makingAmount,
                 extension.makerAssetData()
-            )) revert RFQTransferFromMakerToTakerFailed();
+            )) revert TransferFromMakerToTakerFailed();
         }
 
         {  // Stack too deep
@@ -373,7 +373,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 extension.getReceiver(order),
                 takingAmount,
                 extension.takerAssetData()
-            )) revert RFQTransferFromTakerToMakerFailed();
+            )) revert TransferFromTakerToMakerFailed();
         }
 
         // Post interaction, where maker can handle funds interactively
@@ -424,7 +424,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             IERC20(address(bytes20(orderPermit))).safePermit(orderPermit[20:]);
             if (!order.constraints.useBitInvalidator()) {
                 // Bit orders are not subjects for reentrancy, but we still need to check remaining-based orders for reentrancy
-                if (!_remainingInvalidator[order.maker.get()][orderHash].isNewOrder()) revert RFQReentrancyDetected();
+                if (!_remainingInvalidator[order.maker.get()][orderHash].isNewOrder()) revert ReentrancyDetected();
             }
         }
     }

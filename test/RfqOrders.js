@@ -316,7 +316,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(signature);
             await expect(
                 swap.fillOrder(order, r, vs, 1, 0),
-            ).to.be.revertedWithCustomError(swap, 'RFQSwapWithZeroAmount');
+            ).to.be.revertedWithCustomError(swap, 'SwapWithZeroAmount');
         });
 
         it('should not fill RFQ order when expired', async function () {
@@ -334,7 +334,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(signature);
             await expect(
                 swap.fillOrder(order, r, vs, makeMakingAmount(1), 1),
-            ).to.be.revertedWithCustomError(swap, 'RFQOrderExpired');
+            ).to.be.revertedWithCustomError(swap, 'OrderExpired');
         });
     });
 

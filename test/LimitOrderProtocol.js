@@ -60,7 +60,7 @@ describe('LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(signature);
             await expect(
                 swap.fillOrder(sentOrder, r, vs, 1, makeMakingAmount(1)),
-            ).to.be.revertedWithCustomError(swap, 'RFQBadSignature');
+            ).to.be.revertedWithCustomError(swap, 'BadSignature');
         });
 
         it('should not fill above threshold', async function () {
@@ -78,7 +78,7 @@ describe('LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(signature);
             await expect(
                 swap.fillOrder(order, r, vs, 2, makeMakingAmount(1)),
-            ).to.be.revertedWithCustomError(swap, 'RFQTakingAmountTooHigh');
+            ).to.be.revertedWithCustomError(swap, 'TakingAmountTooHigh');
         });
 
         it('should not fill below threshold', async function () {
@@ -98,7 +98,7 @@ describe('LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(signature);
             await expect(
                 swap.fillOrder(order, r, vs, 2, 3),
-            ).to.be.revertedWithCustomError(swap, 'RFQMakingAmountTooLow');
+            ).to.be.revertedWithCustomError(swap, 'MakingAmountTooLow');
         });
 
         it('should fail when amount is zero', async function () {
@@ -116,7 +116,7 @@ describe('LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(signature);
             await expect(
                 swap.fillOrder(order, r, vs, 0, 0),
-            ).to.be.revertedWithCustomError(swap, 'RFQSwapWithZeroAmount');
+            ).to.be.revertedWithCustomError(swap, 'SwapWithZeroAmount');
         });
 
         it('@skip-on-coverage should swap fully based on signature', async function () {
@@ -230,7 +230,7 @@ describe('LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(signature);
             await expect(
                 swap.fillOrder(order, r, vs, 4, 0),
-            ).to.be.revertedWithCustomError(swap, 'RFQSwapWithZeroAmount');
+            ).to.be.revertedWithCustomError(swap, 'SwapWithZeroAmount');
         });
 
         it('should ceil taker amount', async function () {
@@ -637,7 +637,7 @@ describe('LimitOrderProtocol', function () {
 
             await expect(
                 swap.fillOrder(order, r, vs, 1, makeMakingAmount(1)),
-            ).to.be.revertedWithCustomError(swap, 'RFQPrivateOrder');
+            ).to.be.revertedWithCustomError(swap, 'PrivateOrder');
         });
     });
 
@@ -718,7 +718,7 @@ describe('LimitOrderProtocol', function () {
 
             await expect(
                 swap.fillOrder(order, r, vs, 1, makeMakingAmount(1)),
-            ).to.be.revertedWithCustomError(swap, 'RFQOrderExpired');
+            ).to.be.revertedWithCustomError(swap, 'OrderExpired');
         });
 
         it('`and` should pass', async function () {
@@ -809,7 +809,7 @@ describe('LimitOrderProtocol', function () {
 
             await expect(
                 swap.fillOrderExt(order, r, vs, 1, makeMakingAmount(1), order.extension),
-            ).to.be.revertedWithCustomError(swap, 'RFQPredicateIsNotTrue');
+            ).to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
         });
     });
 
@@ -862,7 +862,7 @@ describe('LimitOrderProtocol', function () {
 
             await expect(
                 swap.fillOrder(order, r, vs, 1, makeMakingAmount(1)),
-            ).to.be.revertedWithCustomError(swap, 'RFQOrderExpired');
+            ).to.be.revertedWithCustomError(swap, 'OrderExpired');
         });
 
         it('should fill partially if not enough coins (taker)', async function () {

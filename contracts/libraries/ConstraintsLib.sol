@@ -5,8 +5,6 @@ pragma solidity 0.8.18;
 type Constraints is uint256;
 
 library ConstraintsLib {
-    error EpochNotAvailable();
-
     uint256 private constant _ALLOWED_SENDER_MASK = type(uint160).max; // TODO: can safely shrink to 80 bits
     uint256 private constant _EXPIRATION_OFFSET = 160;
     uint256 private constant _EXPIRATION_MASK = type(uint40).max;

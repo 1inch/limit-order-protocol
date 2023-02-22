@@ -18,26 +18,24 @@ interface IOrderMixin {
     }
 
     error InvalidatedOrder();
-    error RFQTakingAmountIncreased();
-    error RFQPrivateOrder();
-    error RFQBadSignature();
-    error RFQOrderExpired();
-    error RFQWrongSeriesNonce();
-    error MakingAmountExceeded();
     error TakingAmountExceeded();
-    error RFQSwapWithZeroAmount();
-    error RFQPartialFillNotAllowed();
+    error PrivateOrder();
+    error BadSignature();
+    error OrderExpired();
+    error WrongSeriesNonce();
+    error SwapWithZeroAmount();
+    // error PartialFillNotAllowed(); // TODO: why unused?
     error OrderIsnotSuitableForMassInvalidation();
     error EpochManagerAndBitInvalidatorsAreIncompatible();
-    error RFQReentrancyDetected();
-    error RFQPredicateIsNotTrue();
-    error RFQTakingAmountTooHigh();
-    error RFQMakingAmountTooLow();
-    error RFQTransferFromMakerToTakerFailed();
-    error RFQTransferFromTakerToMakerFailed();
+    error ReentrancyDetected();
+    error PredicateIsNotTrue();
+    error TakingAmountTooHigh();
+    error MakingAmountTooLow();
+    error TransferFromMakerToTakerFailed();
+    error TransferFromTakerToMakerFailed();
 
     /**
-     * @notice Emitted when RFQ gets filled
+     * @notice Emitted when order gets filled
      * @param orderHash Hash of the order
      * @param makingAmount Amount of the maker asset that was transferred from maker to taker
      */

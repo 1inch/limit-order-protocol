@@ -16,9 +16,8 @@ library OrderLib {
     using ExtensionLib for bytes;
 
     error WrongAmount();
-    error FieldOutOfBounds();
-    error RFQWrongGetter();
-    error RFQGetAmountCallFailed();
+    error WrongGetter();
+    error GetAmountCallFailed();
     error MissingOrderExtension();
     error UnexpectedOrderExtension();
     error ExtensionInvalid();
@@ -93,10 +92,10 @@ library OrderLib {
         uint256 remainingMakingAmount,
         bytes32 orderHash
     ) private view returns(uint256) {
-        if (getter.length < 20) revert RFQWrongGetter();
+        if (getter.length < 20) revert WrongGetter();
 
         (bool success, bytes memory result) = address(bytes20(getter)).staticcall(abi.encodePacked(getter[20:], requestedAmount, remainingMakingAmount, orderHash));
-        if (!success || result.length != 32) revert RFQGetAmountCallFailed();
+        if (!success || result.length != 32) revert GetAmountCallFailed();
         return abi.decode(result, (uint256));
     }
 
