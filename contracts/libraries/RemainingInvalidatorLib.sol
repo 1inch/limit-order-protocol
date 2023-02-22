@@ -7,7 +7,7 @@ type RemainingInvalidator is uint256;
 library RemainingInvalidatorLib {
     error RFQInvalidatedOrder();
 
-    function doesNotExist(RemainingInvalidator invalidator) internal pure returns(bool) {
+    function isNewOrder(RemainingInvalidator invalidator) internal pure returns(bool) {
         return RemainingInvalidator.unwrap(invalidator) == 0;
     }
 

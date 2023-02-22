@@ -424,7 +424,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             IERC20(address(bytes20(orderPermit))).safePermit(orderPermit[20:]);
             if (!order.constraints.useBitInvalidator()) {
                 // Bit orders are not subjects for reentrancy, but we still need to check remaining-based orders for reentrancy
-                if (!_remainingInvalidator[order.maker.get()][orderHash].doesNotExist()) revert RFQReentrancyDetected();
+                if (!_remainingInvalidator[order.maker.get()][orderHash].isNewOrder()) revert RFQReentrancyDetected();
             }
         }
     }
