@@ -26,7 +26,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     using SafeERC20 for IERC20;
     using SafeERC20 for IWETH;
     using OrderLib for IOrderMixin.Order;
-    using OrderLib for bytes;
+    using ExtensionLib for bytes;
     using AddressLib for Address;
     using ConstraintsLib for Constraints;
     using LimitsLib for Limits;
