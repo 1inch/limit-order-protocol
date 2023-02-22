@@ -2,10 +2,21 @@
 
 pragma solidity 0.8.17;
 
-import "../OrderLib.sol";
+import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
+import "../libraries/ConstraintsLib.sol";
 import "../libraries/LimitsLib.sol";
 
 interface IOrderMixin {
+    struct Order {
+        uint256 salt;
+        Address maker;
+        Address makerAsset;
+        Address takerAsset;
+        uint256 makingAmount;
+        uint256 takingAmount;
+        Constraints constraints;
+    }
+
     error InvalidatedOrder();
     error RFQTakingAmountIncreased();
     error RFQPrivateOrder();
@@ -83,7 +94,7 @@ interface IOrderMixin {
      * @return orderHash Hash of the filled order
      */
     function fillOrder(
-        OrderLib.Order calldata order,
+        Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -104,7 +115,7 @@ interface IOrderMixin {
      * @return orderHash Hash of the filled order
      */
     function fillOrderTo(
-        OrderLib.Order calldata order,
+        Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -131,7 +142,7 @@ interface IOrderMixin {
      * @dev See tests for examples
      */
     function fillOrderToWithPermit(
-        OrderLib.Order calldata order,
+        Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -158,7 +169,7 @@ interface IOrderMixin {
      * @dev See tests for examples
      */
     function fillContractOrder(
-        OrderLib.Order calldata order,
+        Order calldata order,
         bytes calldata signature,
         uint256 amount,
         Limits limits,

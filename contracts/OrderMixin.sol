@@ -25,7 +25,7 @@ import "./OrderLib.sol";
 abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, PredicateHelper {
     using SafeERC20 for IERC20;
     using SafeERC20 for IWETH;
-    using OrderLib for OrderLib.Order;
+    using OrderLib for IOrderMixin.Order;
     using OrderLib for bytes;
     using AddressLib for Address;
     using ConstraintsLib for Constraints;
@@ -86,7 +86,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      /**
      * @notice See {IOrderMixin-hashOrder}.
      */
-    function hashOrder(OrderLib.Order calldata order) public view returns(bytes32) {
+    function hashOrder(IOrderMixin.Order calldata order) external view returns(bytes32) {
         return order.hash(_domainSeparatorV4());
     }
 
@@ -102,7 +102,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      * @notice See {IOrderMixin-fillOrder}.
      */
     function fillOrder(
-        OrderLib.Order calldata order,
+        IOrderMixin.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -115,7 +115,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      * @notice See {IOrderMixin-fillOrder}.
      */
     function fillOrderExt(
-        OrderLib.Order calldata order,
+        IOrderMixin.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -129,7 +129,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      * @notice See {IOrderMixin-fillOrderTo}.
      */
     function fillOrderTo(
-        OrderLib.Order calldata order,
+        IOrderMixin.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -141,7 +141,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     }
 
     function fillOrderToExt(
-        OrderLib.Order calldata order,
+        IOrderMixin.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -169,7 +169,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      * @notice See {IOrderMixin-fillOrderToWithPermit}.
      */
     function fillOrderToWithPermit(
-        OrderLib.Order calldata order,
+        IOrderMixin.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
@@ -186,7 +186,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      * @notice See {IOrderMixin-fillContractOrder}.
      */
     function fillContractOrder(
-        OrderLib.Order calldata order,
+        IOrderMixin.Order calldata order,
         bytes calldata signature,
         uint256 amount,
         Limits limits,
@@ -198,7 +198,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     }
 
     function fillContractOrderExt(
-        OrderLib.Order calldata order,
+        IOrderMixin.Order calldata order,
         bytes calldata signature,
         uint256 amount,
         Limits limits,
@@ -226,7 +226,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     }
 
     function _fillOrderTo(
-        OrderLib.Order calldata order,
+        IOrderMixin.Order calldata order,
         bytes32 orderHash,
         bytes calldata extension,
         uint256 remainingMakingAmount,
@@ -408,7 +408,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         emit OrderFilled(orderHash, makingAmount);
     }
 
-    function _checkRemainingMakingAmount(OrderLib.Order calldata order, bytes32 orderHash) private view returns(uint256 remainingMakingAmount) {
+    function _checkRemainingMakingAmount(IOrderMixin.Order calldata order, bytes32 orderHash) private view returns(uint256 remainingMakingAmount) {
         if (order.constraints.useBitInvalidator()) {
             remainingMakingAmount = order.makingAmount;
         } else {
@@ -417,7 +417,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         if (remainingMakingAmount == 0) revert InvalidatedOrder();
     }
 
-    function _applyOrderPermit(OrderLib.Order calldata order, bytes32 orderHash, bytes calldata extension) private {
+    function _applyOrderPermit(IOrderMixin.Order calldata order, bytes32 orderHash, bytes calldata extension) private {
         bytes calldata orderPermit = extension.permitTargetAndData();
         if (orderPermit.length >= 20) {
             // proceed only if taker is willing to execute permit and its length is enough to store address

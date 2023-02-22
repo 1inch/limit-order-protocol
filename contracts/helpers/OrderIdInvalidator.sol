@@ -32,7 +32,7 @@ contract OrderIdInvalidator is IPreInteraction {
     }
 
     function preInteraction(
-        OrderLib.Order calldata order,
+        IOrderMixin.Order calldata order,
         bytes32 orderHash,
         address /* taker */,
         uint256 /* makingAmount */,

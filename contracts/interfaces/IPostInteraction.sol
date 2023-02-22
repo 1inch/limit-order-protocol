@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-import "../OrderLib.sol";
+import "./IOrderMixin.sol";
 
 interface IPostInteraction {
     /**
@@ -15,7 +15,7 @@ interface IPostInteraction {
      * @param extraData Extra data
      */
     function postInteraction(
-        OrderLib.Order calldata order,
+        IOrderMixin.Order calldata order,
         bytes32 orderHash,
         address taker,
         uint256 makingAmount,

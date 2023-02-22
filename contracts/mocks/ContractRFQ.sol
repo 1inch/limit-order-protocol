@@ -11,7 +11,7 @@ import { EIP712Alien } from "./EIP712Alien.sol";
 
 contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     using SafeERC20 for IERC20;
-    using OrderLib for OrderLib.Order;
+    using OrderLib for IOrderMixin.Order;
     using AddressLib for Address;
 
     error NotAllowedToken();
@@ -73,7 +73,7 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns(bytes4) {
         if (signature.length != 7 * 0x20) revert MalformedSignature();
 
-        OrderLib.Order calldata order;
+        IOrderMixin.Order calldata order;
         /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
             order := signature.offset

@@ -16,7 +16,7 @@ contract RecursiveMatcher is ITakerInteraction {
 
     function matchOrdersRFQ(
         IOrderMixin orderRFQMixin,
-        OrderLib.Order calldata order,
+        IOrderMixin.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,

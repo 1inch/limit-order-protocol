@@ -22,7 +22,7 @@ contract WethUnwrapper is OnlyWethReceiver, IPostInteraction {
     }
 
     function postInteraction(
-        OrderLib.Order calldata order,
+        IOrderMixin.Order calldata order,
         bytes32 /* orderHash */,
         address /* taker */,
         uint256 /* makingAmount */,
