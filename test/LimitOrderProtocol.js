@@ -449,13 +449,13 @@ describe('LimitOrderProtocol', function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
+                maker: addr1.address,
                 makerAsset: dai.address,
                 takerAsset: weth.address,
                 makingAmount: 10,
                 takingAmount: 10,
-                maker: addr1.address,
+                constraints: buildConstraints({allowPartialFill: false}),
             });
-            order.takingAmountGetter = '0x';
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
@@ -472,17 +472,55 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(10));
         });
 
-        it('empty makingAmountGetter should work on full fill', async function () {
+        it('empty takingAmountGetter should revert on partial fill', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
+                maker: addr1.address,
                 makerAsset: dai.address,
                 takerAsset: weth.address,
                 makingAmount: 10,
                 takingAmount: 10,
-                maker: addr1.address,
+                constraints: buildConstraints({allowPartialFill: false}),
             });
-            order.makingAmountGetter = '0x';
+            const signature = await signOrder(order, chainId, swap.address, addr1);
+            const { r, vs } = compactSignature(signature);
+
+            await expect(
+                swap.fillOrder(order, r, vs, 5, makeMakingAmount(5)),
+            ).to.be.revertedWithCustomError(swap, 'WrongAmount');
+        });
+
+
+        it('empty makingAmountGetter should revert on partial fill', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                maker: addr1.address,
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 10,
+                takingAmount: 10,
+                constraints: buildConstraints({allowPartialFill: false}),
+            });
+            const signature = await signOrder(order, chainId, swap.address, addr1);
+            const { r, vs } = compactSignature(signature);
+            await expect(
+                swap.fillOrder(order, r, vs, 5, 5),
+            ).to.be.revertedWithCustomError(swap, 'WrongAmount');
+        });
+
+        it('empty makingAmountGetter should work on full fill', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                maker: addr1.address,
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 10,
+                takingAmount: 10,
+                constraints: buildConstraints({allowPartialFill: false}),
+            });
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 

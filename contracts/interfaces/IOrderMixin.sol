@@ -124,6 +124,17 @@ interface IOrderMixin {
         bytes calldata interaction
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
+    function fillOrderToExt(
+        Order calldata order,
+        bytes32 r,
+        bytes32 vs,
+        uint256 amount,
+        Limits limits,
+        address target,
+        bytes calldata interaction,
+        bytes calldata extension
+    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
+
     /**
      * @notice Same as `fillOrderTo` but calls permit first.
      * It allows to approve token spending and make a swap in one transaction.

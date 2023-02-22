@@ -46,7 +46,7 @@ contract RecursiveMatcher is ITakerInteraction {
                 bytes[] memory calldatas
             ) = abi.decode(interactiveData[1:], (address[], bytes[]));
 
-            if(targets.length != calldatas.length) revert IncorrectCalldataParams();
+            if (targets.length != calldatas.length) revert IncorrectCalldataParams();
             for(uint256 i = 0; i < targets.length; i++) {
                 // solhint-disable-next-line avoid-low-level-calls
                 (bool success, bytes memory reason) = targets[i].call(calldatas[i]);

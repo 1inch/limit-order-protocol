@@ -33,7 +33,7 @@ const _HAS_EXTENSION_FLAG = 249n;
 
 function buildConstraints ({
     allowedSender = constants.ZERO_ADDRESS,
-    shouldCheckEpoch = true,
+    shouldCheckEpoch = false,
     allowPartialFill = true,
     allowPriceImprovement = true,
     allowMultipleFills = true,
@@ -54,16 +54,16 @@ function buildConstraints ({
     assert(res.length === 64, 'Constraints should be 64 bytes long');
 
     if (allowMultipleFills) {
-        res = '0x' + setn(BigInt(res), _ALLOW_MULTIPLE_FILLS_FLAG, allowMultipleFills).toString(16).padStart(64, '0');
+        res = '0x' + setn(BigInt(res), _ALLOW_MULTIPLE_FILLS_FLAG, true).toString(16).padStart(64, '0');
     }
-    if (allowPartialFill) {
-        res = '0x' + setn(BigInt(res), _NO_PARTIAL_FILLS_FLAG, !allowPartialFill).toString(16).padStart(64, '0');
+    if (!allowPartialFill) {
+        res = '0x' + setn(BigInt(res), _NO_PARTIAL_FILLS_FLAG, true).toString(16).padStart(64, '0');
     }
-    if (allowPriceImprovement) {
-        res = '0x' + setn(BigInt(res), _NO_PRICE_IMPROVEMENT_FLAG, !allowPriceImprovement).toString(16).padStart(64, '0');
+    if (!allowPriceImprovement) {
+        res = '0x' + setn(BigInt(res), _NO_PRICE_IMPROVEMENT_FLAG, true).toString(16).padStart(64, '0');
     }
     if (shouldCheckEpoch) {
-        res = '0x' + setn(BigInt(res), _NEED_EPOCH_CHECK_FLAG, shouldCheckEpoch).toString(16).padStart(64, '0');
+        res = '0x' + setn(BigInt(res), _NEED_EPOCH_CHECK_FLAG, true).toString(16).padStart(64, '0');
     }
     if (needPreInteraction) {
         res = '0x' + setn(BigInt(res), _NEED_PREINTERACTION_FLAG, true).toString(16).padStart(64, '0');

@@ -14,7 +14,7 @@ library ConstraintsLib {
     uint256 private constant _NONCE_MASK = type(uint40).max;
     uint256 private constant _SERIES_OFFSET = 240;
     uint256 private constant _SERIES_MASK = type(uint8).max;
-    uint256 private constant _NO_PARIAL_FILLS_FLAG = 1 << 255;
+    uint256 private constant _NO_PARTIAL_FILLS_FLAG = 1 << 255;
     uint256 private constant _ALLOW_MUTIPLE_FILLS_FLAG = 1 << 254;
     uint256 private constant _NO_IMPROVE_RATE_FLAG = 1 << 253;
     uint256 private constant _PRE_INTERACTION_CALL_FLAG = 1 << 252;
@@ -45,7 +45,7 @@ library ConstraintsLib {
     }
 
     function allowPartialFills(Constraints constraints) internal pure returns (bool) {
-        return (Constraints.unwrap(constraints) & _NO_PARIAL_FILLS_FLAG) == 0;
+        return (Constraints.unwrap(constraints) & _NO_PARTIAL_FILLS_FLAG) == 0;
     }
 
     function allowImproveRateViaInteraction(Constraints constraints) internal pure returns (bool) {

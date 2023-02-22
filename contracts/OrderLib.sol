@@ -15,6 +15,7 @@ library OrderLib {
     using ConstraintsLib for Constraints;
     using ExtensionLib for bytes;
 
+    error WrongAmount();
     error FieldOutOfBounds();
     error RFQWrongGetter();
     error RFQGetAmountCallFailed();
@@ -66,6 +67,10 @@ library OrderLib {
         uint256 remainingMakingAmount,
         bytes32 orderHash
     ) internal view returns(uint256) {
+        if (!order.constraints.allowPartialFills()) {
+            if (requestedTakingAmount != order.takingAmount) revert WrongAmount();
+            return order.makingAmount;
+        }
         bytes calldata getter = extension.makingAmountGetter();
         if (getter.length == 0) {
             // Linear proportion
@@ -81,6 +86,10 @@ library OrderLib {
         uint256 remainingMakingAmount,
         bytes32 orderHash
     ) internal view returns(uint256) {
+        if (!order.constraints.allowPartialFills()) {
+            if (requestedMakingAmount != order.makingAmount) revert WrongAmount();
+            return order.takingAmount;
+        }
         bytes calldata getter = extension.takingAmountGetter();
         if (getter.length == 0) {
             // Linear proportion
