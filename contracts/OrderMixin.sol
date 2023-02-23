@@ -305,25 +305,26 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 listener = address(bytes20(data));
                 data = data[20:];
             }
-            IPreInteraction(listener).preInteraction(
-                order, orderHash, msg.sender, makingAmount, takingAmount, data
-            );
-            // TODO: implement in assembly
-            // bytes4 selector = IPreInteraction.preInteraction.selector;
+
+            // IPreInteraction(listener).preInteraction(order, orderHash, msg.sender, makingAmount, takingAmount, data);
+            bytes4 selector = IPreInteraction.preInteraction.selector;
             /// @solidity memory-safe-assembly
-            // assembly { // solhint-disable-line no-inline-assembly
-            //     let ptr := mload(0x40)
-            //     mstore(ptr, selector)
-            //     calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
-            //     mstore(add(ptr, 0xe4), orderHash)
-            //     mstore(add(ptr, 0x104), caller())
-            //     mstore(add(ptr, 0x124), makingAmount)
-            //     mstore(add(ptr, 0x144), takingAmount)
-            //     if iszero(call(gas(), shr(96, calldataload(extension)), 0, ptr, 0x164, 0, 0)) {
-            //         returndatacopy(ptr, 0, returndatasize())
-            //         revert(ptr, returndatasize())
-            //     }
-            // }
+            assembly { // solhint-disable-line no-inline-assembly
+                let ptr := mload(0x40)
+                mstore(ptr, selector)
+                calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
+                mstore(add(ptr, 0xe4), orderHash)
+                mstore(add(ptr, 0x104), caller())
+                mstore(add(ptr, 0x124), makingAmount)
+                mstore(add(ptr, 0x144), takingAmount)
+                mstore(add(ptr, 0x164), 0x180)
+                mstore(add(ptr, 0x184), data.length)
+                calldatacopy(add(ptr, 0x1a4), data.offset, data.length)
+                if iszero(call(gas(), listener, 0, ptr, add(0x1a4, data.length), 0, 0)) {
+                    returndatacopy(ptr, 0, returndatasize())
+                    revert(ptr, returndatasize())
+                }
+            }
         }
 
         // Maker => Taker
@@ -384,25 +385,26 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 listener = address(bytes20(data));
                 data = data[20:];
             }
-            IPostInteraction(listener).postInteraction(
-                order, orderHash, msg.sender, makingAmount, takingAmount, data
-            );
-            // TODO: implement in assembly
-            // bytes4 selector = IPostInteraction.postInteraction.selector;
-            // /// @solidity memory-safe-assembly
-            // assembly { // solhint-disable-line no-inline-assembly
-            //     let ptr := mload(0x40)
-            //     mstore(ptr, selector)
-            //     calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
-            //     mstore(add(ptr, 0xe4), orderHash)
-            //     mstore(add(ptr, 0x104), caller())
-            //     mstore(add(ptr, 0x124), makingAmount)
-            //     mstore(add(ptr, 0x144), takingAmount)
-            //     if iszero(call(gas(), shr(96, calldataload(extension)), 0, ptr, 0x164, 0, 0)) {
-            //         returndatacopy(ptr, 0, returndatasize())
-            //         revert(ptr, returndatasize())
-            //     }
-            // }
+
+            // IPostInteraction(listener).postInteraction(order, orderHash, msg.sender, makingAmount, takingAmount, data);
+            bytes4 selector = IPostInteraction.postInteraction.selector;
+            /// @solidity memory-safe-assembly
+            assembly { // solhint-disable-line no-inline-assembly
+                let ptr := mload(0x40)
+                mstore(ptr, selector)
+                calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
+                mstore(add(ptr, 0xe4), orderHash)
+                mstore(add(ptr, 0x104), caller())
+                mstore(add(ptr, 0x124), makingAmount)
+                mstore(add(ptr, 0x144), takingAmount)
+                mstore(add(ptr, 0x164), 0x180)
+                mstore(add(ptr, 0x184), data.length)
+                calldatacopy(add(ptr, 0x1a4), data.offset, data.length)
+                if iszero(call(gas(), listener, 0, ptr, add(0x1a4, data.length), 0, 0)) {
+                    returndatacopy(ptr, 0, returndatasize())
+                    revert(ptr, returndatasize())
+                }
+            }
         }
 
         emit OrderFilled(orderHash, makingAmount);
