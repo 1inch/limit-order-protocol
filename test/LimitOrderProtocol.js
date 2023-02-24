@@ -488,7 +488,7 @@ describe('LimitOrderProtocol', function () {
 
             await expect(
                 swap.fillOrder(order, r, vs, 5, makeMakingAmount(5)),
-            ).to.be.revertedWithCustomError(swap, 'WrongAmount');
+            ).to.be.revertedWithCustomError(swap, 'PartialFillNotAllowed');
         });
 
         it('empty makingAmountGetter should revert on partial fill', async function () {
@@ -506,7 +506,7 @@ describe('LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(signature);
             await expect(
                 swap.fillOrder(order, r, vs, 5, 5),
-            ).to.be.revertedWithCustomError(swap, 'WrongAmount');
+            ).to.be.revertedWithCustomError(swap, 'PartialFillNotAllowed');
         });
 
         it('empty makingAmountGetter should work on full fill', async function () {
@@ -1014,7 +1014,7 @@ describe('LimitOrderProtocol', function () {
      * But it is also possible that the limit-order will be filed in parts.
      * First, someone buys 1 ETH at the price of 3050 DAI, then another 1 ETH at the price of 3150 DAI, and so on.
      */
-    describe.skip('Range limit orders', function () {
+    describe('Range limit orders', function () {
         // TODO: extract to separate file, kill huge fillRangeLimitOrder, have small and self explaining tests
         let maker, taker;
 

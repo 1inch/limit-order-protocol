@@ -288,6 +288,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 if (makingAmount * amount < limits.threshold() * takingAmount) revert MakingAmountTooLow();
             }
         }
+        if (!order.constraints.allowPartialFills() && makingAmount != order.makingAmount) revert PartialFillNotAllowed();
         if (makingAmount == 0 || takingAmount == 0) revert SwapWithZeroAmount(); // TODO: chekc if bit OR is cheaper
 
         // Invalidate order depending on constraints

@@ -24,7 +24,7 @@ interface IOrderMixin {
     error OrderExpired();
     error WrongSeriesNonce();
     error SwapWithZeroAmount();
-    // error PartialFillNotAllowed(); // TODO: why unused?
+    error PartialFillNotAllowed();
     error OrderIsnotSuitableForMassInvalidation();
     error EpochManagerAndBitInvalidatorsAreIncompatible();
     error ReentrancyDetected();

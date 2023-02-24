@@ -3442,10 +3442,10 @@ hardhat@2.11.2:
     uuid "^8.3.2"
     ws "^7.4.6"
 
-hardhat@2.12.7:
-  version "2.12.7"
-  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.12.7.tgz#d8de2dc32e9a2956d53cf26ef4cd5857e57a3138"
-  integrity sha512-voWoN6zn5d8BOEaczSyK/1PyfdeOeI3SbGCFb36yCHTJUt6OIqLb+ZDX30VhA1UsYKzLqG7UnWl3fKJUuANc6A==
+hardhat@^2.12.8-viair.0:
+  version "2.12.8-viair.0"
+  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.12.8-viair.0.tgz#662317cac2bd8c9147ba9e886c78e55fa0567ea4"
+  integrity sha512-erh/ZE5QLPJ+puSVRY9JoX7AQo3DcGjPOFPMiPw+DJn8dpNq1/+Y0n9xK4yK8DFueNsarlRY9TdM8Du6Wj+QSQ==
   dependencies:
     "@ethersproject/abi" "^5.1.2"
     "@metamask/eth-sig-util" "^4.0.0"
