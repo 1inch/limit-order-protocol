@@ -25,7 +25,7 @@ interface IOrderMixin {
     error WrongSeriesNonce();
     error SwapWithZeroAmount();
     error PartialFillNotAllowed();
-    error OrderIsnotSuitableForMassInvalidation();
+    error OrderIsNotSuitableForMassInvalidation();
     error EpochManagerAndBitInvalidatorsAreIncompatible();
     error ReentrancyDetected();
     error PredicateIsNotTrue();

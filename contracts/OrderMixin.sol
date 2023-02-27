@@ -90,7 +90,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      * @notice See {IOrderMixin-bitsInvalidateForOrder}.
      */
     function bitsInvalidateForOrder(Constraints orderConstraints, uint256 additionalMask) external {
-        if (!orderConstraints.useBitInvalidator()) revert OrderIsnotSuitableForMassInvalidation();
+        if (!orderConstraints.useBitInvalidator()) revert OrderIsNotSuitableForMassInvalidation();
         _bitInvalidator[msg.sender].massInvalidate(orderConstraints.nonceOrEpoch(), additionalMask);
     }
 
