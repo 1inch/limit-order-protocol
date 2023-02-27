@@ -430,18 +430,14 @@ describe('Interactions', function () {
         const takerIncreaser = await TakerIncreaser.deploy();
         await takerIncreaser.deployed();
 
-        const order = buildOrder(
-            {
-                makerAsset: weth.address,
-                takerAsset: dai.address,
-                makingAmount: ether('0.1'),
-                takingAmount: ether('50'),
-                maker: addr1.address,
-            },
-            {
-                predicate: swap.interface.encodeFunctionData('timestampBelow', [0xff00000000]),
-            },
-        );
+        const order = buildOrder({
+            makerAsset: weth.address,
+            takerAsset: dai.address,
+            makingAmount: ether('0.1'),
+            takingAmount: ether('50'),
+            maker: addr1.address,
+            constraints: buildConstraints({ expiry: 0xff00000000 }),
+        });
 
         const signature = await signOrder(order, chainId, swap.address, addr1);
         const { r, vs } = compactSignature(signature);
@@ -452,12 +448,10 @@ describe('Interactions', function () {
                 [
                     dai.address,
                     dai.address,
-                    weth.address,
                 ],
                 [
                     dai.interface.encodeFunctionData('transferFrom', [addr.address, takerIncreaser.address, ether('75')]),
                     dai.interface.encodeFunctionData('approve', [swap.address, ether('75')]),
-                    weth.interface.encodeFunctionData('transfer', [addr.address, ether('0.1')]),
                 ],
             ],
         ).substring(2);
@@ -468,7 +462,7 @@ describe('Interactions', function () {
         const addrdai = await dai.balanceOf(addr.address);
         const addr1dai = await dai.balanceOf(addr1.address);
 
-        await takerIncreaser.fillOrderExt(swap.address, order, r, vs, ether('0.1'), makeMakingAmount(ether('50')), interaction, order.extension);
+        await takerIncreaser.fillOrderTo(swap.address, order, r, vs, ether('0.1'), makeMakingAmount(ether('50')), addr.address, interaction);
 
         expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.1')));
         expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.1')));

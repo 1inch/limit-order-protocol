@@ -2,19 +2,16 @@
 
 pragma solidity 0.8.18;
 
-import "./SeriesNonceManager.sol";
-
 /// @title A helper contract for executing boolean functions on arbitrary target call results
-contract PredicateHelper is SeriesNonceManager {
+contract PredicateHelper {
     error ArbitraryStaticCallFailed();
 
     /// @notice Calls every target with corresponding data
     /// @return Result True if call to any target returned True. Otherwise, false
     function or(uint256 offsets, bytes calldata data) public view returns(bool) {
-        uint256 current;
         uint256 previous;
-        for (uint256 i = 0; (current = uint32(offsets >> i)) != 0; i += 32) {
-            (bool success, uint256 res) = _selfStaticCall(data[previous:current]);
+        for (uint256 current; (current = uint32(offsets)) != 0; offsets >>= 32) {
+            (bool success, uint256 res) = _staticcallForUint(address(this), data[previous:current]);
             if (success && res == 1) {
                 return true;
             }
@@ -26,10 +23,9 @@ contract PredicateHelper is SeriesNonceManager {
     /// @notice Calls every target with corresponding data
     /// @return Result True if calls to all targets returned True. Otherwise, false
     function and(uint256 offsets, bytes calldata data) public view returns(bool) {
-        uint256 current;
         uint256 previous;
-        for (uint256 i = 0; (current = uint32(offsets >> i)) != 0; i += 32) {
-            (bool success, uint256 res) = _selfStaticCall(data[previous:current]);
+        for (uint256 current; (current = uint32(offsets)) != 0; offsets >>= 32) {
+            (bool success, uint256 res) = _staticcallForUint(address(this), data[previous:current]);
             if (!success || res != 1) {
                 return false;
             }
@@ -38,11 +34,18 @@ contract PredicateHelper is SeriesNonceManager {
         return true;
     }
 
+    /// @notice Calls target with specified data and tests if it's equal to 0
+    /// @return Result True if call to target returns 0. Otherwise, false
+    function not(bytes calldata data) public view returns(bool) {
+        (bool success, uint256 res) = _staticcallForUint(address(this), data);
+        return success && res == 0;
+    }
+
     /// @notice Calls target with specified data and tests if it's equal to the value
     /// @param value Value to test
     /// @return Result True if call to target returns the same value as `value`. Otherwise, false
     function eq(uint256 value, bytes calldata data) public view returns(bool) {
-        (bool success, uint256 res) = _selfStaticCall(data);
+        (bool success, uint256 res) = _staticcallForUint(address(this), data);
         return success && res == value;
     }
 
@@ -50,7 +53,7 @@ contract PredicateHelper is SeriesNonceManager {
     /// @param value Value to test
     /// @return Result True if call to target returns value which is lower than `value`. Otherwise, false
     function lt(uint256 value, bytes calldata data) public view returns(bool) {
-        (bool success, uint256 res) = _selfStaticCall(data);
+        (bool success, uint256 res) = _staticcallForUint(address(this), data);
         return success && res < value;
     }
 
@@ -58,14 +61,8 @@ contract PredicateHelper is SeriesNonceManager {
     /// @param value Value to test
     /// @return Result True if call to target returns value which is bigger than `value`. Otherwise, false
     function gt(uint256 value, bytes calldata data) public view returns(bool) {
-        (bool success, uint256 res) = _selfStaticCall(data);
+        (bool success, uint256 res) = _staticcallForUint(address(this), data);
         return success && res > value;
-    }
-
-    /// @notice Checks passed time against block timestamp
-    /// @return Result True if current block timestamp is lower than `time`. Otherwise, false
-    function timestampBelow(uint256 time) public view returns(bool) {
-        return block.timestamp < time;  // solhint-disable-line not-rely-on-time
     }
 
     /// @notice Performs an arbitrary call to target with data
@@ -76,50 +73,13 @@ contract PredicateHelper is SeriesNonceManager {
         return res;
     }
 
-    function _selfStaticCall(bytes calldata data) internal view returns(bool, uint256) {
-        bytes4 selector = bytes4(data[:4]);
-        uint256 arg = uint256(bytes32(data[4:36]));
-
-        if (selector < this.arbitraryStaticCall.selector) {  // 0xbf15fcd8
-            if (selector < this.eq.selector) {  // 0x6fe7b0ba
-                if (selector == this.gt.selector) {  // 0x4f38e2b8
-                    return (true, gt(arg, data[100:]) ? 1 : 0);
-                } else if (selector == this.timestampBelow.selector) {  // 0x63592c2b
-                    return (true, timestampBelow(arg) ? 1 : 0);
-                }
-            } else {
-                if (selector == this.eq.selector) {  // 0x6fe7b0ba
-                    return (true, eq(arg, data[100:]) ? 1 : 0);
-                } else if (selector == this.or.selector) {  // 0x74261145
-                    return (true, or(arg, data[100:]) ? 1 : 0);
-                }
-            }
-        } else {
-            if (selector < this.lt.selector) {  // 0xca4ece22
-                if (selector == this.arbitraryStaticCall.selector) {  // 0xbf15fcd8
-                    return (true, arbitraryStaticCall(address(uint160(arg)), data[100:]));
-                } else if (selector == this.and.selector) {  // 0xbfa75143
-                    return (true, and(arg, data[100:]) ? 1 : 0);
-                }
-            } else {
-                if (selector == this.lt.selector) {  // 0xca4ece22
-                    return (true, lt(arg, data[100:]) ? 1 : 0);
-                } else if (selector == this.nonceEquals.selector) {  // 0xd13584de
-                    return (true, nonceEquals(address(uint160(arg)), uint256(bytes32(data[0x24:])), uint256(bytes32(data[0x44:]))) ? 1 : 0);
-                }
-            }
-        }
-
-        return _staticcallForUint(address(this), data); // TODO: what method are we calling?
-    }
-
-    function _staticcallForUint(address target, bytes calldata input) private view returns(bool success, uint256 res) {
+    function _staticcallForUint(address target, bytes calldata data) internal view returns(bool success, uint256 res) {
         /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
-            let data := mload(0x40)
+            let ptr := mload(0x40)
 
-            calldatacopy(data, input.offset, input.length)
-            success := staticcall(gas(), target, data, input.length, 0x0, 0x20)
+            calldatacopy(ptr, data.offset, data.length)
+            success := staticcall(gas(), target, ptr, data.length, 0x0, 0x20)
             success := and(success, eq(returndatasize(), 32))
             if success {
                 res := mload(0)

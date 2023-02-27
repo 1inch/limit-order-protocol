@@ -10,25 +10,24 @@ contract TakerIncreaser is ITakerInteraction {
     error IncorrectCalldataParams();
     error FailedExternalCall();
 
-    function fillOrderExt(
+    function fillOrderTo(
         IOrderMixin orderMixin,
         IOrderMixin.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
         Limits limits,
-        bytes calldata interaction,
-        bytes calldata extension
+        address target,
+        bytes calldata interaction
     ) external {
-        orderMixin.fillOrderToExt(
+        orderMixin.fillOrderTo(
             order,
             r,
             vs,
             amount,
             limits,
-            address(this),
-            interaction,
-            extension
+            target,
+            interaction
         );
     }
 

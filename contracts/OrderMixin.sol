@@ -11,6 +11,7 @@ import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 
 import "./helpers/AmountCalculator.sol";
 import "./helpers/PredicateHelper.sol";
+import "./helpers/SeriesEpochManager.sol";
 import "./interfaces/ITakerInteraction.sol";
 import "./interfaces/IPreInteraction.sol";
 import "./interfaces/IPostInteraction.sol";
@@ -22,7 +23,7 @@ import "./libraries/RemainingInvalidatorLib.sol";
 import "./OrderLib.sol";
 
 /// @title Limit Order mixin
-abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, PredicateHelper {
+abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, PredicateHelper, SeriesEpochManager {
     using SafeERC20 for IERC20;
     using SafeERC20 for IWETH;
     using OrderLib for IOrderMixin.Order;
@@ -94,7 +95,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      * @notice See {IOrderMixin-checkPredicate}.
      */
     function checkPredicate(bytes calldata predicate) public view returns(bool) {
-        (bool success, uint256 res) = _selfStaticCall(predicate);
+        (bool success, uint256 res) = _staticcallForUint(address(this), predicate);
         return success && res == 1;
     }
 
@@ -244,7 +245,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         if (order.constraints.isExpired()) revert OrderExpired();
         if (order.constraints.needCheckEpochManager()) {
             if (order.constraints.useBitInvalidator()) revert EpochManagerAndBitInvalidatorsAreIncompatible();
-            if (!nonceEquals(order.maker.get(), order.constraints.series(), order.constraints.nonceOrEpoch())) revert WrongSeriesNonce();
+            if (!epochEquals(order.maker.get(), order.constraints.series(), order.constraints.nonceOrEpoch())) revert WrongSeriesNonce();
         }
 
         // Check if orders predicate allows filling
