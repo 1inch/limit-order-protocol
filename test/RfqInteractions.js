@@ -85,7 +85,7 @@ describe('RfqInteractions', function () {
             const addr1dai = await dai.balanceOf(addr1.address);
 
             const { r, vs } = compactSignature(signature);
-            await matcher.matchOrdersRFQ(swap.address, order, r, vs, ether('0.1'), ether('100'), interaction);
+            await matcher.matchOrders(swap.address, order, r, vs, ether('0.1'), ether('100'), interaction);
 
             expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.1')));
             expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.1')));
@@ -148,7 +148,7 @@ describe('RfqInteractions', function () {
 
             await weth.approve(matcher.address, ether('0.025'));
             const { r, vs } = compactSignature(signature);
-            await matcher.matchOrdersRFQ(swap.address, order, r, vs, ether('0.01'), ether('10'), interaction);
+            await matcher.matchOrders(swap.address, order, r, vs, ether('0.01'), ether('10'), interaction);
 
             expect(await weth.balanceOf(addr.address)).to.equal(addrweth.sub(ether('0.025')));
             expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.add(ether('0.025')));
@@ -228,7 +228,7 @@ describe('RfqInteractions', function () {
             const addr1dai = await dai.balanceOf(addr1.address);
 
             const { r, vs } = compactSignature(signature1);
-            await matcher.matchOrdersRFQ(swap.address, order1, r, vs, ether('0.01'), ether('10'), externalInteraction);
+            await matcher.matchOrders(swap.address, order1, r, vs, ether('0.01'), ether('10'), externalInteraction);
 
             expect(await weth.balanceOf(addr.address)).to.equal(addrweth.sub(ether('0.025')));
             expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.add(ether('0.025')));

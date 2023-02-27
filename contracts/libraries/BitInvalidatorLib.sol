@@ -3,7 +3,7 @@
 pragma solidity 0.8.18;
 
 library BitInvalidatorLib {
-    error RFQBitInvalidatedOrder();
+    error BitInvalidatedOrder();
 
     struct Data {
         mapping(uint256 => uint256) _raw;
@@ -18,7 +18,7 @@ library BitInvalidatorLib {
         uint256 invalidatorSlot = nonce >> 8;
         uint256 invalidatorBit = 1 << (nonce & 0xff);
         uint256 invalidator = self._raw[invalidatorSlot];
-        if (invalidator & invalidatorBit == invalidatorBit) revert RFQBitInvalidatedOrder();
+        if (invalidator & invalidatorBit == invalidatorBit) revert BitInvalidatedOrder();
         self._raw[invalidatorSlot] = invalidator | invalidatorBit;
     }
 

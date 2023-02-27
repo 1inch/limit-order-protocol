@@ -14,8 +14,8 @@ contract RecursiveMatcher is ITakerInteraction {
     error IncorrectCalldataParams();
     error FailedExternalCall(bytes reason);
 
-    function matchOrdersRFQ(
-        IOrderMixin orderRFQMixin,
+    function matchOrders(
+        IOrderMixin orderMixin,
         IOrderMixin.Order calldata order,
         bytes32 r,
         bytes32 vs,
@@ -23,7 +23,7 @@ contract RecursiveMatcher is ITakerInteraction {
         Limits limits,
         bytes calldata interaction
     ) external {
-        orderRFQMixin.fillOrderTo(
+        orderMixin.fillOrderTo(
             order,
             r,
             vs,

@@ -5,7 +5,7 @@ pragma solidity 0.8.18;
 type RemainingInvalidator is uint256;
 
 library RemainingInvalidatorLib {
-    error RFQInvalidatedOrder();
+    error RemainingInvalidatedOrder();
 
     function isNewOrder(RemainingInvalidator invalidator) internal pure returns(bool) {
         return RemainingInvalidator.unwrap(invalidator) == 0;
@@ -14,7 +14,7 @@ library RemainingInvalidatorLib {
     function remaining(RemainingInvalidator invalidator) internal pure returns(uint256) {
         uint256 value = RemainingInvalidator.unwrap(invalidator);
         if (value == 0) {
-            revert RFQInvalidatedOrder();
+            revert RemainingInvalidatedOrder();
         }
         unchecked {
             return value - 1;

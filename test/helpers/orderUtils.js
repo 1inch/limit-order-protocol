@@ -14,7 +14,7 @@ const Order = [
     { name: 'constraints', type: 'uint256' },
 ];
 
-const ABIOrderRFQ = {
+const ABIOrder = {
     type: 'tuple',
     name: 'order',
     components: Order,
@@ -226,7 +226,7 @@ function skipOrderPermit (amount) {
 }
 
 module.exports = {
-    ABIOrderRFQ,
+    ABIOrder,
     buildConstraints,
     buildOrder,
     buildOrderRFQ,

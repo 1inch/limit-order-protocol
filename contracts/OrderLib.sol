@@ -21,7 +21,7 @@ library OrderLib {
     error UnexpectedOrderExtension();
     error ExtensionInvalid();
 
-    bytes32 constant internal _LIMIT_ORDER_RFQ_TYPEHASH = keccak256(
+    bytes32 constant internal _LIMIT_ORDER_TYPEHASH = keccak256(
         "Order("
             "uint256 salt,"
             "address maker,"
@@ -34,12 +34,12 @@ library OrderLib {
     );
 
     function hash(IOrderMixin.Order calldata order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
-        bytes32 typehash = _LIMIT_ORDER_RFQ_TYPEHASH;
+        bytes32 typehash = _LIMIT_ORDER_TYPEHASH;
         /// @solidity memory-safe-assembly
         assembly { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
 
-            // keccak256(abi.encode(_LIMIT_ORDER_RFQ_TYPEHASH, order));
+            // keccak256(abi.encode(_LIMIT_ORDER_TYPEHASH, order));
             mstore(ptr, typehash)
             calldatacopy(add(ptr, 0x20), order, 0xe0)
             result := keccak256(ptr, 0x100)

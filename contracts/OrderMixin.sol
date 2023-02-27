@@ -93,7 +93,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     /**
      * @notice See {IOrderMixin-checkPredicate}.
      */
-    function checkPredicateRFQ(bytes calldata predicate) public view returns(bool) {
+    function checkPredicate(bytes calldata predicate) public view returns(bool) {
         (bool success, uint256 res) = _selfStaticCall(predicate);
         return success && res == 1;
     }
@@ -251,7 +251,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         if (order.constraints.hasExtension()) {
             bytes calldata predicate = extension.predicate();
             if (predicate.length > 0) {
-                if (!checkPredicateRFQ(predicate)) revert PredicateIsNotTrue();
+                if (!checkPredicate(predicate)) revert PredicateIsNotTrue();
             }
         }
 
