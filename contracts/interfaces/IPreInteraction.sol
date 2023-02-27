@@ -12,6 +12,7 @@ interface IPreInteraction {
      * @param taker Taker address
      * @param makingAmount Actual making amount
      * @param takingAmount Actual taking amount
+     * @param remainingMakingAmount Order remaining making amount
      * @param extraData Extra data
      */
     function preInteraction(
@@ -20,6 +21,7 @@ interface IPreInteraction {
         address taker,
         uint256 makingAmount,
         uint256 takingAmount,
+        uint256 remainingMakingAmount,
         bytes calldata extraData
     ) external;
 }

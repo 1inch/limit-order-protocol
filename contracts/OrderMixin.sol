@@ -156,7 +156,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         // Check signature and apply order permit only on the first fill
         uint256 remainingMakingAmount = _checkRemainingMakingAmount(order, orderHash);
         if (remainingMakingAmount == order.makingAmount) {
-            if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert BadSignature(); // TODO: maybe optimize best case scenario and remove this check? (30 gas)
+            if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert BadSignature();
             if (!limits.skipOrderPermit()) {
                 _applyOrderPermit(order, orderHash, extension);
             }
@@ -289,7 +289,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             }
         }
         if (!order.constraints.allowPartialFills() && makingAmount != order.makingAmount) revert PartialFillNotAllowed();
-        if (makingAmount == 0 || takingAmount == 0) revert SwapWithZeroAmount(); // TODO: chekc if bit OR is cheaper
+        if (makingAmount == 0 || takingAmount == 0) revert SwapWithZeroAmount();
 
         // Invalidate order depending on constraints
         if (order.constraints.useBitInvalidator()) {
@@ -307,24 +307,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 data = data[20:];
             }
             IPreInteraction(listener).preInteraction(
-                order, orderHash, msg.sender, makingAmount, takingAmount, data
+                order, orderHash, msg.sender, makingAmount, takingAmount, remainingMakingAmount, data
             );
-            // TODO: implement in assembly
-            // bytes4 selector = IPreInteraction.preInteraction.selector;
-            /// @solidity memory-safe-assembly
-            // assembly { // solhint-disable-line no-inline-assembly
-            //     let ptr := mload(0x40)
-            //     mstore(ptr, selector)
-            //     calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
-            //     mstore(add(ptr, 0xe4), orderHash)
-            //     mstore(add(ptr, 0x104), caller())
-            //     mstore(add(ptr, 0x124), makingAmount)
-            //     mstore(add(ptr, 0x144), takingAmount)
-            //     if iszero(call(gas(), shr(96, calldataload(extension)), 0, ptr, 0x164, 0, 0)) {
-            //         returndatacopy(ptr, 0, returndatasize())
-            //         revert(ptr, returndatasize())
-            //     }
-            // }
         }
 
         // Maker => Taker
@@ -345,8 +329,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             bytes calldata interaction = _unwrap(interactionWrapped);
             if (interaction.length >= 20) {
                 // proceed only if interaction length is enough to store address
-                uint256 offeredTakingAmount = ITakerInteraction(address(bytes20(interaction))).fillOrderInteraction(
-                    msg.sender, makingAmount, takingAmount, interaction[20:]
+                uint256 offeredTakingAmount = ITakerInteraction(address(bytes20(interaction))).takerInteraction(
+                    order, orderHash, msg.sender, makingAmount, takingAmount, remainingMakingAmount, interaction[20:]
                 );
                 if (offeredTakingAmount > takingAmount && order.constraints.allowImproveRateViaInteraction()) {
                     takingAmount = offeredTakingAmount;
@@ -355,7 +339,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         }
 
         // Taker => Maker
-        if (order.takerAsset.get() == address(_WETH) && msg.value > 0) { // TODO: check balance to get ETH in interaction?
+        if (order.takerAsset.get() == address(_WETH) && msg.value > 0) {
             if (msg.value < takingAmount) revert Errors.InvalidMsgValue();
             if (msg.value > takingAmount) {
                 unchecked {
@@ -386,24 +370,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 data = data[20:];
             }
             IPostInteraction(listener).postInteraction(
-                order, orderHash, msg.sender, makingAmount, takingAmount, data
+                order, orderHash, msg.sender, makingAmount, takingAmount, remainingMakingAmount, data
             );
-            // TODO: implement in assembly
-            // bytes4 selector = IPostInteraction.postInteraction.selector;
-            // /// @solidity memory-safe-assembly
-            // assembly { // solhint-disable-line no-inline-assembly
-            //     let ptr := mload(0x40)
-            //     mstore(ptr, selector)
-            //     calldatacopy(add(ptr, 4), order, 0xe0) // 7 * 0x20
-            //     mstore(add(ptr, 0xe4), orderHash)
-            //     mstore(add(ptr, 0x104), caller())
-            //     mstore(add(ptr, 0x124), makingAmount)
-            //     mstore(add(ptr, 0x144), takingAmount)
-            //     if iszero(call(gas(), shr(96, calldataload(extension)), 0, ptr, 0x164, 0, 0)) {
-            //         returndatacopy(ptr, 0, returndatasize())
-            //         revert(ptr, returndatasize())
-            //     }
-            // }
         }
 
         emit OrderFilled(orderHash, makingAmount);

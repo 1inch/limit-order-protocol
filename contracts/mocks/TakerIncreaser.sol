@@ -32,19 +32,22 @@ contract TakerIncreaser is ITakerInteraction {
         );
     }
 
-    function fillOrderInteraction(
+    function takerInteraction(
+        IOrderMixin.Order calldata /* order */,
+        bytes32 /* orderHash */,
         address /* taker */,
         uint256 /* makingAmount */,
         uint256 takingAmount,
-        bytes calldata interactiveData
+        uint256 /* remainingMakingAmount */,
+        bytes calldata extraData
     ) external returns(uint256) {
         (
             address[] memory targets,
             bytes[] memory calldatas
-        ) = abi.decode(interactiveData, (address[], bytes[]));
+        ) = abi.decode(extraData, (address[], bytes[]));
 
         if (targets.length != calldatas.length) revert IncorrectCalldataParams();
-        for(uint256 i = 0; i < targets.length; i++) {
+        for (uint256 i = 0; i < targets.length; i++) {
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, ) = targets[i].call(calldatas[i]);
             if(!success) revert FailedExternalCall();

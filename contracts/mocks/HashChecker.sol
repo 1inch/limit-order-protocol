@@ -32,6 +32,7 @@ contract HashChecker is IPreInteraction, Ownable {
         address taker,
         uint256 makingAmount,
         uint256 takingAmount,
+        uint256 remainingMakingAmount,
         bytes calldata extraData
     ) external override {
         if (hashes[orderHash] == false) revert IncorrectOrderHash();
@@ -43,6 +44,7 @@ contract HashChecker is IPreInteraction, Ownable {
                 taker,
                 makingAmount,
                 takingAmount,
+                remainingMakingAmount,
                 extraData[20:]
             );
         }

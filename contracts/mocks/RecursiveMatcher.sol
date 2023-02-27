@@ -34,20 +34,23 @@ contract RecursiveMatcher is ITakerInteraction {
         );
     }
 
-    function fillOrderInteraction(
+    function takerInteraction(
+        IOrderMixin.Order calldata /* order */,
+        bytes32 /* orderHash */,
         address /* taker */,
         uint256 /* makingAmount */,
         uint256 /* takingAmount */,
-        bytes calldata interactiveData
-    ) external returns(uint256) {
-        if(interactiveData[0] & _FINALIZE_INTERACTION != 0x0) {
+        uint256 /* remainingMakingAmount */,
+        bytes calldata extraData
+    ) external returns(uint256 offeredTakingAmount) {
+        if(extraData[0] & _FINALIZE_INTERACTION != 0x0) {
             (
                 address[] memory targets,
                 bytes[] memory calldatas
-            ) = abi.decode(interactiveData[1:], (address[], bytes[]));
+            ) = abi.decode(extraData[1:], (address[], bytes[]));
 
             if (targets.length != calldatas.length) revert IncorrectCalldataParams();
-            for(uint256 i = 0; i < targets.length; i++) {
+            for (uint256 i = 0; i < targets.length; i++) {
                 // solhint-disable-next-line avoid-low-level-calls
                 (bool success, bytes memory reason) = targets[i].call(calldatas[i]);
                 if(!success) revert FailedExternalCall(reason);
@@ -55,7 +58,7 @@ contract RecursiveMatcher is ITakerInteraction {
         } else {
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory reason) = msg.sender.call(
-                abi.encodePacked(IOrderMixin.fillOrderTo.selector, interactiveData[1:])
+                abi.encodePacked(IOrderMixin.fillOrderTo.selector, extraData[1:])
             );
             if (!success) revert FailedExternalCall(reason);
         }

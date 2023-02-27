@@ -27,6 +27,7 @@ contract WethUnwrapper is OnlyWethReceiver, IPostInteraction {
         address /* taker */,
         uint256 /* makingAmount */,
         uint256 takingAmount,
+        uint256 /* remainingMakingAmount */,
         bytes calldata extraData
     ) external {
         address receiver = order.maker.get();

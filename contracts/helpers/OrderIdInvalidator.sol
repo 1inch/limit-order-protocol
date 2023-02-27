@@ -37,6 +37,7 @@ contract OrderIdInvalidator is IPreInteraction {
         address /* taker */,
         uint256 /* makingAmount */,
         uint256 /* takingAmount */,
+        uint256 /* remainingMakingAmount */,
         bytes calldata extraData
     ) external onlyLimitOrderProtocol {
         uint32 orderId = uint32(bytes4(extraData));
