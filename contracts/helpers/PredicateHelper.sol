@@ -74,8 +74,7 @@ contract PredicateHelper {
     }
 
     function _staticcallForUint(address target, bytes calldata data) internal view returns(bool success, uint256 res) {
-        /// @solidity memory-safe-assembly
-        assembly { // solhint-disable-line no-inline-assembly
+        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
 
             calldatacopy(ptr, data.offset, data.length)

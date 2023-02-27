@@ -411,8 +411,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
 
     function _callTransferFromWithSuffix(address asset, address from, address to, uint256 amount, bytes calldata suffix) private returns(bool success) {
         bytes4 selector = IERC20.transferFrom.selector;
-        /// @solidity memory-safe-assembly
-        assembly { // solhint-disable-line no-inline-assembly
+        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
             let data := mload(0x40)
             mstore(data, selector)
             mstore(add(data, 0x04), from)
@@ -429,15 +428,13 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     type WrappedCalldata is uint256;
 
     function _wrap(bytes calldata cd) private pure returns(WrappedCalldata wrapped) {
-        /// @solidity memory-safe-assembly
-        assembly {  // solhint-disable-line no-inline-assembly
+        assembly ("memory-safe") {  // solhint-disable-line no-inline-assembly
             wrapped := or(shl(128, cd.offset), cd.length)
         }
     }
 
     function _unwrap(WrappedCalldata wrapped) private pure returns(bytes calldata cd) {
-        /// @solidity memory-safe-assembly
-        assembly {  // solhint-disable-line no-inline-assembly
+        assembly ("memory-safe") {  // solhint-disable-line no-inline-assembly
             cd.offset := shr(128, wrapped)
             cd.length := and(wrapped, 0xffffffffffffffffffffffffffffffff)
         }

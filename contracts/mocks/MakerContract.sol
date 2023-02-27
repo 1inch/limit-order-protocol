@@ -75,8 +75,7 @@ contract MakerContract is IERC1271, EIP712Alien, ERC20 {
         if (signature.length != 7 * 0x20) revert MalformedSignature();
 
         IOrderMixin.Order calldata order;
-        /// @solidity memory-safe-assembly
-        assembly { // solhint-disable-line no-inline-assembly
+        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
             order := signature.offset
         }
 

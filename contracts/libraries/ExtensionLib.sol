@@ -68,8 +68,7 @@ library ExtensionLib {
         if (extension.length < 52) return msg.data[:0];
 
         bytes4 exception = FieldOutOfBounds.selector;
-        /// @solidity memory-safe-assembly
-        assembly {  // solhint-disable-line no-inline-assembly
+        assembly ("memory-safe") {  // solhint-disable-line no-inline-assembly
             let offsets := calldataload(add(extension.offset, 20))
 
             let bitShift := shl(5, field) // field * 32
