@@ -68,11 +68,21 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     /**
      * @notice See {IOrderMixin-cancelOrder}.
      */
-    function cancelOrder(Constraints orderConstraints, bytes32 orderHash) external {
+    function cancelOrder(Constraints orderConstraints, bytes32 orderHash) public {
         if (orderConstraints.useBitInvalidator()) {
             _bitInvalidator[msg.sender].massInvalidate(orderConstraints.nonceOrEpoch(), 0);
         } else {
             _remainingInvalidator[msg.sender][orderHash] = RemainingInvalidatorLib.fullyFilled();
+        }
+    }
+
+    /**
+     * @notice See {IOrderMixin-cancelOrders}.
+     */
+    function cancelOrders(Constraints[] calldata orderConstraints, bytes32[] calldata orderHashes) external {
+        if (orderConstraints.length != orderHashes.length) revert MismatchArraysLengths();
+        for (uint256 i = 0; i < orderConstraints.length; i++) {
+            cancelOrder(orderConstraints[i], orderHashes[i]);
         }
     }
 

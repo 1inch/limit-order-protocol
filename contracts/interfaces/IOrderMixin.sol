@@ -33,6 +33,7 @@ interface IOrderMixin {
     error MakingAmountTooLow();
     error TransferFromMakerToTakerFailed();
     error TransferFromTakerToMakerFailed();
+    error MismatchArraysLengths();
 
     /**
      * @notice Emitted when order gets filled
@@ -72,6 +73,13 @@ interface IOrderMixin {
      * @param orderHash Hash of the order to cancel
      */
     function cancelOrder(Constraints orderConstraints, bytes32 orderHash) external;
+
+    /**
+     * @notice Cancels orders' quotes
+     * @param orderConstraints Orders constraints
+     * @param orderHashes Hashes of the orders to cancel
+     */
+    function cancelOrders(Constraints[] calldata orderConstraints, bytes32[] calldata orderHashes) external;
 
     /**
      * @notice Cancels all quotes of the maker (works for bit-invalidating orders only)
