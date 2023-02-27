@@ -43,15 +43,17 @@ function buildConstraints ({
     nonce = 0,
     series = 0,
 } = {}) {
-    assert(series >= 0 && series < 256, 'Series should be less than 256');
+    assert(BigInt(expiry) >= 0n && BigInt(expiry) < (1n << 40n), 'Expiry should be less than 40 bits');
+    assert(BigInt(nonce) >= 0 && BigInt(nonce) < (1n << 40n), 'Nonce should be less than 40 bits');
+    assert(BigInt(series) >= 0 && BigInt(series) < (1n << 40n), 'Series should be less than 40 bits');
 
     let res = '0x' +
-        BigInt(series).toString(16).padStart(2, '0') +
+        BigInt(series).toString(16).padStart(10, '0') +
         BigInt(nonce).toString(16).padStart(10, '0') +
         BigInt(expiry).toString(16).padStart(10, '0') +
-        BigInt(allowedSender).toString(16).padStart(40, '0');
+        (BigInt(allowedSender) & ((1n << 80n) - 1n)).toString(16).padStart(20, '0'); // Truncate address to 80 bits
 
-    assert(res.length === 64, 'Constraints should be 64 bytes long');
+    assert(res.length === 52, 'Constraints should be 25 bytes long');
 
     if (allowMultipleFills) {
         res = '0x' + setn(BigInt(res), _ALLOW_MULTIPLE_FILLS_FLAG, true).toString(16).padStart(64, '0');
@@ -176,7 +178,7 @@ function buildOrder (
 
     let salt = '1';
     if (trim0x(extension).length > 0) {
-        salt = keccak256(extension);
+        salt = BigInt(keccak256(extension)) & ((1n << 160n) - 1n); // Use 160 bit of extension hash
         constraints = BigInt(constraints) | (1n << _HAS_EXTENSION_FLAG);
     }
 
