@@ -270,14 +270,15 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         if (limits.isMakingAmount()) {
             makingAmount = Math.min(amount, remainingMakingAmount);
             takingAmount = order.calculateTakingAmount(extension, makingAmount, remainingMakingAmount, orderHash);
-            // check that actual rate is not worse than what was expected
-            // takingAmount / makingAmount <= threshold / amount
-            if (amount == makingAmount) {
-                // It's gas optimization due this check doesn't involve SafeMath
-                if (takingAmount > limits.threshold()) revert TakingAmountTooHigh();
-            }
-            else {
-                if (takingAmount * amount > limits.threshold() * makingAmount) revert TakingAmountTooHigh();
+
+            uint256 threshold = limits.threshold();
+            if (threshold > 0) {
+                // Check rate: takingAmount / makingAmount <= threshold / amount
+                if (amount == makingAmount) {  // Gas optimization, no SafeMath.mul()
+                    if (takingAmount > threshold) revert TakingAmountTooHigh();
+                } else {
+                    if (takingAmount * amount > threshold * makingAmount) revert TakingAmountTooHigh();
+                }
             }
         }
         else {
@@ -289,14 +290,15 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 takingAmount = order.calculateTakingAmount(extension, makingAmount, remainingMakingAmount, orderHash);
                 if (takingAmount > amount) revert TakingAmountExceeded();
             }
-            // check that actual rate is not worse than what was expected
-            // makingAmount / takingAmount >= threshold / amount
-            if (amount == takingAmount) {
-                // It's gas optimization due this check doesn't involve SafeMath
-                if (makingAmount < limits.threshold()) revert MakingAmountTooLow();
-            }
-            else {
-                if (makingAmount * amount < limits.threshold() * takingAmount) revert MakingAmountTooLow();
+
+            uint256 threshold = limits.threshold();
+            if (threshold > 0) {
+                // Check rate: makingAmount / takingAmount >= threshold / amount
+                if (amount == takingAmount) { // Gas optimization, no SafeMath.mul()
+                    if (makingAmount < threshold) revert MakingAmountTooLow();
+                } else {
+                    if (makingAmount * amount < threshold * takingAmount) revert MakingAmountTooLow();
+                }
             }
         }
         if (!order.constraints.allowPartialFills() && makingAmount != order.makingAmount) revert PartialFillNotAllowed();
