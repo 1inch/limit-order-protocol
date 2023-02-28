@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity 0.8.18;
 
 /// @title Tool to be used inside `LOP.simulate()` call
 contract CallsSimulator {

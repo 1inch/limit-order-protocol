@@ -1,4 +1,4 @@
-# PostInteractionNotificationReceiver
+# PostInteraction
 
 
 
@@ -7,9 +7,9 @@
 
 
 ## Functions
-### fillOrderPostInteraction
+### postInteraction
 ```solidity
-function fillOrderPostInteraction(
+function postInteraction(
   address taker,
   address makerAsset,
   address takerAsset,
