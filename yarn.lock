@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@1inch/solidity-utils@2.2.15":
-  version "2.2.15"
-  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-2.2.15.tgz#9a0b03a6427b1bc51da63d93474606066d350af6"
-  integrity sha512-C4rGHnI6PlT70Vsku1JZPBgLuL2Dc/q+vo1XptfmJr/uiXGgqA59cerSf2Ig4WmNma+o4qQeTmXEEWodG52yWQ==
+"@1inch/solidity-utils@2.2.16":
+  version "2.2.16"
+  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-2.2.16.tgz#8daf7a76f8489cd251d1f469cee0b2184ec0100a"
+  integrity sha512-sYVaWnuFA4KX+xstgZuP6v8JMdi/tHrd4OYSHpSdRWqs26snZ+GLJ37W6qYW7AgcaLjyW5B5uaafcBmloLe+OQ==
   dependencies:
     "@metamask/eth-sig-util" "4.0.1"
     "@nomicfoundation/hardhat-network-helpers" "1.0.6"
@@ -3442,10 +3442,10 @@ hardhat@2.11.2:
     uuid "^8.3.2"
     ws "^7.4.6"
 
-hardhat@2.12.6:
-  version "2.12.6"
-  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.12.6.tgz#ea3c058bbd81850867389d10f76037cfa52a0019"
-  integrity sha512-0Ent1O5DsPgvaVb5sxEgsQ3bJRt/Ex92tsoO+xjoNH2Qc4bFmhI5/CHVlFikulalxOPjNmw5XQ2vJFuVQFESAA==
+hardhat@^2.12.8-viair.0:
+  version "2.12.8-viair.0"
+  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.12.8-viair.0.tgz#662317cac2bd8c9147ba9e886c78e55fa0567ea4"
+  integrity sha512-erh/ZE5QLPJ+puSVRY9JoX7AQo3DcGjPOFPMiPw+DJn8dpNq1/+Y0n9xK4yK8DFueNsarlRY9TdM8Du6Wj+QSQ==
   dependencies:
     "@ethersproject/abi" "^5.1.2"
     "@metamask/eth-sig-util" "^4.0.0"

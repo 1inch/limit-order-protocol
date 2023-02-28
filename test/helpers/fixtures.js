@@ -40,16 +40,9 @@ async function deployUSDT () {
     return { usdt };
 };
 
-async function deployNonceManager () {
-    const NonceManager = await ethers.getContractFactory('NonceManager');
-    const nonceManager = await NonceManager.deploy();
-    await nonceManager.deployed();
-    return { nonceManager };
-};
-
-async function deploySeriesNonceManager () {
-    const SeriesNonceManager = await ethers.getContractFactory('SeriesNonceManager');
-    const seriesNonceManager = await SeriesNonceManager.deploy();
+async function deploySeriesEpochManager () {
+    const SeriesEpochManager = await ethers.getContractFactory('SeriesEpochManager');
+    const seriesNonceManager = await SeriesEpochManager.deploy();
     await seriesNonceManager.deployed();
     return { seriesNonceManager };
 };
@@ -63,8 +56,7 @@ async function deployRangeAmountCalculator () {
 
 module.exports = {
     deploySwapTokens,
-    deployNonceManager,
-    deploySeriesNonceManager,
+    deploySeriesEpochManager,
     deployRangeAmountCalculator,
     deployUSDT,
     deployUSDC,
