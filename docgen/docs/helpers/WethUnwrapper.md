@@ -6,7 +6,7 @@
 
 
 ## Derives
-- PostInteractionNotificationReceiver
+- PostInteraction
 
 ## Functions
 ### receive
@@ -18,9 +18,9 @@ function receive(
 
 
 
-### fillOrderPostInteraction
+### postInteraction
 ```solidity
-function fillOrderPostInteraction(
+function postInteraction(
   address ,
   address ,
   address takerAsset,

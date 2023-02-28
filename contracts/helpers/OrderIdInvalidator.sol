@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.17;
+pragma solidity 0.8.18;
 
-import "../interfaces/IPreInteractionNotificationReceiver.sol";
+import "../interfaces/IPreInteraction.sol";
 
 /**
  * @notice OrderIdInvalidator stores pairs (orderId, orderHash)
  * that allows to execute only one order with the same orderId
  */
-contract OrderIdInvalidator is IPreInteractionNotificationReceiver {
+contract OrderIdInvalidator is IPreInteraction {
+    using AddressLib for Address;
+
     error AccessDenied();
     error InvalidOrderHash();
 
@@ -29,28 +31,19 @@ contract OrderIdInvalidator is IPreInteractionNotificationReceiver {
         _limitOrderProtocol = limitOrderProtocol_;
     }
 
-    /**
-     * @notice Callback method that gets called before any funds transfers
-     * @param orderHash Hash of the order being processed
-     * @param maker Order maker address.
-     * @param interactionData Interaction calldata with uint256 orderId for orders replacement and validation.
-     */
-    function fillOrderPreInteraction(
+    function preInteraction(
+        IOrderMixin.Order calldata order,
         bytes32 orderHash,
-        address maker,
-        address /*taker*/,
-        uint256 /*makingAmount*/,
-        uint256 /*takingAmount*/,
-        uint256 /*remainingAmount*/,
-        bytes memory interactionData
+        address /* taker */,
+        uint256 /* makingAmount */,
+        uint256 /* takingAmount */,
+        uint256 /* remainingMakingAmount */,
+        bytes calldata extraData
     ) external onlyLimitOrderProtocol {
-        uint32 orderId;
-        assembly { // solhint-disable-line no-inline-assembly
-            orderId := mload(interactionData)
-        }
-        bytes32 storedOrderHash = _ordersIdsHashes[maker][orderId];
+        uint32 orderId = uint32(bytes4(extraData));
+        bytes32 storedOrderHash = _ordersIdsHashes[order.maker.get()][orderId];
         if (storedOrderHash == 0x0) {
-            _ordersIdsHashes[maker][orderId] = orderHash;
+            _ordersIdsHashes[order.maker.get()][orderId] = orderHash;
         } else if (storedOrderHash != orderHash) {
             revert InvalidOrderHash();
         }

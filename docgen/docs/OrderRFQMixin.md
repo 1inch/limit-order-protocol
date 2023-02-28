@@ -49,7 +49,7 @@ Cancels order's quote
 ### fillOrderRFQ
 ```solidity
 function fillOrderRFQ(
-  struct OrderRFQMixin.OrderRFQ order,
+  struct OrderRFQMixin.Order order,
   bytes signature,
   uint256 makingAmount,
   uint256 takingAmount
@@ -61,7 +61,7 @@ Fills order's quote, fully or partially (whichever is possible)
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`order` | struct OrderRFQMixin.OrderRFQ | Order quote to fill  
+|`order` | struct OrderRFQMixin.Order | Order quote to fill  
 |`signature` | bytes | Signature to confirm quote ownership  
 |`makingAmount` | uint256 | Making amount  
 |`takingAmount` | uint256 | Taking amount 
@@ -70,7 +70,7 @@ Fills order's quote, fully or partially (whichever is possible)
 ### fillOrderRFQToWithPermit
 ```solidity
 function fillOrderRFQToWithPermit(
-  struct OrderRFQMixin.OrderRFQ order,
+  struct OrderRFQMixin.Order order,
   bytes signature,
   uint256 makingAmount,
   uint256 takingAmount,
@@ -86,7 +86,7 @@ See tests for examples
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`order` | struct OrderRFQMixin.OrderRFQ | Order quote to fill  
+|`order` | struct OrderRFQMixin.Order | Order quote to fill  
 |`signature` | bytes | Signature to confirm quote ownership  
 |`makingAmount` | uint256 | Making amount  
 |`takingAmount` | uint256 | Taking amount  
@@ -97,7 +97,7 @@ See tests for examples
 ### fillOrderRFQTo
 ```solidity
 function fillOrderRFQTo(
-  struct OrderRFQMixin.OrderRFQ order,
+  struct OrderRFQMixin.Order order,
   bytes signature,
   uint256 makingAmount,
   uint256 takingAmount,
@@ -110,7 +110,7 @@ Same as `fillOrderRFQ` but allows to specify funds destination instead of `msg.s
 #### Parameters:
 | Name | Type | Description                                                          |
 | :--- | :--- | :------------------------------------------------------------------- |
-|`order` | struct OrderRFQMixin.OrderRFQ | Order quote to fill  
+|`order` | struct OrderRFQMixin.Order | Order quote to fill  
 |`signature` | bytes | Signature to confirm quote ownership  
 |`makingAmount` | uint256 | Making amount  
 |`takingAmount` | uint256 | Taking amount  

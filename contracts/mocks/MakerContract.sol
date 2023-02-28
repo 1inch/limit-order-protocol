@@ -6,15 +6,14 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "../LimitOrderProtocol.sol";
-import "../libraries/CalldataLib.sol";
-import "../OrderRFQLib.sol";
+import "../OrderLib.sol";
 import { EIP712Alien } from "./EIP712Alien.sol";
 
-contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
+contract MakerContract is IERC1271, EIP712Alien, ERC20 {
     using SafeERC20 for IERC20;
-    using CalldataLib for bytes;
-    using OrderRFQLib for OrderRFQLib.OrderRFQ;
-    using CalldataLib for CalldataLib.Address;
+    using OrderLib for IOrderMixin.Order;
+    using AddressLib for Address;
+    using ConstraintsLib for Constraints;
 
     error NotAllowedToken();
     error BadPrice();
@@ -73,20 +72,21 @@ contract ContractRFQ is IERC1271, EIP712Alien, ERC20 {
     }
 
     function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns(bytes4) {
-        if (signature.length != 32 * 7) revert MalformedSignature();
+        if (signature.length != 7 * 0x20) revert MalformedSignature();
 
-        OrderRFQLib.OrderRFQ calldata order;
-        assembly { // solhint-disable-line no-inline-assembly
+        IOrderMixin.Order calldata order;
+        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
             order := signature.offset
         }
 
+        // TODO: use 3 different custom reverts
         if (
             (
                 (order.makerAsset.get() != address(token0) || order.takerAsset.get() != address(token1)) &&
                 (order.makerAsset.get() != address(token1) || order.takerAsset.get() != address(token0))
             ) ||
+            order.constraints.hasExtension() ||
             order.makingAmount * fee > order.takingAmount * 1e18 ||
-            order.maker.get() != address(this) || // TODO: remove redundant check
             order.hash(_domainSeparatorV4()) != hash
         ) revert BadPrice();
 
