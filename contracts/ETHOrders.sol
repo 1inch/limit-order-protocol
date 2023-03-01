@@ -3,20 +3,14 @@
 pragma solidity 0.8.18;
 
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
+import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 
-import "./interfaces/IOrderMixin.sol";
 import "./interfaces/IPostInteraction.sol";
-import "./libraries/Errors.sol";
-import "./libraries/ConstraintsLib.sol";
-import "./libraries/ExtensionLib.sol";
 import "./OrderLib.sol";
-import "hardhat/console.sol";
+
 /// @title ETH limit orders contract
-contract ETHOrders is IPostInteraction {
-    using SafeERC20 for IERC20;
+contract ETHOrders is IPostInteraction, OnlyWethReceiver {
     using SafeERC20 for IWETH;
     using OrderLib for IOrderMixin.Order;
     using ConstraintsLib for Constraints;
@@ -28,12 +22,6 @@ contract ETHOrders is IPostInteraction {
     error InvalidOrder();
     error NotEnoughBalance();
     error ExistingOrder();
-
-    bytes4 private constant _MAGICVALUE = 0x1626ba7e;
-    uint256 private constant _ORDER_DOES_NOT_EXIST = 0;
-    uint256 private constant _ORDER_FILLED = 1;
-    uint256 private constant _SKIP_PERMIT_FLAG = 1 << 255;
-    uint256 private constant _THRESHOLD_MASK = ~_SKIP_PERMIT_FLAG;
 
     address private immutable _limitOrderProtocol;
     IWETH private immutable _WETH; // solhint-disable-line var-name-mixedcase
@@ -47,19 +35,16 @@ contract ETHOrders is IPostInteraction {
 
     /// @notice Only limit order protocol can call this contract.
     modifier onlyLimitOrderProtocol() {
-        if (msg.sender != _limitOrderProtocol) {
-            revert AccessDenied();
-        }
+        if (msg.sender != _limitOrderProtocol) revert AccessDenied();
+
         _;
     }
 
-    constructor(IWETH weth, address limitOrderProtocol) {
+    constructor(IWETH weth, address limitOrderProtocol) OnlyWethReceiver(address(weth)) {
         _WETH = weth;
         _limitOrderProtocol = limitOrderProtocol;
-        _WETH.approve(limitOrderProtocol, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+        _WETH.approve(limitOrderProtocol, type(uint256).max);
     }
-    
-    receive() external payable {} // solhint-disable-line no-empty-blocks
 
     /*
      * @notice Returns batch of eth order balances for batch of orders hashes.
@@ -93,7 +78,7 @@ contract ETHOrders is IPostInteraction {
     /**
      * @notice Sets ethOrderBalance to 0, refunds ETH and does standard order cancellation on Limit Order Protocol.
      */
-    function cancelOrder(Constraints orderConstraints, bytes32 orderHash) external payable {
+    function cancelOrder(Constraints orderConstraints, bytes32 orderHash) external {
         if (orderMakers[orderHash] != msg.sender) revert InvalidOrder();
         IOrderMixin(_limitOrderProtocol).cancelOrder(orderConstraints, orderHash);
         uint256 refundETHAmount = ethOrderBalance[orderHash];
@@ -107,7 +92,7 @@ contract ETHOrders is IPostInteraction {
      */
     function isValidSignature(bytes32 orderHash, bytes calldata signature) external view returns(bytes4) {
         if (ECDSA.recoverOrIsValidSignature(orderMakers[orderHash], orderHash, signature)) {
-            return _MAGICVALUE;
+            return IERC1271.isValidSignature.selector;
         } else {
             return 0xffffffff;
         }
