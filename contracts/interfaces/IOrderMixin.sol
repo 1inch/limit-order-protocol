@@ -88,6 +88,14 @@ interface IOrderMixin {
      */
     function bitsInvalidateForOrder(Constraints orderConstraints, uint256 additionalMask) external;
 
+
+    /**
+     * @notice Returns order hash, hashed with limit order protocol contract EIP712
+     * @param order Order
+     * @return orderHash Hash of the order
+     */
+    function hashOrder(IOrderMixin.Order calldata order) external view returns(bytes32 orderHash);
+
     /**
      * @notice Fills order's quote, fully or partially (whichever is possible)
      * @param order Order quote to fill

@@ -1,5 +1,5 @@
 const { ethers } = require('hardhat');
-const { expect, time, constants, profileEVM, trim0x } = require('@1inch/solidity-utils');
+const { expect, time, constants, profileEVM, trim0x, assertRoughlyEqualValues } = require('@1inch/solidity-utils');
 const { makeMakingAmount, skipOrderPermit, buildConstraints, buildOrder, signOrder, compactSignature, buildOrderData } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, cutLastArg, ether } = require('./helpers/utils');
@@ -534,6 +534,119 @@ describe('LimitOrderProtocol', function () {
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(10));
             expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.add(10));
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(10));
+        });
+    });
+
+    describe('ETH Maker Orders', function () {
+        const deployContractsAndInit = async function () {
+            const { dai, weth, swap, chainId } = await deploySwapTokens();
+            await initContracts(dai, weth, swap);
+            const ETHOrders = await ethers.getContractFactory('ETHOrders');
+            const ethOrders = await ETHOrders.deploy(weth.address, swap.address);
+            await ethOrders.deployed();
+            return { dai, weth, swap, chainId, ethOrders };
+        };
+
+        it('Partial fill', async function () {
+            const { dai, weth, swap, chainId, ethOrders } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder(
+                {
+                    maker: ethOrders.address,
+                    makerAsset: weth.address,
+                    takerAsset: dai.address,
+                    makingAmount: ether('0.3'),
+                    takingAmount: ether('300'),
+                    constraints: buildConstraints({ needPostInteraction: true }),
+                },
+                {
+                    receiver: addr.address,
+                    postInteraction: ethOrders.address,
+                },
+            );
+
+            let addreth = await ethers.provider.getBalance(addr.address);
+            await ethOrders.ethOrderDeposit(order, order.extension, { value: ether('0.3') });
+            assertRoughlyEqualValues(await ethers.provider.getBalance(addr.address), addreth.sub(ether('0.3')), 1e-2);
+
+            const signature = await signOrder(order, chainId, swap.address, addr);
+
+            const addrweth = await weth.balanceOf(addr.address);
+            const addrdai = await dai.balanceOf(addr.address);
+            const addr1dai = await dai.balanceOf(addr1.address);
+            addreth = await ethers.provider.getBalance(addr.address);
+
+            /// Partial fill
+            await swap.connect(addr1).fillContractOrderExt(order, signature, ether('200'), ether('0.2'), addr1.address, '0x', '0x', order.extension);
+            /// Remaining fill
+            await swap.connect(addr1).fillContractOrderExt(order, signature, ether('100'), ether('0.1'), addr1.address, '0x', '0x', order.extension);
+
+            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.add(ether('300')));
+            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.sub(ether('300')));
+            expect(await weth.balanceOf(addr1.address)).to.equal(addrweth.add(ether('0.3')));
+            expect(await weth.balanceOf(addr.address)).to.equal(addrweth);
+            expect(await ethers.provider.getBalance(addr.address)).to.equal(addreth);
+        });
+
+        it('Partial fill -> cancel -> refund maker -> fail to fill', async function () {
+            const { dai, weth, swap, chainId, ethOrders } = await loadFixture(deployContractsAndInit);
+            const order = buildOrder(
+                {
+                    maker: ethOrders.address,
+                    makerAsset: weth.address,
+                    takerAsset: dai.address,
+                    makingAmount: ether('0.3'),
+                    takingAmount: ether('300'),
+                    constraints: buildConstraints({ needPostInteraction: true }),
+                },
+                {
+                    receiver: addr.address,
+                    postInteraction: ethOrders.address,
+                },
+            );
+
+            let addreth = await ethers.provider.getBalance(addr.address);
+            await ethOrders.ethOrderDeposit(order, order.extension, { value: ether('0.3') });
+            assertRoughlyEqualValues(await ethers.provider.getBalance(addr.address), addreth.sub(ether('0.3')), 1e-2);
+
+            const signature = await signOrder(order, chainId, swap.address, addr);
+
+            const addrweth = await weth.balanceOf(addr.address);
+            const addrdai = await dai.balanceOf(addr.address);
+            const addr1dai = await dai.balanceOf(addr1.address);
+            addreth = await ethers.provider.getBalance(addr.address);
+
+            /// Partial fill
+            await swap.connect(addr1).fillContractOrderExt(order, signature, ether('200'), ether('0.2'), addr1.address, '0x', '0x', order.extension);
+            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.add(ether('200')));
+            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.sub(ether('200')));
+            expect(await weth.balanceOf(addr1.address)).to.equal(addrweth.add(ether('0.2')));
+            /// Cancel order
+            addreth = await ethers.provider.getBalance(addr.address);
+            const orderHash = await swap.hashOrder(order);
+            await ethOrders.cancelOrder(order.constraints, orderHash);
+            assertRoughlyEqualValues(await ethers.provider.getBalance(addr.address), addreth.add(ether('0.1')), 1e-2);
+            /// Remaining fill
+            await expect(swap.connect(addr1).fillContractOrderExt(order, signature, ether('100'), ether('0.1'), addr1.address, '0x', '0x', order.extension))
+                .to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
+        });
+
+        it('Invalid order', async function () {
+            const { dai, weth, ethOrders } = await loadFixture(deployContractsAndInit);
+            const order = buildOrder(
+                {
+                    maker: ethOrders.address,
+                    makerAsset: weth.address,
+                    takerAsset: dai.address,
+                    makingAmount: ether('0.3'),
+                    takingAmount: ether('300'),
+                    constraints: buildConstraints({ needPostInteraction: true, allowedSender: ethOrders.address }),
+                },
+                {
+                    receiver: addr.address,
+                },
+            );
+            await expect(ethOrders.ethOrderDeposit(order, order.extension, { value: ether('0.3') })).to.be.revertedWithCustomError(ethOrders, 'InvalidOrder');
         });
     });
 
