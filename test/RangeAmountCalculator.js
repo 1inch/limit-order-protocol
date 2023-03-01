@@ -14,9 +14,9 @@ describe('RangeAmountCalculator', function () {
             const fillAmount = ether('10');
             const remainingMakerAmount = totalLiquidity;
             await expect(rangeAmountCalculator.getRangeTakerAmount(priceEnd, priceStart, totalLiquidity, fillAmount, remainingMakerAmount))
-                .to.be.revertedWithoutReason(); // WithCustomError(rangeAmountCalculator, 'IncorrectRange');
+                .to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
             await expect(rangeAmountCalculator.getRangeTakerAmount(priceStart, priceStart, totalLiquidity, fillAmount, remainingMakerAmount))
-                .to.be.revertedWithoutReason(); // WithCustomError(rangeAmountCalculator, 'IncorrectRange');
+                .to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
         });
 
         it('Fill limit-order completely', async function () {
@@ -61,9 +61,9 @@ describe('RangeAmountCalculator', function () {
             const fillAmount = ether('10');
             const remainingMakerAmount = totalLiquidity;
             await expect(rangeAmountCalculator.getRangeMakerAmount(priceEnd, priceStart, totalLiquidity, fillAmount, remainingMakerAmount))
-                .to.be.revertedWithoutReason(); // revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
+                .to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
             await expect(rangeAmountCalculator.getRangeMakerAmount(priceStart, priceStart, totalLiquidity, fillAmount, remainingMakerAmount))
-                .to.be.revertedWithoutReason(); // revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
+                .to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
         });
 
         it('Fill limit-order completely', async function () {
