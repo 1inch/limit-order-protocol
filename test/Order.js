@@ -32,7 +32,7 @@ describe('LimitOrderProtocol', function () {
     });
 
     describe('RFQ', function () {
-        it('should swap fully based on RFQ signature', async function () {
+        it('@skip-on-coverage should swap fully based on RFQ signature', async function () {
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
