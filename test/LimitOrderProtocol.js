@@ -1,6 +1,6 @@
 const { ethers } = require('hardhat');
 const { expect, time, constants, profileEVM, trim0x, assertRoughlyEqualValues } = require('@1inch/solidity-utils');
-const { makeMakingAmount, skipOrderPermit, buildConstraints, buildOrder, signOrder, compactSignature, buildOrderData } = require('./helpers/orderUtils');
+const { makeMakingAmount, makeUnwrapWeth, skipOrderPermit, buildConstraints, buildOrder, signOrder, compactSignature, buildOrderData } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, cutLastArg, ether } = require('./helpers/utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
@@ -259,6 +259,37 @@ describe('LimitOrderProtocol', function () {
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(4));
             expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.add(1));
             expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
+        });
+
+        it('should unwrap weth', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            // Order: 10 DAI => 2 WETH
+            // Swap:  4 DAI => 1 WETH
+
+            const order = buildOrder({
+                makerAsset: weth.address,
+                takerAsset: dai.address,
+                makingAmount: ether('2'),
+                takingAmount: ether('10'),
+                maker: addr1.address,
+            });
+            const signature = await signOrder(order, chainId, swap.address, addr1);
+
+            await weth.connect(addr1).deposit({ value: ether('2') });
+            const makerDai = await dai.balanceOf(addr1.address);
+            const takerDai = await dai.balanceOf(addr.address);
+            const makerWeth = await weth.balanceOf(addr1.address);
+            const takerWeth = await weth.balanceOf(addr.address);
+
+            const { r, vs } = compactSignature(signature);
+            const takerEth = await ethers.provider.getBalance(addr.address);
+            await swap.fillOrder(order, r, vs, ether('5'), makeUnwrapWeth(ether('1')));
+
+            expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(ether('5')));
+            expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(ether('5')));
+            expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.sub(ether('1')));
+            expect(await weth.balanceOf(addr.address)).to.equal(takerWeth);
+            assertRoughlyEqualValues(await ethers.provider.getBalance(addr.address), takerEth.add(ether('1')), 1e-3);
         });
 
         it('ERC721Proxy should work', async function () {
