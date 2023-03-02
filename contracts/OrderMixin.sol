@@ -432,6 +432,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         }
     }
 
+    // TODO: bubble revert
     function _callTransferFromWithSuffix(address asset, address from, address to, uint256 amount, bytes calldata suffix) private returns(bool success) {
         bytes4 selector = IERC20.transferFrom.selector;
         assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
@@ -448,6 +449,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         }
     }
 
+    // TODO: bubble revert
     function _callPermit2TransferFrom(address asset, address from, address to, uint256 amount) private returns(bool success) {
         bytes4 selector = IPermit2.transferFrom.selector;
         assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
