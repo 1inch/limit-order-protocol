@@ -1,5 +1,5 @@
 const { ethers } = require('hardhat');
-const { expect, time, profileEVM, trackReceivedTokenAndTx } = require('@1inch/solidity-utils');
+const { expect, time, profileEVM, trackReceivedTokenAndTx, getPermit2, permit2Contract } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { buildOrderRFQ, signOrder, compactSignature, makeMakingAmount, makeUnwrapWeth, buildConstraints, buildOrderData } = require('./helpers/orderUtils');
 const { getPermit } = require('./helpers/eip712');
@@ -87,6 +87,36 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const signature = await signOrder(order, chainId, swap.address, addr1);
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
+
+                const makerDai = await dai.balanceOf(addr1.address);
+                const takerDai = await dai.balanceOf(addr.address);
+                const makerWeth = await weth.balanceOf(addr1.address);
+                const takerWeth = await weth.balanceOf(addr.address);
+
+                const { r, vs } = compactSignature(signature);
+                await swap.fillOrderToWithPermit(order, r, vs, 1, makeMakingAmount(1), addr.address, emptyInteraction, permit);
+
+                expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
+                expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
+                expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.add(1));
+                expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
+            });
+
+            it('DAI => WETH, permit2', async function () {
+                const { dai, weth, swap, chainId } = await loadFixture(initContracts);
+                const order = buildOrderRFQ({
+                    maker: addr1.address,
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    constraints: buildConstraints({ nonce: 1, usePermit2: true }),
+                });
+                const signature = await signOrder(order, chainId, swap.address, addr1);
+
+                const permit2 = await permit2Contract();
+                await dai.connect(addr1).approve(permit2.address, 1);
+                const permit = await getPermit2(addr1, dai.address, chainId, swap.address, 1);
 
                 const makerDai = await dai.balanceOf(addr1.address);
                 const takerDai = await dai.balanceOf(addr.address);
