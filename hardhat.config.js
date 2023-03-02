@@ -37,10 +37,10 @@ module.exports = {
         enable: true,
         currency: 'USD',
     },
-    // dependencyCompiler: {
-    //     paths: [
-    //         '@1inch/solidity-utils/contracts/mocks/TokenCustomDecimalsMock.sol',
-    //         '@1inch/solidity-utils/contracts/mocks/TokenMock.sol',
-    //     ],
-    // },
+    dependencyCompiler: {
+        paths: [
+            // '@1inch/solidity-utils/contracts/mocks/TokenCustomDecimalsMock.sol',
+            '@1inch/solidity-utils/contracts/mocks/TokenMock.sol',
+        ],
+    },
 };
