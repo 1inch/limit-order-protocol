@@ -40,18 +40,18 @@ contract TakerIncreaser is ITakerInteraction {
         uint256 /* remainingMakingAmount */,
         bytes calldata extraData
     ) external returns(uint256) {
-        (
-            address[] memory targets,
-            bytes[] memory calldatas
-        ) = abi.decode(extraData, (address[], bytes[]));
-
-        if (targets.length != calldatas.length) revert IncorrectCalldataParams();
-        for (uint256 i = 0; i < targets.length; i++) {
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = targets[i].call(calldatas[i]);
-            if(!success) revert FailedExternalCall();
+        if (extraData.length != 0) {
+            (
+                address[] memory targets,
+                bytes[] memory calldatas
+            ) = abi.decode(extraData, (address[], bytes[]));
+            if (targets.length != calldatas.length) revert IncorrectCalldataParams();
+            for (uint256 i = 0; i < targets.length; i++) {
+                // solhint-disable-next-line avoid-low-level-calls
+                (bool success, ) = targets[i].call(calldatas[i]);
+                if(!success) revert FailedExternalCall();
+            }
         }
-
         return takingAmount * 15 / 10; // increase 50% taking amount
     }
 }
