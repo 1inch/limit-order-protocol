@@ -5,11 +5,11 @@ pragma solidity 0.8.18;
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 
 import "../interfaces/IOrderMixin.sol";
+import "./OffsetsLib.sol";
 
 library ExtensionLib {
     using AddressLib for Address;
-
-    error FieldOutOfBounds();
+    using OffsetsLib for Offsets;
 
     enum DynamicField {
         MakerAssetData,
@@ -67,19 +67,14 @@ library ExtensionLib {
     function _get(bytes calldata extension, DynamicField field) private pure returns(bytes calldata result) {
         if (extension.length < 52) return msg.data[:0];
 
-        bytes4 exception = FieldOutOfBounds.selector;
+        Offsets offsets;
+        bytes calldata concat;
         assembly ("memory-safe") {  // solhint-disable-line no-inline-assembly
-            let offsets := calldataload(add(extension.offset, 20))
-
-            let bitShift := shl(5, field) // field * 32
-            let begin := and(0xffffffff, shr(bitShift, shl(32, offsets)))
-            let end := and(0xffffffff, shr(bitShift, offsets))
-            result.offset := add(extension.offset, add(52, begin))
-            result.length := sub(end, begin)
-            if gt(add(result.offset, result.length), add(extension.offset, extension.length)) {
-                mstore(0, exception)
-                revert(0, 4)
-            }
+            offsets := calldataload(add(extension.offset, 20))
+            concat.offset := add(extension.offset, 52)
+            concat.length := sub(extension.length, 52)
         }
+
+        return offsets.get(concat, uint256(field));
     }
 }
