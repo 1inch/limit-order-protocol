@@ -138,14 +138,14 @@ interface IOrderMixin {
         bytes calldata interaction
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
-    function fillOrderToExt(
-        FillArgs calldata args,
-        bytes32 r,
-        bytes32 vs,
-        address target,
-        bytes calldata interaction,
-        bytes calldata extension
-    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
+    // function fillOrderToExt(
+    //     FillArgs calldata args,
+    //     bytes32 r,
+    //     bytes32 vs,
+    //     address target,
+    //     bytes calldata interaction,
+    //     bytes calldata extension
+    // ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
      * @notice Same as `fillOrderTo` but calls permit first.
