@@ -269,6 +269,7 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr1.address,
+                    constraints: buildConstraints({ needPreInteraction: true }),
                 },
                 {
                     preInteraction: hashChecker.address,
