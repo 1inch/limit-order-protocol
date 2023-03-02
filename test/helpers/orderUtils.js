@@ -40,7 +40,6 @@ function buildConstraints ({
     allowMultipleFills = true,
     needPreInteraction = false,
     needPostInteraction = false,
-    hasExtension = false,
     usePermit2 = false,
     expiry = 0,
     nonce = 0,
@@ -75,9 +74,6 @@ function buildConstraints ({
     }
     if (needPostInteraction) {
         res = '0x' + setn(BigInt(res), _NEED_POSTINTERACTION_FLAG, true).toString(16).padStart(64, '0');
-    }
-    if (hasExtension) {
-        res = '0x' + setn(BigInt(res), _HAS_EXTENSION_FLAG, true).toString(16).padStart(64, '0');
     }
     if (usePermit2) {
         res = '0x' + setn(BigInt(res), _USE_PERMIT2_FLAG, true).toString(16).padStart(64, '0');
