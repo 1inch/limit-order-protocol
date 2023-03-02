@@ -35,6 +35,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     using RemainingInvalidatorLib for RemainingInvalidator;
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
+    address private constant _PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     mapping(address => BitInvalidatorLib.Data) private _bitInvalidator;
@@ -329,13 +330,23 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             _WETH.safeTransferFrom(order.maker.get(), address(this), makingAmount);
             _WETH.safeWithdrawTo(makingAmount, target);
         } else {
-            if (!_callTransferFromWithSuffix(
-                order.makerAsset.get(),
-                order.maker.get(),
-                target,
-                makingAmount,
-                extension.makerAssetData()
-            )) revert TransferFromMakerToTakerFailed();
+            if (order.constraints.usePermit2()) {
+                if (extension.makerAssetData().length > 0) revert InvalidPermit2Transfer();
+                if (!_callPermit2TransferFrom(
+                    order.makerAsset.get(),
+                    order.maker.get(),
+                    target,
+                    makingAmount
+                )) revert Permit2TransferFromMakerToTakerFailed();
+            } else {
+                if (!_callTransferFromWithSuffix(
+                    order.makerAsset.get(),
+                    order.maker.get(),
+                    target,
+                    makingAmount,
+                    extension.makerAssetData()
+                )) revert TransferFromMakerToTakerFailed();
+            }
         }
 
         {  // Stack too deep
@@ -365,13 +376,23 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             _WETH.safeTransfer(extension.getReceiver(order), takingAmount);
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
-            if (!_callTransferFromWithSuffix(
-                order.takerAsset.get(),
-                msg.sender,
-                extension.getReceiver(order),
-                takingAmount,
-                extension.takerAssetData()
-            )) revert TransferFromTakerToMakerFailed();
+            if (limits.usePermit2()) {
+                if (extension.takerAssetData().length > 0) revert InvalidPermit2Transfer();
+                if (!_callPermit2TransferFrom(
+                    order.takerAsset.get(),
+                    msg.sender,
+                    extension.getReceiver(order),
+                    takingAmount
+                )) revert Permit2TransferFromTakerToMakerFailed();
+            } else {
+                if (!_callTransferFromWithSuffix(
+                    order.takerAsset.get(),
+                    msg.sender,
+                    extension.getReceiver(order),
+                    takingAmount,
+                    extension.takerAssetData()
+                )) revert TransferFromTakerToMakerFailed();
+            }
         }
 
         // Post interaction, where maker can handle funds interactively
@@ -423,6 +444,20 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 calldatacopy(add(data, 0x64), suffix.offset, suffix.length)
             }
             let status := call(gas(), asset, 0, data, add(0x64, suffix.length), 0x0, 0x20)
+            success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
+        }
+    }
+
+    function _callPermit2TransferFrom(address asset, address from, address to, uint256 amount) private returns(bool success) {
+        bytes4 selector = IPermit2.transferFrom.selector;
+        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
+            let data := mload(0x40)
+            mstore(data, selector)
+            mstore(add(data, 0x04), from)
+            mstore(add(data, 0x24), to)
+            mstore(add(data, 0x44), amount)
+            mstore(add(data, 0x64), asset)
+            let status := call(gas(), _PERMIT2, 0, data, 0x84, 0x0, 0x20)
             success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
         }
     }

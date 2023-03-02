@@ -30,6 +30,7 @@ const _NEED_PREINTERACTION_FLAG = 252n;
 const _NEED_POSTINTERACTION_FLAG = 251n;
 const _NEED_EPOCH_CHECK_FLAG = 250n;
 const _HAS_EXTENSION_FLAG = 249n;
+const _USE_PERMIT2_FLAG = 248n;
 
 function buildConstraints ({
     allowedSender = constants.ZERO_ADDRESS,
@@ -40,6 +41,7 @@ function buildConstraints ({
     needPreInteraction = false,
     needPostInteraction = false,
     hasExtension = false,
+    usePermit2 = false,
     expiry = 0,
     nonce = 0,
     series = 0,
@@ -76,6 +78,9 @@ function buildConstraints ({
     }
     if (hasExtension) {
         res = '0x' + setn(BigInt(res), _HAS_EXTENSION_FLAG, true).toString(16).padStart(64, '0');
+    }
+    if (usePermit2) {
+        res = '0x' + setn(BigInt(res), _USE_PERMIT2_FLAG, true).toString(16).padStart(64, '0');
     }
     return res;
 }
