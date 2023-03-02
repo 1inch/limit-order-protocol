@@ -973,7 +973,6 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: 1,
                     takingAmount: 1,
                     maker: addr1.address,
-                    constraints: buildConstraints({ hasExtension: true }),
                 },
                 {
                     predicate: swap.interface.encodeFunctionData('or', [offsets, data]),
@@ -1098,7 +1097,6 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: 1,
                     takingAmount: 1,
                     maker: addr1.address,
-                    constraints: buildConstraints({ hasExtension: true }),
                 },
                 {
                     predicate: swap.interface.encodeFunctionData('and', [offsets, data]),
