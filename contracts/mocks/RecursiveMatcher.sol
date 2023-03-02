@@ -16,19 +16,15 @@ contract RecursiveMatcher is ITakerInteraction {
 
     function matchOrders(
         IOrderMixin orderMixin,
-        IOrderMixin.Order calldata order,
+        IOrderMixin.FillArgs calldata args,
         bytes32 r,
         bytes32 vs,
-        uint256 amount,
-        Limits limits,
         bytes calldata interaction
     ) external {
         orderMixin.fillOrderTo(
-            order,
+            args,
             r,
             vs,
-            amount,
-            limits,
             address(this),
             interaction
         );

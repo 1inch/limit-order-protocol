@@ -12,20 +12,16 @@ contract TakerIncreaser is ITakerInteraction {
 
     function fillOrderTo(
         IOrderMixin orderMixin,
-        IOrderMixin.Order calldata order,
+        IOrderMixin.FillArgs calldata args,
         bytes32 r,
         bytes32 vs,
-        uint256 amount,
-        Limits limits,
         address target,
         bytes calldata interaction
     ) external {
         orderMixin.fillOrderTo(
-            order,
+            args,
             r,
             vs,
-            amount,
-            limits,
             target,
             interaction
         );
