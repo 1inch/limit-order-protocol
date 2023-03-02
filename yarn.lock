@@ -3379,7 +3379,7 @@ hardhat-gas-reporter@1.0.9:
     eth-gas-reporter "^0.2.25"
     sha1 "^1.1.1"
 
-hardhat-tracer@^2.1.0:
+hardhat-tracer@2.1.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/hardhat-tracer/-/hardhat-tracer-2.1.0.tgz#f262b9f254984d97d5722693b80fc716280e6775"
   integrity sha512-J9H7Gopzwyy5j6bPn946SsCTKZaW/zErLjLO3QnEYoqxrFzoV85rndZXfVsS1REIJ09+K8keuf8bsRA05U6rhw==
@@ -3442,10 +3442,10 @@ hardhat@2.11.2:
     uuid "^8.3.2"
     ws "^7.4.6"
 
-hardhat@^2.12.8-viair.0:
-  version "2.12.8-viair.0"
-  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.12.8-viair.0.tgz#662317cac2bd8c9147ba9e886c78e55fa0567ea4"
-  integrity sha512-erh/ZE5QLPJ+puSVRY9JoX7AQo3DcGjPOFPMiPw+DJn8dpNq1/+Y0n9xK4yK8DFueNsarlRY9TdM8Du6Wj+QSQ==
+hardhat@2.12.7:
+  version "2.12.7"
+  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.12.7.tgz#d8de2dc32e9a2956d53cf26ef4cd5857e57a3138"
+  integrity sha512-voWoN6zn5d8BOEaczSyK/1PyfdeOeI3SbGCFb36yCHTJUt6OIqLb+ZDX30VhA1UsYKzLqG7UnWl3fKJUuANc6A==
   dependencies:
     "@ethersproject/abi" "^5.1.2"
     "@metamask/eth-sig-util" "^4.0.0"
