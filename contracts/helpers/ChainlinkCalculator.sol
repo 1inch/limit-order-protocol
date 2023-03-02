@@ -34,17 +34,20 @@ contract ChainlinkCalculator {
     }
 
     /// @notice Calculates price of token A relative to token B. Note that order is important
-    /// @return Result Token A relative price times amount
-    function doublePrice(AggregatorV3Interface oracle1, AggregatorV3Interface oracle2, uint256 spread, int256 decimalsScale, uint256 amount) external view returns(uint256) {
+    /// @return result Token A relative price times amount
+    function doublePrice(AggregatorV3Interface oracle1, AggregatorV3Interface oracle2, uint256 spread, int256 decimalsScale, uint256 amount) external view returns(uint256 result) {
         if (oracle1.decimals() != oracle2.decimals()) revert DifferentOracleDecimals();
+
         (, int256 latestAnswer1,,,) = oracle1.latestRoundData();
-        (, int256 latestAnswer2,,,) = oracle2.latestRoundData();
+        result = amount * spread * latestAnswer1.toUint256();
+
         if (decimalsScale > 0) {
-            return amount * spread * latestAnswer1.toUint256() * (10 ** decimalsScale.toUint256()) / latestAnswer2.toUint256() / _SPREAD_DENOMINATOR;
+            result *= 10 ** decimalsScale.toUint256();
         } else if (decimalsScale < 0) {
-            return amount * spread * latestAnswer1.toUint256() / latestAnswer2.toUint256() / _SPREAD_DENOMINATOR / (10 ** (-decimalsScale).toUint256());
-        } else {
-            return amount * spread * latestAnswer1.toUint256() / latestAnswer2.toUint256() / _SPREAD_DENOMINATOR;
+            result /= 10 ** (-decimalsScale).toUint256();
         }
+
+        (, int256 latestAnswer2,,,) = oracle2.latestRoundData();
+        result /= latestAnswer2.toUint256() * _SPREAD_DENOMINATOR;
     }
 }
