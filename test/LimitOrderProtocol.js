@@ -755,7 +755,7 @@ describe('LimitOrderProtocol', function () {
                     takerAsset: dai.address,
                     makingAmount: ether('0.3'),
                     takingAmount: ether('300'),
-                    constraints: buildConstraints({ needPostInteraction: true }),
+                    constraints: buildConstraints(),
                 },
                 {
                     receiver: addr.address,
@@ -795,7 +795,7 @@ describe('LimitOrderProtocol', function () {
                     takerAsset: dai.address,
                     makingAmount: ether('0.3'),
                     takingAmount: ether('300'),
-                    constraints: buildConstraints({ needPostInteraction: true }),
+                    constraints: buildConstraints(),
                 },
                 {
                     receiver: addr.address,
@@ -838,7 +838,7 @@ describe('LimitOrderProtocol', function () {
                     takerAsset: dai.address,
                     makingAmount: ether('0.3'),
                     takingAmount: ether('300'),
-                    constraints: buildConstraints({ needPostInteraction: true, allowedSender: ethOrders.address }),
+                    constraints: buildConstraints(),
                 },
                 {
                     receiver: addr.address,

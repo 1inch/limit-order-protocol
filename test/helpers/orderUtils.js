@@ -38,8 +38,6 @@ function buildConstraints ({
     allowPartialFill = true,
     allowPriceImprovement = true,
     allowMultipleFills = true,
-    needPreInteraction = false,
-    needPostInteraction = false,
     usePermit2 = false,
     expiry = 0,
     nonce = 0,
@@ -68,12 +66,6 @@ function buildConstraints ({
     }
     if (shouldCheckEpoch) {
         res = '0x' + setn(BigInt(res), _NEED_EPOCH_CHECK_FLAG, true).toString(16).padStart(64, '0');
-    }
-    if (needPreInteraction) {
-        res = '0x' + setn(BigInt(res), _NEED_PREINTERACTION_FLAG, true).toString(16).padStart(64, '0');
-    }
-    if (needPostInteraction) {
-        res = '0x' + setn(BigInt(res), _NEED_POSTINTERACTION_FLAG, true).toString(16).padStart(64, '0');
     }
     if (usePermit2) {
         res = '0x' + setn(BigInt(res), _USE_PERMIT2_FLAG, true).toString(16).padStart(64, '0');
@@ -185,6 +177,14 @@ function buildOrder (
     if (trim0x(extension).length > 0) {
         salt = BigInt(keccak256(extension)) & ((1n << 160n) - 1n); // Use 160 bit of extension hash
         constraints = BigInt(constraints) | (1n << _HAS_EXTENSION_FLAG);
+    }
+
+    if (trim0x(preInteraction).length > 0) {
+        constraints = BigInt(constraints) | (1n << _NEED_PREINTERACTION_FLAG);
+    }
+
+    if (trim0x(postInteraction).length > 0) {
+        constraints = BigInt(constraints) | (1n << _NEED_POSTINTERACTION_FLAG);
     }
 
     return {

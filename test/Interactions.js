@@ -269,7 +269,7 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr1.address,
-                    constraints: buildConstraints({ needPreInteraction: true }),
+                    constraints: buildConstraints(),
                 },
                 {
                     preInteraction: hashChecker.address,
@@ -303,7 +303,7 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr1.address,
-                    constraints: buildConstraints({ nonce: 0, needPreInteraction: true }),
+                    constraints: buildConstraints(),
                 },
                 {
                     preInteraction: hashChecker.address,
@@ -381,7 +381,7 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr.address,
-                    constraints: buildConstraints({ nonce: 0, needPreInteraction: true }),
+                    constraints: buildConstraints(),
                 },
                 {
                     preInteraction,
@@ -395,7 +395,7 @@ describe('Interactions', function () {
                     makingAmount: ether('50'),
                     takingAmount: ether('0.05'),
                     maker: addr.address,
-                    constraints: buildConstraints({ nonce: 0, needPreInteraction: true }),
+                    constraints: buildConstraints(),
                 },
                 {
                     preInteraction,
