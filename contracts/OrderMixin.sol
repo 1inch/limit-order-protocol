@@ -35,7 +35,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     using RemainingInvalidatorLib for RemainingInvalidator;
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
-    uint256 private constant _USE_PERMIT2_FLAG = 1 << 254;
     address private constant _PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
@@ -332,12 +331,12 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             _WETH.safeWithdrawTo(makingAmount, target);
         } else {
             if (order.constraints.usePermit2()) {
-                if (!_callPermit2TransferFromithSuffix(
+                if (extension.makerAssetData().length > 0) revert InvalidPermit2Transfer();
+                if (!_callPermit2TransferFrom(
                     order.makerAsset.get(),
                     order.maker.get(),
                     target,
-                    makingAmount,
-                    extension.makerAssetData()
+                    makingAmount
                 )) revert Permit2TransferFromMakerToTakerFailed();
             } else {
                 if (!_callTransferFromWithSuffix(
@@ -378,12 +377,12 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
             if (limits.usePermit2()) {
-                if (!_callPermit2TransferFromithSuffix(
+                if (extension.takerAssetData().length > 0) revert InvalidPermit2Transfer();
+                if (!_callPermit2TransferFrom(
                     order.takerAsset.get(),
                     msg.sender,
                     extension.getReceiver(order),
-                    takingAmount,
-                    extension.takerAssetData()
+                    takingAmount
                 )) revert Permit2TransferFromTakerToMakerFailed();
             } else {
                 if (!_callTransferFromWithSuffix(
@@ -449,7 +448,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         }
     }
 
-    function _callPermit2TransferFromithSuffix(address asset, address from, address to, uint256 amount, bytes calldata suffix) private returns(bool success) {
+    function _callPermit2TransferFrom(address asset, address from, address to, uint256 amount) private returns(bool success) {
         bytes4 selector = IPermit2.transferFrom.selector;
         assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
             let data := mload(0x40)
@@ -458,10 +457,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             mstore(add(data, 0x24), to)
             mstore(add(data, 0x44), amount)
             mstore(add(data, 0x64), asset)
-            if suffix.length {
-                calldatacopy(add(data, 0x84), suffix.offset, suffix.length)
-            }
-            let status := call(gas(), _PERMIT2, 0, data, add(0x84, suffix.length), 0x0, 0x20)
+            let status := call(gas(), _PERMIT2, 0, data, 0x84, 0x0, 0x20)
             success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
         }
     }

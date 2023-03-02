@@ -36,6 +36,7 @@ interface IOrderMixin {
     error Permit2TransferFromMakerToTakerFailed();
     error Permit2TransferFromTakerToMakerFailed();
     error MismatchArraysLengths();
+    error InvalidPermit2Transfer();
 
     /**
      * @notice Emitted when order gets filled
