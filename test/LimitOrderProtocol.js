@@ -101,6 +101,28 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(swap, 'MakingAmountTooLow');
         });
 
+        it('should fill without checks with threshold == 0', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 2,
+                takingAmount: 10,
+                maker: addr1.address,
+                constraints: buildConstraints({ allowMultipleFills: true }),
+            });
+            const signature = await signOrder(order, chainId, swap.address, addr1);
+
+            const { r, vs } = compactSignature(signature);
+
+            const swapWithoutThreshold = await swap.fillOrder(order, r, vs, 5, 0);
+            const gasUsedWithoutThreshold = (await swapWithoutThreshold.wait()).gasUsed;
+            await loadFixture(deployContractsAndInit);
+            const swapWithThreshold = await swap.fillOrder(order, r, vs, 5, 1);
+            expect((await swapWithThreshold.wait()).gasUsed).to.gt(gasUsedWithoutThreshold);
+        });
+
         it('should fail when amount is zero', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
