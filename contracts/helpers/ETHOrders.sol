@@ -53,6 +53,16 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
     }
 
     /*
+     * @notice Returns batch of eth order for batch of orders hashes.
+     */
+    function ethOrdersBatch(bytes32[] calldata orderHashes) external view returns(ETHOrder[] memory ethOrders) {
+        ethOrders = new ETHOrder[](orderHashes.length);
+        for (uint256 i = 0; i < orderHashes.length; i++) {
+            ethOrders[i] = ordersMakersBalances[orderHashes[i]];
+        }
+    }
+
+    /*
      * @notice Checks if ETH order is valid, makes ETH deposit for an order, saves real maker and wraps ETH into WETH.
      */
     function ethOrderDeposit(IOrderMixin.Order calldata order, bytes calldata extension) external payable returns(bytes32 orderHash) {
