@@ -74,7 +74,7 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
     }
 
     /**
-     * @notice Sets _ordersMakersBalances to 0, refunds ETH and does standard order cancellation on Limit Order Protocol.
+     * @notice Sets ordersMakersBalances to 0, refunds ETH and does standard order cancellation on Limit Order Protocol.
      */
     function cancelOrder(Constraints orderConstraints, bytes32 orderHash) external {
         if (ordersMakersBalances[orderHash].maker != msg.sender) revert InvalidOrder();
