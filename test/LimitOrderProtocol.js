@@ -789,6 +789,10 @@ describe('LimitOrderProtocol', function () {
             await ethOrders.ethOrderDeposit(order, order.extension, { value: ether('0.3') });
             assertRoughlyEqualValues(await ethers.provider.getBalance(addr.address), addreth.sub(ether('0.3')), 1e-2);
 
+            const orderHash = await swap.hashOrder(order);
+            expect(await ethOrders.ordersBalances([orderHash])).to.deep.equal([ether('0.3')]);
+            expect(await ethOrders.ordersMakers([orderHash])).to.deep.equal([addr.address]);
+
             const signature = await signOrder(order, chainId, swap.address, addr);
 
             const addrweth = await weth.balanceOf(addr.address);
@@ -806,6 +810,9 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr1.address)).to.equal(addrweth.add(ether('0.3')));
             expect(await weth.balanceOf(addr.address)).to.equal(addrweth);
             expect(await ethers.provider.getBalance(addr.address)).to.equal(addreth);
+
+            expect(await ethOrders.ordersBalances([orderHash])).to.deep.equal([0]);
+            expect(await ethOrders.ordersMakers([orderHash])).to.deep.equal([addr.address]);
         });
 
         it('Partial fill -> cancel -> refund maker -> fail to fill', async function () {
