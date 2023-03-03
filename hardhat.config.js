@@ -19,6 +19,7 @@ module.exports = {
                 enabled: true,
                 runs: 100,
                 details: {
+                    // inliner: false,
                     yulDetails: {
                         stackAllocation: false,
                     },

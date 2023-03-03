@@ -3,8 +3,10 @@
 pragma solidity 0.8.18;
 
 import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
-import "../libraries/ConstraintsLib.sol";
+
 import "../libraries/LimitsLib.sol";
+import "../libraries/OffsetsLib.sol";
+import "../libraries/ConstraintsLib.sol";
 
 interface IOrderMixin {
     struct Order {
@@ -176,10 +178,9 @@ interface IOrderMixin {
      * It allows to approve token spending and make a swap in one transaction.
      * Also allows to specify funds destination instead of `msg.sender`
      * @param args Main fill order arguments
-     * @param signature Signature to confirm quote ownership
      * @param target Address that will receive swap funds
-     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
-     * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
+     * @param offsets Offsets of signature, interaction, permit and extension in fragments
+     * @param fragments Should contain signature, interaction, permit and extension
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -187,9 +188,8 @@ interface IOrderMixin {
      */
     function fillContractOrder(
         FillArgs calldata args,
-        bytes calldata signature,
         address target,
-        bytes calldata interaction,
-        bytes calldata permit
+        Offsets offsets,
+        bytes calldata fragments // signature, interaction, permit, extension
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 }
