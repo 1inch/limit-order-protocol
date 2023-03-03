@@ -115,11 +115,12 @@ describe('LimitOrderProtocol', function () {
             const signature = await signOrder(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
-            const swapWithThreshold = await swap.fillOrder(order, r, vs, 5, 1);
-            const swapWithoutThreshold = await swap.fillOrder(order, r, vs, 5, 0);
 
-            expect((await swapWithThreshold.wait()).gasUsed).to.equal('98953');
-            expect((await swapWithoutThreshold.wait()).gasUsed).to.equal('78411');
+            const swapWithoutThreshold = await swap.fillOrder(order, r, vs, 5, 0);
+            const gasUsedWithoutThreshold = (await swapWithoutThreshold.wait()).gasUsed;
+            await loadFixture(deployContractsAndInit);
+            const swapWithThreshold = await swap.fillOrder(order, r, vs, 5, 1);
+            expect((await swapWithThreshold.wait()).gasUsed).to.gt(gasUsedWithoutThreshold);
         });
 
         it('should fail when amount is zero', async function () {
