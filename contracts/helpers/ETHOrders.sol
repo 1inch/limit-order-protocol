@@ -75,13 +75,16 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
         if (interaction.length != 20 || address(bytes20(interaction)) != address(this)) revert InvalidOrder();
         orderHash = IOrderMixin(_limitOrderProtocol).hashOrder(order);
         if (ordersMakersBalances[orderHash].maker != address(0)) revert ExistingOrder();
-        ordersMakersBalances[orderHash] = ETHOrder(msg.sender, uint96(msg.value));
+        ordersMakersBalances[orderHash] = ETHOrder({
+            maker: msg.sender,
+            balance: uint96(msg.value)
+        });
         _WETH.safeDeposit(msg.value);
         emit ETHDeposited(orderHash, msg.value);
     }
 
     /**
-     * @notice Sets _ordersMakersBalances to 0, refunds ETH and does standard order cancellation on Limit Order Protocol.
+     * @notice Sets ordersMakersBalances to 0, refunds ETH and does standard order cancellation on Limit Order Protocol.
      */
     function cancelOrder(Constraints orderConstraints, bytes32 orderHash) external {
         if (ordersMakersBalances[orderHash].maker != msg.sender) revert InvalidOrder();
