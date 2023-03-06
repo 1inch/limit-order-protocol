@@ -794,9 +794,9 @@ describe('LimitOrderProtocol', function () {
             expect(orderMakerBalance.balance).to.equal(ether('0.3'));
             expect(orderMakerBalance.maker).to.equal(addr.address);
 
-            const ethOrdersBatch = await ethOrders.ethOrdersBatch([orderHash])
-            expect(ethOrdersBatch[0].balance).to.equal(ether('0.3'))
-            expect(ethOrdersBatch[0].maker).to.equal(addr.address)
+            const ethOrdersBatch = await ethOrders.ethOrdersBatch([orderHash]);
+            expect(ethOrdersBatch[0].balance).to.equal(ether('0.3'));
+            expect(ethOrdersBatch[0].maker).to.equal(addr.address);
 
             const signature = await signOrder(order, chainId, swap.address, addr);
 
