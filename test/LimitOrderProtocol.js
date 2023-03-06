@@ -789,6 +789,15 @@ describe('LimitOrderProtocol', function () {
             await ethOrders.ethOrderDeposit(order, order.extension, { value: ether('0.3') });
             assertRoughlyEqualValues(await ethers.provider.getBalance(addr.address), addreth.sub(ether('0.3')), 1e-2);
 
+            const orderHash = await swap.hashOrder(order);
+            let orderMakerBalance = await ethOrders.ordersMakersBalances(orderHash);
+            expect(orderMakerBalance.balance).to.equal(ether('0.3'));
+            expect(orderMakerBalance.maker).to.equal(addr.address);
+
+            const ethOrdersBatch = await ethOrders.ethOrdersBatch([orderHash]);
+            expect(ethOrdersBatch[0].balance).to.equal(ether('0.3'));
+            expect(ethOrdersBatch[0].maker).to.equal(addr.address);
+
             const signature = await signOrder(order, chainId, swap.address, addr);
 
             const addrweth = await weth.balanceOf(addr.address);
@@ -806,6 +815,10 @@ describe('LimitOrderProtocol', function () {
             expect(await weth.balanceOf(addr1.address)).to.equal(addrweth.add(ether('0.3')));
             expect(await weth.balanceOf(addr.address)).to.equal(addrweth);
             expect(await ethers.provider.getBalance(addr.address)).to.equal(addreth);
+
+            orderMakerBalance = await ethOrders.ordersMakersBalances(orderHash);
+            expect(orderMakerBalance.balance).to.equal(0);
+            expect(orderMakerBalance.maker).to.equal(addr.address);
         });
 
         it('Partial fill -> cancel -> refund maker -> fail to fill', async function () {
