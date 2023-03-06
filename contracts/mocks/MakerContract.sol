@@ -33,7 +33,7 @@ contract MakerContract is IERC1271, EIP712Alien, ERC20 {
         string memory name,
         string memory symbol
     )
-        EIP712Alien(_protocol, "1inch Limit Order Protocol", "3")
+        EIP712Alien(_protocol, "1inch Limit Order Protocol", "4")
         ERC20(name, symbol)
     {
         protocol = _protocol;

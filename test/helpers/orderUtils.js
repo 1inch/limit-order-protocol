@@ -21,7 +21,7 @@ const ABIOrder = {
 };
 
 const name = '1inch Limit Order Protocol';
-const version = '3';
+const version = '4';
 
 const _NO_PARTIAL_FILLS_FLAG = 255n;
 const _ALLOW_MULTIPLE_FILLS_FLAG = 254n;

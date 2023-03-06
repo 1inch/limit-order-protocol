@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "./OrderMixin.sol";
@@ -27,7 +27,7 @@ import "./OrderMixin.sol";
  * See [OrderMixin](OrderMixin.md) for more details.
  */
 contract LimitOrderProtocol is
-    EIP712("1inch Limit Order Protocol", "3"),
+    EIP712("1inch Limit Order Protocol", "4"),
     OrderMixin
 {
     // solhint-disable-next-line no-empty-blocks

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.18;
+pragma solidity 0.8.19;
 
 import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
