@@ -347,26 +347,45 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             target = msg.sender;
         }
         if (args.order.makerAsset.get() == address(_WETH) && args.limits.needUnwrapWeth()) {
-            _WETH.safeTransferFrom(args.order.maker.get(), address(this), makingAmount);
-            _WETH.safeWithdrawTo(makingAmount, target);
-        } else {
-            if (args.order.constraints.usePermit2()) {
-                if (extension.makerAssetData().length > 0) revert InvalidPermit2Transfer();
-                if (!_callPermit2TransferFrom(
-                    args.order.makerAsset.get(),
-                    args.order.maker.get(),
-                    target,
-                    makingAmount
-                )) revert Permit2TransferFromMakerToTakerFailed();
-            } else {
-                if (!_callTransferFromWithSuffix(
-                    args.order.makerAsset.get(),
-                    args.order.maker.get(),
-                    target,
-                    makingAmount,
-                    extension.makerAssetData()
-                )) revert TransferFromMakerToTakerFailed();
+            address maker = args.order.maker.get();
+            bytes4 selector = IERC20.transferFrom.selector;
+            IWETH weth = _WETH;
+            assembly ("memory-safe") {
+                let ptr := mload(0x40)
+                mstore(ptr, selector)
+                mstore(add(ptr, 0x04), maker)
+                mstore(add(ptr, 0x24), address())
+                mstore(add(ptr, 0x44), makingAmount)
+                if iszero(call(gas(), weth, callvalue(), ptr, 0x64, ptr, 0x20)) {
+                    returndatacopy(ptr, callvalue(), returndatasize())
+                    revert(ptr, returndatasize())
+                }
             }
+            // emit Log(_WETH, args.order.maker.get(), address(this), makingAmount);
+            // _WETH.balanceOf(address(this));
+            // IWETH weth = _WETH;
+            // weth.safeTransferFrom(args.order.maker.get(), address(this), makingAmount);
+
+            // _WETH.safeTransferFrom(args.order.maker.get(), address(this), makingAmount);
+            // _WETH.safeWithdrawTo(makingAmount, target);
+        } else {
+            // if (args.order.constraints.usePermit2()) {
+            //     if (extension.makerAssetData().length > 0) revert InvalidPermit2Transfer();
+            //     if (!_callPermit2TransferFrom(
+            //         args.order.makerAsset.get(),
+            //         args.order.maker.get(),
+            //         target,
+            //         makingAmount
+            //     )) revert Permit2TransferFromMakerToTakerFailed();
+            // } else {
+            //     if (!_callTransferFromWithSuffix(
+            //         args.order.makerAsset.get(),
+            //         args.order.maker.get(),
+            //         target,
+            //         makingAmount,
+            //         extension.makerAssetData()
+            //     )) revert TransferFromMakerToTakerFailed();
+            // }
         }
     }
 
