@@ -1,6 +1,6 @@
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { expect } = require('@1inch/solidity-utils');
-const { ABIOrder, makeMakingAmount, buildConstraintsRFQ, buildOrderRFQ } = require('./helpers/orderUtils');
+const { ABIOrder, fillWithMakingAmount, buildMakerTraitsRFQ, buildOrderRFQ } = require('./helpers/orderUtils');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
 const { deploySwap, deployUSDC, deployUSDT } = require('./helpers/fixtures');
@@ -49,7 +49,7 @@ describe('MakerContract', function () {
             takerAsset: usdt.address,
             makingAmount: 1000000000,
             takingAmount: 1000700000,
-            constraints: buildConstraintsRFQ({ nonce: 1 }),
+            makerTraits: buildMakerTraitsRFQ({ nonce: 1 }),
         });
 
         const order2 = buildOrderRFQ({
@@ -58,11 +58,11 @@ describe('MakerContract', function () {
             takerAsset: usdt.address,
             makingAmount: 1000000000,
             takingAmount: 1000700000,
-            constraints: buildConstraintsRFQ({ nonce: 2 }),
+            makerTraits: buildMakerTraitsRFQ({ nonce: 2 }),
         });
 
         const signature = abiCoder.encode([ABIOrder], [order]);
-        await swap.fillContractOrder(order, signature, 1000000, makeMakingAmount(1n << 200n), constants.AddressZero, emptyInteraction, '0x');
+        await swap.fillContractOrder(order, signature, 1000000, fillWithMakingAmount(1n << 200n), constants.AddressZero, emptyInteraction, '0x');
 
         expect(await usdc.balanceOf(rfq.address)).to.equal(makerUsdc.sub(1000000));
         expect(await usdc.balanceOf(addr.address)).to.equal(takerUsdc.add(1000000));
@@ -70,6 +70,6 @@ describe('MakerContract', function () {
         expect(await usdt.balanceOf(addr.address)).to.equal(takerUsdt.sub(1000700));
 
         const signature2 = abiCoder.encode([ABIOrder], [order2]);
-        await swap.fillContractOrder(order2, signature2, 1000000, makeMakingAmount(1n << 200n), constants.AddressZero, emptyInteraction, '0x');
+        await swap.fillContractOrder(order2, signature2, 1000000, fillWithMakingAmount(1n << 200n), constants.AddressZero, emptyInteraction, '0x');
     });
 });

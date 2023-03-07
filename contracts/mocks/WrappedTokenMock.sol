@@ -21,14 +21,6 @@ contract WrappedTokenMock is ERC20Permit, Ownable, IWETH {
         deposit();
     }
 
-    function mint(address account, uint256 amount) external onlyOwner {
-        _mint(account, amount);
-    }
-
-    function burn(address account, uint256 amount) external onlyOwner {
-        _burn(account, amount);
-    }
-
     function getChainId() external view returns (uint256) {
         return block.chainid;
     }

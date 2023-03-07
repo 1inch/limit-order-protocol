@@ -13,7 +13,7 @@ contract MakerContract is IERC1271, EIP712Alien, ERC20 {
     using SafeERC20 for IERC20;
     using OrderLib for IOrderMixin.Order;
     using AddressLib for Address;
-    using ConstraintsLib for Constraints;
+    using MakerTraitsLib for MakerTraits;
 
     error NotAllowedToken();
     error BadPrice();
@@ -85,7 +85,7 @@ contract MakerContract is IERC1271, EIP712Alien, ERC20 {
                 (order.makerAsset.get() != address(token0) || order.takerAsset.get() != address(token1)) &&
                 (order.makerAsset.get() != address(token1) || order.takerAsset.get() != address(token0))
             ) ||
-            order.constraints.hasExtension() ||
+            order.makerTraits.hasExtension() ||
             order.makingAmount * fee > order.takingAmount * 1e18 ||
             order.hash(_domainSeparatorV4()) != hash
         ) revert BadPrice();
