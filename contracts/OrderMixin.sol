@@ -169,8 +169,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         uint256 remainingMakingAmount = _checkRemainingMakingAmount(order, orderHash);
         if (remainingMakingAmount == order.makingAmount) {
             if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert BadSignature();
-            if (!takerTraits.skipOrderPermit()) {
-                _applyOrderPermit(order, orderHash, extension);
+            if (!takerTraits.skipMakerPermit()) {
+                _applyMakerPermit(order, orderHash, extension);
             }
         }
 
@@ -229,8 +229,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         uint256 remainingMakingAmount = _checkRemainingMakingAmount(order, orderHash);
         if (remainingMakingAmount == order.makingAmount) {
             if (!ECDSA.isValidSignature(order.maker.get(), orderHash, signature)) revert BadSignature();
-            if (!takerTraits.skipOrderPermit()) {
-                _applyOrderPermit(order, orderHash, extension);
+            if (!takerTraits.skipMakerPermit()) {
+                _applyMakerPermit(order, orderHash, extension);
             }
         }
 
@@ -434,11 +434,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         if (remainingMakingAmount == 0) revert InvalidatedOrder();
     }
 
-    function _applyOrderPermit(IOrderMixin.Order calldata order, bytes32 orderHash, bytes calldata extension) private {
-        bytes calldata orderPermit = extension.permitTargetAndData();
-        if (orderPermit.length >= 20) {
+    function _applyMakerPermit(IOrderMixin.Order calldata order, bytes32 orderHash, bytes calldata extension) private {
+        bytes calldata makerPermit = extension.makerPermit();
+        if (makerPermit.length >= 20) {
             // proceed only if taker is willing to execute permit and its length is enough to store address
-            IERC20(address(bytes20(orderPermit))).safePermit(orderPermit[20:]);
+            IERC20(address(bytes20(makerPermit))).safePermit(makerPermit[20:]);
             if (!order.makerTraits.useBitInvalidator()) {
                 // Bit orders are not subjects for reentrancy, but we still need to check remaining-based orders for reentrancy
                 if (!_remainingInvalidator[order.maker.get()][orderHash].isNewOrder()) revert ReentrancyDetected();

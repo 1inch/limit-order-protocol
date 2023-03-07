@@ -1,6 +1,6 @@
 const { ethers } = require('hardhat');
 const { expect, time, constants, profileEVM, trim0x, getPermit2, permit2Contract, assertRoughlyEqualValues } = require('@1inch/solidity-utils');
-const { fillWithMakingAmount, unwrapWethTaker, skipOrderPermit, buildMakerTraits, buildOrder, signOrder, compactSignature, buildOrderData } = require('./helpers/orderUtils');
+const { fillWithMakingAmount, unwrapWethTaker, skipMakerPermit, buildMakerTraits, buildOrder, signOrder, compactSignature, buildOrderData } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, cutLastArg, ether } = require('./helpers/utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
@@ -680,7 +680,7 @@ describe('LimitOrderProtocol', function () {
                 const takerWeth = await weth.balanceOf(addr.address);
 
                 await addr1.sendTransaction({ to: weth.address, data: '0xd505accf' + permit.substring(42) });
-                await swap.connect(addr1).fillOrderExt(order, r, vs, 1, skipOrderPermit(0), order.extension);
+                await swap.connect(addr1).fillOrderExt(order, r, vs, 1, skipMakerPermit(0), order.extension);
 
                 expect(await dai.balanceOf(addr.address)).to.equal(makerDai.add(1));
                 expect(await dai.balanceOf(addr1.address)).to.equal(takerDai.sub(1));

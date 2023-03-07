@@ -233,7 +233,7 @@ function unwrapWethTaker (amount) {
     return (BigInt(amount) | (1n << 254n)).toString();
 }
 
-function skipOrderPermit (amount) {
+function skipMakerPermit (amount) {
     return (BigInt(amount) | (1n << 253n)).toString();
 }
 
@@ -247,7 +247,7 @@ module.exports = {
     compactSignature,
     fillWithMakingAmount,
     unwrapWethTaker,
-    skipOrderPermit,
+    skipMakerPermit,
     name,
     version,
 };

@@ -24,7 +24,7 @@ library TakerTraitsLib {
         return (TakerTraits.unwrap(takerTraits) & _UNWRAP_WETH_FLAG) != 0;
     }
 
-    function skipOrderPermit(TakerTraits takerTraits) internal pure returns (bool) {
+    function skipMakerPermit(TakerTraits takerTraits) internal pure returns (bool) {
         return (TakerTraits.unwrap(takerTraits) & _SKIP_ORDER_PERMIT_FLAG) != 0;
     }
 

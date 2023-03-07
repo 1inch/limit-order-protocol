@@ -17,7 +17,7 @@ library ExtensionLib {
         MakingAmountGetter,
         TakingAmountGetter,
         Predicate,
-        Permit,
+        MakerPermit,
         PreInteractionData,
         PostInteractionData
     }
@@ -52,8 +52,8 @@ library ExtensionLib {
         return _get(extension, DynamicField.Predicate);
     }
 
-    function permitTargetAndData(bytes calldata extension) internal pure returns(bytes calldata) {
-        return _get(extension, DynamicField.Permit);
+    function makerPermit(bytes calldata extension) internal pure returns(bytes calldata) {
+        return _get(extension, DynamicField.MakerPermit);
     }
 
     function preInteractionTargetAndData(bytes calldata extension) internal pure returns(bytes calldata) {
