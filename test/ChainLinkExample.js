@@ -1,6 +1,6 @@
 const { expect, trim0x } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { makeMakingAmount, compactSignature, signOrder, buildOrder } = require('./helpers/orderUtils');
+const { fillWithMakingAmount, compactSignature, signOrder, buildOrder } = require('./helpers/orderUtils');
 const { cutLastArg, ether, setn } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
@@ -28,10 +28,10 @@ describe('ChainLinkExample', function () {
         const { dai, weth, inch, swap, chainId } = await deploySwapTokens();
 
         await dai.mint(addr.address, ether('1000000'));
-        await weth.mint(addr.address, ether('1000000'));
+        await weth.deposit({ value: ether('100') });
         await inch.mint(addr.address, ether('1000000'));
         await dai.mint(addr1.address, ether('1000000'));
-        await weth.mint(addr1.address, ether('1000000'));
+        await weth.connect(addr1).deposit({ value: ether('100') });
         await inch.mint(addr1.address, ether('1000000'));
 
         await dai.approve(swap.address, ether('1000000'));
@@ -80,7 +80,7 @@ describe('ChainLinkExample', function () {
         const takerWeth = await weth.balanceOf(addr.address);
 
         const { r, vs } = compactSignature(signature);
-        await swap.fillOrderExt(order, r, vs, ether('1'), makeMakingAmount(ether('4040.01')), order.extension); // taking threshold = 4000 + 1% + eps
+        await swap.fillOrderExt(order, r, vs, ether('1'), fillWithMakingAmount(ether('4040.01')), order.extension); // taking threshold = 4000 + 1% + eps
 
         expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(ether('4040')));
         expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(ether('4040')));
@@ -119,7 +119,7 @@ describe('ChainLinkExample', function () {
         const takerInch = await inch.balanceOf(addr.address);
 
         const { r, vs } = compactSignature(signature);
-        await swap.fillOrderExt(order, r, vs, makingAmount, makeMakingAmount(takingAmount.add(ether('0.01'))), order.extension); // taking threshold = exact taker amount + eps
+        await swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount.add(ether('0.01'))), order.extension); // taking threshold = exact taker amount + eps
 
         expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(takingAmount));
         expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(takingAmount));
@@ -152,7 +152,7 @@ describe('ChainLinkExample', function () {
 
         const { r, vs } = compactSignature(signature);
         await expect(
-            swap.fillOrderExt(order, r, vs, makeMakingAmount(makingAmount), takingAmount.add(ether('0.01')), order.extension), // taking threshold = exact taker amount + eps
+            swap.fillOrderExt(order, r, vs, fillWithMakingAmount(makingAmount), takingAmount.add(ether('0.01')), order.extension), // taking threshold = exact taker amount + eps
         ).to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
     });
 
@@ -188,7 +188,7 @@ describe('ChainLinkExample', function () {
         const takerWeth = await weth.balanceOf(addr.address);
 
         const { r, vs } = compactSignature(signature);
-        await swap.fillOrderExt(order, r, vs, makingAmount, makeMakingAmount(takingAmount), order.extension);
+        await swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount), order.extension);
 
         expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(takingAmount));
         expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(takingAmount));

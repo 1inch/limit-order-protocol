@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/ITakerInteraction.sol";
 import "../interfaces/IOrderMixin.sol";
 import "../interfaces/IOrderMixin.sol";
-import "../libraries/LimitsLib.sol";
+import "../libraries/TakerTraitsLib.sol";
 
 contract RecursiveMatcher is ITakerInteraction {
     bytes1 private constant _FINALIZE_INTERACTION = 0x01;
@@ -20,7 +20,7 @@ contract RecursiveMatcher is ITakerInteraction {
         bytes32 r,
         bytes32 vs,
         uint256 amount,
-        Limits limits,
+        TakerTraits takerTraits,
         bytes calldata interaction
     ) external {
         orderMixin.fillOrderTo(
@@ -28,7 +28,7 @@ contract RecursiveMatcher is ITakerInteraction {
             r,
             vs,
             amount,
-            limits,
+            takerTraits,
             address(this),
             interaction
         );
