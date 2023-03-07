@@ -3,7 +3,7 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
-const { fillWithMakingAmount, signOrder, buildOrder, compactSignature, buildConstraints } = require('./helpers/orderUtils');
+const { fillWithMakingAmount, signOrder, buildOrder, compactSignature, buildMakerTraits } = require('./helpers/orderUtils');
 
 describe('Interactions', function () {
     let addr, addr1;
@@ -109,7 +109,7 @@ describe('Interactions', function () {
                 makingAmount: ether('10'),
                 takingAmount: ether('0.01'),
                 maker: addr1.address,
-                constraints: buildConstraints({ nonce: 0 }),
+                makerTraits: buildMakerTraits({ nonce: 0 }),
             });
 
             const backOrder = buildOrder({
@@ -118,7 +118,7 @@ describe('Interactions', function () {
                 makingAmount: ether('15'),
                 takingAmount: ether('0.015'),
                 maker: addr1.address,
-                constraints: buildConstraints({ nonce: 0 }),
+                makerTraits: buildMakerTraits({ nonce: 0 }),
             });
 
             const signature = await signOrder(order, chainId, swap.address, addr1);
@@ -174,7 +174,7 @@ describe('Interactions', function () {
                 makingAmount: ether('10'),
                 takingAmount: ether('0.01'),
                 maker: addr1.address,
-                constraints: buildConstraints({ nonce: 0 }),
+                makerTraits: buildMakerTraits({ nonce: 0 }),
             });
 
             const order2 = buildOrder({
@@ -183,7 +183,7 @@ describe('Interactions', function () {
                 makingAmount: ether('15'),
                 takingAmount: ether('0.015'),
                 maker: addr1.address,
-                constraints: buildConstraints({ nonce: 0 }),
+                makerTraits: buildMakerTraits({ nonce: 0 }),
             });
 
             const backOrder = buildOrder({
@@ -192,7 +192,7 @@ describe('Interactions', function () {
                 makingAmount: ether('0.025'),
                 takingAmount: ether('25'),
                 maker: addr.address,
-                constraints: buildConstraints({ nonce: 0 }),
+                makerTraits: buildMakerTraits({ nonce: 0 }),
             });
 
             const signature1 = await signOrder(order1, chainId, swap.address, addr1);
@@ -269,7 +269,7 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr1.address,
-                    constraints: buildConstraints(),
+                    makerTraits: buildMakerTraits(),
                 },
                 {
                     preInteraction: hashChecker.address,
@@ -303,7 +303,7 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr1.address,
-                    constraints: buildConstraints(),
+                    makerTraits: buildMakerTraits(),
                 },
                 {
                     preInteraction: hashChecker.address,
@@ -340,7 +340,7 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr.address,
-                    constraints: buildConstraints({ allowMultipleFills: true }),
+                    makerTraits: buildMakerTraits({ allowMultipleFills: true }),
                 },
                 {
                     preInteraction: orderIdInvalidator.address + orderId.toString(16).padStart(8, '0'),
@@ -381,7 +381,7 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr.address,
-                    constraints: buildConstraints(),
+                    makerTraits: buildMakerTraits(),
                 },
                 {
                     preInteraction,
@@ -395,7 +395,7 @@ describe('Interactions', function () {
                     makingAmount: ether('50'),
                     takingAmount: ether('0.05'),
                     maker: addr.address,
-                    constraints: buildConstraints(),
+                    makerTraits: buildMakerTraits(),
                 },
                 {
                     preInteraction,
@@ -437,7 +437,7 @@ describe('Interactions', function () {
             makingAmount: ether('0.1'),
             takingAmount: ether('50'),
             maker: addr1.address,
-            constraints: buildConstraints({ expiry: 0xff00000000 }),
+            makerTraits: buildMakerTraits({ expiry: 0xff00000000 }),
         });
 
         const signature = await signOrder(order, chainId, swap.address, addr1);

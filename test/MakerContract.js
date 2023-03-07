@@ -1,6 +1,6 @@
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { expect } = require('@1inch/solidity-utils');
-const { ABIOrder, fillWithMakingAmount, buildConstraints, buildOrderRFQ } = require('./helpers/orderUtils');
+const { ABIOrder, fillWithMakingAmount, buildMakerTraits, buildOrderRFQ } = require('./helpers/orderUtils');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
 const { deploySwap, deployUSDC, deployUSDT } = require('./helpers/fixtures');
@@ -49,7 +49,7 @@ describe('MakerContract', function () {
             takerAsset: usdt.address,
             makingAmount: 1000000000,
             takingAmount: 1000700000,
-            constraints: buildConstraints({ nonce: 1 }),
+            makerTraits: buildMakerTraits({ nonce: 1 }),
         });
 
         const order2 = buildOrderRFQ({
@@ -58,7 +58,7 @@ describe('MakerContract', function () {
             takerAsset: usdt.address,
             makingAmount: 1000000000,
             takingAmount: 1000700000,
-            constraints: buildConstraints({ nonce: 2 }),
+            makerTraits: buildMakerTraits({ nonce: 2 }),
         });
 
         const signature = abiCoder.encode([ABIOrder], [order]);

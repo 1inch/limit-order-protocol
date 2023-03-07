@@ -13,7 +13,7 @@ import "../OrderLib.sol";
 contract ETHOrders is IPostInteraction, OnlyWethReceiver {
     using SafeERC20 for IWETH;
     using OrderLib for IOrderMixin.Order;
-    using ConstraintsLib for Constraints;
+    using MakerTraitsLib for MakerTraits;
     using ExtensionLib for bytes;
     using AddressLib for Address;
 
@@ -66,7 +66,7 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
      * @notice Checks if ETH order is valid, makes ETH deposit for an order, saves real maker and wraps ETH into WETH.
      */
     function ethOrderDeposit(IOrderMixin.Order calldata order, bytes calldata extension) external payable returns(bytes32 orderHash) {
-        if (!order.constraints.needPostInteractionCall()) revert InvalidOrder();
+        if (!order.makerTraits.needPostInteractionCall()) revert InvalidOrder();
         order.validateExtension(extension);
         if (order.maker.get() != address(this)) revert AccessDenied();
         if (extension.getReceiver(order) != msg.sender) revert AccessDenied();
@@ -86,9 +86,9 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
     /**
      * @notice Sets ordersMakersBalances to 0, refunds ETH and does standard order cancellation on Limit Order Protocol.
      */
-    function cancelOrder(Constraints orderConstraints, bytes32 orderHash) external {
+    function cancelOrder(MakerTraits makerTraits, bytes32 orderHash) external {
         if (ordersMakersBalances[orderHash].maker != msg.sender) revert InvalidOrder();
-        IOrderMixin(_limitOrderProtocol).cancelOrder(orderConstraints, orderHash);
+        IOrderMixin(_limitOrderProtocol).cancelOrder(makerTraits, orderHash);
         uint256 refundETHAmount = ordersMakersBalances[orderHash].balance;
         ordersMakersBalances[orderHash].balance = 0;
         _WETH.safeWithdrawTo(refundETHAmount, msg.sender);

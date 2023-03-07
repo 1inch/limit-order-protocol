@@ -3,7 +3,7 @@
 pragma solidity 0.8.19;
 
 import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
-import "../libraries/ConstraintsLib.sol";
+import "../libraries/MakerTraitsLib.sol";
 import "../libraries/LimitsLib.sol";
 
 interface IOrderMixin {
@@ -14,7 +14,7 @@ interface IOrderMixin {
         Address takerAsset;
         uint256 makingAmount;
         uint256 takingAmount;
-        Constraints constraints;
+        MakerTraits makerTraits;
     }
 
     error InvalidatedOrder();
@@ -72,24 +72,24 @@ interface IOrderMixin {
 
     /**
      * @notice Cancels order's quote
-     * @param orderConstraints Order constraints
+     * @param makerTraits Order makerTraits
      * @param orderHash Hash of the order to cancel
      */
-    function cancelOrder(Constraints orderConstraints, bytes32 orderHash) external;
+    function cancelOrder(MakerTraits makerTraits, bytes32 orderHash) external;
 
     /**
      * @notice Cancels orders' quotes
-     * @param orderConstraints Orders constraints
+     * @param makerTraits Orders makerTraits
      * @param orderHashes Hashes of the orders to cancel
      */
-    function cancelOrders(Constraints[] calldata orderConstraints, bytes32[] calldata orderHashes) external;
+    function cancelOrders(MakerTraits[] calldata makerTraits, bytes32[] calldata orderHashes) external;
 
     /**
      * @notice Cancels all quotes of the maker (works for bit-invalidating orders only)
-     * @param orderConstraints Order constraints
+     * @param makerTraits Order makerTraits
      * @param additionalMask Additional bitmask to invalidate orders
      */
-    function bitsInvalidateForOrder(Constraints orderConstraints, uint256 additionalMask) external;
+    function bitsInvalidateForOrder(MakerTraits makerTraits, uint256 additionalMask) external;
 
 
     /**

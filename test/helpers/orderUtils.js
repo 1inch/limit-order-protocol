@@ -11,7 +11,7 @@ const Order = [
     { name: 'takerAsset', type: 'address' },
     { name: 'makingAmount', type: 'uint256' },
     { name: 'takingAmount', type: 'uint256' },
-    { name: 'constraints', type: 'uint256' },
+    { name: 'makerTraits', type: 'uint256' },
 ];
 
 const ABIOrder = {
@@ -33,7 +33,7 @@ const _HAS_EXTENSION_FLAG = 249n;
 const _USE_PERMIT2_FLAG = 248n;
 const _UNWRAP_WETH_MAKER_FLAG = 247n;
 
-function buildConstraints ({
+function buildMakerTraits ({
     allowedSender = constants.ZERO_ADDRESS,
     shouldCheckEpoch = false,
     allowPartialFill = true,
@@ -55,7 +55,7 @@ function buildConstraints ({
         BigInt(expiry).toString(16).padStart(10, '0') +
         (BigInt(allowedSender) & ((1n << 80n) - 1n)).toString(16).padStart(20, '0'); // Truncate address to 80 bits
 
-    assert(res.length === 52, 'Constraints should be 25 bytes long');
+    assert(res.length === 52, 'MakerTraits should be 25 bytes long');
 
     if (unwrapWethMaker) {
         res = '0x' + setn(BigInt(res), _UNWRAP_WETH_MAKER_FLAG, true).toString(16).padStart(64, '0');
@@ -85,7 +85,7 @@ function buildOrderRFQ (
         takerAsset,
         makingAmount,
         takingAmount,
-        constraints = '0',
+        makerTraits = '0',
     },
     {
         receiver = '0x',
@@ -99,10 +99,10 @@ function buildOrderRFQ (
         postInteraction = '0x',
     } = {},
 ) {
-    constraints = '0x' + setn(BigInt(constraints), _ALLOW_MULTIPLE_FILLS_FLAG, false).toString(16).padStart(64, '0');
-    constraints = '0x' + setn(BigInt(constraints), _NO_PARTIAL_FILLS_FLAG, false).toString(16).padStart(64, '0');
-    constraints = '0x' + setn(BigInt(constraints), _NO_PRICE_IMPROVEMENT_FLAG, false).toString(16).padStart(64, '0');
-    constraints = '0x' + setn(BigInt(constraints), _NEED_EPOCH_CHECK_FLAG, false).toString(16).padStart(64, '0');
+    makerTraits = '0x' + setn(BigInt(makerTraits), _ALLOW_MULTIPLE_FILLS_FLAG, false).toString(16).padStart(64, '0');
+    makerTraits = '0x' + setn(BigInt(makerTraits), _NO_PARTIAL_FILLS_FLAG, false).toString(16).padStart(64, '0');
+    makerTraits = '0x' + setn(BigInt(makerTraits), _NO_PRICE_IMPROVEMENT_FLAG, false).toString(16).padStart(64, '0');
+    makerTraits = '0x' + setn(BigInt(makerTraits), _NEED_EPOCH_CHECK_FLAG, false).toString(16).padStart(64, '0');
 
     return buildOrder(
         {
@@ -111,7 +111,7 @@ function buildOrderRFQ (
             takerAsset,
             makingAmount,
             takingAmount,
-            constraints,
+            makerTraits,
         },
         {
             receiver,
@@ -134,7 +134,7 @@ function buildOrder (
         takerAsset,
         makingAmount,
         takingAmount,
-        constraints = '0',
+        makerTraits = '0',
     },
     {
         receiver = '0x',
@@ -181,15 +181,15 @@ function buildOrder (
     let salt = '1';
     if (trim0x(extension).length > 0) {
         salt = BigInt(keccak256(extension)) & ((1n << 160n) - 1n); // Use 160 bit of extension hash
-        constraints = BigInt(constraints) | (1n << _HAS_EXTENSION_FLAG);
+        makerTraits = BigInt(makerTraits) | (1n << _HAS_EXTENSION_FLAG);
     }
 
     if (trim0x(preInteraction).length > 0) {
-        constraints = BigInt(constraints) | (1n << _NEED_PREINTERACTION_FLAG);
+        makerTraits = BigInt(makerTraits) | (1n << _NEED_PREINTERACTION_FLAG);
     }
 
     if (trim0x(postInteraction).length > 0) {
-        constraints = BigInt(constraints) | (1n << _NEED_POSTINTERACTION_FLAG);
+        makerTraits = BigInt(makerTraits) | (1n << _NEED_POSTINTERACTION_FLAG);
     }
 
     return {
@@ -199,7 +199,7 @@ function buildOrder (
         takerAsset,
         makingAmount,
         takingAmount,
-        constraints,
+        makerTraits,
         extension,
     };
 }
@@ -239,7 +239,7 @@ function skipOrderPermit (amount) {
 
 module.exports = {
     ABIOrder,
-    buildConstraints,
+    buildMakerTraits,
     buildOrder,
     buildOrderRFQ,
     buildOrderData,
