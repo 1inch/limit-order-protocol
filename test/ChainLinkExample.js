@@ -28,10 +28,10 @@ describe('ChainLinkExample', function () {
         const { dai, weth, inch, swap, chainId } = await deploySwapTokens();
 
         await dai.mint(addr.address, ether('1000000'));
-        await weth.mint(addr.address, ether('1000000'));
+        await weth.deposit({ value: ether('100') });
         await inch.mint(addr.address, ether('1000000'));
         await dai.mint(addr1.address, ether('1000000'));
-        await weth.mint(addr1.address, ether('1000000'));
+        await weth.connect(addr1).deposit({ value: ether('100') });
         await inch.mint(addr1.address, ether('1000000'));
 
         await dai.approve(swap.address, ether('1000000'));

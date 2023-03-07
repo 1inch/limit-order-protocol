@@ -14,14 +14,14 @@ describe('LimitOrderProtocol', function () {
     });
 
     async function initContracts (dai, weth, swap) {
-        await dai.mint(addr1.address, ether('1000000000000'));
-        await weth.mint(addr1.address, ether('1000000000000'));
-        await dai.mint(addr.address, ether('1000000000000'));
-        await weth.mint(addr.address, ether('1000000000000'));
-        await dai.approve(swap.address, ether('1000000000000'));
-        await weth.approve(swap.address, ether('1000000000000'));
-        await dai.connect(addr1).approve(swap.address, ether('1000000000000'));
-        await weth.connect(addr1).approve(swap.address, ether('1000000000000'));
+        await dai.mint(addr1.address, ether('1000000'));
+        await dai.mint(addr.address, ether('1000000'));
+        await weth.deposit({ value: ether('100') });
+        await weth.connect(addr1).deposit({ value: ether('100') });
+        await dai.approve(swap.address, ether('1000000'));
+        await dai.connect(addr1).approve(swap.address, ether('1000000'));
+        await weth.approve(swap.address, ether('100'));
+        await weth.connect(addr1).approve(swap.address, ether('100'));
     };
 
     describe('wip', function () {
