@@ -74,18 +74,10 @@ describe('ChainLinkExample', function () {
 
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
-        const makerDai = await dai.balanceOf(addr1.address);
-        const takerDai = await dai.balanceOf(addr.address);
-        const makerWeth = await weth.balanceOf(addr1.address);
-        const takerWeth = await weth.balanceOf(addr.address);
-
         const { r, vs } = compactSignature(signature);
-        await swap.fillOrderExt(order, r, vs, ether('1'), fillWithMakingAmount(ether('4040.01')), order.extension); // taking threshold = 4000 + 1% + eps
-
-        expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(ether('4040')));
-        expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(ether('4040')));
-        expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.sub(ether('1')));
-        expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.add(ether('1')));
+        await expect(swap.fillOrderExt(order, r, vs, ether('1'), fillWithMakingAmount(ether('4040.01')), order.extension)) // taking threshold = 4000 + 1% + eps
+            .to.changeTokenBalances(dai, [addr, addr1], [ether('-4040'), ether('4040')])
+            .to.changeTokenBalances(weth, [addr, addr1], [ether('1'), ether('-1')]);
     });
 
     it('dai -> 1inch stop loss order', async function () {
@@ -106,25 +98,15 @@ describe('ChainLinkExample', function () {
                 takingAmount,
                 maker: addr1.address,
             }, {
-                makingAmountGetter: '0x',
-                takingAmountGetter: '0x',
                 predicate: swap.interface.encodeFunctionData('lt', [ether('6.32'), priceCall]),
             },
         );
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
-        const makerDai = await dai.balanceOf(addr1.address);
-        const takerDai = await dai.balanceOf(addr.address);
-        const makerInch = await inch.balanceOf(addr1.address);
-        const takerInch = await inch.balanceOf(addr.address);
-
         const { r, vs } = compactSignature(signature);
-        await swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount.add(ether('0.01'))), order.extension); // taking threshold = exact taker amount + eps
-
-        expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(takingAmount));
-        expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(takingAmount));
-        expect(await inch.balanceOf(addr1.address)).to.equal(makerInch.sub(makingAmount));
-        expect(await inch.balanceOf(addr.address)).to.equal(takerInch.add(makingAmount));
+        await expect(swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount.add(ether('0.01'))), order.extension)) // taking threshold = exact taker amount + eps
+            .to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount])
+            .to.changeTokenBalances(inch, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
     });
 
     it('dai -> 1inch stop loss order predicate is invalid', async function () {
@@ -143,8 +125,6 @@ describe('ChainLinkExample', function () {
                 maker: addr1.address,
             },
             {
-                makingAmountGetter: '0x',
-                takingAmountGetter: '0x',
                 predicate: swap.interface.encodeFunctionData('lt', [ether('6.31'), priceCall]),
             },
         );
@@ -175,24 +155,14 @@ describe('ChainLinkExample', function () {
                 maker: addr1.address,
             },
             {
-                makingAmountGetter: '0x',
-                takingAmountGetter: '0x',
                 predicate: swap.interface.encodeFunctionData('lt', [ether('0.0002501'), latestAnswerCall]),
             },
         );
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
-        const makerDai = await dai.balanceOf(addr1.address);
-        const takerDai = await dai.balanceOf(addr.address);
-        const makerWeth = await weth.balanceOf(addr1.address);
-        const takerWeth = await weth.balanceOf(addr.address);
-
         const { r, vs } = compactSignature(signature);
-        await swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount), order.extension);
-
-        expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(takingAmount));
-        expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(takingAmount));
-        expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.sub(makingAmount));
-        expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.add(makingAmount));
+        await expect(swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount), order.extension))
+            .to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount])
+            .to.changeTokenBalances(weth, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
     });
 });
