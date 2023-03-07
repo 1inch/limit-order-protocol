@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 
 import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 import "../libraries/MakerTraitsLib.sol";
-import "../libraries/LimitsLib.sol";
+import "../libraries/TakerTraitsLib.sol";
 
 interface IOrderMixin {
     struct Order {
@@ -105,7 +105,7 @@ interface IOrderMixin {
      * @param r R component of signature
      * @param vs VS component of signature
      * @param amount Taker amount to fill
-     * @param limits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -115,7 +115,7 @@ interface IOrderMixin {
         bytes32 r,
         bytes32 vs,
         uint256 amount,
-        Limits limits
+        TakerTraits takerTraits
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
@@ -124,7 +124,7 @@ interface IOrderMixin {
      * @param r R component of signature
      * @param vs VS component of signature
      * @param amount Taker amount to fill
-     * @param limits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
      * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @return makingAmount Actual amount transferred from maker to taker
@@ -136,7 +136,7 @@ interface IOrderMixin {
         bytes32 r,
         bytes32 vs,
         uint256 amount,
-        Limits limits,
+        TakerTraits takerTraits,
         address target,
         bytes calldata interaction
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
@@ -146,7 +146,7 @@ interface IOrderMixin {
         bytes32 r,
         bytes32 vs,
         uint256 amount,
-        Limits limits,
+        TakerTraits takerTraits,
         address target,
         bytes calldata interaction,
         bytes calldata extension
@@ -160,7 +160,7 @@ interface IOrderMixin {
      * @param r R component of signature
      * @param vs VS component of signature
      * @param amount Taker amount to fill
-     * @param limits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
      * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
@@ -174,7 +174,7 @@ interface IOrderMixin {
         bytes32 r,
         bytes32 vs,
         uint256 amount,
-        Limits limits,
+        TakerTraits takerTraits,
         address target,
         bytes calldata interaction,
         bytes calldata permit
@@ -187,7 +187,7 @@ interface IOrderMixin {
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
      * @param amount Taker amount to fill
-     * @param limits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
      * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
@@ -200,7 +200,7 @@ interface IOrderMixin {
         Order calldata order,
         bytes calldata signature,
         uint256 amount,
-        Limits limits,
+        TakerTraits takerTraits,
         address target,
         bytes calldata interaction,
         bytes calldata permit

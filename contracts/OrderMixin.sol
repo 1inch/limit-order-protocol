@@ -17,7 +17,7 @@ import "./interfaces/IPreInteraction.sol";
 import "./interfaces/IPostInteraction.sol";
 import "./interfaces/IOrderMixin.sol";
 import "./libraries/Errors.sol";
-import "./libraries/LimitsLib.sol";
+import "./libraries/TakerTraitsLib.sol";
 import "./libraries/BitInvalidatorLib.sol";
 import "./libraries/RemainingInvalidatorLib.sol";
 import "./OrderLib.sol";
@@ -30,7 +30,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     using ExtensionLib for bytes;
     using AddressLib for Address;
     using MakerTraitsLib for MakerTraits;
-    using LimitsLib for Limits;
+    using TakerTraitsLib for TakerTraits;
     using BitInvalidatorLib for BitInvalidatorLib.Data;
     using RemainingInvalidatorLib for RemainingInvalidator;
 
@@ -118,9 +118,9 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes32 r,
         bytes32 vs,
         uint256 amount,
-        Limits limits
+        TakerTraits takerTraits
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        return fillOrderTo(order, r, vs, amount, limits, msg.sender, msg.data[:0]);
+        return fillOrderTo(order, r, vs, amount, takerTraits, msg.sender, msg.data[:0]);
     }
 
     /**
@@ -131,10 +131,10 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes32 r,
         bytes32 vs,
         uint256 amount,
-        Limits limits,
+        TakerTraits takerTraits,
         bytes calldata extension
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        return fillOrderToExt(order, r, vs, amount, limits, msg.sender, msg.data[:0], extension);
+        return fillOrderToExt(order, r, vs, amount, takerTraits, msg.sender, msg.data[:0], extension);
     }
 
     /**
@@ -145,11 +145,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes32 r,
         bytes32 vs,
         uint256 amount,
-        Limits limits,
+        TakerTraits takerTraits,
         address target,
         bytes calldata interaction
     ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        return fillOrderToExt(order, r, vs, amount, limits, target, interaction, msg.data[:0]);
+        return fillOrderToExt(order, r, vs, amount, takerTraits, target, interaction, msg.data[:0]);
     }
 
     function fillOrderToExt(
@@ -157,7 +157,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes32 r,
         bytes32 vs,
         uint256 amount,
-        Limits limits,
+        TakerTraits takerTraits,
         address target,
         bytes calldata interaction,
         bytes calldata extension
@@ -169,12 +169,12 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         uint256 remainingMakingAmount = _checkRemainingMakingAmount(order, orderHash);
         if (remainingMakingAmount == order.makingAmount) {
             if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert BadSignature();
-            if (!limits.skipOrderPermit()) {
+            if (!takerTraits.skipOrderPermit()) {
                 _applyOrderPermit(order, orderHash, extension);
             }
         }
 
-        (makingAmount, takingAmount) = _fillOrderTo(order, orderHash, extension, remainingMakingAmount, amount, limits, target, _wrap(interaction));
+        (makingAmount, takingAmount) = _fillOrderTo(order, orderHash, extension, remainingMakingAmount, amount, takerTraits, target, _wrap(interaction));
     }
 
     /**
@@ -185,13 +185,13 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes32 r,
         bytes32 vs,
         uint256 amount,
-        Limits limits,
+        TakerTraits takerTraits,
         address target,
         bytes calldata interaction,
         bytes calldata permit
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         IERC20(order.takerAsset.get()).safePermit(permit);
-        return fillOrderTo(order, r, vs, amount, limits, target, interaction);
+        return fillOrderTo(order, r, vs, amount, takerTraits, target, interaction);
     }
 
     /**
@@ -201,19 +201,19 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         IOrderMixin.Order calldata order,
         bytes calldata signature,
         uint256 amount,
-        Limits limits,
+        TakerTraits takerTraits,
         address target,
         bytes calldata interaction,
         bytes calldata permit
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        return fillContractOrderExt(order, signature, amount, limits, target, interaction, permit, msg.data[:0]);
+        return fillContractOrderExt(order, signature, amount, takerTraits, target, interaction, permit, msg.data[:0]);
     }
 
     function fillContractOrderExt(
         IOrderMixin.Order calldata order,
         bytes calldata signature,
         uint256 amount,
-        Limits limits,
+        TakerTraits takerTraits,
         address target,
         bytes calldata interaction,
         bytes calldata permit,
@@ -229,12 +229,12 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         uint256 remainingMakingAmount = _checkRemainingMakingAmount(order, orderHash);
         if (remainingMakingAmount == order.makingAmount) {
             if (!ECDSA.isValidSignature(order.maker.get(), orderHash, signature)) revert BadSignature();
-            if (!limits.skipOrderPermit()) {
+            if (!takerTraits.skipOrderPermit()) {
                 _applyOrderPermit(order, orderHash, extension);
             }
         }
 
-        (makingAmount, takingAmount) = _fillOrderTo(order, orderHash, extension, remainingMakingAmount, amount, limits, target, _wrap(interaction));
+        (makingAmount, takingAmount) = _fillOrderTo(order, orderHash, extension, remainingMakingAmount, amount, takerTraits, target, _wrap(interaction));
     }
 
     function _fillOrderTo(
@@ -243,7 +243,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes calldata extension,
         uint256 remainingMakingAmount,
         uint256 amount,
-        Limits limits,
+        TakerTraits takerTraits,
         address target,
         WrappedCalldata interactionWrapped // Stack too deep
     ) private returns(uint256 makingAmount, uint256 takingAmount) {
@@ -268,11 +268,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         }
 
         // Compute maker and taker assets amount
-        if (limits.isMakingAmount()) {
+        if (takerTraits.isMakingAmount()) {
             makingAmount = Math.min(amount, remainingMakingAmount);
             takingAmount = order.calculateTakingAmount(extension, makingAmount, remainingMakingAmount, orderHash);
 
-            uint256 threshold = limits.threshold();
+            uint256 threshold = takerTraits.threshold();
             if (threshold > 0) {
                 // Check rate: takingAmount / makingAmount <= threshold / amount
                 if (amount == makingAmount) {  // Gas optimization, no SafeMath.mul()
@@ -292,7 +292,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 if (takingAmount > amount) revert TakingAmountExceeded();
             }
 
-            uint256 threshold = limits.threshold();
+            uint256 threshold = takerTraits.threshold();
             if (threshold > 0) {
                 // Check rate: makingAmount / takingAmount >= threshold / amount
                 if (amount == takingAmount) { // Gas optimization, no SafeMath.mul()
@@ -326,7 +326,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         }
 
         // Maker => Taker
-        if (order.makerAsset.get() == address(_WETH) && limits.unwrapWethTaker()) {
+        if (order.makerAsset.get() == address(_WETH) && takerTraits.unwrapWeth()) {
             _WETH.safeTransferFrom(order.maker.get(), address(this), makingAmount);
             _WETH.safeWithdrawTo(makingAmount, target);
         } else {
@@ -386,7 +386,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
 
             bool needUnwrap = order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth();
             address receiver = needUnwrap ? address(this) : extension.getReceiver(order);
-            if (limits.usePermit2()) {
+            if (takerTraits.usePermit2()) {
                 if (extension.takerAssetData().length > 0) revert InvalidPermit2Transfer();
                 if (!_callPermit2TransferFrom(
                     order.takerAsset.get(),
