@@ -31,7 +31,7 @@ const _NEED_POSTINTERACTION_FLAG = 251n;
 const _NEED_EPOCH_CHECK_FLAG = 250n;
 const _HAS_EXTENSION_FLAG = 249n;
 const _USE_PERMIT2_FLAG = 248n;
-const _SHOULD_UNWRAP_WETH_FLAG = 247n;
+const _UNWRAP_WETH_MAKER_FLAG = 247n;
 
 function buildConstraints ({
     allowedSender = constants.ZERO_ADDRESS,
@@ -58,7 +58,7 @@ function buildConstraints ({
     assert(res.length === 52, 'Constraints should be 25 bytes long');
 
     if (shouldUnwrapWeth) {
-        res = '0x' + setn(BigInt(res), _SHOULD_UNWRAP_WETH_FLAG, true).toString(16).padStart(64, '0');
+        res = '0x' + setn(BigInt(res), _UNWRAP_WETH_MAKER_FLAG, true).toString(16).padStart(64, '0');
     }
     if (allowMultipleFills) {
         res = '0x' + setn(BigInt(res), _ALLOW_MULTIPLE_FILLS_FLAG, true).toString(16).padStart(64, '0');
@@ -225,11 +225,11 @@ function compactSignature (signature) {
     };
 }
 
-function makeMakingAmount (amount) {
+function fillWithMakingAmount (amount) {
     return (BigInt(amount) | (1n << 255n)).toString();
 }
 
-function makeUnwrapWeth (amount) {
+function unwrapWethTaker (amount) {
     return (BigInt(amount) | (1n << 254n)).toString();
 }
 
@@ -245,8 +245,8 @@ module.exports = {
     buildOrderData,
     signOrder,
     compactSignature,
-    makeMakingAmount,
-    makeUnwrapWeth,
+    fillWithMakingAmount,
+    unwrapWethTaker,
     skipOrderPermit,
     name,
     version,

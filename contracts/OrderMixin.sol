@@ -326,7 +326,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         }
 
         // Maker => Taker
-        if (order.makerAsset.get() == address(_WETH) && limits.needUnwrapWeth()) {
+        if (order.makerAsset.get() == address(_WETH) && limits.unwrapWethTaker()) {
             _WETH.safeTransferFrom(order.maker.get(), address(this), makingAmount);
             _WETH.safeWithdrawTo(makingAmount, target);
         } else {
@@ -373,7 +373,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 }
             }
 
-            if (order.constraints.shouldUnwrapWETH()) {
+            if (order.constraints.unwrapWethMaker()) {
                 // solhint-disable-next-line avoid-low-level-calls
                 (bool success, ) = extension.getReceiver(order).call{value: takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
                 if (!success) revert Errors.ETHTransferFailed();
@@ -384,7 +384,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
 
-            bool needUnwrap = order.takerAsset.get() == address(_WETH) && order.constraints.shouldUnwrapWETH();
+            bool needUnwrap = order.takerAsset.get() == address(_WETH) && order.constraints.unwrapWethMaker();
             address receiver = needUnwrap ? address(this) : extension.getReceiver(order);
             if (limits.usePermit2()) {
                 if (extension.takerAssetData().length > 0) revert InvalidPermit2Transfer();

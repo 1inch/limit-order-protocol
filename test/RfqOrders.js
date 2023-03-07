@@ -1,7 +1,7 @@
 const { ethers } = require('hardhat');
 const { expect, time, profileEVM, trackReceivedTokenAndTx, getPermit2, permit2Contract } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { buildOrderRFQ, signOrder, compactSignature, makeMakingAmount, makeUnwrapWeth, buildConstraints, buildOrderData } = require('./helpers/orderUtils');
+const { buildOrderRFQ, signOrder, compactSignature, fillWithMakingAmount, unwrapWethTaker, buildConstraints, buildOrderData } = require('./helpers/orderUtils');
 const { getPermit } = require('./helpers/eip712');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { constants } = require('ethers');
@@ -56,7 +56,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const takerWeth = await weth.balanceOf(addr.address);
 
                 const { r, vs } = compactSignature(signature);
-                const receipt = await swap.fillOrder(order, r, vs, 1, makeMakingAmount(1));
+                const receipt = await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
 
                 expect(
                     await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
@@ -94,7 +94,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const takerWeth = await weth.balanceOf(addr.address);
 
                 const { r, vs } = compactSignature(signature);
-                await swap.fillOrderToWithPermit(order, r, vs, 1, makeMakingAmount(1), addr.address, emptyInteraction, permit);
+                await swap.fillOrderToWithPermit(order, r, vs, 1, fillWithMakingAmount(1), addr.address, emptyInteraction, permit);
 
                 expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
                 expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -124,7 +124,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const takerWeth = await weth.balanceOf(addr.address);
 
                 const { r, vs } = compactSignature(signature);
-                await swap.fillOrderToWithPermit(order, r, vs, 1, makeMakingAmount(1), addr.address, emptyInteraction, permit);
+                await swap.fillOrderToWithPermit(order, r, vs, 1, fillWithMakingAmount(1), addr.address, emptyInteraction, permit);
 
                 expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
                 expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -247,7 +247,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
             const { r, vs } = compactSignature(signature);
             await expect(
-                swap.fillOrder(order, r, vs, 1, makeMakingAmount(1)),
+                swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1)),
             ).to.be.revertedWithCustomError(swap, 'BitInvalidatedOrder');
         });
     });
@@ -271,7 +271,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerWeth = await weth.balanceOf(addr.address);
 
             const { r, vs } = compactSignature(signature);
-            await swap.fillOrder(order, r, vs, 1, makeMakingAmount(1));
+            await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -297,7 +297,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerWeth = await weth.balanceOf(addr.address);
 
             const { r, vs } = compactSignature(signature);
-            await swap.fillOrder(order, r, vs, 1, makeMakingAmount(1));
+            await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -363,7 +363,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
             const { r, vs } = compactSignature(signature);
             await expect(
-                swap.fillOrder(order, r, vs, makeMakingAmount(1), 1),
+                swap.fillOrder(order, r, vs, fillWithMakingAmount(1), 1),
             ).to.be.revertedWithCustomError(swap, 'OrderExpired');
         });
     });
@@ -414,7 +414,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const takerWeth = await weth.balanceOf(addr.address);
 
             const { r, vs } = compactSignature(signature);
-            await swap.fillOrder(order, r, vs, 3, makeUnwrapWeth(makeMakingAmount(900)));
+            await swap.fillOrder(order, r, vs, 3, unwrapWethTaker(fillWithMakingAmount(900)));
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.add(900));
             expect(await dai.balanceOf(addr.address)).to.equal(takerDai.sub(900));
@@ -436,7 +436,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
             const { r, vs } = compactSignature(signature);
             await expect(
-                swap.fillOrder(order, r, vs, 900, makeMakingAmount(3), { value: 2 }),
+                swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 2 }),
             ).to.be.revertedWithCustomError(swap, 'InvalidMsgValue');
         });
 
@@ -453,7 +453,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
             const signature = await signOrder(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
-            const promise = () => swap.fillOrder(order, r, vs, 900, makeMakingAmount(3), { value: 4 });
+            const promise = () => swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 4 });
             const [ethDiff] = await trackReceivedTokenAndTx(ethers.provider, { address: constants.AddressZero }, addr.address, promise);
             expect(ethDiff).to.equal(-3n);
         });
@@ -473,7 +473,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
             const { r, vs } = compactSignature(signature);
             await expect(
-                swap.fillOrder(order, r, vs, 900, makeMakingAmount(900), { value: 1 }),
+                swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(900), { value: 1 }),
             ).to.be.revertedWithCustomError(swap, 'InvalidMsgValue');
         });
     });
