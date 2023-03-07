@@ -372,26 +372,40 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                     if (!success) revert Errors.ETHTransferFailed();
                 }
             }
-            _WETH.safeDeposit(takingAmount);
-            _WETH.safeTransfer(extension.getReceiver(order), takingAmount);
+
+            if (order.constraints.shouldUnwrapWETH()) {
+                // solhint-disable-next-line avoid-low-level-calls
+                (bool success, ) = extension.getReceiver(order).call{value: takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
+                if (!success) revert Errors.ETHTransferFailed();
+            } else {
+                _WETH.safeDeposit(takingAmount);
+                _WETH.safeTransfer(extension.getReceiver(order), takingAmount);
+            }
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
+
+            bool needUnwrap = order.takerAsset.get() == address(_WETH) && order.constraints.shouldUnwrapWETH();
+            address receiver = needUnwrap ? address(this) : extension.getReceiver(order);
             if (limits.usePermit2()) {
                 if (extension.takerAssetData().length > 0) revert InvalidPermit2Transfer();
                 if (!_callPermit2TransferFrom(
                     order.takerAsset.get(),
                     msg.sender,
-                    extension.getReceiver(order),
+                    receiver,
                     takingAmount
                 )) revert Permit2TransferFromTakerToMakerFailed();
             } else {
                 if (!_callTransferFromWithSuffix(
                     order.takerAsset.get(),
                     msg.sender,
-                    extension.getReceiver(order),
+                    receiver,
                     takingAmount,
                     extension.takerAssetData()
                 )) revert TransferFromTakerToMakerFailed();
+            }
+
+            if (needUnwrap) {
+                _WETH.safeWithdrawTo(takingAmount, extension.getReceiver(order));
             }
         }
 

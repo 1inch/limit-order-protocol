@@ -22,6 +22,7 @@ library ConstraintsLib {
     uint256 private constant _NEED_CHECK_EPOCH_MANAGER_FLAG = 1 << 250;
     uint256 private constant _HAS_EXTENSION_FLAG = 1 << 249;
     uint256 private constant _USE_PERMIT2_FLAG = 1 << 248;
+    uint256 private constant _SHOULD_UNWRAP_WETH = 1 << 247;
 
     function hasExtension(Constraints constraints) internal pure returns (bool) {
         return (Constraints.unwrap(constraints) & _HAS_EXTENSION_FLAG) != 0;
@@ -75,5 +76,9 @@ library ConstraintsLib {
 
     function usePermit2(Constraints constraints) internal pure returns (bool) {
         return Constraints.unwrap(constraints) & _USE_PERMIT2_FLAG != 0;
+    }
+
+    function shouldUnwrapWETH(Constraints constraints) internal pure returns (bool) {
+        return Constraints.unwrap(constraints) & _SHOULD_UNWRAP_WETH != 0;
     }
 }
