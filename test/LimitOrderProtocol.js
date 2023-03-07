@@ -891,8 +891,6 @@ describe('LimitOrderProtocol', function () {
                 makerTraits: buildMakerTraits({ expiry: 0xff0000n }),
             });
 
-            console.log(order);
-
             const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
             await expect(swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1)))
                 .to.be.revertedWithCustomError(swap, 'OrderExpired');
