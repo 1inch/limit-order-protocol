@@ -32,6 +32,30 @@ const _NEED_EPOCH_CHECK_FLAG = 250n;
 const _HAS_EXTENSION_FLAG = 249n;
 const _USE_PERMIT2_FLAG = 248n;
 
+function buildConstraintsRFQ ({
+    allowedSender = constants.ZERO_ADDRESS,
+    shouldCheckEpoch = false,
+    allowPartialFill = true,
+    allowPriceImprovement = true,
+    allowMultipleFills = false,
+    usePermit2 = false,
+    expiry = 0,
+    nonce = 0,
+    series = 0,
+} = {}) {
+    return buildConstraints({
+        allowedSender,
+        shouldCheckEpoch,
+        allowPartialFill,
+        allowPriceImprovement,
+        allowMultipleFills,
+        usePermit2,
+        expiry,
+        nonce,
+        series,
+    });
+}
+
 function buildConstraints ({
     allowedSender = constants.ZERO_ADDRESS,
     shouldCheckEpoch = false,
@@ -129,7 +153,7 @@ function buildOrder (
         takerAsset,
         makingAmount,
         takingAmount,
-        constraints = '0',
+        constraints = buildConstraints(),
     },
     {
         receiver = '0x',
@@ -235,6 +259,7 @@ function skipOrderPermit (amount) {
 module.exports = {
     ABIOrder,
     buildConstraints,
+    buildConstraintsRFQ,
     buildOrder,
     buildOrderRFQ,
     buildOrderData,
