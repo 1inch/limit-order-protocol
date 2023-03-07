@@ -12,8 +12,8 @@ library ExtensionLib {
     using OffsetsLib for Offsets;
 
     enum DynamicField {
-        MakerAssetData,
-        TakerAssetData,
+        MakerAssetSuffix,
+        TakerAssetSuffix,
         MakingAmountGetter,
         TakingAmountGetter,
         Predicate,
@@ -32,12 +32,12 @@ library ExtensionLib {
         }
     }
 
-    function makerAssetData(bytes calldata extension) internal pure returns(bytes calldata) {
-        return _get(extension, DynamicField.MakerAssetData);
+    function makerAssetSuffix(bytes calldata extension) internal pure returns(bytes calldata) {
+        return _get(extension, DynamicField.MakerAssetSuffix);
     }
 
-    function takerAssetData(bytes calldata extension) internal pure returns(bytes calldata) {
-        return _get(extension, DynamicField.TakerAssetData);
+    function takerAssetSuffix(bytes calldata extension) internal pure returns(bytes calldata) {
+        return _get(extension, DynamicField.TakerAssetSuffix);
     }
 
     function makingAmountGetter(bytes calldata extension) internal pure returns(bytes calldata) {

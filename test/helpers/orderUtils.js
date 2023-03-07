@@ -89,8 +89,8 @@ function buildOrderRFQ (
     },
     {
         receiver = '0x',
-        makerAssetData = '0x',
-        takerAssetData = '0x',
+        makerAssetSuffix = '0x',
+        takerAssetSuffix = '0x',
         makingAmountGetter = '0x',
         takingAmountGetter = '0x',
         predicate = '0x',
@@ -115,8 +115,8 @@ function buildOrderRFQ (
         },
         {
             receiver,
-            makerAssetData,
-            takerAssetData,
+            makerAssetSuffix,
+            takerAssetSuffix,
             makingAmountGetter,
             takingAmountGetter,
             predicate,
@@ -138,8 +138,8 @@ function buildOrder (
     },
     {
         receiver = '0x',
-        makerAssetData = '0x',
-        takerAssetData = '0x',
+        makerAssetSuffix = '0x',
+        takerAssetSuffix = '0x',
         makingAmountGetter = '0x',
         takingAmountGetter = '0x',
         predicate = '0x',
@@ -149,8 +149,8 @@ function buildOrder (
     } = {},
 ) {
     const allInteractions = [
-        makerAssetData,
-        takerAssetData,
+        makerAssetSuffix,
+        takerAssetSuffix,
         makingAmountGetter,
         takingAmountGetter,
         predicate,

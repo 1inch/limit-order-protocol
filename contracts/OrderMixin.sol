@@ -331,7 +331,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             _WETH.safeWithdrawTo(makingAmount, target);
         } else {
             if (order.makerTraits.usePermit2()) {
-                if (extension.makerAssetData().length > 0) revert InvalidPermit2Transfer();
+                if (extension.makerAssetSuffix().length > 0) revert InvalidPermit2Transfer();
                 if (!_callPermit2TransferFrom(
                     order.makerAsset.get(),
                     order.maker.get(),
@@ -344,7 +344,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                     order.maker.get(),
                     target,
                     makingAmount,
-                    extension.makerAssetData()
+                    extension.makerAssetSuffix()
                 )) revert TransferFromMakerToTakerFailed();
             }
         }
@@ -387,7 +387,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             bool needUnwrap = order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth();
             address receiver = needUnwrap ? address(this) : extension.getReceiver(order);
             if (takerTraits.usePermit2()) {
-                if (extension.takerAssetData().length > 0) revert InvalidPermit2Transfer();
+                if (extension.takerAssetSuffix().length > 0) revert InvalidPermit2Transfer();
                 if (!_callPermit2TransferFrom(
                     order.takerAsset.get(),
                     msg.sender,
@@ -400,7 +400,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                     msg.sender,
                     receiver,
                     takingAmount,
-                    extension.takerAssetData()
+                    extension.takerAssetSuffix()
                 )) revert TransferFromTakerToMakerFailed();
             }
 
