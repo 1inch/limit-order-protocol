@@ -73,33 +73,18 @@ function buildMakerTraits ({
     assert(BigInt(nonce) >= 0 && BigInt(nonce) < (1n << 40n), 'Nonce should be less than 40 bits');
     assert(BigInt(series) >= 0 && BigInt(series) < (1n << 40n), 'Series should be less than 40 bits');
 
-    let res = '0x' +
-        BigInt(series).toString(16).padStart(10, '0') +
-        BigInt(nonce).toString(16).padStart(10, '0') +
-        BigInt(expiry).toString(16).padStart(10, '0') +
-        (BigInt(allowedSender) & ((1n << 80n) - 1n)).toString(16).padStart(20, '0'); // Truncate address to 80 bits
-
-    assert(res.length === 52, 'MakerTraits should be 25 bytes long');
-
-    if (unwrapWeth) {
-        res = '0x' + setn(BigInt(res), _UNWRAP_WETH_FLAG, true).toString(16).padStart(64, '0');
-    }
-    if (allowMultipleFills) {
-        res = '0x' + setn(BigInt(res), _ALLOW_MULTIPLE_FILLS_FLAG, true).toString(16).padStart(64, '0');
-    }
-    if (!allowPartialFill) {
-        res = '0x' + setn(BigInt(res), _NO_PARTIAL_FILLS_FLAG, true).toString(16).padStart(64, '0');
-    }
-    if (!allowPriceImprovement) {
-        res = '0x' + setn(BigInt(res), _NO_PRICE_IMPROVEMENT_FLAG, true).toString(16).padStart(64, '0');
-    }
-    if (shouldCheckEpoch) {
-        res = '0x' + setn(BigInt(res), _NEED_EPOCH_CHECK_FLAG, true).toString(16).padStart(64, '0');
-    }
-    if (usePermit2) {
-        res = '0x' + setn(BigInt(res), _USE_PERMIT2_FLAG, true).toString(16).padStart(64, '0');
-    }
-    return res;
+    return '0x' + (
+        (BigInt(series) << 160n) |
+        (BigInt(nonce) << 120n) |
+        (BigInt(expiry) << 80n) |
+        (BigInt(allowedSender) & ((1n << 80n) - 1n)) |
+        setn(0n, _UNWRAP_WETH_FLAG, unwrapWeth) |
+        setn(0n, _ALLOW_MULTIPLE_FILLS_FLAG, allowMultipleFills) |
+        setn(0n, _NO_PARTIAL_FILLS_FLAG, !allowPartialFill) |
+        setn(0n, _NO_PRICE_IMPROVEMENT_FLAG, !allowPriceImprovement) |
+        setn(0n, _NEED_EPOCH_CHECK_FLAG, shouldCheckEpoch) |
+        setn(0n, _USE_PERMIT2_FLAG, usePermit2)
+    ).toString(16).padStart(64, '0');
 }
 
 function buildOrderRFQ (
@@ -250,15 +235,15 @@ function compactSignature (signature) {
 }
 
 function fillWithMakingAmount (amount) {
-    return (BigInt(amount) | (1n << 255n)).toString();
+    return setn(amount, 255, true).toString();
 }
 
 function unwrapWethTaker (amount) {
-    return (BigInt(amount) | (1n << 254n)).toString();
+    return setn(amount, 254, true).toString();
 }
 
 function skipMakerPermit (amount) {
-    return (BigInt(amount) | (1n << 253n)).toString();
+    return setn(amount, 253, true).toString();
 }
 
 module.exports = {
