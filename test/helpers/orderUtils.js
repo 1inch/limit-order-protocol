@@ -40,7 +40,7 @@ function buildConstraints ({
     allowPriceImprovement = true,
     allowMultipleFills = true,
     usePermit2 = false,
-    shouldUnwrapWeth = false,
+    unwrapWethMaker = false,
     expiry = 0,
     nonce = 0,
     series = 0,
@@ -57,7 +57,7 @@ function buildConstraints ({
 
     assert(res.length === 52, 'Constraints should be 25 bytes long');
 
-    if (shouldUnwrapWeth) {
+    if (unwrapWethMaker) {
         res = '0x' + setn(BigInt(res), _UNWRAP_WETH_MAKER_FLAG, true).toString(16).padStart(64, '0');
     }
     if (allowMultipleFills) {

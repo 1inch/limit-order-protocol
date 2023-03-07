@@ -462,6 +462,38 @@ describe('LimitOrderProtocol', function () {
             await expect(swap.fillOrder(order, r, vs, 4, fillWithMakingAmount(1))).to.be.revertedWithCustomError(swap, 'OrderExpired');
         });
 
+        it('unwrap weth for maker', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            // Order: 10 DAI => 2 WETH
+            // Swap:  10 DAI => 2 ETH
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 10,
+                takingAmount: 2,
+                maker: addr1.address,
+                constraints: buildConstraints({ unwrapWethMaker: true }),
+            });
+            const signature = await signOrder(order, chainId, swap.address, addr1);
+
+            const makerDai = await dai.balanceOf(addr1.address);
+            const takerDai = await dai.balanceOf(addr.address);
+            const makerWeth = await weth.balanceOf(addr1.address);
+            const takerWeth = await weth.balanceOf(addr.address);
+            const makerEth = await addr1.getBalance();
+
+            const { r, vs } = compactSignature(signature);
+
+            await swap.fillOrder(order, r, vs, 10, fillWithMakingAmount(2));
+
+            expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(10));
+            expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(10));
+            expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth);
+            expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(2));
+            expect(await addr1.getBalance()).to.equal(makerEth.add(2));
+        });
+
         it('Allow taker rate improvement', async function () {
             const { dai, weth, swap, chainId, takerIncreaser } = await loadFixture(deployContractsAndInit);
             // Order: 10 DAI => 2 WETH
