@@ -24,7 +24,7 @@ describe('RangeAmountCalculator', function () {
             const fillAmount = ether('10');
             const remainingMakerAmount = totalLiquidity;
             expect(await rangeAmountCalculator.getRangeTakerAmount(priceStart, priceEnd, totalLiquidity, fillAmount, remainingMakerAmount))
-                .to.equal(ether('35000')); // 3500 * 10
+                .to.equal(ether('3500') * fillAmount);
         });
 
         it('Fill limit-order by half', async function () {
@@ -32,7 +32,7 @@ describe('RangeAmountCalculator', function () {
             const fillAmount = ether('5');
             const remainingMakerAmount = totalLiquidity;
             expect(await rangeAmountCalculator.getRangeTakerAmount(priceStart, priceEnd, totalLiquidity, fillAmount, remainingMakerAmount))
-                .to.equal(ether('16250')); // 3250 * 5
+                .to.equal(ether('3250') * fillAmount);
         });
 
         it('Fill limit-order 10 times', async function () {
@@ -41,12 +41,12 @@ describe('RangeAmountCalculator', function () {
 
             const fillOrderFor = async (fillAmount) => {
                 const amount = await rangeAmountCalculator.getRangeTakerAmount(priceStart, priceEnd, totalLiquidity, fillAmount, remainingMakerAmount);
-                remainingMakerAmount = remainingMakerAmount.sub(fillAmount);
+                remainingMakerAmount = remainingMakerAmount - fillAmount;
                 return amount;
             };
 
-            for (let i = 0; i < 10; i++) {
-                expect(await fillOrderFor(ether('1'))).to.equal(ether('3050').add(ether('100').mul(i)));
+            for (let i = 0n; i < 10n; i++) {
+                expect(await fillOrderFor(ether('1'))).to.equal(ether('3050') + ether('100') * i);
             }
         });
     });
@@ -88,12 +88,12 @@ describe('RangeAmountCalculator', function () {
 
             const fillOrderFor = async (fillAmount) => {
                 const amount = await rangeAmountCalculator.getRangeMakerAmount(priceStart, priceEnd, totalLiquidity, fillAmount, remainingMakerAmount);
-                remainingMakerAmount = remainingMakerAmount.sub(amount);
+                remainingMakerAmount = remainingMakerAmount - amount;
                 return amount;
             };
 
-            for (let i = 0; i < 10; i++) {
-                expect(await fillOrderFor(ether('3050').add(ether('100').mul(i)))).to.equal(ether('1'));
+            for (let i = 0n; i < 10n; i++) {
+                expect(await fillOrderFor(ether('3050') + ether('100') * i)).to.equal(ether('1'));
             }
         });
     });

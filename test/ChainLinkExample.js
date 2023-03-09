@@ -104,9 +104,9 @@ describe('ChainLinkExample', function () {
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.fillOrderExt(order, r, vs, makingAmount, makeMakingAmount(takingAmount.add(ether('0.01'))), order.extension)) // taking threshold = exact taker amount + eps
-            .to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount])
-            .to.changeTokenBalances(inch, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
+        await expect(swap.fillOrderExt(order, r, vs, makingAmount, makeMakingAmount(takingAmount + ether('0.01')), order.extension)) // taking threshold = exact taker amount + eps
+            .to.changeTokenBalances(dai, [addr, addr1], [-takingAmount, takingAmount])
+            .to.changeTokenBalances(inch, [addr, addr1], [makingAmount, -makingAmount]);
     });
 
     it('dai -> 1inch stop loss order predicate is invalid', async function () {
@@ -132,7 +132,7 @@ describe('ChainLinkExample', function () {
 
         const { r, vs } = compactSignature(signature);
         await expect(
-            swap.fillOrderExt(order, r, vs, makeMakingAmount(makingAmount), takingAmount.add(ether('0.01')), order.extension), // taking threshold = exact taker amount + eps
+            swap.fillOrderExt(order, r, vs, makeMakingAmount(makingAmount), takingAmount + ether('0.01'), order.extension), // taking threshold = exact taker amount + eps
         ).to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
     });
 
@@ -162,7 +162,7 @@ describe('ChainLinkExample', function () {
 
         const { r, vs } = compactSignature(signature);
         await expect(swap.fillOrderExt(order, r, vs, makingAmount, makeMakingAmount(takingAmount), order.extension))
-            .to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount])
-            .to.changeTokenBalances(weth, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
+            .to.changeTokenBalances(dai, [addr, addr1], [-takingAmount, takingAmount])
+            .to.changeTokenBalances(weth, [addr, addr1], [makingAmount, -makingAmount]);
     });
 });

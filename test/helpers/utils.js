@@ -83,7 +83,7 @@ function joinStaticCalls (dataArray) {
 }
 
 function ether (num) {
-    return utils.parseUnits(num);
+    return utils.parseUnits(num).toBigInt();
 }
 
 function setn (num, bit, value) {
