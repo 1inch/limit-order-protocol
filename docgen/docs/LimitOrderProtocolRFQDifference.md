@@ -8,7 +8,7 @@ On the other hand, an RFQ is a request for a quote from a specific liquidity pro
 
 In summary, the main differences between Limit Orders and RFQs are:
 
-|             | Limit Order | RFQ |
+|      | Limit Order | RFQ |
 | :--- | :----------- | :----------- |
 | Execution   | Automatically when a matching order is found on the open market | Manually after the user accepts a quote from a liquidity provider |
 | Price       | User specifies the price at which they are willing to buy or sell | User requests a quote from a liquidity provider for the desired trade |
