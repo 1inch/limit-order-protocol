@@ -86,18 +86,10 @@ describe('Interactions', function () {
                 matchingParams,
             ]).substring(10);
 
-            const addrweth = await weth.balanceOf(addr.address);
-            const addr1weth = await weth.balanceOf(addr1.address);
-            const addrdai = await dai.balanceOf(addr.address);
-            const addr1dai = await dai.balanceOf(addr1.address);
-
             const { r, vs } = compactSignature(signature);
-            await matcher.matchOrders(swap.address, order, r, vs, ether('100'), makeMakingAmount(ether('0.1')), interaction);
-
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.1')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.1')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('100')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('100')));
+            await expect(matcher.matchOrders(swap.address, order, r, vs, ether('100'), makeMakingAmount(ether('0.1')), interaction))
+                .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')])
+                .to.changeTokenBalances(weth, [addr.address, addr1.address], [ether('0.1'), -ether('0.1')]);
         });
 
         it('unidirectional recursive swap', async function () {
@@ -150,19 +142,11 @@ describe('Interactions', function () {
                 matchingParams,
             ]).substring(10);
 
-            const addrweth = await weth.balanceOf(addr.address);
-            const addr1weth = await weth.balanceOf(addr1.address);
-            const addrdai = await dai.balanceOf(addr.address);
-            const addr1dai = await dai.balanceOf(addr1.address);
-
             await weth.approve(matcher.address, ether('0.025'));
             const { r, vs } = compactSignature(signature);
-            await matcher.matchOrders(swap.address, order, r, vs, ether('10'), makeMakingAmount(ether('0.01')), interaction);
-
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.sub(ether('0.025')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.add(ether('0.025')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.add(ether('25')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.sub(ether('25')));
+            await expect(matcher.matchOrders(swap.address, order, r, vs, ether('10'), makeMakingAmount(ether('0.01')), interaction))
+                .to.changeTokenBalances(dai, [addr.address, addr1.address], [ether('25'), -ether('25')])
+                .to.changeTokenBalances(weth, [addr.address, addr1.address], [-ether('0.025'), ether('0.025')]);
         });
 
         it('triple recursive swap', async function () {
@@ -233,18 +217,10 @@ describe('Interactions', function () {
                 internalInteraction,
             ]).substring(10);
 
-            const addrweth = await weth.balanceOf(addr.address);
-            const addr1weth = await weth.balanceOf(addr1.address);
-            const addrdai = await dai.balanceOf(addr.address);
-            const addr1dai = await dai.balanceOf(addr1.address);
-
             const { r, vs } = compactSignature(signature1);
-            await matcher.matchOrders(swap.address, order1, r, vs, ether('10'), makeMakingAmount(ether('0.01')), externalInteraction);
-
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.sub(ether('0.025')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.add(ether('0.025')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.add(ether('25')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.sub(ether('25')));
+            await expect(matcher.matchOrders(swap.address, order1, r, vs, ether('10'), makeMakingAmount(ether('0.01')), externalInteraction))
+                .to.changeTokenBalances(dai, [addr.address, addr1.address], [ether('25'), -ether('25')])
+                .to.changeTokenBalances(weth, [addr.address, addr1.address], [-ether('0.025'), ether('0.025')]);
         });
     });
 
@@ -277,20 +253,12 @@ describe('Interactions', function () {
             );
             const signature = await signOrder(order, chainId, swap.address, addr1);
 
-            const makerDai = await dai.balanceOf(addr1.address);
-            const takerDai = await dai.balanceOf(addr.address);
-            const makerWeth = await weth.balanceOf(addr1.address);
-            const takerWeth = await weth.balanceOf(addr.address);
-
             await hashChecker.setHashOrderStatus(order, true);
 
             const { r, vs } = compactSignature(signature);
-            await swap.fillOrderExt(order, r, vs, ether('100'), makeMakingAmount(ether('0.1')), order.extension);
-
-            expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(ether('100')));
-            expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(ether('100')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.add(ether('0.1')));
-            expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(ether('0.1')));
+            await expect(swap.fillOrderExt(order, r, vs, ether('100'), makeMakingAmount(ether('0.1')), order.extension))
+                .to.changeTokenBalances(dai, [addr.address, addr1.address], [ether('100'), -ether('100')])
+                .to.changeTokenBalances(weth, [addr.address, addr1.address], [-ether('0.1'), ether('0.1')]);
         });
 
         it('should revert transaction when orderHash not equal target', async function () {
@@ -348,25 +316,14 @@ describe('Interactions', function () {
             );
             const signature = await signOrder(order, chainId, swap.address, addr);
 
-            const addrweth = await weth.balanceOf(addr.address);
-            const addr1weth = await weth.balanceOf(addr1.address);
-            const addrdai = await dai.balanceOf(addr.address);
-            const addr1dai = await dai.balanceOf(addr1.address);
-
             const { r, vs } = compactSignature(signature);
-            await swap.connect(addr1).fillOrderExt(order, r, vs, ether('50'), makeMakingAmount(ether('0.1')), order.extension);
+            await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('50'), makeMakingAmount(ether('0.1')), order.extension))
+                .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('50'), ether('50')])
+                .to.changeTokenBalances(weth, [addr.address, addr1.address], [ether('0.05'), -ether('0.05')]);
 
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.05')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.05')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('50')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('50')));
-
-            await swap.connect(addr1).fillOrderExt(order, r, vs, ether('50'), makeMakingAmount(ether('0.1')), order.extension);
-
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.1')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.1')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('100')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('100')));
+            await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('50'), makeMakingAmount(ether('0.1')), order.extension))
+                .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('50'), ether('50')])
+                .to.changeTokenBalances(weth, [addr.address, addr1.address], [ether('0.05'), -ether('0.05')]);
         });
 
         it('should fail to execute order with same orderId, but with different orderHash', async function () {
@@ -405,18 +362,10 @@ describe('Interactions', function () {
             const signature = await signOrder(order, chainId, swap.address, addr);
             const signaturePartial = await signOrder(partialOrder, chainId, swap.address, addr);
 
-            const addrweth = await weth.balanceOf(addr.address);
-            const addr1weth = await weth.balanceOf(addr1.address);
-            const addrdai = await dai.balanceOf(addr.address);
-            const addr1dai = await dai.balanceOf(addr1.address);
-
             const { r, vs } = compactSignature(signature);
-            await swap.connect(addr1).fillOrderExt(order, r, vs, ether('50'), makeMakingAmount(ether('0.1')), order.extension);
-
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.05')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.05')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('50')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('50')));
+            await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('50'), makeMakingAmount(ether('0.1')), order.extension))
+                .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('50'), ether('50')])
+                .to.changeTokenBalances(weth, [addr.address, addr1.address], [ether('0.05'), -ether('0.05')]);
 
             const { r: r2, vs: vs2 } = compactSignature(signaturePartial);
             await expect(swap.connect(addr1).fillOrderExt(partialOrder, r2, vs2, ether('50'), makeMakingAmount(ether('0.1')), order.extension))
@@ -458,16 +407,8 @@ describe('Interactions', function () {
         ).substring(2);
         await dai.approve(takerIncreaser.address, ether('75'));
 
-        const addrweth = await weth.balanceOf(addr.address);
-        const addr1weth = await weth.balanceOf(addr1.address);
-        const addrdai = await dai.balanceOf(addr.address);
-        const addr1dai = await dai.balanceOf(addr1.address);
-
-        await takerIncreaser.fillOrderTo(swap.address, order, r, vs, ether('0.1'), makeMakingAmount(ether('50')), addr.address, interaction);
-
-        expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.1')));
-        expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.1')));
-        expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('75')));
-        expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('75')));
+        await expect(takerIncreaser.fillOrderTo(swap.address, order, r, vs, ether('0.1'), makeMakingAmount(ether('50')), addr.address, interaction))
+            .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('75'), ether('75')])
+            .to.changeTokenBalances(weth, [addr.address, addr1.address], [ether('0.1'), -ether('0.1')]);
     });
 });

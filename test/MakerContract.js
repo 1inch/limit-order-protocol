@@ -38,11 +38,6 @@ describe('MakerContract', function () {
     it('should fill contract-signed RFQ order', async function () {
         const { usdc, usdt, swap, rfq } = await loadFixture(deployAndInit);
 
-        const makerUsdc = await usdc.balanceOf(rfq.address);
-        const takerUsdc = await usdc.balanceOf(addr.address);
-        const makerUsdt = await usdt.balanceOf(rfq.address);
-        const takerUsdt = await usdt.balanceOf(addr.address);
-
         const order = buildOrderRFQ({
             maker: rfq.address,
             makerAsset: usdc.address,
@@ -62,12 +57,9 @@ describe('MakerContract', function () {
         });
 
         const signature = abiCoder.encode([ABIOrder], [order]);
-        await swap.fillContractOrder(order, signature, 1000000, makeMakingAmount(1n << 200n), constants.AddressZero, emptyInteraction, '0x');
-
-        expect(await usdc.balanceOf(rfq.address)).to.equal(makerUsdc.sub(1000000));
-        expect(await usdc.balanceOf(addr.address)).to.equal(takerUsdc.add(1000000));
-        expect(await usdt.balanceOf(rfq.address)).to.equal(makerUsdt.add(1000700));
-        expect(await usdt.balanceOf(addr.address)).to.equal(takerUsdt.sub(1000700));
+        await expect(swap.fillContractOrder(order, signature, 1000000, makeMakingAmount(1n << 200n), constants.AddressZero, emptyInteraction, '0x'))
+            .to.changeTokenBalances(usdc, [addr.address, rfq.address], [1000000n, -1000000n])
+            .to.changeTokenBalances(usdt, [addr.address, rfq.address], [-1000700n, 1000700n]);
 
         const signature2 = abiCoder.encode([ABIOrder], [order2]);
         await swap.fillContractOrder(order2, signature2, 1000000, makeMakingAmount(1n << 200n), constants.AddressZero, emptyInteraction, '0x');

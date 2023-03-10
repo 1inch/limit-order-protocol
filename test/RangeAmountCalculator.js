@@ -24,7 +24,7 @@ describe('RangeAmountCalculator', function () {
             const fillAmount = ether('10');
             const remainingMakerAmount = totalLiquidity;
             expect(await rangeAmountCalculator.getRangeTakerAmount(priceStart, priceEnd, totalLiquidity, fillAmount, remainingMakerAmount))
-                .to.equal(ether('3500') * fillAmount);
+                .to.equal(ether('35000')); // ether('3500') * 10
         });
 
         it('Fill limit-order by half', async function () {
@@ -32,7 +32,7 @@ describe('RangeAmountCalculator', function () {
             const fillAmount = ether('5');
             const remainingMakerAmount = totalLiquidity;
             expect(await rangeAmountCalculator.getRangeTakerAmount(priceStart, priceEnd, totalLiquidity, fillAmount, remainingMakerAmount))
-                .to.equal(ether('3250') * fillAmount);
+                .to.equal(ether('16250')); // ether('3250') * 5
         });
 
         it('Fill limit-order 10 times', async function () {
@@ -87,7 +87,7 @@ describe('RangeAmountCalculator', function () {
             let remainingMakerAmount = totalLiquidity;
 
             const fillOrderFor = async (fillAmount) => {
-                const amount = await rangeAmountCalculator.getRangeMakerAmount(priceStart, priceEnd, totalLiquidity, fillAmount, remainingMakerAmount);
+                const amount = (await rangeAmountCalculator.getRangeMakerAmount(priceStart, priceEnd, totalLiquidity, fillAmount, remainingMakerAmount)).toBigInt();
                 remainingMakerAmount = remainingMakerAmount - amount;
                 return amount;
             };

@@ -842,21 +842,13 @@ describe('LimitOrderProtocol', function () {
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
-            const makerDai = await dai.balanceOf(addr1.address);
-            const takerDai = await dai.balanceOf(addr.address);
-            const makerWeth = await weth.balanceOf(addr1.address);
-            const takerWeth = await weth.balanceOf(addr.address);
-
             await expect(
                 swap.fillOrder(order, r, vs, 1, makeMakingAmount(1)),
             ).to.revertedWithCustomError(swap, 'MissingOrderExtension');
 
-            await swap.fillOrderExt(order, r, vs, 1, makeMakingAmount(1), order.extension);
-
-            expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
-            expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
-            expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.add(1));
-            expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
+            await expect(swap.fillOrderExt(order, r, vs, 1, makeMakingAmount(1), order.extension))
+                .to.changeTokenBalances(dai, [addr.address, addr1.address], [1, -1])
+                .to.changeTokenBalances(weth, [addr.address, addr1.address], [-1, 1]);
         });
 
         it('reverts on expiration constraint', async function () {
@@ -1112,7 +1104,7 @@ describe('LimitOrderProtocol', function () {
         // TODO: extract to separate file, kill huge fillRangeLimitOrder, have small and self explaining tests
         let maker, taker;
 
-        const e6 = (value) => ether(value).div(1000000000000n);
+        const e6 = (value) => ether(value) / BigInt('1000000000000');
 
         before(async function () {
             maker = addr1.address;
@@ -1186,14 +1178,16 @@ describe('LimitOrderProtocol', function () {
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
 
-            const makerTABalance = await takerAsset.asset.balanceOf(maker); // maker's takerAsset balance
-            const takerTABalance = await takerAsset.asset.balanceOf(taker); // taker's takerAsset balance
-            const makerMABalance = await makerAsset.asset.balanceOf(maker); // maker's makerAsset balance
-            const takerMABalance = await makerAsset.asset.balanceOf(taker); // taker's makerAsset balance
-
             // Buy fillOrderParams[0].makingAmount tokens of makerAsset,
             // price should be fillOrderParams[0].takingAmount tokens of takerAsset
-            await swap.fillOrderExt(
+            const rangeAmount1 = (await getRangeAmount(
+                startPrice,
+                endPrice,
+                makingAmount,
+                isByMakerAsset ? makerAsset.ether(fillOrderParams[0].makingAmount) : takerAsset.ether(fillOrderParams[0].takingAmount),
+                makingAmount,
+            )).toBigInt();
+            await expect(swap.fillOrderExt(
                 order,
                 r,
                 vs,
@@ -1204,30 +1198,24 @@ describe('LimitOrderProtocol', function () {
                     ? makeMakingAmount(takerAsset.ether(fillOrderParams[0].thresholdAmount))
                     : makerAsset.ether(fillOrderParams[0].thresholdAmount),
                 order.extension,
-            );
-
-            const rangeAmount1 = await getRangeAmount(
-                startPrice,
-                endPrice,
-                makingAmount,
-                isByMakerAsset ? makerAsset.ether(fillOrderParams[0].makingAmount) : takerAsset.ether(fillOrderParams[0].takingAmount),
-                makingAmount,
-            );
-            if (isByMakerAsset) {
-                expect(await takerAsset.asset.balanceOf(maker)).to.equal(makerTABalance.add(rangeAmount1));
-                expect(await makerAsset.asset.balanceOf(maker)).to.equal(makerMABalance.sub(makerAsset.ether(fillOrderParams[0].makingAmount)));
-                expect(await takerAsset.asset.balanceOf(taker)).to.equal(takerTABalance.sub(rangeAmount1));
-                expect(await makerAsset.asset.balanceOf(taker)).to.equal(takerMABalance.add(makerAsset.ether(fillOrderParams[0].makingAmount)));
-            } else {
-                expect(await takerAsset.asset.balanceOf(maker)).to.equal(makerTABalance.add(takerAsset.ether(fillOrderParams[0].takingAmount)));
-                expect(await makerAsset.asset.balanceOf(maker)).to.equal(makerMABalance.sub(rangeAmount1));
-                expect(await takerAsset.asset.balanceOf(taker)).to.equal(takerTABalance.sub(takerAsset.ether(fillOrderParams[0].takingAmount)));
-                expect(await makerAsset.asset.balanceOf(taker)).to.equal(takerMABalance.add(rangeAmount1));
-            }
+            ))
+                .to.changeTokenBalances(takerAsset.asset, [maker, taker], [
+                    isByMakerAsset ? rangeAmount1 : takerAsset.ether(fillOrderParams[0].takingAmount),
+                    isByMakerAsset ? -rangeAmount1 : -takerAsset.ether(fillOrderParams[0].takingAmount)])
+                .to.changeTokenBalances(makerAsset.asset, [maker, taker], [
+                    isByMakerAsset ? -makerAsset.ether(fillOrderParams[0].makingAmount) : -rangeAmount1,
+                    isByMakerAsset ? makerAsset.ether(fillOrderParams[0].makingAmount) : rangeAmount1]);
 
             // Buy fillOrderParams[1].makingAmount tokens of makerAsset more,
             // price should be fillOrderParams[1].takingAmount tokens of takerAsset
-            await swap.fillOrderExt(
+            const rangeAmount2 = (await getRangeAmount(
+                startPrice,
+                endPrice,
+                makingAmount,
+                isByMakerAsset ? makerAsset.ether(fillOrderParams[1].makingAmount) : takerAsset.ether(fillOrderParams[1].takingAmount),
+                isByMakerAsset ? makingAmount - makerAsset.ether(fillOrderParams[0].makingAmount) : makingAmount - rangeAmount1,
+            )).toBigInt();
+            await expect(swap.fillOrderExt(
                 order,
                 r,
                 vs,
@@ -1238,41 +1226,15 @@ describe('LimitOrderProtocol', function () {
                     ? makeMakingAmount(takerAsset.ether(fillOrderParams[1].thresholdAmount))
                     : makerAsset.ether(fillOrderParams[1].thresholdAmount),
                 order.extension,
-            );
-            const rangeAmount2 = await getRangeAmount(
-                startPrice,
-                endPrice,
-                makingAmount,
-                isByMakerAsset ? makerAsset.ether(fillOrderParams[1].makingAmount) : takerAsset.ether(fillOrderParams[1].takingAmount),
-                isByMakerAsset ? makingAmount.sub(makerAsset.ether(fillOrderParams[0].makingAmount)) : makingAmount.sub(rangeAmount1),
-            );
-            if (isByMakerAsset) {
-                expect(await takerAsset.asset.balanceOf(maker)).to.equal(makerTABalance.add(rangeAmount1).add(rangeAmount2));
-                expect(await makerAsset.asset.balanceOf(maker)).to.equal(
-                    makerMABalance
-                        .sub(makerAsset.ether(fillOrderParams[0].makingAmount))
-                        .sub(makerAsset.ether(fillOrderParams[1].makingAmount)),
-                );
-                expect(await takerAsset.asset.balanceOf(taker)).to.equal(takerTABalance.sub(rangeAmount1).sub(rangeAmount2));
-                expect(await makerAsset.asset.balanceOf(taker)).to.equal(
-                    takerMABalance
-                        .add(makerAsset.ether(fillOrderParams[0].makingAmount))
-                        .add(makerAsset.ether(fillOrderParams[1].makingAmount)),
-                );
-            } else {
-                expect(await takerAsset.asset.balanceOf(maker)).to.equal(
-                    makerTABalance
-                        .add(takerAsset.ether(fillOrderParams[0].takingAmount))
-                        .add(takerAsset.ether(fillOrderParams[1].takingAmount)),
-                );
-                expect(await makerAsset.asset.balanceOf(maker)).to.equal(makerMABalance.sub(rangeAmount1).sub(rangeAmount2));
-                expect(await takerAsset.asset.balanceOf(taker)).to.equal(
-                    takerTABalance
-                        .sub(takerAsset.ether(fillOrderParams[0].takingAmount))
-                        .sub(takerAsset.ether(fillOrderParams[1].takingAmount)),
-                );
-                expect(await makerAsset.asset.balanceOf(taker)).to.equal(takerMABalance.add(rangeAmount1).add(rangeAmount2));
-            }
+            ))
+                .to.changeTokenBalances(takerAsset.asset, [maker, taker], [
+                    isByMakerAsset ? rangeAmount2 : takerAsset.ether(fillOrderParams[1].takingAmount),
+                    isByMakerAsset ? -rangeAmount2 : -takerAsset.ether(fillOrderParams[1].takingAmount),
+                ])
+                .to.changeTokenBalances(makerAsset.asset, [maker, taker], [
+                    isByMakerAsset ? -makerAsset.ether(fillOrderParams[1].makingAmount) : -rangeAmount2,
+                    isByMakerAsset ? makerAsset.ether(fillOrderParams[1].makingAmount) : rangeAmount2,
+                ]);
         };
 
         it('Fill range limit-order by maker asset', async function () {
