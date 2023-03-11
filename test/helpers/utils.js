@@ -94,6 +94,32 @@ function setn (num, bit, value) {
     }
 }
 
+function roughlyEqualValues (
+    expected,
+    actual,
+    relativeDiff,
+) {
+    let expectedBN = BigInt(expected);
+    let actualBN = BigInt(actual);
+    expect(expectedBN * actualBN).to.be.gte(0, 'Values are of different sign');
+
+    if (expectedBN < 0) expectedBN = -expectedBN;
+    if (actualBN < 0) actualBN = -actualBN;
+
+    let multiplerNumerator = relativeDiff;
+    let multiplerDenominator = 1n;
+    while (!Number.isInteger(multiplerNumerator)) {
+        multiplerDenominator = multiplerDenominator * 10n;
+        multiplerNumerator *= 10;
+    }
+    const diff = expectedBN > actualBN ? expectedBN - actualBN : actualBN - expectedBN;
+    const treshold = (expectedBN * BigInt(multiplerNumerator)) / multiplerDenominator;
+    if (diff > treshold) {
+        return false;
+    }
+    return true;
+}
+
 module.exports = {
     joinStaticCalls,
     price,
@@ -108,4 +134,5 @@ module.exports = {
     flattenTree,
     countAllItems,
     treeForEach,
+    roughlyEqualValues,
 };
