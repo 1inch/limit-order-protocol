@@ -3,7 +3,7 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
-const { buildOrderRFQ, signOrder, compactSignature, buildConstraints } = require('./helpers/orderUtils');
+const { buildOrderRFQ, signOrder, compactSignature, buildMakerTraits } = require('./helpers/orderUtils');
 const { constants } = require('ethers');
 
 describe('RfqInteractions', function () {
@@ -94,7 +94,7 @@ describe('RfqInteractions', function () {
                 takerAsset: weth.address,
                 makingAmount: ether('10'),
                 takingAmount: ether('0.01'),
-                constraints: buildConstraints({ nonce: 1 }),
+                makerTraits: buildMakerTraits({ nonce: 1 }),
             });
             const backOrder = buildOrderRFQ({
                 maker: addr1.address,
@@ -102,7 +102,7 @@ describe('RfqInteractions', function () {
                 takerAsset: weth.address,
                 makingAmount: ether('15'),
                 takingAmount: ether('0.015'),
-                constraints: buildConstraints({ nonce: 2 }),
+                makerTraits: buildMakerTraits({ nonce: 2 }),
             });
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const signatureBackOrder = await signOrder(backOrder, chainId, swap.address, addr1);
@@ -149,7 +149,7 @@ describe('RfqInteractions', function () {
                 takerAsset: weth.address,
                 makingAmount: ether('10'),
                 takingAmount: ether('0.01'),
-                constraints: buildConstraints({ nonce: 1 }),
+                makerTraits: buildMakerTraits({ nonce: 1 }),
             });
             const order2 = buildOrderRFQ({
                 maker: addr1.address,
@@ -157,7 +157,7 @@ describe('RfqInteractions', function () {
                 takerAsset: weth.address,
                 makingAmount: ether('15'),
                 takingAmount: ether('0.015'),
-                constraints: buildConstraints({ nonce: 2 }),
+                makerTraits: buildMakerTraits({ nonce: 2 }),
             });
             const backOrder = buildOrderRFQ({
                 maker: addr.address,
@@ -165,7 +165,7 @@ describe('RfqInteractions', function () {
                 takerAsset: dai.address,
                 makingAmount: ether('0.025'),
                 takingAmount: ether('25'),
-                constraints: buildConstraints({ nonce: 1 }),
+                makerTraits: buildMakerTraits({ nonce: 1 }),
             });
 
             const signature1 = await signOrder(order1, chainId, swap.address, addr1);

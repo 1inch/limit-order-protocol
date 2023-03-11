@@ -3,7 +3,7 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
-const { makeMakingAmount, signOrder, buildOrder, compactSignature, buildConstraints } = require('./helpers/orderUtils');
+const { fillWithMakingAmount, signOrder, buildOrder, compactSignature, buildMakerTraits } = require('./helpers/orderUtils');
 
 describe('Interactions', function () {
     let addr, addr1;
@@ -81,13 +81,13 @@ describe('Interactions', function () {
                 compactSignature(signatureBackOrder).r,
                 compactSignature(signatureBackOrder).vs,
                 ether('0.1'),
-                makeMakingAmount(ether('100')),
+                fillWithMakingAmount(ether('100')),
                 matcher.address,
                 matchingParams,
             ]).substring(10);
 
             const { r, vs } = compactSignature(signature);
-            await expect(matcher.matchOrders(swap.address, order, r, vs, ether('100'), makeMakingAmount(ether('0.1')), interaction))
+            await expect(matcher.matchOrders(swap.address, order, r, vs, ether('100'), fillWithMakingAmount(ether('0.1')), interaction))
                 .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')])
                 .to.changeTokenBalances(weth, [addr.address, addr1.address], [ether('0.1'), -ether('0.1')]);
         });
@@ -101,7 +101,7 @@ describe('Interactions', function () {
                 makingAmount: ether('10'),
                 takingAmount: ether('0.01'),
                 maker: addr1.address,
-                constraints: buildConstraints({ nonce: 0 }),
+                makerTraits: buildMakerTraits({ nonce: 0 }),
             });
 
             const backOrder = buildOrder({
@@ -110,7 +110,7 @@ describe('Interactions', function () {
                 makingAmount: ether('15'),
                 takingAmount: ether('0.015'),
                 maker: addr1.address,
-                constraints: buildConstraints({ nonce: 0 }),
+                makerTraits: buildMakerTraits({ nonce: 0 }),
             });
 
             const signature = await signOrder(order, chainId, swap.address, addr1);
@@ -137,14 +137,14 @@ describe('Interactions', function () {
                 compactSignature(signatureBackOrder).r,
                 compactSignature(signatureBackOrder).vs,
                 ether('15'),
-                makeMakingAmount(ether('0.015')),
+                fillWithMakingAmount(ether('0.015')),
                 matcher.address,
                 matchingParams,
             ]).substring(10);
 
             await weth.approve(matcher.address, ether('0.025'));
             const { r, vs } = compactSignature(signature);
-            await expect(matcher.matchOrders(swap.address, order, r, vs, ether('10'), makeMakingAmount(ether('0.01')), interaction))
+            await expect(matcher.matchOrders(swap.address, order, r, vs, ether('10'), fillWithMakingAmount(ether('0.01')), interaction))
                 .to.changeTokenBalances(dai, [addr.address, addr1.address], [ether('25'), -ether('25')])
                 .to.changeTokenBalances(weth, [addr.address, addr1.address], [-ether('0.025'), ether('0.025')]);
         });
@@ -158,7 +158,7 @@ describe('Interactions', function () {
                 makingAmount: ether('10'),
                 takingAmount: ether('0.01'),
                 maker: addr1.address,
-                constraints: buildConstraints({ nonce: 0 }),
+                makerTraits: buildMakerTraits({ nonce: 0 }),
             });
 
             const order2 = buildOrder({
@@ -167,7 +167,7 @@ describe('Interactions', function () {
                 makingAmount: ether('15'),
                 takingAmount: ether('0.015'),
                 maker: addr1.address,
-                constraints: buildConstraints({ nonce: 0 }),
+                makerTraits: buildMakerTraits({ nonce: 0 }),
             });
 
             const backOrder = buildOrder({
@@ -176,7 +176,7 @@ describe('Interactions', function () {
                 makingAmount: ether('0.025'),
                 takingAmount: ether('25'),
                 maker: addr.address,
-                constraints: buildConstraints({ nonce: 0 }),
+                makerTraits: buildMakerTraits({ nonce: 0 }),
             });
 
             const signature1 = await signOrder(order1, chainId, swap.address, addr1);
@@ -202,7 +202,7 @@ describe('Interactions', function () {
                 compactSignature(signatureBackOrder).r,
                 compactSignature(signatureBackOrder).vs,
                 ether('0.025'),
-                makeMakingAmount(ether('25')),
+                fillWithMakingAmount(ether('25')),
                 matcher.address,
                 matchingParams,
             ]).substring(10);
@@ -212,13 +212,13 @@ describe('Interactions', function () {
                 compactSignature(signature2).r,
                 compactSignature(signature2).vs,
                 ether('15'),
-                makeMakingAmount(ether('0.015')),
+                fillWithMakingAmount(ether('0.015')),
                 matcher.address,
                 internalInteraction,
             ]).substring(10);
 
             const { r, vs } = compactSignature(signature1);
-            await expect(matcher.matchOrders(swap.address, order1, r, vs, ether('10'), makeMakingAmount(ether('0.01')), externalInteraction))
+            await expect(matcher.matchOrders(swap.address, order1, r, vs, ether('10'), fillWithMakingAmount(ether('0.01')), externalInteraction))
                 .to.changeTokenBalances(dai, [addr.address, addr1.address], [ether('25'), -ether('25')])
                 .to.changeTokenBalances(weth, [addr.address, addr1.address], [-ether('0.025'), ether('0.025')]);
         });
@@ -245,7 +245,7 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr1.address,
-                    constraints: buildConstraints(),
+                    makerTraits: buildMakerTraits(),
                 },
                 {
                     preInteraction: hashChecker.address,
@@ -256,7 +256,7 @@ describe('Interactions', function () {
             await hashChecker.setHashOrderStatus(order, true);
 
             const { r, vs } = compactSignature(signature);
-            await expect(swap.fillOrderExt(order, r, vs, ether('100'), makeMakingAmount(ether('0.1')), order.extension))
+            await expect(swap.fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.1')), order.extension))
                 .to.changeTokenBalances(dai, [addr.address, addr1.address], [ether('100'), -ether('100')])
                 .to.changeTokenBalances(weth, [addr.address, addr1.address], [-ether('0.1'), ether('0.1')]);
         });
@@ -271,7 +271,7 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr1.address,
-                    constraints: buildConstraints(),
+                    makerTraits: buildMakerTraits(),
                 },
                 {
                     preInteraction: hashChecker.address,
@@ -281,7 +281,7 @@ describe('Interactions', function () {
             const signature = await signOrder(order, chainId, swap.address, addr1);
 
             const { r, vs } = compactSignature(signature);
-            await expect(swap.fillOrderExt(order, r, vs, ether('100'), makeMakingAmount(ether('0.1')), order.extension))
+            await expect(swap.fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.1')), order.extension))
                 .to.be.revertedWithCustomError(hashChecker, 'IncorrectOrderHash');
         });
     });
@@ -308,7 +308,7 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr.address,
-                    constraints: buildConstraints({ allowMultipleFills: true }),
+                    makerTraits: buildMakerTraits({ allowMultipleFills: true }),
                 },
                 {
                     preInteraction: orderIdInvalidator.address + orderId.toString(16).padStart(8, '0'),
@@ -317,11 +317,11 @@ describe('Interactions', function () {
             const signature = await signOrder(order, chainId, swap.address, addr);
 
             const { r, vs } = compactSignature(signature);
-            await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('50'), makeMakingAmount(ether('0.1')), order.extension))
+            await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('50'), fillWithMakingAmount(ether('0.1')), order.extension))
                 .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('50'), ether('50')])
                 .to.changeTokenBalances(weth, [addr.address, addr1.address], [ether('0.05'), -ether('0.05')]);
 
-            await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('50'), makeMakingAmount(ether('0.1')), order.extension))
+            await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('50'), fillWithMakingAmount(ether('0.1')), order.extension))
                 .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('50'), ether('50')])
                 .to.changeTokenBalances(weth, [addr.address, addr1.address], [ether('0.05'), -ether('0.05')]);
         });
@@ -338,7 +338,7 @@ describe('Interactions', function () {
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr.address,
-                    constraints: buildConstraints(),
+                    makerTraits: buildMakerTraits(),
                 },
                 {
                     preInteraction,
@@ -352,7 +352,7 @@ describe('Interactions', function () {
                     makingAmount: ether('50'),
                     takingAmount: ether('0.05'),
                     maker: addr.address,
-                    constraints: buildConstraints(),
+                    makerTraits: buildMakerTraits(),
                 },
                 {
                     preInteraction,
@@ -363,12 +363,12 @@ describe('Interactions', function () {
             const signaturePartial = await signOrder(partialOrder, chainId, swap.address, addr);
 
             const { r, vs } = compactSignature(signature);
-            await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('50'), makeMakingAmount(ether('0.1')), order.extension))
+            await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('50'), fillWithMakingAmount(ether('0.1')), order.extension))
                 .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('50'), ether('50')])
                 .to.changeTokenBalances(weth, [addr.address, addr1.address], [ether('0.05'), -ether('0.05')]);
 
             const { r: r2, vs: vs2 } = compactSignature(signaturePartial);
-            await expect(swap.connect(addr1).fillOrderExt(partialOrder, r2, vs2, ether('50'), makeMakingAmount(ether('0.1')), order.extension))
+            await expect(swap.connect(addr1).fillOrderExt(partialOrder, r2, vs2, ether('50'), fillWithMakingAmount(ether('0.1')), order.extension))
                 .to.be.revertedWithCustomError(orderIdInvalidator, 'InvalidOrderHash');
         });
     });
@@ -386,7 +386,7 @@ describe('Interactions', function () {
             makingAmount: ether('0.1'),
             takingAmount: ether('50'),
             maker: addr1.address,
-            constraints: buildConstraints({ expiry: 0xff00000000 }),
+            makerTraits: buildMakerTraits({ expiry: 0xff00000000 }),
         });
 
         const signature = await signOrder(order, chainId, swap.address, addr1);
@@ -407,7 +407,7 @@ describe('Interactions', function () {
         ).substring(2);
         await dai.approve(takerIncreaser.address, ether('75'));
 
-        await expect(takerIncreaser.fillOrderTo(swap.address, order, r, vs, ether('0.1'), makeMakingAmount(ether('50')), addr.address, interaction))
+        await expect(takerIncreaser.fillOrderTo(swap.address, order, r, vs, ether('0.1'), fillWithMakingAmount(ether('50')), addr.address, interaction))
             .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('75'), ether('75')])
             .to.changeTokenBalances(weth, [addr.address, addr1.address], [ether('0.1'), -ether('0.1')]);
     });

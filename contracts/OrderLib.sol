@@ -6,13 +6,13 @@ import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 
 import "./interfaces/IOrderMixin.sol";
-import "./libraries/ConstraintsLib.sol";
+import "./libraries/MakerTraitsLib.sol";
 import "./libraries/ExtensionLib.sol";
 import "./helpers/AmountCalculator.sol";
 
 library OrderLib {
     using AddressLib for Address;
-    using ConstraintsLib for Constraints;
+    using MakerTraitsLib for MakerTraits;
     using ExtensionLib for bytes;
 
     error WrongGetter();
@@ -29,7 +29,7 @@ library OrderLib {
             "address takerAsset,"
             "uint256 makingAmount,"
             "uint256 takingAmount,"
-            "uint256 constraints"
+            "uint256 makerTraits"
         ")"
     );
 
@@ -90,7 +90,7 @@ library OrderLib {
     }
 
     function validateExtension(IOrderMixin.Order calldata order, bytes calldata extension) internal pure {
-        if (order.constraints.hasExtension()) {
+        if (order.makerTraits.hasExtension()) {
             if (extension.length == 0) revert MissingOrderExtension();
             // Lowest 160 bits of the order salt must be equal to the lowest 160 bits of the extension hash
             if (uint256(keccak256(extension)) & type(uint160).max != order.salt & type(uint160).max) revert ExtensionInvalid();

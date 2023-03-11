@@ -2,7 +2,7 @@ const { expect, trim0x, time } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { cutLastArg, ether, roughlyEqualValues } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
-const { makeMakingAmount, compactSignature, buildOrder, signOrder } = require('./helpers/orderUtils');
+const { fillWithMakingAmount, compactSignature, buildOrder, signOrder } = require('./helpers/orderUtils');
 const { ethers } = require('hardhat');
 
 describe('Dutch auction', function () {
@@ -59,7 +59,7 @@ describe('Dutch auction', function () {
         await time.increaseTo(ts + 43200n); // 50% auction time
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), makeMakingAmount(ether('0.08')), order.extension))
+        await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.08')), order.extension))
             .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')])
             .to.changeTokenBalance(weth, addr.address, (actual) => roughlyEqualValues(ether('0.075'), actual, 1e-4))
             .to.changeTokenBalance(weth, addr1.address, (actual) => roughlyEqualValues(-ether('0.075'), actual, 1e-4));
@@ -81,7 +81,7 @@ describe('Dutch auction', function () {
         const { dai, weth, swap, order, signature } = await loadFixture(deployAndBuildOrder);
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), makeMakingAmount(ether('0.1')), order.extension))
+        await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.1')), order.extension))
             .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')])
             .to.changeTokenBalance(weth, addr.address, (actual) => roughlyEqualValues(ether('0.1'), actual, 1e-4))
             .to.changeTokenBalance(weth, addr1.address, (actual) => roughlyEqualValues(-ether('0.1'), actual, 1e-4));
@@ -103,7 +103,7 @@ describe('Dutch auction', function () {
         await time.increaseTo(ts + 86500n); // >100% auction time
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), makeMakingAmount(ether('0.05')), order.extension))
+        await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.05')), order.extension))
             .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')])
             .to.changeTokenBalance(weth, addr.address, (actual) => roughlyEqualValues(ether('0.05'), actual, 1e-4))
             .to.changeTokenBalance(weth, addr1.address, (actual) => roughlyEqualValues(-ether('0.05'), actual, 1e-4));

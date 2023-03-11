@@ -16,7 +16,7 @@ contract TakerIncreaser is ITakerInteraction {
         bytes32 r,
         bytes32 vs,
         uint256 amount,
-        Limits limits,
+        TakerTraits takerTraits,
         address target,
         bytes calldata interaction
     ) external {
@@ -25,7 +25,7 @@ contract TakerIncreaser is ITakerInteraction {
             r,
             vs,
             amount,
-            limits,
+            takerTraits,
             target,
             interaction
         );
