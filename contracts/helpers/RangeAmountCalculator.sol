@@ -5,14 +5,15 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 /**
- * Range limit order is used to sell an asset within a given price range.
- * In this order each maker's token is more expensive than previous. Maker sets min and max cost prices for makerAsset's tokens.
- * For example, right now ETH is worth 3000 DAI and you believe that within the next week the price of ETH will rise and reach at least 4000 DAI.
- * In this case, you can create an ETH -> DAI limit order with a price range of 3000 -> 4000.
- * Let's say you created a similar order for the amount of 10 ETH.
- * Someone can file the entire limit at once at an average price of 3500 DAI.
- * But it is also possible that the limit-order will be filled in parts.
- * First, someone buys 1 ETH at the price of 3050 DAI, then another 1 ETH at the price of 3150 DAI, and so on.
+ * A range limit order is a strategy used to sell an asset within a specified price range.
+ * For instance, suppose you anticipate the value of ETH to increase in the next week from its
+ * current worth of 3000 DAI to a minimum of 4000 DAI.
+ * In that case, you can create an ETH -> DAI limit order within the price range of 3000 -> 4000.
+ * For example, you could create an order to sell 10 ETH within that price range.
+ *
+ * When someone places a bid for the entire limit order, they may purchase it all at once at
+ * an average price of 3500 DAI. Alternatively, the limit order may be executed in portions.
+ * For instance, the buyer might purchase 1 ETH for 3050 DAI, then another 1 ETH for 3150 DAI, and so on.
  *
  * Function of the changing price of makerAsset tokens in takerAsset tokens by the filling amount of makerAsset tokens in order:
  *      priceEnd - priceStart
