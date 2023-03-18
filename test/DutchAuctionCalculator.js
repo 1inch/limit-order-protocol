@@ -60,8 +60,8 @@ describe('Dutch auction', function () {
 
         const { r, vs } = compactSignature(signature);
         const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.08')), order.extension);
-        expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
-        expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
+        await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
+        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
             (actual) => roughlyEqualValues(ether('0.075'), actual, 1e-4),
             (actual) => roughlyEqualValues(-ether('0.075'), actual, 1e-4),
         ]);
@@ -74,8 +74,8 @@ describe('Dutch auction', function () {
 
         const { r, vs } = compactSignature(signature);
         const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('0.075'), ether('100'), order.extension);
-        expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
-        expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
+        await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
+        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
             (actual) => roughlyEqualValues(ether('0.075'), actual, 1e-4),
             (actual) => roughlyEqualValues(-ether('0.075'), actual, 1e-4),
         ]);
@@ -86,8 +86,8 @@ describe('Dutch auction', function () {
 
         const { r, vs } = compactSignature(signature);
         const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.1')), order.extension);
-        expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
-        expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
+        await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
+        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
             (actual) => roughlyEqualValues(ether('0.1'), actual, 1e-4),
             (actual) => roughlyEqualValues(-ether('0.1'), actual, 1e-4),
         ]);
@@ -98,8 +98,8 @@ describe('Dutch auction', function () {
 
         const { r, vs } = compactSignature(signature);
         const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('0.1'), ether('100'), order.extension);
-        expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
-        expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
+        await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
+        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
             (actual) => roughlyEqualValues(ether('0.1'), actual, 1e-4),
             (actual) => roughlyEqualValues(-ether('0.1'), actual, 1e-4),
         ]);
@@ -112,8 +112,8 @@ describe('Dutch auction', function () {
 
         const { r, vs } = compactSignature(signature);
         const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.05')), order.extension);
-        expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
-        expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
+        await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
+        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
             (actual) => roughlyEqualValues(ether('0.05'), actual, 1e-4),
             (actual) => roughlyEqualValues(-ether('0.05'), actual, 1e-4),
         ]);
@@ -126,8 +126,8 @@ describe('Dutch auction', function () {
 
         const { r, vs } = compactSignature(signature);
         const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('0.05'), ether('100'), order.extension);
-        expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
-        expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
+        await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
+        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
             (actual) => roughlyEqualValues(ether('0.05'), actual, 1e-4),
             (actual) => roughlyEqualValues(-ether('0.05'), actual, 1e-4),
         ]);

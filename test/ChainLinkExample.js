@@ -76,8 +76,8 @@ describe('ChainLinkExample', function () {
 
         const { r, vs } = compactSignature(signature);
         const tx = await swap.fillOrderExt(order, r, vs, ether('1'), fillWithMakingAmount(ether('4040.01')), order.extension);
-        expect(tx).to.changeTokenBalances(dai, [addr, addr1], [ether('-4040'), ether('4040')]); // taking threshold = 4000 + 1% + eps
-        expect(tx).to.changeTokenBalances(weth, [addr, addr1], [ether('1'), ether('-1')]);
+        await expect(tx).to.changeTokenBalances(dai, [addr, addr1], [ether('-4040'), ether('4040')]); // taking threshold = 4000 + 1% + eps
+        await expect(tx).to.changeTokenBalances(weth, [addr, addr1], [ether('1'), ether('-1')]);
     });
 
     it('dai -> 1inch stop loss order', async function () {
@@ -105,8 +105,8 @@ describe('ChainLinkExample', function () {
 
         const { r, vs } = compactSignature(signature);
         const tx = await swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount + ether('0.01')), order.extension);
-        expect(tx).to.changeTokenBalances(dai, [addr, addr1], [-takingAmount, takingAmount]); // taking threshold = exact taker amount + eps
-        expect(tx).to.changeTokenBalances(inch, [addr, addr1], [makingAmount, -makingAmount]);
+        await expect(tx).to.changeTokenBalances(dai, [addr, addr1], [-takingAmount, takingAmount]); // taking threshold = exact taker amount + eps
+        await expect(tx).to.changeTokenBalances(inch, [addr, addr1], [makingAmount, -makingAmount]);
     });
 
     it('dai -> 1inch stop loss order predicate is invalid', async function () {
@@ -162,7 +162,7 @@ describe('ChainLinkExample', function () {
 
         const { r, vs } = compactSignature(signature);
         const tx = await swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount), order.extension);
-        expect(tx).to.changeTokenBalances(dai, [addr, addr1], [-takingAmount, takingAmount]);
-        expect(tx).to.changeTokenBalances(weth, [addr, addr1], [makingAmount, -makingAmount]);
+        await expect(tx).to.changeTokenBalances(dai, [addr, addr1], [-takingAmount, takingAmount]);
+        await expect(tx).to.changeTokenBalances(weth, [addr, addr1], [makingAmount, -makingAmount]);
     });
 });

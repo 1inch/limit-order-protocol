@@ -58,8 +58,8 @@ describe('MakerContract', function () {
 
         const signature = abiCoder.encode([ABIOrder], [order]);
         const tx = await swap.fillContractOrder(order, signature, 1000000, fillWithMakingAmount(1n << 200n), constants.AddressZero, emptyInteraction, '0x');
-        expect(tx).to.changeTokenBalances(usdc, [addr.address, rfq.address], [1000000n, -1000000n]);
-        expect(tx).to.changeTokenBalances(usdt, [addr.address, rfq.address], [-1000700n, 1000700n]);
+        await expect(tx).to.changeTokenBalances(usdc, [addr.address, rfq.address], [1000000n, -1000000n]);
+        await expect(tx).to.changeTokenBalances(usdt, [addr.address, rfq.address], [-1000700n, 1000700n]);
 
         const signature2 = abiCoder.encode([ABIOrder], [order2]);
         await swap.fillContractOrder(order2, signature2, 1000000, fillWithMakingAmount(1n << 200n), constants.AddressZero, emptyInteraction, '0x');

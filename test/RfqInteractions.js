@@ -81,8 +81,8 @@ describe('RfqInteractions', function () {
 
             const { r, vs } = compactSignature(signature);
             const tx = await matcher.matchOrders(swap.address, order, r, vs, ether('0.1'), ether('100'), interaction);
-            expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
-            expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [ether('0.1'), -ether('0.1')]);
+            await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
+            await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [ether('0.1'), -ether('0.1')]);
         });
 
         it('unidirectional recursive swap', async function () {
@@ -136,8 +136,8 @@ describe('RfqInteractions', function () {
             await weth.approve(matcher.address, ether('0.025'));
             const { r, vs } = compactSignature(signature);
             const tx = await matcher.matchOrders(swap.address, order, r, vs, ether('0.01'), ether('10'), interaction);
-            expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [ether('25'), -ether('25')]);
-            expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [-ether('0.025'), ether('0.025')]);
+            await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [ether('25'), -ether('25')]);
+            await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [-ether('0.025'), ether('0.025')]);
         });
 
         it('triple recursive swap', async function () {
@@ -208,8 +208,8 @@ describe('RfqInteractions', function () {
 
             const { r, vs } = compactSignature(signature1);
             const tx = await matcher.matchOrders(swap.address, order1, r, vs, ether('0.01'), ether('10'), externalInteraction);
-            expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [ether('25'), -ether('25')]);
-            expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [-ether('0.025'), ether('0.025')]);
+            await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [ether('25'), -ether('25')]);
+            await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [-ether('0.025'), ether('0.025')]);
         });
     });
 });
