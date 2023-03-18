@@ -75,9 +75,9 @@ describe('ChainLinkExample', function () {
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.fillOrderExt(order, r, vs, ether('1'), fillWithMakingAmount(ether('4040.01')), order.extension)) // taking threshold = 4000 + 1% + eps
-            .to.changeTokenBalances(dai, [addr, addr1], [ether('-4040'), ether('4040')])
-            .to.changeTokenBalances(weth, [addr, addr1], [ether('1'), ether('-1')]);
+        const tx = await swap.fillOrderExt(order, r, vs, ether('1'), fillWithMakingAmount(ether('4040.01')), order.extension);
+        expect(tx).to.changeTokenBalances(dai, [addr, addr1], [ether('-4040'), ether('4040')]); // taking threshold = 4000 + 1% + eps
+        expect(tx).to.changeTokenBalances(weth, [addr, addr1], [ether('1'), ether('-1')]);
     });
 
     it('dai -> 1inch stop loss order', async function () {
@@ -104,9 +104,9 @@ describe('ChainLinkExample', function () {
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount + ether('0.01')), order.extension)) // taking threshold = exact taker amount + eps
-            .to.changeTokenBalances(dai, [addr, addr1], [-takingAmount, takingAmount])
-            .to.changeTokenBalances(inch, [addr, addr1], [makingAmount, -makingAmount]);
+        const tx = await swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount + ether('0.01')), order.extension);
+        expect(tx).to.changeTokenBalances(dai, [addr, addr1], [-takingAmount, takingAmount]); // taking threshold = exact taker amount + eps
+        expect(tx).to.changeTokenBalances(inch, [addr, addr1], [makingAmount, -makingAmount]);
     });
 
     it('dai -> 1inch stop loss order predicate is invalid', async function () {
@@ -161,8 +161,8 @@ describe('ChainLinkExample', function () {
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount), order.extension))
-            .to.changeTokenBalances(dai, [addr, addr1], [-takingAmount, takingAmount])
-            .to.changeTokenBalances(weth, [addr, addr1], [makingAmount, -makingAmount]);
+        const tx = await swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount), order.extension);
+        expect(tx).to.changeTokenBalances(dai, [addr, addr1], [-takingAmount, takingAmount]);
+        expect(tx).to.changeTokenBalances(weth, [addr, addr1], [makingAmount, -makingAmount]);
     });
 });

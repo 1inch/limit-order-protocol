@@ -59,10 +59,12 @@ describe('Dutch auction', function () {
         await time.increaseTo(ts + 43200n); // 50% auction time
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.08')), order.extension))
-            .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')])
-            .to.changeTokenBalance(weth, addr.address, (actual) => roughlyEqualValues(ether('0.075'), actual, 1e-4))
-            .to.changeTokenBalance(weth, addr1.address, (actual) => roughlyEqualValues(-ether('0.075'), actual, 1e-4));
+        const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.08')), order.extension);
+        expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
+        expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
+            (actual) => roughlyEqualValues(ether('0.075'), actual, 1e-4),
+            (actual) => roughlyEqualValues(-ether('0.075'), actual, 1e-4),
+        ]);
     });
 
     it('swap with takingAmount 50% time passed', async function () {
@@ -71,30 +73,36 @@ describe('Dutch auction', function () {
         await time.increaseTo(ts + 43200n); // 50% auction time
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('0.075'), ether('100'), order.extension))
-            .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')])
-            .to.changeTokenBalance(weth, addr.address, (actual) => roughlyEqualValues(ether('0.075'), actual, 1e-4))
-            .to.changeTokenBalance(weth, addr1.address, (actual) => roughlyEqualValues(-ether('0.075'), actual, 1e-4));
+        const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('0.075'), ether('100'), order.extension);
+        expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
+        expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
+            (actual) => roughlyEqualValues(ether('0.075'), actual, 1e-4),
+            (actual) => roughlyEqualValues(-ether('0.075'), actual, 1e-4),
+        ]);
     });
 
     it('swap with makingAmount 0% time passed', async function () {
         const { dai, weth, swap, order, signature } = await loadFixture(deployAndBuildOrder);
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.1')), order.extension))
-            .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')])
-            .to.changeTokenBalance(weth, addr.address, (actual) => roughlyEqualValues(ether('0.1'), actual, 1e-4))
-            .to.changeTokenBalance(weth, addr1.address, (actual) => roughlyEqualValues(-ether('0.1'), actual, 1e-4));
+        const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.1')), order.extension);
+        expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
+        expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
+            (actual) => roughlyEqualValues(ether('0.1'), actual, 1e-4),
+            (actual) => roughlyEqualValues(-ether('0.1'), actual, 1e-4),
+        ]);
     });
 
     it('swap with takingAmount 0% time passed', async function () {
         const { dai, weth, swap, order, signature } = await loadFixture(deployAndBuildOrder);
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('0.1'), ether('100'), order.extension))
-            .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')])
-            .to.changeTokenBalance(weth, addr.address, (actual) => roughlyEqualValues(ether('0.1'), actual, 1e-4))
-            .to.changeTokenBalance(weth, addr1.address, (actual) => roughlyEqualValues(-ether('0.1'), actual, 1e-4));
+        const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('0.1'), ether('100'), order.extension);
+        expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
+        expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
+            (actual) => roughlyEqualValues(ether('0.1'), actual, 1e-4),
+            (actual) => roughlyEqualValues(-ether('0.1'), actual, 1e-4),
+        ]);
     });
 
     it('swap with makingAmount 100% time passed', async function () {
@@ -103,10 +111,12 @@ describe('Dutch auction', function () {
         await time.increaseTo(ts + 86500n); // >100% auction time
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.05')), order.extension))
-            .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')])
-            .to.changeTokenBalance(weth, addr.address, (actual) => roughlyEqualValues(ether('0.05'), actual, 1e-4))
-            .to.changeTokenBalance(weth, addr1.address, (actual) => roughlyEqualValues(-ether('0.05'), actual, 1e-4));
+        const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.05')), order.extension);
+        expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
+        expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
+            (actual) => roughlyEqualValues(ether('0.05'), actual, 1e-4),
+            (actual) => roughlyEqualValues(-ether('0.05'), actual, 1e-4),
+        ]);
     });
 
     it('swap with takingAmount 100% time passed', async function () {
@@ -115,9 +125,11 @@ describe('Dutch auction', function () {
         await time.increaseTo(ts + 86500n); // >100% auction time
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.connect(addr1).fillOrderExt(order, r, vs, ether('0.05'), ether('100'), order.extension))
-            .to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')])
-            .to.changeTokenBalance(weth, addr.address, (actual) => roughlyEqualValues(ether('0.05'), actual, 1e-4))
-            .to.changeTokenBalance(weth, addr1.address, (actual) => roughlyEqualValues(-ether('0.05'), actual, 1e-4));
+        const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('0.05'), ether('100'), order.extension);
+        expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
+        expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
+            (actual) => roughlyEqualValues(ether('0.05'), actual, 1e-4),
+            (actual) => roughlyEqualValues(-ether('0.05'), actual, 1e-4),
+        ]);
     });
 });
