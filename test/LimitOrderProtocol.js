@@ -251,8 +251,8 @@ describe('LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
             const tx = await swap.fillOrder(order, r, vs, ether('5'), unwrapWethTaker(ether('1')));
             expect(tx).to.changeTokenBalances(dai, [addr, addr1], [ether('-5'), ether('5')]);
-            expect(tx).to.changeTokenBalances(weth, [addr, addr1], [ether('0'), ether('-1')])
-                .to.changeEtherBalance(addr, ether('1'));
+            expect(tx).to.changeTokenBalances(weth, [addr, addr1], [ether('0'), ether('-1')]);
+            expect(tx).to.changeEtherBalance(addr, ether('1'));
         });
 
         it('ERC721Proxy should work', async function () {
@@ -393,8 +393,8 @@ describe('LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
             const tx = await swap.fillOrder(order, r, vs, 10, fillWithMakingAmount(2));
             expect(tx).to.changeTokenBalances(dai, [addr, addr1], [10, -10]);
-            expect(tx).to.changeTokenBalance(weth, addr, -2)
-                .to.changeEtherBalance(addr1, 2);
+            expect(tx).to.changeTokenBalance(weth, addr, -2);
+            expect(tx).to.changeEtherBalance(addr1, 2);
         });
 
         it('Allow taker rate improvement', async function () {
@@ -1053,8 +1053,8 @@ describe('LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
             const tx = await swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 3 });
             expect(tx).to.changeTokenBalances(dai, [addr, addr1], [900, -900]);
-            expect(tx).to.changeTokenBalances(weth, [addr, addr1], [0, 3])
-                .to.changeEtherBalance(addr, -3);
+            expect(tx).to.changeTokenBalances(weth, [addr, addr1], [0, 3]);
+            expect(tx).to.changeEtherBalance(addr, -3);
         });
 
         it('should revert with takerAsset WETH and not enough msg.value', async function () {
@@ -1087,8 +1087,8 @@ describe('LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
             const tx = await swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 4 });
             expect(tx).to.changeTokenBalances(dai, [addr, addr1], [900, -900]);
-            expect(tx).to.changeTokenBalances(weth, [addr, addr1], [0, 3])
-                .to.changeEtherBalance(addr, -3);
+            expect(tx).to.changeTokenBalances(weth, [addr, addr1], [0, 3]);
+            expect(tx).to.changeEtherBalance(addr, -3);
         });
 
         it('should reverted with takerAsset non-WETH and msg.value greater than 0', async function () {
