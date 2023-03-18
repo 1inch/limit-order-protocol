@@ -83,7 +83,7 @@ function joinStaticCalls (dataArray) {
 }
 
 function ether (num) {
-    return utils.parseUnits(num);
+    return utils.parseUnits(num).toBigInt();
 }
 
 function setn (num, bit, value) {
@@ -92,6 +92,32 @@ function setn (num, bit, value) {
     } else {
         return BigInt(num) & (~(1n << BigInt(bit)));
     }
+}
+
+function roughlyEqualValues (
+    expected,
+    actual,
+    relativeDiff,
+) {
+    let expectedBN = BigInt(expected);
+    let actualBN = BigInt(actual);
+    expect(expectedBN * actualBN).to.be.gte(0, 'Values are of different sign');
+
+    if (expectedBN < 0) expectedBN = -expectedBN;
+    if (actualBN < 0) actualBN = -actualBN;
+
+    let multiplerNumerator = relativeDiff;
+    let multiplerDenominator = 1n;
+    while (!Number.isInteger(multiplerNumerator)) {
+        multiplerDenominator = multiplerDenominator * 10n;
+        multiplerNumerator *= 10;
+    }
+    const diff = expectedBN > actualBN ? expectedBN - actualBN : actualBN - expectedBN;
+    const treshold = (expectedBN * BigInt(multiplerNumerator)) / multiplerDenominator;
+    if (diff > treshold) {
+        return false;
+    }
+    return true;
 }
 
 module.exports = {
@@ -108,4 +134,5 @@ module.exports = {
     flattenTree,
     countAllItems,
     treeForEach,
+    roughlyEqualValues,
 };

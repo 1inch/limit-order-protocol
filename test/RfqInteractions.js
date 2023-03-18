@@ -79,18 +79,10 @@ describe('RfqInteractions', function () {
                 matchingParams,
             ]).substring(10);
 
-            const addrweth = await weth.balanceOf(addr.address);
-            const addr1weth = await weth.balanceOf(addr1.address);
-            const addrdai = await dai.balanceOf(addr.address);
-            const addr1dai = await dai.balanceOf(addr1.address);
-
             const { r, vs } = compactSignature(signature);
-            await matcher.matchOrders(swap.address, order, r, vs, ether('0.1'), ether('100'), interaction);
-
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.1')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.1')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('100')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('100')));
+            const tx = await matcher.matchOrders(swap.address, order, r, vs, ether('0.1'), ether('100'), interaction);
+            await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
+            await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [ether('0.1'), -ether('0.1')]);
         });
 
         it('unidirectional recursive swap', async function () {
@@ -141,19 +133,11 @@ describe('RfqInteractions', function () {
                 matchingParams,
             ]).substring(10);
 
-            const addrweth = await weth.balanceOf(addr.address);
-            const addr1weth = await weth.balanceOf(addr1.address);
-            const addrdai = await dai.balanceOf(addr.address);
-            const addr1dai = await dai.balanceOf(addr1.address);
-
             await weth.approve(matcher.address, ether('0.025'));
             const { r, vs } = compactSignature(signature);
-            await matcher.matchOrders(swap.address, order, r, vs, ether('0.01'), ether('10'), interaction);
-
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.sub(ether('0.025')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.add(ether('0.025')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.add(ether('25')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.sub(ether('25')));
+            const tx = await matcher.matchOrders(swap.address, order, r, vs, ether('0.01'), ether('10'), interaction);
+            await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [ether('25'), -ether('25')]);
+            await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [-ether('0.025'), ether('0.025')]);
         });
 
         it('triple recursive swap', async function () {
@@ -222,18 +206,10 @@ describe('RfqInteractions', function () {
                 internalInteraction,
             ]).substring(10);
 
-            const addrweth = await weth.balanceOf(addr.address);
-            const addr1weth = await weth.balanceOf(addr1.address);
-            const addrdai = await dai.balanceOf(addr.address);
-            const addr1dai = await dai.balanceOf(addr1.address);
-
             const { r, vs } = compactSignature(signature1);
-            await matcher.matchOrders(swap.address, order1, r, vs, ether('0.01'), ether('10'), externalInteraction);
-
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.sub(ether('0.025')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.add(ether('0.025')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.add(ether('25')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.sub(ether('25')));
+            const tx = await matcher.matchOrders(swap.address, order1, r, vs, ether('0.01'), ether('10'), externalInteraction);
+            await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [ether('25'), -ether('25')]);
+            await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [-ether('0.025'), ether('0.025')]);
         });
     });
 });
