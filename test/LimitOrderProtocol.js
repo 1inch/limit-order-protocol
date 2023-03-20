@@ -641,13 +641,13 @@ describe('LimitOrderProtocol', function () {
             const order = buildOrder(
                 {
                     maker: ethOrders.address,
+                    receiver: addr1.address,
                     makerAsset: weth.address,
                     takerAsset: dai.address,
                     makingAmount: ether('0.3'),
                     takingAmount: ether('300'),
                 },
                 {
-                    receiver: addr1.address,
                     postInteraction: ethOrders.address,
                 },
             );
@@ -687,13 +687,13 @@ describe('LimitOrderProtocol', function () {
             const order = buildOrder(
                 {
                     maker: ethOrders.address,
+                    receiver: addr1.address,
                     makerAsset: weth.address,
                     takerAsset: dai.address,
                     makingAmount: ether('0.3'),
                     takingAmount: ether('300'),
                 },
                 {
-                    receiver: addr1.address,
                     postInteraction: ethOrders.address,
                 },
             );
@@ -723,18 +723,14 @@ describe('LimitOrderProtocol', function () {
         it('Invalid order (missing post-interaction)', async function () {
             const { dai, weth, ethOrders } = await loadFixture(deployContractsAndInit);
 
-            const order = buildOrder(
-                {
-                    maker: ethOrders.address,
-                    makerAsset: weth.address,
-                    takerAsset: dai.address,
-                    makingAmount: ether('0.3'),
-                    takingAmount: ether('300'),
-                },
-                {
-                    receiver: addr1.address,
-                },
-            );
+            const order = buildOrder({
+                maker: ethOrders.address,
+                receiver: addr1.address,
+                makerAsset: weth.address,
+                takerAsset: dai.address,
+                makingAmount: ether('0.3'),
+                takingAmount: ether('300'),
+            });
 
             await expect(ethOrders.connect(addr1).ethOrderDeposit(order, order.extension, { value: ether('0.3') }))
                 .to.be.revertedWithCustomError(ethOrders, 'InvalidOrder');

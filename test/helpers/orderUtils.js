@@ -7,6 +7,7 @@ const { setn } = require('./utils');
 const Order = [
     { name: 'salt', type: 'uint256' },
     { name: 'maker', type: 'address' },
+    { name: 'receiver', type: 'address' },
     { name: 'makerAsset', type: 'address' },
     { name: 'takerAsset', type: 'address' },
     { name: 'makingAmount', type: 'uint256' },
@@ -90,6 +91,7 @@ function buildMakerTraits ({
 function buildOrderRFQ (
     {
         maker,
+        receiver = constants.ZERO_ADDRESS,
         makerAsset,
         takerAsset,
         makingAmount,
@@ -97,7 +99,6 @@ function buildOrderRFQ (
         makerTraits = '0',
     },
     {
-        receiver = '0x',
         makerAssetSuffix = '0x',
         takerAssetSuffix = '0x',
         makingAmountGetter = '0x',
@@ -116,6 +117,7 @@ function buildOrderRFQ (
     return buildOrder(
         {
             maker,
+            receiver,
             makerAsset,
             takerAsset,
             makingAmount,
@@ -123,7 +125,6 @@ function buildOrderRFQ (
             makerTraits,
         },
         {
-            receiver,
             makerAssetSuffix,
             takerAssetSuffix,
             makingAmountGetter,
@@ -139,6 +140,7 @@ function buildOrderRFQ (
 function buildOrder (
     {
         maker,
+        receiver = constants.ZERO_ADDRESS,
         makerAsset,
         takerAsset,
         makingAmount,
@@ -146,7 +148,6 @@ function buildOrder (
         makerTraits = buildMakerTraits(),
     },
     {
-        receiver = '0x',
         makerAssetSuffix = '0x',
         takerAssetSuffix = '0x',
         makingAmountGetter = '0x',
@@ -178,13 +179,8 @@ function buildOrder (
         .reduce((acc, a, i) => acc + (BigInt(a) << BigInt(32 * i)), 0n);
 
     let extension = '0x';
-    if (trim0x(receiver).length > 0) {
-        extension += trim0x(receiver);
-        if (allInteractionsConcat.length > 0) {
-            extension += offsets.toString(16).padStart(64, '0') + allInteractionsConcat;
-        }
-    } else if (allInteractionsConcat.length > 0) {
-        extension += trim0x(constants.ZERO_ADDRESS) + offsets.toString(16).padStart(64, '0') + allInteractionsConcat;
+    if (allInteractionsConcat.length > 0) {
+        extension += offsets.toString(16).padStart(64, '0') + allInteractionsConcat;
     }
 
     let salt = '1';
@@ -204,6 +200,7 @@ function buildOrder (
     return {
         salt,
         maker,
+        receiver,
         makerAsset,
         takerAsset,
         makingAmount,

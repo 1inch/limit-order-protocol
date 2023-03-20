@@ -69,7 +69,7 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
         if (!order.makerTraits.needPostInteractionCall()) revert InvalidOrder();
         order.validateExtension(extension);
         if (order.maker.get() != address(this)) revert AccessDenied();
-        if (extension.getReceiver(order) != msg.sender) revert AccessDenied();
+        if (order.getReceiver() != msg.sender) revert AccessDenied();
         if (order.makingAmount != msg.value) revert InvalidOrder();
         bytes calldata interaction = extension.postInteractionTargetAndData();
         if (interaction.length != 20 || address(bytes20(interaction)) != address(this)) revert InvalidOrder();

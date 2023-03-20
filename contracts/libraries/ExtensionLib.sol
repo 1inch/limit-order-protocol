@@ -22,16 +22,6 @@ library ExtensionLib {
         PostInteractionData
     }
 
-    function getReceiver(bytes calldata extension, IOrderMixin.Order calldata order) internal pure returns(address receiver) {
-        if (extension.length < 20) {
-            return order.maker.get();
-        }
-        receiver = address(bytes20(extension));
-        if (receiver == address(0)) {
-            receiver = order.maker.get();
-        }
-    }
-
     function makerAssetSuffix(bytes calldata extension) internal pure returns(bytes calldata) {
         return _get(extension, DynamicField.MakerAssetSuffix);
     }
@@ -65,14 +55,14 @@ library ExtensionLib {
     }
 
     function _get(bytes calldata extension, DynamicField field) private pure returns(bytes calldata result) {
-        if (extension.length < 52) return msg.data[:0];
+        if (extension.length < 0x20) return msg.data[:0];
 
         Offsets offsets;
         bytes calldata concat;
         assembly ("memory-safe") {  // solhint-disable-line no-inline-assembly
-            offsets := calldataload(add(extension.offset, 20))
-            concat.offset := add(extension.offset, 52)
-            concat.length := sub(extension.length, 52)
+            offsets := calldataload(extension.offset)
+            concat.offset := add(extension.offset, 0x20)
+            concat.length := sub(extension.length, 0x20)
         }
 
         return offsets.get(concat, uint256(field));
