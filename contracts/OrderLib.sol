@@ -25,6 +25,7 @@ library OrderLib {
         "Order("
             "uint256 salt,"
             "address maker,"
+            "address receiver,"
             "address makerAsset,"
             "address takerAsset,"
             "uint256 makingAmount,"
@@ -40,10 +41,15 @@ library OrderLib {
 
             // keccak256(abi.encode(_LIMIT_ORDER_TYPEHASH, order));
             mstore(ptr, typehash)
-            calldatacopy(add(ptr, 0x20), order, 0xe0)
-            result := keccak256(ptr, 0x100)
+            calldatacopy(add(ptr, 0x20), order, 0x100)
+            result := keccak256(ptr, 0x120)
         }
         result = ECDSA.toTypedDataHash(domainSeparator, result);
+    }
+
+    function getReceiver(IOrderMixin.Order calldata order) internal pure returns(address) {
+        address receiver = order.receiver.get();
+        return receiver != address(0) ? receiver : order.maker.get();
     }
 
     function calculateMakingAmount(

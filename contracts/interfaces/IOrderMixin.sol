@@ -10,6 +10,7 @@ interface IOrderMixin {
     struct Order {
         uint256 salt;
         Address maker;
+        Address receiver;
         Address makerAsset;
         Address takerAsset;
         uint256 makingAmount;

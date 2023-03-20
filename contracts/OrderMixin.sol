@@ -375,17 +375,17 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
 
             if (order.makerTraits.unwrapWeth()) {
                 // solhint-disable-next-line avoid-low-level-calls
-                (bool success, ) = extension.getReceiver(order).call{value: takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
+                (bool success, ) = order.getReceiver().call{value: takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
                 if (!success) revert Errors.ETHTransferFailed();
             } else {
                 _WETH.safeDeposit(takingAmount);
-                _WETH.safeTransfer(extension.getReceiver(order), takingAmount);
+                _WETH.safeTransfer(order.getReceiver(), takingAmount);
             }
         } else {
             if (msg.value != 0) revert Errors.InvalidMsgValue();
 
             bool needUnwrap = order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth();
-            address receiver = needUnwrap ? address(this) : extension.getReceiver(order);
+            address receiver = needUnwrap ? address(this) : order.getReceiver();
             if (takerTraits.usePermit2()) {
                 if (extension.takerAssetSuffix().length > 0) revert InvalidPermit2Transfer();
                 if (!_callPermit2TransferFrom(
@@ -405,7 +405,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             }
 
             if (needUnwrap) {
-                _WETH.safeWithdrawTo(takingAmount, extension.getReceiver(order));
+                _WETH.safeWithdrawTo(takingAmount, order.getReceiver());
             }
         }
 
