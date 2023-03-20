@@ -13,7 +13,8 @@ async function deploySwapTokens () {
     const LimitOrderProtocol = await ethers.getContractFactory('LimitOrderProtocol');
     const swap = await LimitOrderProtocol.deploy(weth.address);
     await swap.deployed();
-    const usdc = await TokenMock.deploy('USDC', 'USDC');
+    const TokenCustomDecimalsMock = await ethers.getContractFactory('TokenCustomDecimalsMock');
+    const usdc = await TokenCustomDecimalsMock.deploy('USDC', 'USDC', '0', 6);
     await usdc.deployed();
     const chainId = (await ethers.provider.getNetwork()).chainId;
     return { dai, weth, inch, swap, chainId, usdc };
