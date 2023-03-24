@@ -18,7 +18,7 @@
   "dependencies": {
     "@1inch/solidity-utils": "2.2.21",
     "@chainlink/contracts": "0.6.1",
-    "@nomicfoundation/hardhat-chai-matchers": "/Users/sevenswen/Documents/Solidity/hardhat/packages/hardhat-chai-matchers/nomicfoundation-hardhat-chai-matchers-v1.0.6.tgz",
+    "@nomicfoundation/hardhat-chai-matchers": "../hardhat/packages/hardhat-chai-matchers",
     "@openzeppelin/contracts": "4.8.2"
   },
   "devDependencies": {

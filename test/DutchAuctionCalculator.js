@@ -1,6 +1,6 @@
-const { expect, trim0x, time } = require('@1inch/solidity-utils');
+const { expect, trim0x, time, assertRoughlyEqualValues } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { cutLastArg, ether, roughlyEqualValues } = require('./helpers/utils');
+const { cutLastArg, ether } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { fillWithMakingAmount, compactSignature, buildOrder, signOrder } = require('./helpers/orderUtils');
 const { ethers } = require('hardhat');
@@ -61,10 +61,12 @@ describe('Dutch auction', function () {
         const { r, vs } = compactSignature(signature);
         const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.08')), order.extension);
         await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
-        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
-            (actual) => roughlyEqualValues(ether('0.075'), actual, 1e-4),
-            (actual) => roughlyEqualValues(-ether('0.075'), actual, 1e-4),
-        ]);
+        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address],
+            ([change, change1]) => {
+                assertRoughlyEqualValues(change, ether('0.075'), 1e-4);
+                assertRoughlyEqualValues(change1, -ether('0.075'), 1e-4);
+            },
+        );
     });
 
     it('swap with takingAmount 50% time passed', async function () {
@@ -75,10 +77,12 @@ describe('Dutch auction', function () {
         const { r, vs } = compactSignature(signature);
         const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('0.075'), ether('100'), order.extension);
         await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
-        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
-            (actual) => roughlyEqualValues(ether('0.075'), actual, 1e-4),
-            (actual) => roughlyEqualValues(-ether('0.075'), actual, 1e-4),
-        ]);
+        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address],
+            ([change, change1]) => {
+                assertRoughlyEqualValues(change, ether('0.075'), 1e-4);
+                assertRoughlyEqualValues(change1, -ether('0.075'), 1e-4);
+            },
+        );
     });
 
     it('swap with makingAmount 0% time passed', async function () {
@@ -87,10 +91,12 @@ describe('Dutch auction', function () {
         const { r, vs } = compactSignature(signature);
         const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.1')), order.extension);
         await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
-        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
-            (actual) => roughlyEqualValues(ether('0.1'), actual, 1e-4),
-            (actual) => roughlyEqualValues(-ether('0.1'), actual, 1e-4),
-        ]);
+        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address],
+            ([change, change1]) => {
+                assertRoughlyEqualValues(change, ether('0.1'), 1e-4);
+                assertRoughlyEqualValues(change1, -ether('0.1'), 1e-4);
+            },
+        );
     });
 
     it('swap with takingAmount 0% time passed', async function () {
@@ -99,10 +105,12 @@ describe('Dutch auction', function () {
         const { r, vs } = compactSignature(signature);
         const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('0.1'), ether('100'), order.extension);
         await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
-        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
-            (actual) => roughlyEqualValues(ether('0.1'), actual, 1e-4),
-            (actual) => roughlyEqualValues(-ether('0.1'), actual, 1e-4),
-        ]);
+        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address],
+            ([change, change1]) => {
+                assertRoughlyEqualValues(change, ether('0.1'), 1e-4);
+                assertRoughlyEqualValues(change1, -ether('0.1'), 1e-4);
+            },
+        );
     });
 
     it('swap with makingAmount 100% time passed', async function () {
@@ -113,10 +121,14 @@ describe('Dutch auction', function () {
         const { r, vs } = compactSignature(signature);
         const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.05')), order.extension);
         await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
-        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
-            (actual) => roughlyEqualValues(ether('0.05'), actual, 1e-4),
-            (actual) => roughlyEqualValues(-ether('0.05'), actual, 1e-4),
-        ]);
+        await expect(tx).to.changeTokenBalances(
+            weth,
+            [addr.address, addr1.address],
+            ([change, change1]) => {
+                assertRoughlyEqualValues(change, ether('0.05'), 1e-4);
+                assertRoughlyEqualValues(change1, -ether('0.05'), 1e-4);
+            },
+        );
     });
 
     it('swap with takingAmount 100% time passed', async function () {
@@ -127,9 +139,11 @@ describe('Dutch auction', function () {
         const { r, vs } = compactSignature(signature);
         const tx = await swap.connect(addr1).fillOrderExt(order, r, vs, ether('0.05'), ether('100'), order.extension);
         await expect(tx).to.changeTokenBalances(dai, [addr.address, addr1.address], [-ether('100'), ether('100')]);
-        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address], [
-            (actual) => roughlyEqualValues(ether('0.05'), actual, 1e-4),
-            (actual) => roughlyEqualValues(-ether('0.05'), actual, 1e-4),
-        ]);
+        await expect(tx).to.changeTokenBalances(weth, [addr.address, addr1.address],
+            ([change, change1]) => {
+                assertRoughlyEqualValues(change, ether('0.05'), 1e-4);
+                assertRoughlyEqualValues(change1, -ether('0.05'), 1e-4);
+            },
+        );
     });
 });

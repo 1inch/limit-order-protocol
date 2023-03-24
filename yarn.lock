@@ -730,20 +730,8 @@
     mcl-wasm "^0.7.1"
     rustbn.js "~0.2.0"
 
-"@nomicfoundation/hardhat-chai-matchers@/Users/sevenswen/Documents/Solidity/hardhat/packages/hardhat-chai-matchers/nomicfoundation-hardhat-chai-matchers-v1.0.6.tgz":
+"@nomicfoundation/hardhat-chai-matchers@../hardhat/packages/hardhat-chai-matchers":
   version "1.0.6"
-  uid "0fe83087fb1b284741df1b7b96f0f01c2cf6337c"
-  resolved "/Users/sevenswen/Documents/Solidity/hardhat/packages/hardhat-chai-matchers/nomicfoundation-hardhat-chai-matchers-v1.0.6.tgz#0fe83087fb1b284741df1b7b96f0f01c2cf6337c"
-  dependencies:
-    "@ethersproject/abi" "^5.1.2"
-    "@types/chai-as-promised" "^7.1.3"
-    chai-as-promised "^7.1.1"
-    deep-eql "^4.0.1"
-    ordinal "^1.0.3"
-
-"@nomicfoundation/hardhat-chai-matchers@file:../hardhat/packages/hardhat-chai-matchers/nomicfoundation-hardhat-chai-matchers-v1.0.6.tgz":
-  version "1.0.6"
-  resolved "file:../hardhat/packages/hardhat-chai-matchers/nomicfoundation-hardhat-chai-matchers-v1.0.6.tgz#0fe83087fb1b284741df1b7b96f0f01c2cf6337c"
   dependencies:
     "@ethersproject/abi" "^5.1.2"
     "@types/chai-as-promised" "^7.1.3"
