@@ -1,6 +1,19 @@
 const networks = {};
 const etherscan = { apiKey: {}, customChains: [] };
 
+if (process.env.ZKSYNC_PRIVATE_KEY) {
+    networks.zksync = {
+        url: 'https://mainnet.era.zksync.io',
+        ethNetwork: 'mainnet',
+        zksync: true,
+        verifyURL: 'https://zksync2-mainnet-explorer.zksync.io/contract_verification',
+        accounts: [process.env.ZKSYNC_PRIVATE_KEY],
+    };
+    console.log('Network \'zksync\' registered');
+} else {
+    console.log('Network \'zksync\' not registered');
+}
+
 function register (name, chainId, url, privateKey, etherscanNetworkName, etherscanKey) {
     if (url && privateKey && etherscanKey) {
         networks[name] = {

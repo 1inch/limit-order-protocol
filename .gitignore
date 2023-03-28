@@ -1,5 +1,7 @@
 artifacts
 cache
+artifacts-zk
+cache-zk
 node_modules
 coverage
 hardhat-dependency-compiler
