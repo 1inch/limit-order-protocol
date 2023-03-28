@@ -15,8 +15,6 @@ contract WethUnwrapper is OnlyWethReceiver, IPostInteraction {
 
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
 
-    uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
-
     constructor(IWETH weth) OnlyWethReceiver(address(weth)) {
         _WETH = weth;
     }
