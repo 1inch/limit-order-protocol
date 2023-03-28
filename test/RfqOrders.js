@@ -36,7 +36,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
     describe('wip', function () {
         it('should swap fully based on RFQ signature', async function () {
-            if (hre.__SOLIDITY_COVERAGE_RUNNING) return;
+            if (hre.__SOLIDITY_COVERAGE_RUNNING) { this.skip(); }
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);

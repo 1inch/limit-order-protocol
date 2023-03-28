@@ -133,7 +133,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should swap fully based on signature', async function () {
-            if (hre.__SOLIDITY_COVERAGE_RUNNING) return;
+            if (hre.__SOLIDITY_COVERAGE_RUNNING) { this.skip(); }
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
@@ -157,7 +157,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should swap half based on signature', async function () {
-            if (hre.__SOLIDITY_COVERAGE_RUNNING) return;
+            if (hre.__SOLIDITY_COVERAGE_RUNNING) { this.skip(); }
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 2 DAI => 2 WETH
             // Swap:  1 DAI => 1 WETH
