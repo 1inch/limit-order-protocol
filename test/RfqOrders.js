@@ -165,8 +165,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
                 const permit = await getPermit(addr.address, addr2, weth, '1', chainId, swap.address, '1');
                 const { r, vs } = compactSignature(signature);
-                const requestFunc = () => swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, emptyInteraction, permit);
-                await expect(requestFunc()).to.be.revertedWith('ERC20Permit: invalid signature');
+                await expect(swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, emptyInteraction, permit)).to.be.revertedWith('ERC20Permit: invalid signature');
             });
 
             it('rejects expired permit', async function () {
@@ -184,8 +183,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
                 const permit = await getPermit(addr.address, addr1, weth, '1', chainId, swap.address, '1', deadline);
                 const { r, vs } = compactSignature(signature);
-                const requestFunc = () => swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, emptyInteraction, permit);
-                await expect(requestFunc()).to.be.revertedWith('ERC20Permit: expired deadline');
+                await expect(swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, emptyInteraction, permit)).to.be.revertedWith('ERC20Permit: expired deadline');
             });
         });
     });
