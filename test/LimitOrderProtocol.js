@@ -1,4 +1,5 @@
 const { ethers, tracer } = require('hardhat');
+const hre = require('hardhat');
 const { expect, time, constants, getPermit2, permit2Contract } = require('@1inch/solidity-utils');
 const { fillWithMakingAmount, unwrapWethTaker, skipMakerPermit, buildMakerTraits, buildOrder, signOrder, compactSignature, buildOrderData } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
@@ -131,7 +132,8 @@ describe('LimitOrderProtocol', function () {
                 .to.be.revertedWithCustomError(swap, 'SwapWithZeroAmount');
         });
 
-        it('@skip-on-coverage should swap fully based on signature', async function () {
+        it('should swap fully based on signature', async function () {
+            if (hre.__SOLIDITY_COVERAGE_RUNNING) return;
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
@@ -154,7 +156,8 @@ describe('LimitOrderProtocol', function () {
             expect(countAllItems(opcodes)).to.deep.equal({ STATICCALL: 1, CALL: 2, SLOAD: 1, SSTORE: 1, LOG1: 1 });
         });
 
-        it('@skip-on-coverage should swap half based on signature', async function () {
+        it('should swap half based on signature', async function () {
+            if (hre.__SOLIDITY_COVERAGE_RUNNING) return;
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 2 DAI => 2 WETH
             // Swap:  1 DAI => 1 WETH
