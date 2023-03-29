@@ -1,4 +1,5 @@
-const { ethers } = require('hardhat');
+const hre = require('hardhat');
+const { ethers } = hre;
 const { expect, time, profileEVM, trackReceivedTokenAndTx, getPermit2, permit2Contract } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { buildOrderRFQ, signOrder, compactSignature, fillWithMakingAmount, unwrapWethTaker, buildMakerTraits, buildOrderData } = require('./helpers/orderUtils');
@@ -34,7 +35,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
     };
 
     describe('wip', function () {
-        it('@skip-on-coverage should swap fully based on RFQ signature', async function () {
+        it('should swap fully based on RFQ signature', async function () {
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
             const { dai, weth, swap, chainId } = await loadFixture(initContracts);
@@ -58,11 +59,11 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const { r, vs } = compactSignature(signature);
                 const receipt = await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
 
-                expect(
-                    await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
-                ).to.be.deep.equal([2, 1, 7, 7, 0]);
-
-                // await gasspectEVM(receipt.hash);
+                if (hre.__SOLIDITY_COVERAGE_RUNNING === undefined) {
+                    expect(
+                        await profileEVM(ethers.provider, receipt.hash, ['CALL', 'STATICCALL', 'SSTORE', 'SLOAD', 'EXTCODESIZE']),
+                    ).to.be.deep.equal([2, 1, 7, 7, 0]);
+                }
 
                 expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
                 expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
