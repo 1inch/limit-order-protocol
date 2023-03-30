@@ -198,8 +198,8 @@ interface IOrderMixin {
      * @param amount Taker amount to fill
      * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
-     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -211,7 +211,35 @@ interface IOrderMixin {
         uint256 amount,
         TakerTraits takerTraits,
         address target,
+        bytes calldata permit,
+        bytes calldata interaction
+    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
+
+    /**
+     * @notice Same as `fillOrderTo` but calls permit first.
+     * It allows to approve token spending and make a swap in one transaction.
+     * Also allows to specify funds destination instead of `msg.sender`
+     * @param order Order quote to fill
+     * @param signature Signature to confirm quote ownership
+     * @param amount Taker amount to fill
+     * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     * @param target Address that will receive swap funds
+     * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
+     * @param extension Extension data
+     * @return makingAmount Actual amount transferred from maker to taker
+     * @return takingAmount Actual amount transferred from taker to maker
+     * @return orderHash Hash of the filled order
+     * @dev See tests for examples
+     */
+    function fillContractOrderExt(
+        IOrderMixin.Order calldata order,
+        bytes calldata signature,
+        uint256 amount,
+        TakerTraits takerTraits,
+        address target,
+        bytes calldata permit,
         bytes calldata interaction,
-        bytes calldata permit
+        bytes calldata extension
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 }
