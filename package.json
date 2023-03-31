@@ -1,6 +1,6 @@
 {
   "name": "@1inch/limit-order-protocol-contract",
-  "version": "4.0.0-prerelease-3",
+  "version": "4.0.0-prerelease-4",
   "description": "1inch Limit Order Protocol",
   "repository": {
     "type": "git",
@@ -16,7 +16,7 @@
     "test/helpers"
   ],
   "dependencies": {
-    "@1inch/solidity-utils": "2.2.21",
+    "@1inch/solidity-utils": "2.2.22",
     "@chainlink/contracts": "0.6.1",
     "@openzeppelin/contracts": "4.8.2"
   },
@@ -31,20 +31,20 @@
     "@nomiclabs/hardhat-etherscan": "3.1.7",
     "chai": "4.3.7",
     "dotenv": "16.0.3",
-    "eslint": "8.35.0",
+    "eslint": "8.37.0",
     "eslint-config-standard": "17.0.0",
     "eslint-plugin-import": "2.27.5",
-    "eslint-plugin-n": "15.6.1",
+    "eslint-plugin-n": "15.7.0",
     "eslint-plugin-promise": "6.1.1",
     "ethers": "5.7.2",
     "hardhat": "^2.13.0",
     "hardhat-dependency-compiler": "1.1.3",
-    "hardhat-deploy": "0.11.24",
+    "hardhat-deploy": "0.11.25",
     "hardhat-gas-reporter": "1.0.9",
     "hardhat-tracer": "2.1.2",
-    "rimraf": "4.3.0",
+    "rimraf": "4.4.1",
     "solc": "0.8.19",
-    "solhint": "3.4.0",
+    "solhint": "3.4.1",
     "solidity-coverage": "0.8.2",
     "solidity-docgen": "0.5.17",
     "zksync-web3": "0.14.3"
