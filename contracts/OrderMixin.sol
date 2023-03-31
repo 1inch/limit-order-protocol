@@ -212,6 +212,20 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         uint256 amount,
         TakerTraits takerTraits,
         address target,
+        bytes calldata interaction
+    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+        return fillContractOrderExt(order, signature, amount, takerTraits, target, interaction, msg.data[:0], msg.data[:0]);
+    }
+
+    /**
+     * @notice See {IOrderMixin-fillContractOrderWithPermit}.
+     */
+    function fillContractOrderWithPermit(
+        IOrderMixin.Order calldata order,
+        bytes calldata signature,
+        uint256 amount,
+        TakerTraits takerTraits,
+        address target,
         bytes calldata interaction,
         bytes calldata permit
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
