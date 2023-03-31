@@ -1,6 +1,6 @@
 {
   "name": "@1inch/limit-order-protocol-contract",
-  "version": "4.0.0-prerelease-4",
+  "version": "4.0.0-prerelease-5",
   "description": "1inch Limit Order Protocol",
   "repository": {
     "type": "git",
