@@ -31,6 +31,15 @@ module.exports = async (hre) => {
             address: seriesEpochManager.address,
         });
     }
+
+    const CallsSimulator = await deployer.loadArtifact('CallsSimulator');
+    const callsSimulator = await deployer.deploy(CallsSimulator);
+    console.log(`${CallsSimulator.contractName} was deployed to ${callsSimulator.address}`);
+    if (await hre.getChainId() !== '31337') {
+        await hre.run('verify:verify', {
+            address: callsSimulator.address,
+        });
+    }
 };
 
 module.exports.skip = async () => true;
