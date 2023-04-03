@@ -182,7 +182,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             }
         }
 
-        (makingAmount, takingAmount) = _fillOrderTo(order, orderHash, extension, remainingMakingAmount, amount, takerTraits, target, _wrap(interaction));
+        (makingAmount, takingAmount) = _fillOrderTo(order, orderHash, extension, remainingMakingAmount, amount, takerTraits, target, interaction);
     }
 
     /**
@@ -256,7 +256,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             }
         }
 
-        (makingAmount, takingAmount) = _fillOrderTo(order, orderHash, extension, remainingMakingAmount, amount, takerTraits, target, _wrap(interaction));
+        (makingAmount, takingAmount) = _fillOrderTo(order, orderHash, extension, remainingMakingAmount, amount, takerTraits, target, interaction);
     }
 
     function _fillOrderTo(
@@ -267,7 +267,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         uint256 amount,
         TakerTraits takerTraits,
         address target,
-        WrappedCalldata interactionWrapped // Stack too deep
+        bytes calldata interaction
     ) private returns(uint256 makingAmount, uint256 takingAmount) {
         if (target == address(0)) {
             target = msg.sender;
@@ -371,16 +371,13 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             }
         }
 
-        {  // Stack too deep
-            bytes calldata interaction = _unwrap(interactionWrapped);
-            if (interaction.length >= 20) {
-                // proceed only if interaction length is enough to store address
-                uint256 offeredTakingAmount = ITakerInteraction(address(bytes20(interaction))).takerInteraction(
-                    order, orderHash, msg.sender, makingAmount, takingAmount, remainingMakingAmount, interaction[20:]
-                );
-                if (offeredTakingAmount > takingAmount && order.makerTraits.allowImproveRateViaInteraction()) {
-                    takingAmount = offeredTakingAmount;
-                }
+        if (interaction.length >= 20) {
+            // proceed only if interaction length is enough to store address
+            uint256 offeredTakingAmount = ITakerInteraction(address(bytes20(interaction))).takerInteraction(
+                order, orderHash, msg.sender, makingAmount, takingAmount, remainingMakingAmount, interaction[20:]
+            );
+            if (offeredTakingAmount > takingAmount && order.makerTraits.allowImproveRateViaInteraction()) {
+                takingAmount = offeredTakingAmount;
             }
         }
 
@@ -497,21 +494,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             mstore(add(data, 0x64), asset)
             let status := call(gas(), _PERMIT2, 0, data, 0x84, 0x0, 0x20)
             success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
-        }
-    }
-
-    type WrappedCalldata is uint256;
-
-    function _wrap(bytes calldata cd) private pure returns(WrappedCalldata wrapped) {
-        assembly ("memory-safe") {  // solhint-disable-line no-inline-assembly
-            wrapped := or(shl(128, cd.offset), cd.length)
-        }
-    }
-
-    function _unwrap(WrappedCalldata wrapped) private pure returns(bytes calldata cd) {
-        assembly ("memory-safe") {  // solhint-disable-line no-inline-assembly
-            cd.offset := shr(128, wrapped)
-            cd.length := and(wrapped, 0xffffffffffffffffffffffffffffffff)
         }
     }
 }
