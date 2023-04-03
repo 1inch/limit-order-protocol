@@ -339,7 +339,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         if (order.makerTraits.needPreInteractionCall()) {
             bytes calldata data = extension.preInteractionTargetAndData();
             address listener = order.maker.get();
-            if (data.length > 0) {
+            if (data.length > 19) {
                 listener = address(bytes20(data));
                 data = data[20:];
             }
@@ -436,7 +436,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         if (order.makerTraits.needPostInteractionCall()) {
             bytes calldata data = extension.postInteractionTargetAndData();
             address listener = order.maker.get();
-            if (data.length > 0) {
+            if (data.length > 19) {
                 listener = address(bytes20(data));
                 data = data[20:];
             }
