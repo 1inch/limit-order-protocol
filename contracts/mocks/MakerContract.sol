@@ -79,7 +79,6 @@ contract MakerContract is IERC1271, EIP712Alien, ERC20 {
             order := signature.offset
         }
 
-        // TODO: use 3 different custom reverts
         if (
             (
                 (order.makerAsset.get() != address(token0) || order.takerAsset.get() != address(token1)) &&

@@ -2,8 +2,6 @@
 
 pragma solidity 0.8.19;
 
-import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
-
 import "../interfaces/IOrderMixin.sol";
 import "./OffsetsLib.sol";
 
