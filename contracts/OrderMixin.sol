@@ -325,7 +325,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             }
         }
         if (!order.makerTraits.allowPartialFills() && makingAmount != order.makingAmount) revert PartialFillNotAllowed();
-        if (makingAmount == 0 || takingAmount == 0) revert SwapWithZeroAmount();
+        unchecked { if (makingAmount * takingAmount == 0) revert SwapWithZeroAmount(); }
 
         // Invalidate order depending on makerTraits
         if (order.makerTraits.useBitInvalidator()) {
