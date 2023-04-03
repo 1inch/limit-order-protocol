@@ -128,7 +128,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         uint256 amount,
         TakerTraits takerTraits
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        return fillOrderTo(order, r, vs, amount, takerTraits, msg.sender, msg.data[:0]);
+        return fillOrderToExt(order, r, vs, amount, takerTraits, msg.sender, msg.data[:0], msg.data[:0]);
     }
 
     /**
@@ -156,7 +156,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         TakerTraits takerTraits,
         address target,
         bytes calldata interaction
-    ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         return fillOrderToExt(order, r, vs, amount, takerTraits, target, interaction, msg.data[:0]);
     }
 
@@ -199,7 +199,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes calldata permit
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         IERC20(order.takerAsset.get()).safePermit(permit);
-        return fillOrderTo(order, r, vs, amount, takerTraits, target, interaction);
+        return fillOrderToExt(order, r, vs, amount, takerTraits, target, interaction, msg.data[:0]);
     }
 
     /**
