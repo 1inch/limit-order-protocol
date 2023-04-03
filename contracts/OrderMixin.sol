@@ -282,7 +282,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         }
 
         // Check if orders predicate allows filling
-        if (order.makerTraits.hasExtension()) {
+        if (extension.length > 0) {
             bytes calldata predicate = extension.predicate();
             if (predicate.length > 0) {
                 if (!checkPredicate(predicate)) revert PredicateIsNotTrue();
