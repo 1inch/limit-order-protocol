@@ -54,14 +54,14 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     /**
      * @notice See {IOrderMixin-remainingInvalidatorForOrder}.
      */
-    function remainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 remaining) {
+    function remainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 /* remaining */) {
         return _remainingInvalidator[maker][orderHash].remaining();
     }
 
     /**
      * @notice See {IOrderMixin-rawRemainingInvalidatorForOrder}.
      */
-    function rawRemainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 remainingRaw) {
+    function rawRemainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 /* remainingRaw */) {
         return RemainingInvalidator.unwrap(_remainingInvalidator[maker][orderHash]);
     }
 
@@ -127,7 +127,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes32 vs,
         uint256 amount,
         TakerTraits takerTraits
-    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+    ) external payable returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
         return fillOrderToExt(order, r, vs, amount, takerTraits, msg.sender, msg.data[:0], msg.data[:0]);
     }
 
@@ -141,7 +141,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         uint256 amount,
         TakerTraits takerTraits,
         bytes calldata extension
-    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+    ) external payable returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
         return fillOrderToExt(order, r, vs, amount, takerTraits, msg.sender, msg.data[:0], extension);
     }
 
@@ -156,7 +156,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         TakerTraits takerTraits,
         address target,
         bytes calldata interaction
-    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+    ) external payable returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
         return fillOrderToExt(order, r, vs, amount, takerTraits, target, interaction, msg.data[:0]);
     }
 
@@ -197,7 +197,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         address target,
         bytes calldata interaction,
         bytes calldata permit
-    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+    ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
         IERC20(order.takerAsset.get()).safePermit(permit);
         return fillOrderToExt(order, r, vs, amount, takerTraits, target, interaction, msg.data[:0]);
     }
@@ -212,7 +212,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         TakerTraits takerTraits,
         address target,
         bytes calldata interaction
-    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+    ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
         return fillContractOrderExt(order, signature, amount, takerTraits, target, interaction, msg.data[:0], msg.data[:0]);
     }
 
@@ -227,7 +227,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         address target,
         bytes calldata interaction,
         bytes calldata permit
-    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+    ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
         return fillContractOrderExt(order, signature, amount, takerTraits, target, interaction, permit, msg.data[:0]);
     }
 

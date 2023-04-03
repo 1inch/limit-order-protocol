@@ -56,7 +56,7 @@ interface IOrderMixin {
      * @param slot Slot number to return bitmask for
      * @return result Each bit represents whether corresponding was already invalidated
      */
-    function bitInvalidatorForOrder(address maker, uint256 slot) external view returns(uint256 /* result */);
+    function bitInvalidatorForOrder(address maker, uint256 slot) external view returns(uint256 result);
 
     /**
      * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
