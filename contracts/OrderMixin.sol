@@ -9,7 +9,6 @@ import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 
-import "./helpers/AmountCalculator.sol";
 import "./helpers/PredicateHelper.sol";
 import "./helpers/SeriesEpochManager.sol";
 import "./interfaces/ITakerInteraction.sol";
