@@ -18,7 +18,6 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
     using AddressLib for Address;
 
     error AccessDenied();
-    error ETHTransferFailed();
     error InvalidOrder();
     error NotEnoughBalance();
     error ExistingOrder();
@@ -28,8 +27,6 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
         address maker;
         uint96 balance;
     }
-
-    uint256 constant private _BALANCE_BIT_SHIFT = 160;
 
     address private immutable _limitOrderProtocol;
     IWETH private immutable _WETH; // solhint-disable-line var-name-mixedcase
