@@ -1,4 +1,5 @@
 const { expect } = require('@1inch/solidity-utils');
+const { ethers } = require('hardhat');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deployRangeAmountCalculator } = require('./helpers/fixtures');
 const { ether } = require('./helpers/utils');
