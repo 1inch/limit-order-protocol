@@ -176,7 +176,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         // Check signature and apply order permit only on the first fill
         uint256 remainingMakingAmount = _checkRemainingMakingAmount(order, orderHash);
         if (remainingMakingAmount == order.makingAmount) {
-            if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert BadSignature();
+            address maker = order.maker.get();
+            if (maker == address(0) || maker != ECDSA.recover(orderHash, r, vs)) revert BadSignature();
             if (!takerTraits.skipMakerPermit()) {
                 _applyMakerPermit(order, orderHash, extension);
             }
