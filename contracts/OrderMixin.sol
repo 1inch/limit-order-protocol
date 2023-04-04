@@ -176,7 +176,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         // Check signature and apply order permit only on the first fill
         uint256 remainingMakingAmount = _checkRemainingMakingAmount(order, orderHash);
         if (remainingMakingAmount == order.makingAmount) {
-            if (order.maker.get() != ECDSA.recover(orderHash, r, vs)) revert BadSignature();
+            address maker = order.maker.get();
+            if (maker == address(0) || maker != ECDSA.recover(orderHash, r, vs)) revert BadSignature();
             if (!takerTraits.skipMakerPermit()) {
                 _applyMakerPermit(order, orderHash, extension);
             }
@@ -282,7 +283,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         }
 
         // Check if orders predicate allows filling
-        if (order.makerTraits.hasExtension()) {
+        if (extension.length > 0) {
             bytes calldata predicate = extension.predicate();
             if (predicate.length > 0) {
                 if (!checkPredicate(predicate)) revert PredicateIsNotTrue();
@@ -325,7 +326,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             }
         }
         if (!order.makerTraits.allowPartialFills() && makingAmount != order.makingAmount) revert PartialFillNotAllowed();
-        if (makingAmount == 0 || takingAmount == 0) revert SwapWithZeroAmount();
+        unchecked { if (makingAmount * takingAmount == 0) revert SwapWithZeroAmount(); }
 
         // Invalidate order depending on makerTraits
         if (order.makerTraits.useBitInvalidator()) {

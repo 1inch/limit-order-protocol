@@ -29,8 +29,8 @@ library MakerTraitsLib {
     }
 
     function isAllowedSender(MakerTraits makerTraits, address sender) internal pure returns (bool) {
-        address allowedSender = address(uint160(MakerTraits.unwrap(makerTraits) & _ALLOWED_SENDER_MASK));
-        return allowedSender == address(0) || (uint160(allowedSender) & _ALLOWED_SENDER_MASK) == uint160(sender) & _ALLOWED_SENDER_MASK;
+        uint160 allowedSender = uint160(MakerTraits.unwrap(makerTraits) & _ALLOWED_SENDER_MASK);
+        return allowedSender == 0 || allowedSender == uint160(sender) & _ALLOWED_SENDER_MASK;
     }
 
     function isExpired(MakerTraits makerTraits) internal view returns (bool) {
