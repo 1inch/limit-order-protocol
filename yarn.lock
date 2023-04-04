@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@1inch/solidity-utils@2.2.22":
-  version "2.2.22"
-  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-2.2.22.tgz#32d1c0b33193b42b675cbb04a74a99d800d84292"
-  integrity sha512-RJL7jUBybgQHumZzoeFd/raNxGxUmu4CvHyY1MqiYgfoddzKQaE/rQVQ0lasGrQH/zTfn5LB+wQbupUiA44SqA==
+"@1inch/solidity-utils@2.2.24":
+  version "2.2.24"
+  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-2.2.24.tgz#2f160c3c9231b04db2e2b3f3bc4e9c980b4b8511"
+  integrity sha512-HBX9krTA/iVViC+wysAbuigTopmIyjNlPbQSQ7zHZqjgT+bRNMHnmtqcuiWcHlqJ5MVHMLwjEaDWC+2l0wEyNQ==
   dependencies:
     "@metamask/eth-sig-util" "5.0.2"
     "@nomicfoundation/hardhat-network-helpers" "1.0.8"
@@ -3354,14 +3354,15 @@ hardhat-gas-reporter@1.0.9:
     eth-gas-reporter "^0.2.25"
     sha1 "^1.1.1"
 
-hardhat-tracer@2.1.2:
-  version "2.1.2"
-  resolved "https://registry.yarnpkg.com/hardhat-tracer/-/hardhat-tracer-2.1.2.tgz#9a1a3896856a59461594e2ee4a54871eafb2ab63"
-  integrity sha512-Uee7EgMGZPmGA1NFu6at8zk3u184irfPQ+AK50a7s2Ep8jbsAc55mSFs844+UhSH/uNNuk7fqAsx/Qa5gHzPpQ==
+hardhat-tracer@2.2.2:
+  version "2.2.2"
+  resolved "https://registry.yarnpkg.com/hardhat-tracer/-/hardhat-tracer-2.2.2.tgz#10a791381774cd526a70cdcc48167e0d1b14ebd9"
+  integrity sha512-+zZnVy24XgB/sksczP914Ar0HuYhSqAu2dgelVL3+xetLq7gLDAr3N28V4T1sCRM97oJ1PLx0iHzFV1OvYn0Yw==
   dependencies:
+    chalk "^4.1.2"
     ethers "^5.6.1"
 
-hardhat@^2.13.0:
+hardhat@2.13.0:
   version "2.13.0"
   resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.13.0.tgz#d52a0ec9b733a651687e5b1c1b0ee9a11a30f3d0"
   integrity sha512-ZlzBOLML1QGlm6JWyVAG8lVTEAoOaVm1in/RU2zoGAnYEoD1Rp4T+ZMvrLNhHaaeS9hfjJ1gJUBfiDr4cx+htQ==
