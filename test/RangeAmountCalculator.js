@@ -4,6 +4,12 @@ const { deployRangeAmountCalculator } = require('./helpers/fixtures');
 const { ether } = require('./helpers/utils');
 
 describe('RangeAmountCalculator', function () {
+    let addr;
+
+    before(async function () {
+        [addr] = await ethers.getSigners();
+    });
+
     describe('Fill by maker asset', function () {
         const priceStart = ether('3000');
         const priceEnd = ether('4000');
@@ -13,10 +19,10 @@ describe('RangeAmountCalculator', function () {
             const { rangeAmountCalculator } = await loadFixture(deployRangeAmountCalculator);
             const fillAmount = ether('10');
             const remainingMakerAmount = totalLiquidity;
-            await expect(rangeAmountCalculator.getRangeTakerAmount(priceEnd, priceStart, totalLiquidity, fillAmount, remainingMakerAmount))
-                .to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
-            await expect(rangeAmountCalculator.getRangeTakerAmount(priceStart, priceStart, totalLiquidity, fillAmount, remainingMakerAmount))
-                .to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
+            const txn1 = await rangeAmountCalculator.populateTransaction.getRangeTakerAmount(priceEnd, priceStart, totalLiquidity, fillAmount, remainingMakerAmount);
+            await expect(addr.sendTransaction(txn1)).to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
+            const txn2 = await rangeAmountCalculator.populateTransaction.getRangeTakerAmount(priceStart, priceStart, totalLiquidity, fillAmount, remainingMakerAmount);
+            await expect(addr.sendTransaction(txn2)).to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
         });
 
         it('Fill limit-order completely', async function () {
@@ -60,10 +66,10 @@ describe('RangeAmountCalculator', function () {
             const { rangeAmountCalculator } = await loadFixture(deployRangeAmountCalculator);
             const fillAmount = ether('10');
             const remainingMakerAmount = totalLiquidity;
-            await expect(rangeAmountCalculator.getRangeMakerAmount(priceEnd, priceStart, totalLiquidity, fillAmount, remainingMakerAmount))
-                .to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
-            await expect(rangeAmountCalculator.getRangeMakerAmount(priceStart, priceStart, totalLiquidity, fillAmount, remainingMakerAmount))
-                .to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
+            const txn1 = await rangeAmountCalculator.populateTransaction.getRangeMakerAmount(priceEnd, priceStart, totalLiquidity, fillAmount, remainingMakerAmount);
+            await expect(addr.sendTransaction(txn1)).to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
+            const txn2 = await rangeAmountCalculator.populateTransaction.getRangeMakerAmount(priceStart, priceStart, totalLiquidity, fillAmount, remainingMakerAmount);
+            await expect(addr.sendTransaction(txn2)).to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
         });
 
         it('Fill limit-order completely', async function () {
