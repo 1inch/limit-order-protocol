@@ -5,13 +5,13 @@ pragma solidity 0.8.19;
 import "./IOrderMixin.sol";
 
 /**
- * @title Interface for interactor which acts after `taker -> maker` transfers.
+ * @title Interface for interactor which acts after `maker -> taker` transfer but before `taker -> maker` transfer.
  * @notice The order filling steps are `preInteraction` =>` Transfer "maker -> taker"` => **`Interaction`** => `Transfer "taker -> maker"` => `postInteraction`
  */
 interface ITakerInteraction {
     /**
-     * @dev This callback allows to interactively hanlde maker aseets to produce takers assets, doesn't supports ETH as taker assets
-     * @notice Callback method that gets called after all funds transfers
+     * @dev This callback allows to interactively handle maker aseets to produce takers assets, doesn't supports ETH as taker assets
+     * @notice Callback method that gets called after maker fund transfer but before taker fund transfer
      * @param order Order being processed
      * @param orderHash Hash of the order being processed
      * @param taker Taker address
