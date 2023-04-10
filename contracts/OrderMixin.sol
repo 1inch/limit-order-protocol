@@ -160,6 +160,9 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         return fillOrderToExt(order, r, vs, amount, takerTraits, target, interaction, msg.data[:0]);
     }
 
+    /**
+     * @notice See {IOrderMixin-fillOrderToExt}.
+     */
     function fillOrderToExt(
         IOrderMixin.Order calldata order,
         bytes32 r,
