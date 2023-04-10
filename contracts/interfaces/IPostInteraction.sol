@@ -6,7 +6,7 @@ import "./IOrderMixin.sol";
 
 interface IPostInteraction {
     /**
-     * @notice Callback method that gets called before any funds transfers
+     * @notice Callback method that gets called after all fund transfers
      * @param order Order being processed
      * @param orderHash Hash of the order being processed
      * @param taker Taker address
