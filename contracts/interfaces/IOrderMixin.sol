@@ -150,6 +150,20 @@ interface IOrderMixin {
         bytes calldata interaction
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
+    /**
+     * @notice Same as `fillOrderTo` but allows to specify extensions that are used for the order
+     * @param order Order quote to fill
+     * @param r R component of signature
+     * @param vs VS component of signature
+     * @param amount Taker amount to fill
+     * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     * @param target Address that will receive swap funds
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
+     * @param extension Extension to be used with order
+     * @return makingAmount Actual amount transferred from maker to taker
+     * @return takingAmount Actual amount transferred from taker to maker
+     * @return orderHash Hash of the filled order
+     */
     function fillOrderToExt(
         Order calldata order,
         bytes32 r,
