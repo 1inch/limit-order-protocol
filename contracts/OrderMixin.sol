@@ -358,12 +358,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         } else {
             if (order.makerTraits.usePermit2()) {
                 if (extension.makerAssetSuffix().length > 0) revert InvalidPermit2Transfer();
-                if (!_callPermit2TransferFrom(
-                    order.makerAsset.get(),
-                    order.maker.get(),
-                    target,
-                    makingAmount
-                )) revert Permit2TransferFromMakerToTakerFailed();
+                if (makingAmount > type(uint160).max) revert SafeERC20.Permit2TransferAmountTooHigh();
+                IERC20(order.makerAsset.get()).safeTransferFromPermit2(order.maker.get(), target, uint160(makingAmount));
             } else {
                 if (!_callTransferFromWithSuffix(
                     order.makerAsset.get(),
@@ -411,12 +407,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             address receiver = needUnwrap ? address(this) : order.getReceiver();
             if (takerTraits.usePermit2()) {
                 if (extension.takerAssetSuffix().length > 0) revert InvalidPermit2Transfer();
-                if (!_callPermit2TransferFrom(
-                    order.takerAsset.get(),
-                    msg.sender,
-                    receiver,
-                    takingAmount
-                )) revert Permit2TransferFromTakerToMakerFailed();
+                if (takingAmount > type(uint160).max) revert SafeERC20.Permit2TransferAmountTooHigh();
+                IERC20(order.takerAsset.get()).safeTransferFromPermit2(msg.sender, receiver, uint160(takingAmount));
             } else {
                 if (!_callTransferFromWithSuffix(
                     order.takerAsset.get(),
@@ -481,20 +473,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 calldatacopy(add(data, 0x64), suffix.offset, suffix.length)
             }
             let status := call(gas(), asset, 0, data, add(0x64, suffix.length), 0x0, 0x20)
-            success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
-        }
-    }
-
-    function _callPermit2TransferFrom(address asset, address from, address to, uint256 amount) private returns(bool success) {
-        bytes4 selector = IPermit2.transferFrom.selector;
-        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
-            let data := mload(0x40)
-            mstore(data, selector)
-            mstore(add(data, 0x04), from)
-            mstore(add(data, 0x24), to)
-            mstore(add(data, 0x44), amount)
-            mstore(add(data, 0x64), asset)
-            let status := call(gas(), _PERMIT2, 0, data, 0x84, 0x0, 0x20)
             success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
         }
     }
