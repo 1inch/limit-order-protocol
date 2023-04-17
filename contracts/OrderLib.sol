@@ -41,6 +41,8 @@ library OrderLib {
             "uint256 makerTraits"
         ")"
     );
+    uint256 constant internal _ORDER_STRUCT_SIZE = 0x100;
+    uint256 constant internal _DATA_HASH_SIZE = 0x120;
 
     /**
       * @dev Calculates the hash of an order.
@@ -55,8 +57,8 @@ library OrderLib {
 
             // keccak256(abi.encode(_LIMIT_ORDER_TYPEHASH, order));
             mstore(ptr, typehash)
-            calldatacopy(add(ptr, 0x20), order, 0x100)
-            result := keccak256(ptr, 0x120)
+            calldatacopy(add(ptr, 0x20), order, _ORDER_STRUCT_SIZE)
+            result := keccak256(ptr, _DATA_HASH_SIZE)
         }
         result = ECDSA.toTypedDataHash(domainSeparator, result);
     }
