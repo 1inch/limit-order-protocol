@@ -134,7 +134,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     }
 
     /**
-     * @notice See {IOrderMixin-fillOrder}.
+     * @notice See {IOrderMixin-fillOrderExt}.
      */
     function fillOrderExt(
         IOrderMixin.Order calldata order,
@@ -237,6 +237,9 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         return fillContractOrderExt(order, signature, amount, takerTraits, target, interaction, permit, msg.data[:0]);
     }
 
+    /**
+     * @notice See {IOrderMixin-fillContractOrderExt}.
+     */
     function fillContractOrderExt(
         IOrderMixin.Order calldata order,
         bytes calldata signature,
