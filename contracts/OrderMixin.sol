@@ -90,8 +90,10 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      */
     function cancelOrders(MakerTraits[] calldata makerTraits, bytes32[] calldata orderHashes) external {
         if (makerTraits.length != orderHashes.length) revert MismatchArraysLengths();
-        for (uint256 i = 0; i < makerTraits.length; i++) {
-            cancelOrder(makerTraits[i], orderHashes[i]);
+        unchecked {
+            for (uint256 i = 0; i < makerTraits.length; i++) {
+                cancelOrder(makerTraits[i], orderHashes[i]);
+            }
         }
     }
 
