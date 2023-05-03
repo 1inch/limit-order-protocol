@@ -357,22 +357,23 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         }
 
         // Maker => Taker
-        if (order.makerAsset.get() == address(_WETH) && takerTraits.unwrapWeth()) {
-            _WETH.safeTransferFrom(order.maker.get(), address(this), makingAmount);
-            _WETH.safeWithdrawTo(makingAmount, target);
-        } else {
+        {
+            bool needUnwrap = order.makerAsset.get() == address(_WETH) && takerTraits.unwrapWeth();
+            address receiver = needUnwrap ? address(this) : target;
             if (order.makerTraits.usePermit2()) {
                 if (extension.makerAssetSuffix().length > 0) revert InvalidPermit2Transfer();
-                if (makingAmount > type(uint160).max) revert SafeERC20.Permit2TransferAmountTooHigh();
-                IERC20(order.makerAsset.get()).safeTransferFromPermit2(order.maker.get(), target, uint160(makingAmount));
+                IERC20(order.makerAsset.get()).safeTransferFromPermit2(order.maker.get(), receiver, makingAmount);
             } else {
                 if (!_callTransferFromWithSuffix(
                     order.makerAsset.get(),
                     order.maker.get(),
-                    target,
+                    receiver,
                     makingAmount,
                     extension.makerAssetSuffix()
                 )) revert TransferFromMakerToTakerFailed();
+            }
+            if (needUnwrap) {
+                _WETH.safeWithdrawTo(makingAmount, target);
             }
         }
 
@@ -412,8 +413,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             address receiver = needUnwrap ? address(this) : order.getReceiver();
             if (takerTraits.usePermit2()) {
                 if (extension.takerAssetSuffix().length > 0) revert InvalidPermit2Transfer();
-                if (takingAmount > type(uint160).max) revert SafeERC20.Permit2TransferAmountTooHigh();
-                IERC20(order.takerAsset.get()).safeTransferFromPermit2(msg.sender, receiver, uint160(takingAmount));
+                IERC20(order.takerAsset.get()).safeTransferFromPermit2(msg.sender, receiver, takingAmount);
             } else {
                 if (!_callTransferFromWithSuffix(
                     order.takerAsset.get(),
