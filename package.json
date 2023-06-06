@@ -50,7 +50,7 @@
     "zksync-web3": "0.14.3"
   },
   "scripts": {
-    "clean": "rimraf artifacts cache coverage contracts/hardhat-dependency-compiler",
+    "clean": "rimraf artifacts cache coverage contracts/hardhat-dependency-compiler artifacts-zk cache-zk",
     "deploy": "hardhat deploy --network",
     "coverage": "hardhat coverage",
     "docify": "npx solidity-utils-docify",

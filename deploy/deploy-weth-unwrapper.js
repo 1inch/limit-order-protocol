@@ -13,6 +13,7 @@ const WETH = {
     250: '0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83', // FTM
     1313161554: '0xC9BdeEd33CD01541e1eeD10f90519d2C06Fe3feB', // Aurora
     8217: '0xe4f05a66ec68b54a58b17c22107b02e0232cc817', // Klaytn
+    324: '0x5aea5775959fbc2557cc8789bc1bf90a239d9a91', // ZKSync
     31337: constants.ZERO_ADDRESS, // Hardhat
 };
 
