@@ -19,6 +19,23 @@ contract WethUnwrapper is OnlyWethReceiver, IPostInteraction {
         _WETH = weth;
     }
 
+    // Limit Order Protocol V3 support
+    function fillOrderPostInteraction(
+        bytes32 /* orderHash */,
+        address maker,
+        address /* taker */,
+        uint256 /* makingAmount */,
+        uint256 takingAmount,
+        uint256 /* remainingMakerAmount */,
+        bytes calldata interactiveData
+    ) external {
+        address receiver = maker;
+        if (interactiveData.length == 20) {
+            receiver = address(bytes20(interactiveData));
+        }
+        _WETH.safeWithdrawTo(takingAmount, receiver);
+    }
+
     function postInteraction(
         IOrderMixin.Order calldata order,
         bytes32 /* orderHash */,
