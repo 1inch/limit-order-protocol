@@ -402,7 +402,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
 
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
-            uint256 offeredTakingAmount = needPostInteractionCall(address(bytes20(interaction))).takerInteraction(
+            uint256 offeredTakingAmount = ITakerInteraction(address(bytes20(interaction))).takerInteraction(
                 order, orderHash, msg.sender, makingAmount, takingAmount, remainingMakingAmount, interaction[20:]
             );
             if (offeredTakingAmount > takingAmount && order.makerTraits.allowImproveRateViaInteraction()) {
