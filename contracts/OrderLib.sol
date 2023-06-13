@@ -53,7 +53,7 @@ import "./helpers/AmountCalculator.sol";
       * @notice Calculates the hash of an order.
       * @param order The order to be hashed.
       * @param domainSeparator The domain separator to be used for the EIP-712 hashing.
-      * @return The keccak256 hash of the order data.
+      * @return result The keccak256 hash of the order data.
       */
     function hash(IOrderMixin.Order calldata order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes32 typehash = _LIMIT_ORDER_TYPEHASH;
