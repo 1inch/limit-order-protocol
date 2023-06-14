@@ -43,7 +43,6 @@ library BitInvalidatorLib {
         self._raw[invalidatorSlot] = invalidator | invalidatorBit;
     }
 
-
     /**
      * @dev Invalidates multiple objects in a single slot.
      * @param self The data structure.
