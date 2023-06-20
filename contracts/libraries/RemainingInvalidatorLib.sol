@@ -27,7 +27,7 @@ library RemainingInvalidatorLib {
 
     /**
      * @notice Retrieves the remaining amount for an order.
-     * @dev If the order is fully filled, a RemainingInvalidatedOrder error is thrown.
+     * @dev If the order is unknown, a RemainingInvalidatedOrder error is thrown.
      * @param invalidator The remaining invalidator for the order.
      * @return result The remaining amount for the order.
      */
@@ -43,7 +43,7 @@ library RemainingInvalidatorLib {
 
     /**
      * @notice Calculates the remaining amount for an order.
-     * @dev If the order is fully filled, the order maker amount is returned.
+     * @dev If the order is unknown, the order maker amount is returned.
      * @param invalidator The remaining invalidator for the order.
      * @param orderMakerAmount The amount to return if the order is new.
      * @return result The remaining amount for the order.

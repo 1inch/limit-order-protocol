@@ -30,7 +30,7 @@ import "./helpers/AmountCalculator.sol";
     error MissingOrderExtension();
     /// @dev Error to be thrown when the order has an unexpected extension.
     error UnexpectedOrderExtension();
-    /// @dev rror to be thrown when the order extension is invalid.
+    /// @dev Error to be thrown when the order extension is invalid.
     error ExtensionInvalid();
 
     /// @dev The typehash of the order struct.
