@@ -268,6 +268,29 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         (makingAmount, takingAmount) = _fillOrderTo(order, orderHash, extension, remainingMakingAmount, amount, takerTraits, target, interaction);
     }
 
+
+    /**
+      * @notice Fills an order and transfers making amount to a specified target.
+      * @dev If the target is zero assigns it the caller's address. 
+      * The function flow is as follows:
+      * 1. Validate order
+      * 2. Call maker pre-interaction 
+      * 3. Transfer maker asset to taker
+      * 4. Call taker interaction
+      * 5. Transfer taker asset to maker
+      * 5. Call maker post-interaction
+      * 6. Emit OrderFilled event
+      * @param order The order details.
+      * @param orderHash The hash of the order.
+      * @param extension The extension calldata of the order.
+      * @param remainingMakingAmount The remaining amount to be filled.
+      * @param amount The order amount.
+      * @param takerTraits The taker preferences for the order.
+      * @param target The address to which the order is filled.
+      * @param interaction The interaction calldata.
+      * @return makingAmount The computed amount that the maker will get.
+      * @return takingAmount The computed amount that the taker will send.
+      */
     function _fillOrderTo(
         IOrderMixin.Order calldata order,
         bytes32 orderHash,
@@ -445,6 +468,13 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         emit OrderFilled(orderHash, makingAmount);
     }
 
+    /**
+      * @notice Checks the remaining making amount for the order.
+      * @dev If the order has been invalidated, the function will revert.
+      * @param order The order to check.
+      * @param orderHash The hash of the order.
+      * @return remainingMakingAmount The remaining amount of the order.
+      */
     function _checkRemainingMakingAmount(IOrderMixin.Order calldata order, bytes32 orderHash) private view returns(uint256 remainingMakingAmount) {
         if (order.makerTraits.useBitInvalidator()) {
             remainingMakingAmount = order.makingAmount;
@@ -454,6 +484,12 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         if (remainingMakingAmount == 0) revert InvalidatedOrder();
     }
 
+    /**
+      * @notice Executes the maker's permit and checks for potential reentrancy attacks.
+      * @param order The order to apply the permit for.
+      * @param orderHash The hash of the order.
+      * @param extension The extension data associated with the order.
+      */
     function _applyMakerPermit(IOrderMixin.Order calldata order, bytes32 orderHash, bytes calldata extension) private {
         bytes calldata makerPermit = extension.makerPermit();
         if (makerPermit.length >= 20) {
@@ -466,6 +502,16 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         }
     }
 
+    /**
+      * @notice Calls the transferFrom function with an arbitrary suffix.
+      * @dev The suffix is appended to the end of the standard ERC20 transferFrom function parameters.
+      * @param asset The token to be transferred.
+      * @param from The address to transfer the token from.
+      * @param to The address to transfer the token to.
+      * @param amount The amount of the token to transfer.
+      * @param suffix The suffix (additional data) to append to the end of the transferFrom call.
+      * @return success A boolean indicating whether the transfer was successful.
+      */
     function _callTransferFromWithSuffix(address asset, address from, address to, uint256 amount, bytes calldata suffix) private returns(bool success) {
         bytes4 selector = IERC20.transferFrom.selector;
         assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
