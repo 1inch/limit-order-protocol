@@ -742,7 +742,7 @@ describe('LimitOrderProtocol', function () {
         });
     });
 
-    describe.only('Remaining invalidator', function () {
+    describe('Remaining invalidator', function () {
         const deployContractsAndInit = async function () {
             const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
