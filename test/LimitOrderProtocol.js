@@ -762,16 +762,14 @@ describe('LimitOrderProtocol', function () {
             return { dai, weth, swap, chainId, order };
         };
         
-        it('should revert for new order - order doesn\'t exist', async function () {
+        it('should revert for new order', async function () {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
             const data = buildOrderData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
-            // No order invalidator
-            //expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('0');
             await expect(swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.be.revertedWithCustomError(swap, 'RemainingInvalidatedOrder');
         });
 
-        it('should return correct remaining (order filled partially)', async function () {
+        it('should return correct remaining for partially filled order', async function () {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
@@ -780,11 +778,10 @@ describe('LimitOrderProtocol', function () {
 
             await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
 
-            //expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('2');
             expect(await swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.equal('1');
         });
 
-        it('should return zero remaining (order filled)', async function () {
+        it('should return zero remaining for filled order', async function () {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
@@ -793,11 +790,10 @@ describe('LimitOrderProtocol', function () {
 
             await swap.fillOrder(order, r, vs, 2, fillWithMakingAmount(2));
 
-            //expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('1');
             expect(await swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.equal('0');
         });
 
-        it('should cancel own order', async function () {
+        it('should return zero remaining for cancelled order', async function () {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, vs } = compactSignature(signature);
@@ -806,7 +802,6 @@ describe('LimitOrderProtocol', function () {
 
             await swap.connect(addr1).cancelOrder(order.makerTraits, orderHash);
 
-            //expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('1');
             expect(await swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.equal('0');
         });
     });
