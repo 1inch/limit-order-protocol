@@ -742,6 +742,75 @@ describe('LimitOrderProtocol', function () {
         });
     });
 
+    describe.only('Remaining invalidator', function () {
+        const deployContractsAndInit = async function () {
+            const { dai, weth, swap, chainId } = await deploySwapTokens();
+            await initContracts(dai, weth, swap);
+            return { dai, weth, swap, chainId };
+        };
+
+        const orderCancelationInit = async function () {
+            const { dai, weth, swap, chainId } = await deployContractsAndInit();
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 2,
+                takingAmount: 2,
+                maker: addr1.address,
+                makerTraits: buildMakerTraits({ allowMultipleFills: true }),
+            });
+            return { dai, weth, swap, chainId, order };
+        };
+        
+        it('should revert for new order - order doesn\'t exist', async function () {
+            const { swap, chainId, order } = await loadFixture(orderCancelationInit);
+            const data = buildOrderData(chainId, swap.address, order);
+            const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
+            // No order invalidator
+            expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('0');
+            await expect(swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.be.revertedWithCustomError(swap, 'RemainingInvalidatedOrder');
+        });
+
+        it('should return correct remaining (order filled partially)', async function () {
+            const { swap, chainId, order } = await loadFixture(orderCancelationInit);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
+            const { r, vs } = compactSignature(signature);
+            const data = buildOrderData(chainId, swap.address, order);
+            const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
+
+            await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
+
+            expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('2');
+            expect(await swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.equal('1');
+        });
+
+        it('should return zero remaining (order filled)', async function () {
+            const { swap, chainId, order } = await loadFixture(orderCancelationInit);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
+            const { r, vs } = compactSignature(signature);
+            const data = buildOrderData(chainId, swap.address, order);
+            const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
+
+            await swap.fillOrder(order, r, vs, 2, fillWithMakingAmount(2));
+
+            expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('1');
+            expect(await swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.equal('0');
+        });
+
+        it('should cancel own order', async function () {
+            const { swap, chainId, order } = await loadFixture(orderCancelationInit);
+            const signature = await signOrder(order, chainId, swap.address, addr1);
+            const { r, vs } = compactSignature(signature);
+            const data = buildOrderData(chainId, swap.address, order);
+            const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
+
+            await swap.connect(addr1).cancelOrder(order.makerTraits, orderHash);
+
+            expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('1');
+            expect(await swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.equal('0');
+        });
+    });
+
     describe('Order Cancelation', function () {
         const deployContractsAndInit = async function () {
             const { dai, weth, swap, chainId } = await deploySwapTokens();
