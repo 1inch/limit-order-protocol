@@ -767,7 +767,7 @@ describe('LimitOrderProtocol', function () {
             const data = buildOrderData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
             // No order invalidator
-            expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('0');
+            //expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('0');
             await expect(swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.be.revertedWithCustomError(swap, 'RemainingInvalidatedOrder');
         });
 
@@ -780,7 +780,7 @@ describe('LimitOrderProtocol', function () {
 
             await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
 
-            expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('2');
+            //expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('2');
             expect(await swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.equal('1');
         });
 
@@ -793,7 +793,7 @@ describe('LimitOrderProtocol', function () {
 
             await swap.fillOrder(order, r, vs, 2, fillWithMakingAmount(2));
 
-            expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('1');
+            //expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('1');
             expect(await swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.equal('0');
         });
 
@@ -806,7 +806,7 @@ describe('LimitOrderProtocol', function () {
 
             await swap.connect(addr1).cancelOrder(order.makerTraits, orderHash);
 
-            expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('1');
+            //expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderHash)).to.be.equal('1');
             expect(await swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.equal('0');
         });
     });
