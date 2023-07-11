@@ -795,8 +795,6 @@ describe('LimitOrderProtocol', function () {
 
         it('should return zero remaining for cancelled order', async function () {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
-            const signature = await signOrder(order, chainId, swap.address, addr1);
-            const { r, vs } = compactSignature(signature);
             const data = buildOrderData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
 
