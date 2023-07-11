@@ -37,7 +37,7 @@ library RemainingInvalidatorLib {
             revert RemainingInvalidatedOrder();
         }
         unchecked {
-            return value - 1;
+            return ~value;
         }
     }
 
@@ -54,7 +54,7 @@ library RemainingInvalidatorLib {
             return orderMakerAmount;
         }
         unchecked {
-            return value - 1;
+            return ~value;
         }
     }
 
@@ -66,7 +66,7 @@ library RemainingInvalidatorLib {
      */
     function remains(uint256 remainingMakingAmount, uint256 makingAmount) internal pure returns(RemainingInvalidator) {
         unchecked {
-            return RemainingInvalidator.wrap(remainingMakingAmount - makingAmount + 1);
+            return RemainingInvalidator.wrap(~(remainingMakingAmount - makingAmount));
         }
     }
 
@@ -75,6 +75,6 @@ library RemainingInvalidatorLib {
      * @return result The remaining invalidator for a fully filled order.
      */
     function fullyFilled() internal pure returns(RemainingInvalidator) {
-        return RemainingInvalidator.wrap(1);
+        return RemainingInvalidator.wrap(type(uint256).max);
     }
 }
