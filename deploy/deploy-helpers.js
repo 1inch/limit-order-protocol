@@ -1,3 +1,5 @@
+
+
 const hre = require('hardhat');
 const { getChainId } = hre;
 const { constants } = require('@1inch/solidity-utils');
@@ -14,6 +16,7 @@ const WETH = {
     1313161554: '0xC9BdeEd33CD01541e1eeD10f90519d2C06Fe3feB', // Aurora
     8217: '0xe4f05a66ec68b54a58b17c22107b02e0232cc817', // Klaytn
     324: '0x5aea5775959fbc2557cc8789bc1bf90a239d9a91', // ZKSync
+    8453: '0x4200000000000000000000000000000000000006', // Base
     31337: constants.ZERO_ADDRESS, // Hardhat
 };
 
@@ -25,10 +28,9 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deploy } = deployments;
     const { deployer } = await getNamedAccounts();
 
-    const args = [WETH[chainId]];
     const wethUnwrapper = await deploy('WethUnwrapper', {
         from: deployer,
-        args,
+        args: [WETH[chainId]],
     });
 
     console.log('WethUnwrapper deployed to:', wethUnwrapper.address);
@@ -36,7 +38,31 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     if (await getChainId() !== '31337') {
         await hre.run('verify:verify', {
             address: wethUnwrapper.address,
-            constructorArguments: args,
+            constructorArguments: [WETH[chainId]],
+        });
+    }
+
+    const seriesNonceManager = await deploy('SeriesNonceManager', {
+        from: deployer,
+    });
+
+    console.log('SeriesNonceManager deployed to:', seriesNonceManager.address);
+
+    if (await getChainId() !== '31337') {
+        await hre.run('verify:verify', {
+            address: seriesNonceManager.address,
+        });
+    }
+
+    const callsSimulator = await deploy('CallsSimulator', {
+        from: deployer,
+    });
+
+    console.log('CallsSimulator deployed to:', callsSimulator.address);
+
+    if (await getChainId() !== '31337') {
+        await hre.run('verify:verify', {
+            address: callsSimulator.address,
         });
     }
 };
