@@ -867,7 +867,7 @@ describe('LimitOrderProtocol', function () {
                 arbitraryPredicate.address,
                 arbitraryPredicate.interface.encodeFunctionData('copyArg', [1]),
             ]);
-            const predicate = swap.interface.encodeFunctionData('lt', [10, arbitraryCall])
+            const predicate = swap.interface.encodeFunctionData('lt', [10, arbitraryCall]);
 
             const order = buildOrder(
                 {
@@ -878,7 +878,7 @@ describe('LimitOrderProtocol', function () {
                     maker: addr1.address,
                 },
                 {
-                    predicate: predicate,
+                    predicate,
                 },
             );
 
@@ -895,7 +895,7 @@ describe('LimitOrderProtocol', function () {
                 arbitraryPredicate.address,
                 arbitraryPredicate.interface.encodeFunctionData('copyArg', [1]),
             ]);
-            const predicate = swap.interface.encodeFunctionData('gt', [10, arbitraryCall])
+            const predicate = swap.interface.encodeFunctionData('gt', [10, arbitraryCall]);
 
             const order = buildOrder(
                 {
@@ -906,7 +906,7 @@ describe('LimitOrderProtocol', function () {
                     maker: addr1.address,
                 },
                 {
-                    predicate: predicate,
+                    predicate,
                 },
             );
 
@@ -922,8 +922,8 @@ describe('LimitOrderProtocol', function () {
                 arbitraryPredicate.address,
                 arbitraryPredicate.interface.encodeFunctionData('copyArg', [10]),
             ]);
-            const comparelt = swap.interface.encodeFunctionData('lt', [15, arbitraryCallPredicate])
-            const comparegt = swap.interface.encodeFunctionData('gt', [5, arbitraryCallPredicate])
+            const comparelt = swap.interface.encodeFunctionData('lt', [15, arbitraryCallPredicate]);
+            const comparegt = swap.interface.encodeFunctionData('gt', [5, arbitraryCallPredicate]);
 
             const { offsets, data } = joinStaticCalls([comparelt, comparegt]);
             const predicate = swap.interface.encodeFunctionData('or', [offsets, data]);
@@ -937,7 +937,7 @@ describe('LimitOrderProtocol', function () {
                     maker: addr1.address,
                 },
                 {
-                    predicate: predicate,
+                    predicate,
                 },
             );
 
@@ -954,8 +954,8 @@ describe('LimitOrderProtocol', function () {
                 arbitraryPredicate.address,
                 arbitraryPredicate.interface.encodeFunctionData('copyArg', [10]),
             ]);
-            const comparelt = swap.interface.encodeFunctionData('lt', [5, arbitraryCallPredicate])
-            const comparegt = swap.interface.encodeFunctionData('gt', [15, arbitraryCallPredicate])
+            const comparelt = swap.interface.encodeFunctionData('lt', [5, arbitraryCallPredicate]);
+            const comparegt = swap.interface.encodeFunctionData('gt', [15, arbitraryCallPredicate]);
 
             const { offsets, data } = joinStaticCalls([comparelt, comparegt]);
             const predicate = swap.interface.encodeFunctionData('or', [offsets, data]);
@@ -969,7 +969,7 @@ describe('LimitOrderProtocol', function () {
                     maker: addr1.address,
                 },
                 {
-                    predicate: predicate,
+                    predicate,
                 },
             );
 
@@ -985,8 +985,8 @@ describe('LimitOrderProtocol', function () {
                 arbitraryPredicate.address,
                 arbitraryPredicate.interface.encodeFunctionData('copyArg', [10]),
             ]);
-            const comparelt = swap.interface.encodeFunctionData('lt', [15, arbitraryCallPredicate])
-            const comparegt = swap.interface.encodeFunctionData('gt', [5, arbitraryCallPredicate])
+            const comparelt = swap.interface.encodeFunctionData('lt', [15, arbitraryCallPredicate]);
+            const comparegt = swap.interface.encodeFunctionData('gt', [5, arbitraryCallPredicate]);
 
             const { offsets, data } = joinStaticCalls([comparelt, comparegt]);
             const predicate = swap.interface.encodeFunctionData('and', [offsets, data]);
@@ -1000,7 +1000,7 @@ describe('LimitOrderProtocol', function () {
                     maker: addr1.address,
                 },
                 {
-                    predicate: predicate,
+                    predicate,
                 },
             );
 
@@ -1017,8 +1017,8 @@ describe('LimitOrderProtocol', function () {
                 arbitraryPredicate.address,
                 arbitraryPredicate.interface.encodeFunctionData('copyArg', [10]),
             ]);
-            const comparelt = swap.interface.encodeFunctionData('lt', [5, arbitraryCallPredicate])
-            const comparegt = swap.interface.encodeFunctionData('gt', [15, arbitraryCallPredicate])
+            const comparelt = swap.interface.encodeFunctionData('lt', [5, arbitraryCallPredicate]);
+            const comparegt = swap.interface.encodeFunctionData('gt', [15, arbitraryCallPredicate]);
 
             const { offsets, data } = joinStaticCalls([comparelt, comparegt]);
             const predicate = swap.interface.encodeFunctionData('and', [offsets, data]);
@@ -1032,7 +1032,7 @@ describe('LimitOrderProtocol', function () {
                     maker: addr1.address,
                 },
                 {
-                    predicate: predicate,
+                    predicate,
                 },
             );
 
@@ -1041,7 +1041,7 @@ describe('LimitOrderProtocol', function () {
                 .to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
         });
 
-        //TODO Implement nonce + ts example
+        //  TODO Implement nonce + ts example
         it.skip('nonce + ts example', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
@@ -1074,7 +1074,6 @@ describe('LimitOrderProtocol', function () {
             return { dai, weth, swap, chainId };
         };
 
-        //TODO Add expiration constraint
         it('should fill when not expired', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
@@ -1084,7 +1083,7 @@ describe('LimitOrderProtocol', function () {
                 makingAmount: 1,
                 takingAmount: 1,
                 maker: addr1.address,
-                makerTraits: buildMakerTraits({ expiry: (await time.latest()) + 3600 })
+                makerTraits: buildMakerTraits({ expiry: (await time.latest()) + 3600 }),
             });
 
             const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
