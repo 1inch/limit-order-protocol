@@ -5,7 +5,7 @@ const { fillWithMakingAmount, unwrapWethTaker, skipMakerPermit, buildMakerTraits
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, ether, findTrace, countAllItems } = require('./helpers/utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { deploySwapTokens } = require('./helpers/fixtures');
+const { deploySwapTokens, deployArbitraryPredicate } = require('./helpers/fixtures');
 
 describe('LimitOrderProtocol', function () {
     let addr, addr1, addr2;
@@ -838,49 +838,10 @@ describe('LimitOrderProtocol', function () {
     describe('Predicate', function () {
         const deployContractsAndInit = async function () {
             const { dai, weth, swap, chainId } = await deploySwapTokens();
+            const { arbitraryPredicate } = await deployArbitraryPredicate();
             await initContracts(dai, weth, swap);
-            return { dai, weth, swap, chainId };
+            return { dai, weth, swap, chainId, arbitraryPredicate };
         };
-
-        //TODO Implement 'or' predicate test
-        it.skip('`or` should pass', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
-
-            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', ['0xff0000']);
-            const eqNonce = swap.interface.encodeFunctionData('epochEquals', [addr1.address, 0, 0]);
-            const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
-
-            const order = buildOrder(
-                {
-                    makerAsset: dai.address,
-                    takerAsset: weth.address,
-                    makingAmount: 1,
-                    takingAmount: 1,
-                    maker: addr1.address,
-                },
-                {
-                    predicate: swap.interface.encodeFunctionData('or', [offsets, data]),
-                },
-            );
-            const signature = await signOrder(order, chainId, swap.address, addr1);
-            const { r, vs } = compactSignature(signature);
-
-            const makerDai = await dai.balanceOf(addr1.address);
-            const takerDai = await dai.balanceOf(addr.address);
-            const makerWeth = await weth.balanceOf(addr1.address);
-            const takerWeth = await weth.balanceOf(addr.address);
-
-            await expect(
-                swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1)),
-            ).to.revertedWithCustomError(swap, 'MissingOrderExtension');
-
-            await swap.fillOrderExt(order, r, vs, 1, fillWithMakingAmount(1), order.extension);
-
-            expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
-            expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
-            expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.add(1));
-            expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
-        });
 
         it('reverts on expiration constraint', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
@@ -899,24 +860,185 @@ describe('LimitOrderProtocol', function () {
                 .to.be.revertedWithCustomError(swap, 'OrderExpired');
         });
 
-        //TODO Implement 'and' predicate test
-        it.skip('`and` should pass', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+        it('arbitrary call predicate should pass', async function () {
+            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
 
-            const order = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
-                makingAmount: 1,
-                takingAmount: 1,
-                maker: addr1.address,
-                makerTraits: buildMakerTraits({ expiry: 0xff000000n }),
-            });
+            const arbitraryCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
+                arbitraryPredicate.address,
+                arbitraryPredicate.interface.encodeFunctionData('copyArg', [1]),
+            ]);
+            const predicate = swap.interface.encodeFunctionData('lt', [10, arbitraryCall])
+
+            const order = buildOrder(
+                {
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    maker: addr1.address,
+                },
+                {
+                    predicate: predicate,
+                },
+            );
 
             const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
-            // .populateTransation
-            await expect(swap.fillOrder(order, r, vs, fillWithMakingAmount(1), 1))
-                .to.changeTokenBalances(dai, [addr, addr1], [1, -1])
-                .to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            const filltx = swap.fillOrderExt(order, r, vs, 1, 1, order.extension);
+            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+        });
+
+        it('arbitrary call predicate should fail', async function () {
+            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+
+            const arbitraryCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
+                arbitraryPredicate.address,
+                arbitraryPredicate.interface.encodeFunctionData('copyArg', [1]),
+            ]);
+            const predicate = swap.interface.encodeFunctionData('gt', [10, arbitraryCall])
+
+            const order = buildOrder(
+                {
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    maker: addr1.address,
+                },
+                {
+                    predicate: predicate,
+                },
+            );
+
+            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            await expect(swap.fillOrderExt(order, r, vs, 1, 1, order.extension))
+                .to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
+        });
+
+        it('`or` should pass', async function () {
+            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+
+            const arbitraryCallPredicate = swap.interface.encodeFunctionData('arbitraryStaticCall', [
+                arbitraryPredicate.address,
+                arbitraryPredicate.interface.encodeFunctionData('copyArg', [10]),
+            ]);
+            const comparelt = swap.interface.encodeFunctionData('lt', [15, arbitraryCallPredicate])
+            const comparegt = swap.interface.encodeFunctionData('gt', [5, arbitraryCallPredicate])
+
+            const { offsets, data } = joinStaticCalls([comparelt, comparegt]);
+            const predicate = swap.interface.encodeFunctionData('or', [offsets, data]);
+
+            const order = buildOrder(
+                {
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    maker: addr1.address,
+                },
+                {
+                    predicate: predicate,
+                },
+            );
+
+            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            const filltx = swap.fillOrderExt(order, r, vs, 1, 1, order.extension);
+            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+        });
+
+        it('`or` should fail', async function () {
+            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+
+            const arbitraryCallPredicate = swap.interface.encodeFunctionData('arbitraryStaticCall', [
+                arbitraryPredicate.address,
+                arbitraryPredicate.interface.encodeFunctionData('copyArg', [10]),
+            ]);
+            const comparelt = swap.interface.encodeFunctionData('lt', [5, arbitraryCallPredicate])
+            const comparegt = swap.interface.encodeFunctionData('gt', [15, arbitraryCallPredicate])
+
+            const { offsets, data } = joinStaticCalls([comparelt, comparegt]);
+            const predicate = swap.interface.encodeFunctionData('or', [offsets, data]);
+
+            const order = buildOrder(
+                {
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    maker: addr1.address,
+                },
+                {
+                    predicate: predicate,
+                },
+            );
+
+            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            await expect(swap.fillOrderExt(order, r, vs, 1, 1, order.extension))
+                .to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
+        });
+
+        it('`and` should pass', async function () {
+            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+
+            const arbitraryCallPredicate = swap.interface.encodeFunctionData('arbitraryStaticCall', [
+                arbitraryPredicate.address,
+                arbitraryPredicate.interface.encodeFunctionData('copyArg', [10]),
+            ]);
+            const comparelt = swap.interface.encodeFunctionData('lt', [15, arbitraryCallPredicate])
+            const comparegt = swap.interface.encodeFunctionData('gt', [5, arbitraryCallPredicate])
+
+            const { offsets, data } = joinStaticCalls([comparelt, comparegt]);
+            const predicate = swap.interface.encodeFunctionData('and', [offsets, data]);
+
+            const order = buildOrder(
+                {
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    maker: addr1.address,
+                },
+                {
+                    predicate: predicate,
+                },
+            );
+
+            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            const filltx = swap.fillOrderExt(order, r, vs, 1, 1, order.extension);
+            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+        });
+
+        it('`and` should fail', async function () {
+            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+
+            const arbitraryCallPredicate = swap.interface.encodeFunctionData('arbitraryStaticCall', [
+                arbitraryPredicate.address,
+                arbitraryPredicate.interface.encodeFunctionData('copyArg', [10]),
+            ]);
+            const comparelt = swap.interface.encodeFunctionData('lt', [5, arbitraryCallPredicate])
+            const comparegt = swap.interface.encodeFunctionData('gt', [15, arbitraryCallPredicate])
+
+            const { offsets, data } = joinStaticCalls([comparelt, comparegt]);
+            const predicate = swap.interface.encodeFunctionData('and', [offsets, data]);
+
+            const order = buildOrder(
+                {
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    maker: addr1.address,
+                },
+                {
+                    predicate: predicate,
+                },
+            );
+
+            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            await expect(swap.fillOrderExt(order, r, vs, 1, 1, order.extension))
+                .to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
         });
 
         //TODO Implement nonce + ts example
@@ -943,32 +1065,6 @@ describe('LimitOrderProtocol', function () {
             await swap.increaseEpoch(0);
             expect(await swap.epoch(addr.address, 0)).to.equal('1');
         });
-
-        //TODO Implement failing 'and' predicate test
-        it.skip('`and` should fail', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
-
-            const tsBelow = swap.interface.encodeFunctionData('timestampBelow', [0xff0000n]);
-            const eqNonce = swap.interface.encodeFunctionData('epochEquals', [addr1.address, 0, 0]);
-            const { offsets, data } = joinStaticCalls([tsBelow, eqNonce]);
-
-            const order = buildOrder(
-                {
-                    makerAsset: dai.address,
-                    takerAsset: weth.address,
-                    makingAmount: 1,
-                    takingAmount: 1,
-                    maker: addr1.address,
-                },
-                {
-                    predicate: swap.interface.encodeFunctionData('and', [offsets, data]),
-                },
-            );
-
-            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
-            await expect(swap.fillOrderExt(order, r, vs, 1, fillWithMakingAmount(1), order.extension))
-                .to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
-        });
     });
 
     describe('Expiration', function () {
@@ -988,6 +1084,7 @@ describe('LimitOrderProtocol', function () {
                 makingAmount: 1,
                 takingAmount: 1,
                 maker: addr1.address,
+                makerTraits: buildMakerTraits({ expiry: (await time.latest()) + 3600 })
             });
 
             const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
