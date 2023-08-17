@@ -21,7 +21,8 @@ library ExtensionLib {
         Predicate,
         MakerPermit,
         PreInteractionData,
-        PostInteractionData
+        PostInteractionData,
+        CustomData
     }
 
     /**
@@ -95,6 +96,18 @@ library ExtensionLib {
      */
     function postInteractionTargetAndData(bytes calldata extension) internal pure returns(bytes calldata) {
         return _get(extension, DynamicField.PostInteractionData);
+    }
+
+    /**
+     * @notice Returns extra suffix data from the provided extension calldata.
+     * @param extension The calldata from which the extra suffix data is to be retrieved.
+     * @return calldata Bytes representing the extra suffix data.
+     */
+    function customData(bytes calldata extension) internal pure returns(bytes calldata) {
+        uint256 offsets = uint256(bytes32(extension));
+        unchecked {
+            return extension[0x20 + offsets >> 224:];
+        }
     }
 
     /**
