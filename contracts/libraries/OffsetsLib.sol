@@ -31,7 +31,7 @@ library OffsetsLib {
             let end := and(0xffffffff, shr(bitShift, offsets))              // end   = offsets[ bitShift + 32 : bitShift + 64 ]
             result.offset := add(concat.offset, begin)
             result.length := sub(end, begin)
-            if gt(add(result.offset, result.length), add(concat.offset, concat.length)) {
+            if gt(end, concat.length) {
                 mstore(0, exception)
                 revert(0, 4)
             }
