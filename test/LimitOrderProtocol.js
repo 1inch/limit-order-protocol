@@ -363,25 +363,6 @@ describe('LimitOrderProtocol', function () {
                 .to.be.revertedWithCustomError(swap, 'WrongSeriesNonce');
         });
 
-        it('expired order', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
-            // Order: 10 DAI => 2 WETH
-            // Swap:  4 DAI => 1 WETH
-
-            const order = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
-                makingAmount: 10,
-                takingAmount: 2,
-                maker: addr1.address,
-                makerTraits: buildMakerTraits({ expiry: await time.latest() }),
-            });
-
-            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
-            await expect(swap.fillOrder(order, r, vs, 4, fillWithMakingAmount(1)))
-                .to.be.revertedWithCustomError(swap, 'OrderExpired');
-        });
-
         it('unwrap weth for maker', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 10 DAI => 2 WETH
@@ -763,6 +744,19 @@ describe('LimitOrderProtocol', function () {
             return { dai, weth, swap, chainId, order };
         };
 
+        const orderWithEpochInit = async function () {
+            const { dai, weth, swap, chainId } = await deployContractsAndInit();
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 2,
+                takingAmount: 2,
+                maker: addr1.address,
+                makerTraits: buildMakerTraits({ allowMultipleFills: true, shouldCheckEpoch: true, nonce: 0, series: 1 }),
+            });
+            return { dai, weth, swap, chainId, order };
+        };
+
         // TODO: it could be canceled with another makerTraits, 1n << ALLOW_MUTIPLE_FILLS_FLAG (254n) for example
         it('should cancel own order', async function () {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
@@ -789,6 +783,47 @@ describe('LimitOrderProtocol', function () {
 
             await expect(swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1)))
                 .to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
+        });
+
+        it('epoch change, order should fail', async function () {
+            const { swap, chainId, order } = await loadFixture(orderWithEpochInit);
+
+            await swap.connect(addr1).increaseEpoch(1);
+
+            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            await expect(swap.fillOrder(order, r, vs, 2, fillWithMakingAmount(2)))
+                .to.be.revertedWithCustomError(swap, 'WrongSeriesNonce');
+        });
+
+        it('epoch change should not affect other addresses', async function () {
+            const { dai, weth, swap, chainId, order } = await loadFixture(orderWithEpochInit);
+
+            await swap.connect(addr2).increaseEpoch(1);
+
+            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            const filltx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
+            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+        });
+
+        it('epoch change, partially filled order should fail', async function () {
+            const { dai, weth, swap, chainId, order } = await loadFixture(orderWithEpochInit);
+
+            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            const filltx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
+            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+
+            await swap.connect(addr1).increaseEpoch(1);
+
+            await expect(swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1)))
+                .to.be.revertedWithCustomError(swap, 'WrongSeriesNonce');
+        });
+
+        it('advance nonce', async function () {
+            const { swap } = await loadFixture(deployContractsAndInit);
+            await swap.increaseEpoch(0);
+            expect(await swap.epoch(addr.address, 0)).to.equal('1');
         });
     });
 
@@ -1040,31 +1075,6 @@ describe('LimitOrderProtocol', function () {
             await expect(swap.fillOrderExt(order, r, vs, 1, 1, order.extension))
                 .to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
         });
-
-        //  TODO Implement nonce + ts example
-        it.skip('nonce + ts example', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
-
-            const order = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
-                makingAmount: 1,
-                takingAmount: 1,
-                maker: addr1.address,
-                makerTraits: buildMakerTraits({ expiry: 0xff000000n }),
-            });
-
-            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
-        });
-
-        it('advance nonce', async function () {
-            const { swap } = await loadFixture(deployContractsAndInit);
-            await swap.increaseEpoch(0);
-            expect(await swap.epoch(addr.address, 0)).to.equal('1');
-        });
     });
 
     describe('Expiration', function () {
@@ -1105,6 +1115,46 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            await expect(swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1)))
+                .to.be.revertedWithCustomError(swap, 'OrderExpired');
+        });
+
+        it('should not partially fill when expired', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 10,
+                takingAmount: 2,
+                maker: addr1.address,
+                makerTraits: buildMakerTraits({ expiry: await time.latest() }),
+            });
+
+            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            await expect(swap.fillOrder(order, r, vs, 4, fillWithMakingAmount(1)))
+                .to.be.revertedWithCustomError(swap, 'OrderExpired');
+        });
+
+        it('should not fill partially filled order after expiration', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 10,
+                takingAmount: 2,
+                maker: addr1.address,
+                makerTraits: buildMakerTraits({ expiry: await time.latest() + 1800 }),
+            });
+
+            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            const filltx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
+            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+
+            await time.increase(3600);
+
             await expect(swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1)))
                 .to.be.revertedWithCustomError(swap, 'OrderExpired');
         });
