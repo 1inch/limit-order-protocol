@@ -156,6 +156,7 @@ function buildOrder (
         permit = '0x',
         preInteraction = '0x',
         postInteraction = '0x',
+        customData = '0x',
     } = {},
 ) {
     const allInteractions = [
@@ -169,7 +170,7 @@ function buildOrder (
         postInteraction,
     ];
 
-    const allInteractionsConcat = allInteractions.map(trim0x).join('');
+    const allInteractionsConcat = allInteractions.map(trim0x).join('') + trim0x(customData);
 
     // https://stackoverflow.com/a/55261098/440168
     const cumulativeSum = (sum => value => { sum += value; return sum; })(0);
