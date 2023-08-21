@@ -106,7 +106,7 @@ library ExtensionLib {
     function customData(bytes calldata extension) internal pure returns(bytes calldata) {
         uint256 offsets = uint256(bytes32(extension));
         unchecked {
-            return extension[0x20 + offsets >> 224:];
+            return extension[0x20 + (offsets >> 224):];
         }
     }
 
