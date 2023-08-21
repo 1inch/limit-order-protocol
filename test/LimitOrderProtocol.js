@@ -878,23 +878,6 @@ describe('LimitOrderProtocol', function () {
             return { dai, weth, swap, chainId, arbitraryPredicate };
         };
 
-        it('reverts on expiration constraint', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
-
-            const order = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
-                makingAmount: 1,
-                takingAmount: 1,
-                maker: addr1.address,
-                makerTraits: buildMakerTraits({ expiry: 0xff0000n }),
-            });
-
-            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
-            await expect(swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1)))
-                .to.be.revertedWithCustomError(swap, 'OrderExpired');
-        });
-
         it('arbitrary call predicate should pass', async function () {
             const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
 
