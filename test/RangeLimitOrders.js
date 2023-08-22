@@ -114,7 +114,8 @@ describe('RangeLimitOrders', function () {
             .to.changeTokenBalances(takerAsset, [maker.address, taker.address], [
                 takerAsset.parseAmount(fillParams.firstFill.takingAmount),
                 -BigInt(takerAsset.parseAmount(fillParams.firstFill.takingAmount)),
-            ])
+            ]);
+        await expect(fillOrder)
             .to.changeTokenBalances(makerAsset, [maker.address, taker.address], [
                 -BigInt(rangeAmount1),
                 rangeAmount1,
@@ -140,7 +141,8 @@ describe('RangeLimitOrders', function () {
             .to.changeTokenBalances(takerAsset, [maker.address, taker.address], [
                 takerAsset.parseAmount(fillParams.secondFill.takingAmount),
                 -BigInt(takerAsset.parseAmount(fillParams.secondFill.takingAmount)),
-            ])
+            ]);
+        await expect(fillOrder)
             .to.changeTokenBalances(makerAsset, [maker.address, taker.address], [
                 -BigInt(rangeAmount2),
                 rangeAmount2,
@@ -185,7 +187,8 @@ describe('RangeLimitOrders', function () {
             .to.changeTokenBalances(takerAsset, [maker.address, taker.address], [
                 rangeAmount1,
                 -BigInt(rangeAmount1),
-            ])
+            ]);
+        await expect(fillOrder)
             .to.changeTokenBalances(makerAsset, [maker.address, taker.address], [
                 -BigInt(makerAsset.parseAmount(fillParams.firstFill.makingAmount)),
                 makerAsset.parseAmount(fillParams.firstFill.makingAmount),
@@ -200,7 +203,7 @@ describe('RangeLimitOrders', function () {
             fillWithMakingAmount(takerAsset.parseAmount(fillParams.secondFill.thresholdAmount)),
             order.extension,
         );
-        const rangeAmount2 = await rangeAmountCalculator.getRangeMakerAmount(
+        const rangeAmount2 = await rangeAmountCalculator.getRangeTakerAmount(
             startPrice,
             endPrice,
             makingAmount,
@@ -211,7 +214,8 @@ describe('RangeLimitOrders', function () {
             .to.changeTokenBalances(takerAsset, [maker.address, taker.address], [
                 rangeAmount2,
                 -BigInt(rangeAmount2),
-            ])
+            ]);
+        await expect(fillOrder)
             .to.changeTokenBalances(makerAsset, [maker.address, taker.address], [
                 -BigInt(makerAsset.parseAmount(fillParams.secondFill.makingAmount)),
                 makerAsset.parseAmount(fillParams.secondFill.makingAmount),
