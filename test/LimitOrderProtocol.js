@@ -428,7 +428,7 @@ describe('LimitOrderProtocol', function () {
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
                 const { r, vs } = compactSignature(signature);
-                const filltx = swap.fillOrderToWithPermit(order, r, vs, 1, fillWithMakingAmount(1), addr.address, '0x', permit);
+                const filltx = swap.fillOrderToWithPermit(order, r, vs, 1, fillWithMakingAmount(1), addr.address, permit, '0x');
                 await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
                 await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
             });
@@ -450,7 +450,7 @@ describe('LimitOrderProtocol', function () {
                 });
 
                 const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
-                const filltx = swap.fillOrderToWithPermit(order, r, vs, 1, fillWithMakingAmount(1), addr.address, '0x', permit);
+                const filltx = swap.fillOrderToWithPermit(order, r, vs, 1, fillWithMakingAmount(1), addr.address, permit, '0x');
                 await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
                 await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
             });
@@ -461,8 +461,8 @@ describe('LimitOrderProtocol', function () {
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
 
                 const { r, vs } = compactSignature(signature);
-                await swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, '0x', permit);
-                await expect(swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, '0x', permit))
+                await swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, permit, '0x');
+                await expect(swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, permit, '0x'))
                     .to.be.revertedWith('ERC20Permit: invalid signature');
             });
 
@@ -472,7 +472,7 @@ describe('LimitOrderProtocol', function () {
                 const permit = await getPermit(addr.address, addr2, weth, '1', chainId, swap.address, '1');
 
                 const { r, vs } = compactSignature(signature);
-                await expect(swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, '0x', permit))
+                await expect(swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, permit, '0x'))
                     .to.be.revertedWith('ERC20Permit: invalid signature');
             });
 
@@ -483,7 +483,7 @@ describe('LimitOrderProtocol', function () {
                 const permit = await getPermit(addr.address, addr1, weth, '1', chainId, swap.address, '1', deadline);
 
                 const { r, vs } = compactSignature(signature);
-                await expect(swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, '0x', permit))
+                await expect(swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, permit, '0x'))
                     .to.be.revertedWith('ERC20Permit: expired deadline');
             });
         });
@@ -655,12 +655,12 @@ describe('LimitOrderProtocol', function () {
             const signature = await signOrder(order, chainId, swap.address, addr1);
 
             /// Partial fill
-            const filltx1 = swap.fillContractOrderExt(order, signature, ether('200'), ether('0.2'), addr.address, '0x', '0x', order.extension);
+            const filltx1 = swap.fillContractOrderExt(order, signature, ether('200'), ether('0.2'), addr.address, '0x', order.extension, '0x');
             await expect(filltx1).to.changeTokenBalances(dai, [addr, ethOrders, addr1], [ether('-200'), '0', ether('200')]);
             await expect(filltx1).to.changeTokenBalances(weth, [addr, ethOrders, addr1], [ether('0.2'), ether('-0.2'), '0']);
 
             /// Remaining fill
-            const filltx2 = swap.fillContractOrderExt(order, signature, ether('100'), ether('0.1'), addr.address, '0x', '0x', order.extension);
+            const filltx2 = swap.fillContractOrderExt(order, signature, ether('100'), ether('0.1'), addr.address, '0x', order.extension, '0x');
             await expect(filltx2).to.changeTokenBalances(dai, [addr, ethOrders, addr1], [ether('-100'), '0', ether('100')]);
             await expect(filltx2).to.changeTokenBalances(weth, [addr, ethOrders, addr1], [ether('0.1'), ether('-0.1'), '0']);
 
@@ -693,7 +693,7 @@ describe('LimitOrderProtocol', function () {
             const signature = await signOrder(order, chainId, swap.address, addr1);
 
             /// Partial fill
-            const filltx = swap.fillContractOrderExt(order, signature, ether('200'), ether('0.2'), addr.address, '0x', '0x', order.extension);
+            const filltx = swap.fillContractOrderExt(order, signature, ether('200'), ether('0.2'), addr.address, '0x', order.extension, '0x');
             await expect(filltx).to.changeTokenBalances(dai, [addr, ethOrders, addr1], [ether('-200'), '0', ether('200')]);
             await expect(filltx).to.changeTokenBalances(weth, [addr, ethOrders, addr1], [ether('0.2'), ether('-0.2'), '0']);
 
@@ -703,7 +703,7 @@ describe('LimitOrderProtocol', function () {
             await expect(canceltx).to.changeEtherBalance(addr1, ether('0.1'));
 
             /// Remaining fill failure
-            await expect(swap.fillContractOrderExt(order, signature, ether('100'), ether('0.1'), addr.address, '0x', '0x', order.extension))
+            await expect(swap.fillContractOrderExt(order, signature, ether('100'), ether('0.1'), addr.address, '0x', order.extension, '0x'))
                 .to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
         });
 

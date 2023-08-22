@@ -177,8 +177,8 @@ interface IOrderMixin {
      * @param amount Taker amount to fill
      * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
-     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param extension Extension to be used with order
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -190,8 +190,8 @@ interface IOrderMixin {
         uint256 amount,
         TakerTraits takerTraits,
         address target,
-        bytes calldata interaction,
-        bytes calldata extension
+        bytes calldata extension,
+        bytes calldata interaction
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
@@ -202,8 +202,8 @@ interface IOrderMixin {
      * @param amount Taker amount to fill
      * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
-     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -216,8 +216,8 @@ interface IOrderMixin {
         uint256 amount,
         TakerTraits takerTraits,
         address target,
-        bytes calldata interaction,
-        bytes calldata permit
+        bytes calldata permit,
+        bytes calldata interaction
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
@@ -249,8 +249,8 @@ interface IOrderMixin {
      * @param amount Taker amount to fill
      * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
-     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -262,8 +262,8 @@ interface IOrderMixin {
         uint256 amount,
         TakerTraits takerTraits,
         address target,
-        bytes calldata interaction,
-        bytes calldata permit
+        bytes calldata permit,
+        bytes calldata interaction
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
@@ -273,9 +273,9 @@ interface IOrderMixin {
      * @param amount Taker amount to fill
      * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param target Address that will receive swap funds
-     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @param permit Should contain abi-encoded calldata for `IERC20Permit.permit` call
      * @param extension Extension to be used with order
+     * @param interaction A call data for Interactive. Taker may execute interaction after getting maker assets and before sending taker assets.
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -286,8 +286,8 @@ interface IOrderMixin {
         uint256 amount,
         TakerTraits takerTraits,
         address target,
-        bytes calldata interaction,
         bytes calldata permit,
-        bytes calldata extension
+        bytes calldata extension,
+        bytes calldata interaction
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 }

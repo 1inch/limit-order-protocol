@@ -144,7 +144,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         TakerTraits takerTraits,
         bytes calldata extension
     ) external payable returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
-        return fillOrderToExt(order, r, vs, amount, takerTraits, msg.sender, msg.data[:0], extension);
+        return fillOrderToExt(order, r, vs, amount, takerTraits, msg.sender, extension, msg.data[:0]);
     }
 
     /**
@@ -159,7 +159,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         address target,
         bytes calldata interaction
     ) external payable returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
-        return fillOrderToExt(order, r, vs, amount, takerTraits, target, interaction, msg.data[:0]);
+        return fillOrderToExt(order, r, vs, amount, takerTraits, target, msg.data[:0], interaction);
     }
 
     /**
@@ -172,8 +172,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         uint256 amount,
         TakerTraits takerTraits,
         address target,
-        bytes calldata interaction,
-        bytes calldata extension
+        bytes calldata extension,
+        bytes calldata interaction
     ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         order.validateExtension(extension);
         orderHash = order.hash(_domainSeparatorV4());
@@ -201,11 +201,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         uint256 amount,
         TakerTraits takerTraits,
         address target,
-        bytes calldata interaction,
-        bytes calldata permit
+        bytes calldata permit,
+        bytes calldata interaction
     ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
         IERC20(order.takerAsset.get()).safePermit(permit);
-        return fillOrderToExt(order, r, vs, amount, takerTraits, target, interaction, msg.data[:0]);
+        return fillOrderToExt(order, r, vs, amount, takerTraits, target, msg.data[:0], interaction);
     }
 
     /**
@@ -219,7 +219,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         address target,
         bytes calldata interaction
     ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
-        return fillContractOrderExt(order, signature, amount, takerTraits, target, interaction, msg.data[:0], msg.data[:0]);
+        return fillContractOrderExt(order, signature, amount, takerTraits, target, msg.data[:0], msg.data[:0], interaction);
     }
 
     /**
@@ -231,10 +231,10 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         uint256 amount,
         TakerTraits takerTraits,
         address target,
-        bytes calldata interaction,
-        bytes calldata permit
+        bytes calldata permit,
+        bytes calldata interaction
     ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
-        return fillContractOrderExt(order, signature, amount, takerTraits, target, interaction, permit, msg.data[:0]);
+        return fillContractOrderExt(order, signature, amount, takerTraits, target, permit, msg.data[:0], interaction);
     }
 
     /**
@@ -246,9 +246,9 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         uint256 amount,
         TakerTraits takerTraits,
         address target,
-        bytes calldata interaction,
         bytes calldata permit,
-        bytes calldata extension
+        bytes calldata extension,
+        bytes calldata interaction
     ) public returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         if (permit.length > 0) {
             IERC20(order.takerAsset.get()).safePermit(permit);
