@@ -271,10 +271,10 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
 
     /**
       * @notice Fills an order and transfers making amount to a specified target.
-      * @dev If the target is zero assigns it the caller's address. 
+      * @dev If the target is zero assigns it the caller's address.
       * The function flow is as follows:
       * 1. Validate order
-      * 2. Call maker pre-interaction 
+      * 2. Call maker pre-interaction
       * 3. Transfer maker asset to taker
       * 4. Call taker interaction
       * 5. Transfer taker asset to maker
@@ -403,7 +403,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
             uint256 offeredTakingAmount = ITakerInteraction(address(bytes20(interaction))).takerInteraction(
-                order, orderHash, msg.sender, makingAmount, takingAmount, remainingMakingAmount, interaction[20:]
+                order, orderHash, extension, msg.sender, makingAmount, takingAmount, remainingMakingAmount, interaction[20:]
             );
             if (offeredTakingAmount > takingAmount && order.makerTraits.allowImproveRateViaInteraction()) {
                 takingAmount = offeredTakingAmount;
