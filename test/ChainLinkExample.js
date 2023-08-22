@@ -75,9 +75,10 @@ describe('ChainLinkExample', function () {
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.fillOrderExt(order, r, vs, ether('1'), fillWithMakingAmount(ether('4040.01')), order.extension)) // taking threshold = 4000 + 1% + eps
-            .to.changeTokenBalances(dai, [addr, addr1], [ether('-4040'), ether('4040')])
-            .to.changeTokenBalances(weth, [addr, addr1], [ether('1'), ether('-1')]);
+        // taking threshold = 4000 + 1% + eps
+        const filltx = swap.fillOrderExt(order, r, vs, ether('1'), fillWithMakingAmount(ether('4040.01')), order.extension);
+        await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [ether('-4040'), ether('4040')]);
+        await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [ether('1'), ether('-1')]);
     });
 
     it('dai -> 1inch stop loss order', async function () {
@@ -104,9 +105,10 @@ describe('ChainLinkExample', function () {
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount.add(ether('0.01'))), order.extension)) // taking threshold = exact taker amount + eps
-            .to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount])
-            .to.changeTokenBalances(inch, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
+        // taking threshold = exact taker amount + eps
+        const filltx = swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount.add(ether('0.01'))), order.extension);
+        await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount]);
+        await expect(filltx).to.changeTokenBalances(inch, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
     });
 
     it('dai -> 1inch stop loss order predicate is invalid', async function () {
@@ -161,8 +163,8 @@ describe('ChainLinkExample', function () {
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const { r, vs } = compactSignature(signature);
-        await expect(swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount), order.extension))
-            .to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount])
-            .to.changeTokenBalances(weth, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
+        const filltx = swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount), order.extension);
+        await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount]);
+        await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
     });
 });
