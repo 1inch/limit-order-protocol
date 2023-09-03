@@ -1,6 +1,22 @@
 Limit order protocol v4
 =======
 
+# Table of contents
+
+- [Overview](#overview)
+- [Create an order](#create-an-order)
+    - [How to build the order](#how-to-build-the-order)
+    - [Order settings](#order-settings)
+    - [Order extensions](#order-extensions)
+    - [Extensions structure](#extensions-structure)
+    - [Non-ERC20 tokens swap](#non-erc20-tokens-swap)
+    - [Runtime exchange rate](#runtime-exchange-rate)
+    - [Predicates](#predicates)
+    - [Interactions](#interactions)
+- [Fill order](#fill-order)
+    - [How to fill order](#how-to-fill-order)
+    - [Fill settings](#fill-settings)
+- [Cancel order](#cancel-order)
 
 # Overview
 
