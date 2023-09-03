@@ -14,7 +14,7 @@ Orders are created off-chain and signed by maker. When creating an order a maker
 
 - Choose an asset receiver for an order
 - Allow or disallow partial and multiple fills
-- Set conditions to verify to allow execution (e.g <need example>)
+- Set conditions to verify to allow execution (e.g check the price of an asset)
 - Set interactions (arbitrary maker’s code) to execute before and after order filling
 - Choose approval scheme for token spend (approve, permit, permit2)
 - Ask to unwrap WETH to ETH before (to sell ETH) or after swap (to get ETH)
@@ -50,16 +50,14 @@ where
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| salt | uint256 | order salt contains order salt and applicable extensions hash
-The highest 96 bits is salt.
-The lowest 160 bit is extension hash. |
-| maker | address | The maker’s address |
-| receiver | address | The receiver’s address. The taker assets will be transferred to this address. |
-| makerAsset | address | The maker’s asset address.  |
-| takerAsset | address | The taker’s asset address.  |
-| makingAmount | uint256 | The amount of tokens maker will give |
-| takingAmount | uint256 | The amount of tokens maker wants to receive |
-| makerTraits | MakerTraits (uint256) | Limit order options, coded as bit flags into uint256 number. |
+| salt | `uint256` | order salt contains order salt and applicable extensions hash.<br> The highest 96 bits is salt.<br>The lowest 160 bit is extension hash. |
+| maker | `address` | The maker’s address |
+| receiver | `address` | The receiver’s address. The taker assets will be transferred to this address. |
+| makerAsset | `address` | The maker’s asset address.  |
+| takerAsset | `address` | The taker’s asset address.  |
+| makingAmount | `uint256` | The amount of tokens maker will give |
+| takingAmount | `uint256` | The amount of tokens maker wants to receive |
+| makerTraits | `MakerTraits` (uint256) | Limit order options, coded as bit flags into uint256 number. |
 
 > **Note**: Order becomes invalidated after fill. Salt should be different for orders that have all parameters equal. Thus, fill of one order won’t lead to all orders invalidation.
 > 
@@ -71,38 +69,30 @@ The bit flags are (from highest to lowest bit)
 
 | Option name | Bit position | Description |
 | --- | --- | --- |
-| NO_PARTIAL_FILLS | 255 | If set, the order does not allow partial fills. 
-Partial fill is a fill when only a part of required maker’s asset is swapped. This could be useful for large orders that can be hardly filled by only one taker. |
-| ALLOW_MULTIPLE_FILLS | 254 | If set, the order permits multiple fills.
-More than one fill is only possible for an order that was partially filled previously. It is not possible to fill an order that was already fully filled. The flag usually works in combination with allowPartialFills flag. It doesn’t make sense to allow multiple fills without the permission for partial fills. |
-| NO_IMPROVE_RATE | 253 | if set, the order does not allow taker interaction to improve rate.
-By default, a taker can return more tokens to a maker and limit order protocol allows it. But in some cases this may lead to unpredictable results. For example, if a maker wants to buy NFT changing amount will change NFT token that taker should transfer to the maker, because ERC721 standard implementation uses tokenId instead of amount. Use this flag to avoid it. |
-| PRE_INTERACTION_CALL | 252 | if set, the order requires pre-interaction call.
-Set the flag to execute maker’s pre-interaction call. See <interactions> for details.  |
-| POST_INTERACTION_CALL | 251 | if set, the order requires post-interaction call.
-Set the flag to execute maker’s post-interaction call. See <interactions> for details. |
-| NEED_CHECK_EPOCH_MANAGER | 250 | if set, an order uses epoch manager for cancelling. See <cancel order> for details. |
-| HAS_EXTENSION | 249 | if set, the order applies extension(s) logic during fill.
-See <extensions> for available extensions and usage details. |
-| USE_PERMIT2 | 248 | if set, the order uses permit2.  |
-| UNWRAP_WETH | 247 | if set, the order requires to unwrap WETH |
+| `NO_PARTIAL_FILLS` | 255 | If set, the order does not allow partial fills.<br/>Partial fill is a fill when only a part of required maker’s asset is swapped. It could be useful for large orders that can be hardly filled by only one taker. |
+| `ALLOW_MULTIPLE_FILLS` | 254 | If set, the order permits multiple fills.<br/>More than one fill is only possible for an order that was partially filled previously. It is not possible to fill an order that was already fully filled. The flag usually works in combination with allowPartialFills flag. It doesn’t make sense to allow multiple fills without the permission for partial fills. |
+| `NO_IMPROVE_RATE` | 253 | if set, the order does not allow taker interaction to improve rate.<br/>By default, a taker can return more tokens to a maker and limit order protocol allows it. But in some cases this may lead to unpredictable results. For example, if a maker wants to buy NFT changing amount will change NFT token that taker should transfer to the maker, because ERC721 standard implementation uses tokenId instead of amount. Use this flag to avoid it. |
+| `PRE_INTERACTION_CALL` | 252 | if set, the order requires pre-interaction call.<br/>Set the flag to execute maker’s pre-interaction call. See <interactions> for details.  |
+| `POST_INTERACTION_CALL` | 251 | if set, the order requires post-interaction call.<br/>Set the flag to execute maker’s post-interaction call. See <interactions> for details. |
+| `NEED_CHECK_EPOCH_MANAGER` | 250 | if set, an order uses epoch manager for cancelling. See <cancel order> for details. |
+| `HAS_EXTENSION` | 249 | if set, the order applies extension(s) logic during fill.<br/>See <extensions> for available extensions and usage details. |
+| `USE_PERMIT2` | 248 | if set, the order uses permit2.  |
+| `UNWRAP_WETH` | 247 | if set, the order requires to unwrap WETH |
 
 The rest of the settings are located in lowest 200 bit of the number (from the lowest to highest)
 
 | Option name | Size, bits | Description |
 | --- | --- | --- |
-| ALLOWED_SENDER | 80 | The option is used to make order private and restrict fill to only 1 specified taker. Option contains the last 10 bytes of allowed sender address. Zero value means that no restrictions will be applied. |
-| EXPIRATION | 40 | Expiration timestamp for the order. Order cannot be filled after the expiration deadline. Zero value means that there is no expiration time for the order. |
-| NONCE_OR_EPOCH | 40 | Nonce or epoch of the order.
-See <cancel order> for details. |
-| SERIES | 40 | Series of the order. See <cancel order> for details. |
+| `ALLOWED_SENDER` | 80 | The option is used to make order private and restrict fill to only 1 specified taker. Option contains the last 10 bytes of allowed sender address. Zero value means that no restrictions will be applied. |
+| `EXPIRATION` | 40 | Expiration timestamp for the order. Order cannot be filled after the expiration deadline. Zero value means that there is no expiration time for the order. |
+| `NONCE_OR_EPOCH` | 40 | Nonce or epoch of the order.<br/>See <cancel order> for details. |
+| `SERIES` | 40 | Series of the order. See <cancel order> for details. |
 
 **Example**
 
 Below is the example of order calldata
 
 ```bash
-
 # salt
 00000000 00000000 00000001 d5682f7a 55afc3a7 8fa42edc 4f15f6de 33a7b268 
 #^^^^^^^ ^^^^^^^^ ^^^^^^^^ <= salt
@@ -191,8 +181,7 @@ Offsets contain zero-based offset in calldata for each parameter and are packed 
 
 For the order that have a predicate with a length 120 bytes and a permit (32 bytes) included the extension calldata should be packed as follows
 
-| Offsets |  |  |  | Predicate offset | MakerPermit offset |  |  | Predicate
-calldata | Permit calldata |
+| Offsets |  |  |  | Predicate offset | Maker permit offset |  |  | Predicate calldata | Permit calldata |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | [0..3] | [4..7] | [8..11] | [12..15] | [16..19] | [20..23] | [24..27] | [28..31] | [32..151] | [152..183] |
 | 0 | 0 | 0 | 0 | 120 | 152 | 152 | 152 | calldata (120 bytes) | calldata (32 bytes) |
@@ -266,25 +255,25 @@ The code that creates order
 ```jsx
 const makerAssetSuffix = '0x' + erc721proxy.interface.encodeFunctionData(
     'func_60iHVgK',
-		// ERC721Proxy arguments (2 last passed as extra) 
-		// address from, address to, uint256 amount, uint256 tokenId, IERC721 token
+    // ERC721Proxy arguments (2 last passed as extra) 
+    // address from, address to, uint256 amount, uint256 tokenId, IERC721 token
     [addr1.address, constants.ZERO_ADDRESS, 0, 10, dai.address]
 // leave only 2 extra arguments
 ).substring(202);
 
 const takerAssetSuffix = '0x' + erc721proxy.interface.encodeFunctionData(
     'func_60iHVgK',
-		// ERC721Proxy arguments (2 last passed as extra)
-		// address from, address to, uint256 amount, uint256 tokenId, IERC721 token
+    // ERC721Proxy arguments (2 last passed as extra)
+    // address from, address to, uint256 amount, uint256 tokenId, IERC721 token
     [constants.ZERO_ADDRESS, addr1.address, 0, 10, weth.address]
 // leave only 2 extra arguments
 ).substring(202);
 
 const order = buildOrder(
     {
-				// put maker asset proxy address instead of maker asset address
+	// put maker asset proxy address instead of maker asset address
         makerAsset: erc721proxy.address,
-				// put taker asset proxy address instead of taker asset address
+	// put taker asset proxy address instead of taker asset address
         takerAsset: erc721proxy.address,
         // making amount is not used by ERC721Proxy
         makingAmount: 1,
@@ -361,7 +350,7 @@ The expected return value is a `uint256` number which represents making or takin
 
 **Example**
 
-The code creates order that uses `RangeAmountCalculator` to calculate making and taking amount 
+The code creates an order that uses `RangeAmountCalculator` to calculate making and taking amount 
 
 ```jsx
 // Order: 10 weth -> 35000 dai with price range: 3000 -> 4000
@@ -436,11 +425,11 @@ Predicates allow to evaluate arbitrary conditions on-chain during order executio
 The limit order protocol provides a number of helper functions to create conditions from basic primitives, designed to chain them to any required complexity
 
 1. Equality
-    - `eq(uint256 value, bytes calldata data)` - returns `true` if the calldata execution ******result is equal to the `value`
-    - `lt(uint256 value, bytes calldata data)` - returns `true` if the calldata execution ******result is less than the `value`
-    - `qt(uint256 value, bytes calldata data)` - returns `true` if the calldata execution ******result is greater than the `value`
+    - `eq(uint256 value, bytes calldata data)` - returns `true` if the calldata execution result is equal to the `value`
+    - `lt(uint256 value, bytes calldata data)` - returns `true` if the calldata execution result is less than the `value`
+    - `qt(uint256 value, bytes calldata data)` - returns `true` if the calldata execution result is greater than the `value`
 2. Logical operators
-    - `and(uint256 offsets, bytes calldata data)` - combines several predicates and return `true` when all predicates are valid. To prepare data for `and` predicate you need to pack predicates calldata sequentially into `data` variable and store their offsets as `uint32` numbers into `offsets` with the same order as calldata was packed.
+    - `and(uint256 offsets, bytes calldata data)` - combines several predicates and returns `true` when all predicates are valid. To prepare data for `and` predicate you need to pack predicates calldata sequentially into `data` variable and store their offsets as `uint32` numbers into `offsets` with the same order as calldata was packed.
         
         > **Note**: The `and` predicate is limited with 8 operands. Chain several predicates to extend the limit
         > 
@@ -482,7 +471,7 @@ The limit order protocol provides a number of helper functions to create conditi
         # 128 bytes of predicate 3 calldata
         ```
         
-    - `or(uint256 offsets, bytes calldata data)` - combines several predicates and return `true` when at least one predicate is valid. The packing logic is the same as for `and` predicate.
+    - `or(uint256 offsets, bytes calldata data)` - combines several predicates and returns `true` when at least one predicate is valid. The packing logic is the same as for `and` predicate.
         
         > **Note**: The `or` predicate is limited with 8 operands. Chain several and predicates to extend the limit.
         > 
@@ -733,13 +722,13 @@ In all cases callback function receives an order, order parameters and additiona
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| order | IOrderMixin.Order | Basic order structure |
-| orderHash | bytes32 | Order hash (orderHash = order.hash(_domainSeparatorV4())) |
-| taker | address | The taker’s address who is filling the order |
-| makingAmount | uint256 | The actual making amount for the fill. May be different from Order.makingAmount if partial fills are allowed. |
-| takingAmount | uint256 | The actual taking amount for the fill. May be different from Order.takingAmount if partial fills are allowed. |
-| remainingMakingAmount | uint256 | The remaining amount left to fill for the order. May be different from Order.makingAmount if order was already partially filled. |
-| extraData | bytes | Additional calldata passed to interaction.   |
+| order | `IOrderMixin.Order` | Basic order structure |
+| orderHash | `bytes32` | Order hash (orderHash = order.hash(_domainSeparatorV4())) |
+| taker | `address` | The taker’s address who is filling the order |
+| makingAmount | `uint256` | The actual making amount for the fill. May be different from Order.makingAmount if partial fills are allowed. |
+| takingAmount | `uint256` | The actual taking amount for the fill. May be different from Order.takingAmount if partial fills are allowed. |
+| remainingMakingAmount | `uint256` | The remaining amount left to fill for the order. May be different from Order.makingAmount if order was already partially filled. |
+| extraData | `bytes` | Additional calldata passed to interaction.   |
 
 Taker interaction additionally returns `offeredTakingAmount`. The return value may be used to improve rate for taker (if order allows it, `NO_IMPROVE_RATE` flag is not set). If the value returned is less then required `takingAmount` then the protocol ignores it and fill is done using calculated `takingAmount`.
 
@@ -751,7 +740,7 @@ Maker’s interactions are defined in order extensions `PreInteractionData` and 
 > **Note:** To set up maker’s interaction the flag `HAS_EXTENSION` has to be set and `PreInteractionData` and/or `PostInteractionData` should contain interaction calldata.
 > 
 
-Taker’s interaction follow the same structure (20 bytes address and extra calldata) but is passed to the protocol when a taker fill an order.
+Taker’s interaction follows the same structure (20 bytes address and extra calldata) but is passed to the protocol when a taker fill an order.
 
 **Example**
 
@@ -851,27 +840,24 @@ function fillContractOrderExt(
 
 | Argument | Type | Description |
 | --- | --- | --- |
-| order | Order (calldata) | The order structure to fill  |
-| r | bytes32 | r-component of the maker’s signature to check that order hash is signed by the maker.  |
-| vs | bytes32 | vs-component of the maker’s signature to check that order hash is signed by the maker. |
-| signature | bytes calldata | signature to verify order. Used for contract signed orders only. |
-| amount | uint256 | The amount to fill order which can be treated as maker or taker amount depending on fill settings.
-If the amount is greater than the remaining amount to fill than fill will be executed only for the remaining amount. 
-The fill will be reverted if amount doesn’t equal order making amount and partial fills aren’t allowed.
-The fill will be also reverted if making and taking amounts equal zero. |
-| takerTraits | TakerTraits (uint256) | The taker’s setting for the order fill. See Fill settings for details. |
-| target | address | The recipient address for maker assets transfer.. |
-| interaction | bytes calldata | Taker interaction to execute during the fill. See interactions for details. |
-| extension | bytes calldata | The order’s extension calldata. The extension keccak256 hash has to be equal to the 160-lower bit of order’s salt. |
-| permit | bytes calldata | a taker’s permit for taker assets transfer. |
+| order | `Order` (calldata) | The order structure to fill  |
+| r | `bytes32` | r-component of the maker’s signature to check that order hash is signed by the maker.  |
+| vs | `bytes32` | vs-component of the maker’s signature to check that order hash is signed by the maker. |
+| signature | `bytes` calldata | signature to verify order. Used for contract signed orders only. |
+| amount | `uint256` | The amount to fill order which can be treated as maker or taker amount depending on fill settings.<br/>If the amount is greater than the remaining amount to fill than fill will be executed only for the remaining amount.<br/>The fill will be reverted if amount doesn’t equal order making amount and partial fills aren’t allowed.<br/>The fill will be also reverted if making and taking amounts equal zero.|
+| takerTraits | `TakerTraits` (uint256) | The taker’s setting for the order fill. See Fill settings for details. |
+| target | `address` | The recipient address for maker assets transfer.. |
+| interaction | `bytes` calldata | Taker interaction to execute during the fill. See interactions for details. |
+| extension | `bytes` calldata | The order’s extension calldata. The extension keccak256 hash has to be equal to the 160-lower bit of order’s salt. |
+| permit | `bytes` calldata | a taker’s permit for taker assets transfer. |
 
 The return values are
 
 | Return value | Type | Description |
 | --- | --- | --- |
-| makingAmount | uint256 | The actual amount the maker received  |
-| takingAmount | uint256 | The actual amount the taker recieved |
-| orderHash | bytes32 | The hash of the order |
+| makingAmount | `uint256` | The actual amount the maker received  |
+| takingAmount | `uint256` | The actual amount the taker recieved |
+| orderHash | `bytes32` | The hash of the order |
 
 ## Fill settings
 
@@ -879,13 +865,11 @@ Taker has a number of options to provide during each fill which are contained in
 
 | Option name | Bit position | Description |
 | --- | --- | --- |
-| MAKER_AMOUNT_FLAG | 255 bit | If set, the protocol implies that passed amount is making amount and taking amount will be calculated based on making amount, otherwise the passed amount is taking amount and making amount is calculated based on taking amount. The amount is calculated with AmountCalculator is getters are not set, or with getters provided with extension by maker. |
-| UNWRAP_WETH_FLAG | 254 bit | If set, the WETH will be unwrapped into ETH before sending to taker’s target address. |
-| SKIP_ORDER_PERMIT_FLAG | 253 bit | If set, the order skips maker's permit application. Can be useful to skip maker’s permit application if during recursive fill the permit was already applied. |
-| USE_PERMIT2_FLAG | 252 bit | If set, the order uses the uniswap permit2. |
-| THRESHOLD_AMOUNT | 0-251 bit (uint252) | The maximum amount a taker agrees to give in exchange for a making amount. If the calculated taker amount is less then threshold than the transaction will be reverted. Zero (0) threshold skips the check.
-The evaluated equation 
-threshold ≤ amount * (takingAmount / makingAmount) |
+| `MAKER_AMOUNT_FLAG` | 255 bit | If set, the protocol implies that passed amount is making amount and taking amount will be calculated based on making amount, otherwise the passed amount is taking amount and making amount is calculated based on taking amount. The amount is calculated with AmountCalculator is getters are not set, or with getters provided with extension by maker. |
+| `UNWRAP_WETH_FLAG` | 254 bit | If set, the WETH will be unwrapped into ETH before sending to taker’s target address. |
+| `SKIP_ORDER_PERMIT_FLAG` | 253 bit | If set, the order skips maker's permit application. Can be useful to skip maker’s permit application if during recursive fill the permit was already applied. |
+| `USE_PERMIT2_FLAG` | 252 bit | If set, the order uses the uniswap permit2. |
+| `THRESHOLD_AMOUNT` | 0-251 bit (uint252) | The maximum amount a taker agrees to give in exchange for a making amount. If the calculated taker amount is less then threshold than the transaction will be reverted. Zero (0) threshold skips the check.<br/>The evaluated equation<br/>$$  threshold ≤ amount*{takingAmount \over makingAmount} $$ |
 
 # Cancel order
 
