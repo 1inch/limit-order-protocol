@@ -172,7 +172,7 @@ Available extensions are described in the sections below
 
 Extensions have a dynamic length and should be packed in the following structure:
 
-- The first 32 bytes of calldata contain offsets for the extensions calldata.
+- The first 32 bytes of the calldata contain offsets for the extensions calldata. The offset for a specific parameter is coded as the offset of the end of the parameter's calldata. The offset of the start of the calldata is either the offset of the previous parameter, or zero for the first one.
 - Then, the extensions calldata follows correspondingly.
 
 Offsets contain zero-based offset in calldata for each parameter and are packed as follows:
@@ -188,14 +188,16 @@ Offsets contain zero-based offset in calldata for each parameter and are packed 
 | PreInteractionData | [24..27] |
 | PostInteractionData | [28..31] |
 
+The `CustomData` calldata is located after all extensions. Its start is defined as the end offset for PostInteractionData, and its end is the offset of the end of the calldata.
+
 **Example**
 
-For orders that have a predicate with a length of 120 bytes and a permit of 32 bytes included, the extension calldata should be packed as follows
+For the order that have a predicate with a length of 120 bytes, a permit of 32 bytes included, and 32 bytes of custom data, the extension calldata should be packed as follows
 
-| Offsets |  | MakerPermit offset | Predicate offset |  |  |  |  | Predicate calldata | Permit calldata |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [28..31] | [24..27] | [20..23] | [16..19] | [12..15] | [8..11] | [4..7] | [0..3] | [32..151] | [152..183] |
-| 152 | 152 | 152 | 120 | 0 | 0 | 0 | 0 | calldata (120 bytes) | calldata (32 bytes) |
+| Offsets |  | MakerPermit offset | Predicate offset |  |  |  |  | Predicate calldata | Permit calldata | Custom Data calldata |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| [28..31] | [24..27] | [20..23] | [16..19] | [12..15] | [8..11] | [4..7] | [0..3] | [32..151] | [152..183] | [184..216] |
+| 152 | 152 | 152 | 120 | 0 | 0 | 0 | 0 | calldata (120 bytes) | calldata (32 bytes) | calldata (32 bytes) |
 
 The following is the final calldata which includes the offsets.
 
@@ -208,6 +210,7 @@ The following is the final calldata which includes the offsets.
 # followed by
 # 120 bytes of predicate calldata
 # 32  bytes of permit
+# 32  bytes of custom data
 ```
 
 ### **Non-ERC20 tokens swap**
