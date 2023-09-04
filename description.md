@@ -5,18 +5,18 @@ Limit order protocol v4
 
 - [Overview](#overview)
 - [Create an order](#create-an-order)
-    - [How to build the order](#how-to-build-the-order)
+    - [How to build an order](#how-to-build-an-order)
     - [Order settings](#order-settings)
     - [Order extensions](#order-extensions)
-    - [Extensions structure](#extensions-structure)
-    - [Non-ERC20 tokens swap](#non-erc20-tokens-swap)
-    - [Runtime exchange rate](#runtime-exchange-rate)
-    - [Predicates](#predicates)
-    - [Interactions](#interactions)
-- [Fill order](#fill-order)
-    - [How to fill order](#how-to-fill-order)
+        - [Extensions structure](#extensions-structure)
+        - [Non-ERC20 tokens swap](#non-erc20-tokens-swap)
+        - [Runtime exchange rate](#runtime-exchange-rate)
+        - [Predicates](#predicates)
+        - [Interactions](#interactions)
+- [Fill an order](#fill-an-order)
+    - [How to fill an order](#how-to-fill-an-order)
     - [Fill settings](#fill-settings)
-- [Cancel order](#cancel-order)
+- [Cancel an order](#cancel-an-order)
 
 # Overview
 
@@ -24,30 +24,30 @@ Limit orders are a fundamental part of financial trading, allowing traders to bu
 
 # Create an order
 
-Orders are created off-chain and signed by maker. When creating an order a maker has a number of features he can utilize for the order
+The process begins off-chain and is initiated by the order creator, also known as the maker, and ends with the order being signed. When creating an order, the maker can make use of various features for the order.
 
 **Basic features**
 
-- Choose an asset receiver for an order
-- Allow or disallow partial and multiple fills
-- Set conditions to verify to allow execution (e.g check the price of an asset)
-- Set interactions (arbitrary maker’s code) to execute before and after order filling
-- Choose approval scheme for token spend (approve, permit, permit2)
-- Ask to unwrap WETH to ETH before (to sell ETH) or after swap (to get ETH)
-- Make an order private by defining the only allowed taker’s address
-- Set order’s expiration date
-- Set an order’s nonce or epoch for easy canceling the order later
+- Select an asset receiver for an order.
+- Choose whether to allow or disallow partial and multiple fills.
+- Define conditions that must be met before execution can proceed (e.g. provide an example).
+- Specify interactions (arbitrary maker's code) to execute before and after order filling.
+- Choose an approval scheme for token spend (approve, permit, permit2).
+- Request that WETH be unwrapped to ETH either before (to sell ETH) or after the swap (to receive ETH).
+- Make an order private by specifying the only allowed taker's address.
+- Set the order's expiration date.
+- Assign a nonce or epoch to the order for easy cancellation later.
 
 **Advanced features**
 
-- Define a proxy for handling non-compliant with `IERC20` transfer functions, which allows to swap non-ERC20 tokens, for example, ERC721 or ERC1155.
-- Define functions that calculate on-chain the exchange rate for maker and taker assets. For example, dutch auction (rate decreases with time) or range orders (rate depends on the volume already filled) can be implemented with it.
+- Define a proxy to handle transfers of assets that are not compliant with `IERC20`, allowing the swapping of non-ERC20 tokens, such as ERC721 or ERC1155.
+- Define functions to calculate, on-chain, the exchange rate for maker and taker assets. These functions can be used to implement dutch auctions (where the rate decreases over time) or range orders (where the rate depends on the volume already filled), among others.
 
-Order can be created with an utility library https://github.com/1inch/limit-order-protocol-utils/ or created and signed manually.
+An order can be created using a utility library, such as https://github.com/1inch/limit-order-protocol-utils/, or it can be created and signed manually.
 
-## How to build the order
+## How to build an order
 
-Order struct is defined as
+The order struct is defined as follows
 
 ```solidity
 struct Order {
@@ -66,7 +66,7 @@ where
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| salt | `uint256` | order salt contains order salt and applicable extensions hash.<br> The highest 96 bits is salt.<br>The lowest 160 bit is extension hash. |
+| salt | `uint256` | The order salt which contains the order salt and applicable extensions hash.<br/> The highest 96 bits represent salt, and the lowest 160 bit represent extension hash. |
 | maker | `address` | The maker’s address |
 | receiver | `address` | The receiver’s address. The taker assets will be transferred to this address. |
 | makerAsset | `address` | The maker’s asset address.  |
@@ -75,34 +75,33 @@ where
 | takingAmount | `uint256` | The amount of tokens maker wants to receive |
 | makerTraits | `MakerTraits` (uint256) | Limit order options, coded as bit flags into uint256 number. |
 
-> **Note**: Order becomes invalidated after fill. Salt should be different for orders that have all parameters equal. Thus, fill of one order won’t lead to all orders invalidation.
+> **Note:** The order becomes invalidated after it is filled. Therefore, the salt should be different for orders that have all parameters equal. This ensures that the fill of one order does not invalidate all orders.
 > 
 
 ## Order settings
 
-The `makerTraits` property contain order settings as bit flags and numbers compacted in `uint256` number.
-The bit flags are (from highest to lowest bit)
+The `makerTraits` property contains order settings as bit flags and compacted numbers in a `uint256` format. The bit flags are listed from highest to lowest bit.
 
 | Option name | Bit position | Description |
 | --- | --- | --- |
-| `NO_PARTIAL_FILLS` | 255 | If set, the order does not allow partial fills.<br/>Partial fill is a fill when only a part of required maker’s asset is swapped. It could be useful for large orders that can be hardly filled by only one taker. |
-| `ALLOW_MULTIPLE_FILLS` | 254 | If set, the order permits multiple fills.<br/>More than one fill is only possible for an order that was partially filled previously. It is not possible to fill an order that was already fully filled. The flag usually works in combination with allowPartialFills flag. It doesn’t make sense to allow multiple fills without the permission for partial fills. |
-| `NO_IMPROVE_RATE` | 253 | if set, the order does not allow taker interaction to improve rate.<br/>By default, a taker can return more tokens to a maker and limit order protocol allows it. But in some cases this may lead to unpredictable results. For example, if a maker wants to buy NFT changing amount will change NFT token that taker should transfer to the maker, because ERC721 standard implementation uses tokenId instead of amount. Use this flag to avoid it. |
-| `PRE_INTERACTION_CALL` | 252 | if set, the order requires pre-interaction call.<br/>Set the flag to execute maker’s pre-interaction call. See <interactions> for details.  |
-| `POST_INTERACTION_CALL` | 251 | if set, the order requires post-interaction call.<br/>Set the flag to execute maker’s post-interaction call. See <interactions> for details. |
-| `NEED_CHECK_EPOCH_MANAGER` | 250 | if set, an order uses epoch manager for cancelling. See <cancel order> for details. |
-| `HAS_EXTENSION` | 249 | if set, the order applies extension(s) logic during fill.<br/>See <extensions> for available extensions and usage details. |
-| `USE_PERMIT2` | 248 | if set, the order uses permit2.  |
-| `UNWRAP_WETH` | 247 | if set, the order requires to unwrap WETH |
+| NO_PARTIAL_FILLS | 255 | If set, the order does not allow partial fills.<br/>Partial fill is a fill when only a part of required maker’s asset is swapped. This could be useful for large orders that can be hardly filled by only one taker. |
+| ALLOW_MULTIPLE_FILLS | 254 | If set, the order permits multiple fills.<br/>More than one fill is only possible for an order that was partially filled previously. It is not possible to fill an order that was already fully filled. The flag usually works in combination with allowPartialFills flag. It doesn’t make sense to allow multiple fills without the permission for partial fills. |
+| NO_IMPROVE_RATE | 253 | if set, the order does not allow taker interaction to improve rate. By default, a taker can return more tokens to a maker, and limit order protocol allows it. But in some cases, this may lead to unpredictable results. For example, if a maker wants to buy NFT, changing amount will change the NFT token that the taker should transfer to the maker, because ERC721 standard implementation uses tokenId instead of amount. Use this flag to avoid it. |
+| PRE_INTERACTION_CALL | 252 | if set, the order requires pre-interaction call.<br/>Set the flag to execute maker’s pre-interaction call.<br/>See [Interactions](#interactions) section for details. |
+| POST_INTERACTION_CALL | 251 | if set, the order requires post-interaction call.<br/>Set the flag to execute maker’s post-interaction call.<br/>See [Interactions](#interactions) section for details. |
+| NEED_CHECK_EPOCH_MANAGER | 250 | if set, an order uses epoch manager for cancelling.<br/>See [Cancel an order](#cancel-an-order) for details. |
+| HAS_EXTENSION | 249 | if set, the order applies extension(s) logic during fill.<br/>See [Order extensions](#order-extensions) for available extensions and usage details. |
+| USE_PERMIT2 | 248 | if set, the order uses [Uniswap Permit2](https://github.com/Uniswap/permit2)  |
+| UNWRAP_WETH | 247 | if set, the order requires unwrapping WETH |
 
-The rest of the settings are located in lowest 200 bit of the number (from the lowest to highest)
+The rest of the settings are located in the lowest 200 bits of the number, from lowest to highest.
 
 | Option name | Size, bits | Description |
 | --- | --- | --- |
-| `ALLOWED_SENDER` | 80 | The option is used to make order private and restrict fill to only 1 specified taker. Option contains the last 10 bytes of allowed sender address. Zero value means that no restrictions will be applied. |
-| `EXPIRATION` | 40 | Expiration timestamp for the order. Order cannot be filled after the expiration deadline. Zero value means that there is no expiration time for the order. |
-| `NONCE_OR_EPOCH` | 40 | Nonce or epoch of the order.<br/>See <cancel order> for details. |
-| `SERIES` | 40 | Series of the order. See <cancel order> for details. |
+| ALLOWED_SENDER | 80 | This option is used to make an order private and restrict fill to only one specified taker. The option consists of the last 10 bytes of the allowed sender's address. A value of zero means that no restrictions will be applied. |
+| EXPIRATION | 40 | Expiration timestamp for the order. Order cannot be filled after the expiration deadline. Zero value means that there is no expiration time for the order. |
+| NONCE_OR_EPOCH | 40 | The nonce or epoch of the order. See <cancel order> for details. |
+| SERIES | 40 | The series of the order. See <cancel order> for details. |
 
 **Example**
 
@@ -135,35 +134,31 @@ Below is the example of order calldata
 #            nonce/epoch => ^^^^^^^^ ^^  
 #              expiration timestamp => ^^^^^^ ^^^^
 #                       allowed sender address => ^^^^ ^^^^^^^^ ^^^^^^^^
-
 ```
 
 ## Order extensions
 
-Extensions are a features that consume more gas to execute but are not always necessary for a specific limit orders. Extensions have been introduced to avoid changing static order structure used for basic order and extract all dynamic parts outside the order. Order and extensions are separate structures and to ensure that an extension matches an order, the order contains extension hash in its salt value. If extension is not specified for the order than it’s logic is not executed.
+Extensions are features that consume more gas to execute, but are not always necessary for a specific limit order. They have been introduced to avoid changing the static order structure used for basic orders and to extract all dynamic parts outside the order. Orders and extensions are separate structures, and to ensure that an extension matches an order, the order contains an extension hash in its salt value. If an extension is not specified for the order, then its logic is not executed. 
 
-> **Note**: The order structure itself doesn’t contain extensions. Extensions have to be stored and passed separately when filling the order. The order hash ensures that the passed extensions are correct since lowest 160 bit of order salt contains the extensions hash. The order `HAS_EXTENSION` flag must be set to process extensions when the order being filled.
+> **Note:** The order structure itself doesn't contain extensions. Extensions have to be stored and passed separately when filling the order. The order hash ensures that the passed extensions are correct, since the lowest 160 bits of the order salt contain the extension hash. The order `HAS_EXTENSION` flag must be set to process extensions when the order is being filled.
 > 
 
 Available extensions are described in the sections below
 
 **Non-ERC20 tokens swap**
 
-- `MakerAssetSuffix` and `TakerAssetSuffix` - used when token’s transfer function signature does not comply with IERC20 interface `IERC20.transferFrom(from, to, amount)`.  In this case the transfer is called via proxy and additional arguments and encoded in the suffix (maker or taker).
+- `MakerAssetSuffix` and `TakerAssetSuffix` - used when a token's transfer function signature does not comply with the IERC20 interface `IERC20.transferFrom(from,to,amount)`. In this case, the transfer is called via proxy, and additional arguments are encoded in the suffix (maker or taker).
 
 **Runtime exchange rate**
 
-- `MakingAmountGetter` and `TakingAmountGetter` define the functions that are used to calculate taking amount based on the requested making amount and vice versa. Basically, amount calculators are used for defining corresponding amounts when an order is filled partially or for calculations of custom amount depending on external factors. Currently implemented getters are
+- `MakingAmountGetter` and `TakingAmountGetter` define the functions that are used to calculate the taking amount based on the requested making amount and vice versa. Basically, amount calculators are used for defining corresponding amounts when an order is filled partially or for calculations of custom amounts depending on external factors. Currently implemented getters are:
     - `AmountCalculator` - the default calculator used when no getter is set. Calculates amounts proportionally to the initial exchange rate.
-    - `DutchAuctionCalculator` - calculates amounts based on the time passed since dutch auction start, the rate is decreasing proportionally to the time passed.
-    - `RangeAmountCalculator` - calculates amounts based on the volumes filled and requested, exchange rate is changing in the price range from minimum to maximum based on the volumes filled.
+    - `DutchAuctionCalculator` - calculates amounts based on the time passed since the Dutch auction start. The rate is decreasing proportionally to the time passed.
+    - `RangeAmountCalculator` - calculates amounts based on the volumes filled and requested. The exchange rate is changing in the price range from minimum to maximum based on the volumes filled.
 
 **Order execution conditions**
 
-- `Predicate` - a predicate to validate order against specified conditions in the moment of fill.
-    
-    link to section
-    
+- `Predicate` - a predicate to validate the order against specified conditions at the moment of fill.
 
 **Permits and approvals**
 
@@ -171,16 +166,16 @@ Available extensions are described in the sections below
 
 **Interactions**
 
-- `PreInteractionData` and `PostInteractionData` - maker defined interactions executed before assets transfer from maker to taker and after assets transfer from taker to maker. See interactions for details link to section
+- `PreInteractionData` and `PostInteractionData` - maker-defined interactions executed before and after assets transfer from maker to taker, and from taker to maker, respectively.
 
-## Extensions structure
+### Extensions structure
 
-Extensions have dynamic length and should be packed in the following structure 
+Extensions have a dynamic length and should be packed in the following structure:
 
-- First 32 bytes of calldata contain offsets for the extensions calldata,
-- then follows the extensions calldata correspondingly
+- The first 32 bytes of calldata contain offsets for the extensions calldata.
+- Then, the extensions calldata follows correspondingly.
 
-Offsets contain zero-based offset in calldata for each parameter and are packed as follows 
+Offsets contain zero-based offset in calldata for each parameter and are packed as follows:
 
 | Parameter | Location, bytes |
 | --- | --- |
@@ -195,14 +190,14 @@ Offsets contain zero-based offset in calldata for each parameter and are packed 
 
 **Example**
 
-For the order that have a predicate with a length 120 bytes and a permit (32 bytes) included the extension calldata should be packed as follows
+For orders that have a predicate with a length of 120 bytes and a permit of 32 bytes included, the extension calldata should be packed as follows
 
-| Offsets |  |  |  | Predicate offset | Maker permit offset |  |  | Predicate calldata | Permit calldata |
+| Offsets |  | MakerPermit offset | Predicate offset |  |  |  |  | Predicate calldata | Permit calldata |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| [0..3] | [4..7] | [8..11] | [12..15] | [16..19] | [20..23] | [24..27] | [28..31] | [32..151] | [152..183] |
-| 0 | 0 | 0 | 0 | 120 | 152 | 152 | 152 | calldata (120 bytes) | calldata (32 bytes) |
+| [28..31] | [24..27] | [20..23] | [16..19] | [12..15] | [8..11] | [4..7] | [0..3] | [32..151] | [152..183] |
+| 152 | 152 | 152 | 120 | 0 | 0 | 0 | 0 | calldata (120 bytes) | calldata (32 bytes) |
 
-Below is the final calldata number which contains the offsets.
+The following is the final calldata which includes the offsets.
 
 ```bash
 #  28-31    24-27    20-23    16-19    12-15     8-11      4-7      0-3
@@ -215,26 +210,26 @@ Below is the final calldata number which contains the offsets.
 # 32  bytes of permit
 ```
 
-## **Non-ERC20 tokens swap**
+### **Non-ERC20 tokens swap**
 
-To swap tokens with transfer function signature that does not comply with IERC20 interface `IERC20.transferFrom(from, to, amount)` it is needed to use proxy contract which takes `from`, `to`, `amount` arguments, maps them to token transfer function and adds additional parameters from suffix calldata.
+To swap tokens with a transfer function signature that does not comply with the IERC20 interface `IERC20.transferFrom(from, to, amount)`, you need to use a proxy contract. The proxy contract takes `from`, `to`, and `amount` arguments, maps them to the token transfer function, and adds additional parameters from the suffix calldata.
 
-In this case `makerAsset` and/or `takerAsset` should contain the address of proxy contract, and token address should be encoded into suffix with additional arguments. The suffix is a packed bytes of calldata of parameters passed to the proxy contract.  
+In this case, `makerAsset` and/or `takerAsset` should contain the address of the proxy contract, and the token address should be encoded into the suffix with additional arguments. The suffix is a packed bytes of calldata of parameters passed to the proxy contract.
 
-Already implemented examples of such tokens are tokens based on the standards below
+Examples of tokens that have already implemented this method are based on the following standards:
 
 - ERC721 - `IERC721.transferFrom(from, to, tokenId)`
 - ERC1155 - `IERC1155.safeTransferFrom(from, to, tokenId, amount, data)`
 
-In order to implement your custom proxy
+To implement your custom proxy:
 
-1. Implement a function that receives `from`, `to` and `amount` as first three parameters and additional parameters which will be passed with `makerAssetSuffix` and/or `takerAssetSuffix`
-2. Find function name which selector equals to `transferFrom(from,to,amount)`
-3. Implement `transferFrom` for the token
+1. Implement a function that receives `from`, `to`, and `amount` as the first three parameters, along with additional parameters that will be passed with `makerAssetSuffix` and/or `takerAssetSuffix`.
+2. Find the function name whose selector equals `transferFrom(from,to,amount)`.
+3. Implement `transferFrom` for the token.
 
 **Implementation example**
 
-Below is the example how of ERC721 token proxy.
+Below is the example how of ERC721 token proxy
 
 ```solidity
 contract ERC721Proxy is ImmutableOwner {
@@ -253,43 +248,43 @@ contract ERC721Proxy is ImmutableOwner {
 }
 ```
 
-As you may see `amount` is not used but function has to accept it and two additional parameters are passed to the function `tokenId` and `token` which are needed to perform `transferFrom` operation.
+As you can see, the `amount` parameter is not used, but the function still needs to accept it. Additionally, two extra parameters, `tokenId` and `token`, are passed to the function to perform the `transferFrom` operation.
 
-In order to use this proxy the order should
+To use this proxy, the order should:
 
-1. contain the proxy address in the `makerAsset` or `takerAddress`
-2. have the `HAS_EXTENSION` set
-3. have extension with `makerAssetSuffix` or `takerAssetSuffix` set with packed `tokenId` and `token` address which will be passed to the proxy when order will be filled.
+1. Include the proxy address in the `makerAsset` or `takerAddress` field.
+2. Have the `HAS_EXTENSION` flag set.
+3. Include an extension with either `makerAssetSuffix` or `takerAssetSuffix` set, with the packed `tokenId` and `token` address. This information will be passed to the proxy when the order is filled.
 
-> **Note:** this extension is incompatible with `USE_PERMIT2_FLAG` setting.
+> Note: This extension is incompatible with the `USE_PERMIT2_FLAG` setting.
 > 
 
 **Example**
 
-The code that creates order
+The code that creates an order
 
 ```jsx
 const makerAssetSuffix = '0x' + erc721proxy.interface.encodeFunctionData(
     'func_60iHVgK',
-    // ERC721Proxy arguments (2 last passed as extra) 
-    // address from, address to, uint256 amount, uint256 tokenId, IERC721 token
+		// ERC721Proxy arguments (2 last passed as extra) 
+		// address from, address to, uint256 amount, uint256 tokenId, IERC721 token
     [addr1.address, constants.ZERO_ADDRESS, 0, 10, dai.address]
 // leave only 2 extra arguments
 ).substring(202);
 
 const takerAssetSuffix = '0x' + erc721proxy.interface.encodeFunctionData(
     'func_60iHVgK',
-    // ERC721Proxy arguments (2 last passed as extra)
-    // address from, address to, uint256 amount, uint256 tokenId, IERC721 token
+		// ERC721Proxy arguments (2 last passed as extra)
+		// address from, address to, uint256 amount, uint256 tokenId, IERC721 token
     [constants.ZERO_ADDRESS, addr1.address, 0, 10, weth.address]
 // leave only 2 extra arguments
 ).substring(202);
 
 const order = buildOrder(
     {
-	// put maker asset proxy address instead of maker asset address
+				// put maker asset proxy address instead of maker asset address
         makerAsset: erc721proxy.address,
-	// put taker asset proxy address instead of taker asset address
+				// put taker asset proxy address instead of taker asset address
         takerAsset: erc721proxy.address,
         // making amount is not used by ERC721Proxy
         makingAmount: 1,
@@ -304,7 +299,7 @@ const order = buildOrder(
 );
 ```
 
-The extension’s calldata produced by the code is 
+The calldata produced by the code for the extension is:
 
 ```bash
 0000008000000080000000800000008000000080000000800000008000000040
@@ -314,7 +309,7 @@ The extension’s calldata produced by the code is
 000000000000000000000000e7f1725e7734ce288f8367e1bb143e90bb3f0512
 ```
 
-Below the calldata is split into structured parts to illustrate how it was formed.
+The calldata is split into structured parts below to illustrate how it was formed.
 
 ```bash
 # Extension offsets (32 bytes)
@@ -335,38 +330,38 @@ Below the calldata is split into structured parts to illustrate how it was forme
 00000000 00000000 00000000 e7f1725e 7734ce28 8f8367e1 bb143e90 bb3f0512
 ```
 
-## Runtime exchange rate
+### Runtime exchange rate
 
-Sometimes order exchange rate is known only on-chain, for example if order implements Dutch auction or maker wants to get rate based on oracle price. For that purpose a maker can set getter functions to calculate rate on-chain, and then pass the getters to `makerAmountGetter` and `takerAmountGetter` extension. The getters are used for
+Sometimes the order exchange rate is only known on-chain, for example, if the order implements Dutch auction or the maker wants to get a rate based on an oracle price. To achieve this, the maker can set getter functions to calculate the rate on-chain and then pass the getters to the `makerAmountGetter` and `takerAmountGetter` extensions. These getters are used for:
 
-- `makerAmountGetter` calculates the maker amount based on the provided taking amount
-- `takerAmountGetter` calculates the taker amount based on the provided making amount
+- `makerAmountGetter`, calculates the maker amount based on the provided taking amount
+- `takerAmountGetter`, calculates the taker amount based on the provided making amount
 
-Basically, both getters should be implemented to get consistent results because it is a taker who decides the way how the amounts are calculated (based on the making or taking amounts) when order is executed. See order fill for details
+Both getters should be implemented to get consistent results because it is the taker who decides how the amounts are calculated (based on the making or taking amounts) when the order is executed. See the order fill for details.
 
-Both getters extension calldata has the following structure
+Both getters extension calldata have the following structure:
 
 | Address | Selector | Packed arguments |
 | --- | --- | --- |
 | 20 bytes | 4 bytes | variable size calldata |
 
-When the order is executed and the protocol calculates amount the selector on the provided contract address is called and packed arguments passed, additionally the arguments calldata is extended with
+When the order is executed and the protocol calculates the amount, the selector on the provided contract address is called, and the packed arguments are passed. Additionally the arguments calldata is extended with
 
-- `requestedAmount` - the requested amount to calculate making or taking amount for
-- `remainingMakingAmount` - remaining making amount for the order (can be different from an order’s `makingAmount` it the order was partially filled previously)
-- `orderHash` - the order’s hash
+- `requestedAmount` is the requested amount to calculate making or taking amount for.
+- `remainingMakingAmount` is the remaining making amount for the order, which can be different from an order's `makingAmount` if the order was partially filled previously.
+- `orderHash` is the order’s hash.
 
-So the final call would be as the following
+Therefore, the final call would be as follows:
 
 ```solidity
-address.selector(*<arguments from calldata>*, requestedAmount, remainingMakingAmount, orderHash)
+address.selector(<arguments from calldata>, requestedAmount, remainingMakingAmount, orderHash)
 ```
 
-The expected return value is a `uint256` number which represents making or taking and corresponds to the passed `requestedAmount`
+The function is expected to return a `uint256` value that corresponds to the passed `requestedAmount`.
 
 **Example**
 
-The code creates an order that uses `RangeAmountCalculator` to calculate making and taking amount 
+The code creates an order that uses `RangeAmountCalculator` to calculate the making and taking amounts.
 
 ```jsx
 // Order: 10 weth -> 35000 dai with price range: 3000 -> 4000
@@ -398,7 +393,7 @@ The extension’s calldata produced by the code is
 00000000000000008ac7230489e80000
 ```
 
-Below the calldata is splitted into structured parts to illustrate how it was formed
+The following shows how the calldata was formed by splitting it into structured parts
 
 ```bash
 # Extension offsets (32 bytes)
@@ -431,23 +426,23 @@ acaf5316
 00000000 00000000 00000000 00000000 00000000 00000000 8ac72304 89e80000
 ```
 
-## Predicates
+### Predicates
 
-Predicates allow to evaluate arbitrary conditions on-chain during order execution and allow or reject order fill. Some examples are
+Predicates enable the evaluation of arbitrary on-chain conditions during order execution. They can either allow or reject order fills. Examples include:
 
-- Do not allow to fill order until particular date (checks the block timestamp during order execution)
-- Do not allow to fill order if chainlink price is less or than particular amount
+- Preventing order fills until a specific date (checking the block timestamp during order execution)
+- Preventing order fills if the Chainlink price is less than or equal to a certain amount
 
-The limit order protocol provides a number of helper functions to create conditions from basic primitives, designed to chain them to any required complexity
+The limit order protocol offers several helper functions for creating conditions from basic primitives, allowing for the chaining of conditions to any required level of complexity.
 
-1. Equality
+1. **Equality**
     - `eq(uint256 value, bytes calldata data)` - returns `true` if the calldata execution result is equal to the `value`
     - `lt(uint256 value, bytes calldata data)` - returns `true` if the calldata execution result is less than the `value`
-    - `qt(uint256 value, bytes calldata data)` - returns `true` if the calldata execution result is greater than the `value`
-2. Logical operators
-    - `and(uint256 offsets, bytes calldata data)` - combines several predicates and returns `true` when all predicates are valid. To prepare data for `and` predicate you need to pack predicates calldata sequentially into `data` variable and store their offsets as `uint32` numbers into `offsets` with the same order as calldata was packed.
+    - `gt(uint256 value, bytes calldata data)` - returns `true` if the calldata execution result is greater than the `value`
+2. **Logical operators**
+    - `and(uint256 offsets, bytes calldata data)` - combines several predicates and returns `true` when all predicates are valid. To prepare data for the `and` predicate, pack the predicates' calldata sequentially into the `data` variable and store their offsets as `uint32` numbers into `offsets` with the same order as the calldata was packed.
         
-        > **Note**: The `and` predicate is limited with 8 operands. Chain several predicates to extend the limit
+        > **Note:** The `and` predicate is limited to 8 operands. Chain several predicates together to extend the limit.
         > 
         
         **Packing example**
@@ -460,7 +455,7 @@ The limit order protocol provides a number of helper functions to create conditi
         | predicate2 | 256 bytes |
         | predicate3 | 128 bytes |
         
-        The calldata and offsets structure will be the following:
+        The structure of calldata and offsets will be the following:
         
         | calldata |  |  |
         | --- | --- | --- |
@@ -472,7 +467,7 @@ The limit order protocol provides a number of helper functions to create conditi
         | 12-32 bytes | 9-12 byte | 5-8 byte | 1-4 byte |
         | 00…000 | 448 (predicate3 offset) | 320 (predicate2 offset) | 64 (predicate1 offset) |
         
-        The final calldata for the offsets in hex is
+        The final calldata for the predicate in hexadecimal is
         
         ```bash
         # offsets
@@ -487,20 +482,21 @@ The limit order protocol provides a number of helper functions to create conditi
         # 128 bytes of predicate 3 calldata
         ```
         
-    - `or(uint256 offsets, bytes calldata data)` - combines several predicates and returns `true` when at least one predicate is valid. The packing logic is the same as for `and` predicate.
+    - `or(uint256 offsets, bytes calldata data)` - combines several predicates and returns `true` when at least one predicate is valid. The packing logic is the same as for the `and` predicate.
         
-        > **Note**: The `or` predicate is limited with 8 operands. Chain several and predicates to extend the limit.
+        > **Note:** The `or` predicate is limited to 8 operands. To extend the limit, chain several `or` predicates.
         > 
     - `not(bytes calldata data)` - returns `true` if the calldata execution result is 0.
+
 3. Custom conditions
-    - `arbitraryStaticCall(address target, bytes calldata data)` - the calldata is executed on third-party contract (`target`) and should return any `uint256` number.
+    - `arbitraryStaticCall(address target, bytes calldata data)` - executes the `calldata` on a third-party contract (`target`) and should return a `uint256` number.
         
-        > **Note**: The call is executed with `staticcall` and reverts if state change happens. That means that only view calls are allowed.
+        > Note: The call is executed using `staticcall` and will revert if any state changes occur. Therefore, only view calls are permitted.
         > 
 
 **Example 1**
 
-Stop-loss and take profit conditions for the single limit order
+Stop-loss and take profit conditions can be set for a limit order
 
 ```jsx
 // Build condition => (daiPrice < 1000) or (daiPrice > 2000)
@@ -523,12 +519,12 @@ const { offsets, data } = joinStaticCalls([comparelt, comparegt]);
 **predicate** = swap.interface.encodeFunctionData('or', [offsets, data]);
 ```
 
-> **Note**: In order to use predicates, the flag HAS_EXTENSIONS has to be set to true. Otherwise, if a predicate is defined for an order and the flag is not set, then order fill will be reverted.
+> **Note**: To use predicates, the `HAS_EXTENSIONS` flag must be set to true. Otherwise, if a predicate is defined for an order and the flag is not set, order fill will be reverted.
 > 
 
 **Example 2**
 
-The example demonstrates the principals how the predicate calldata is assembled. The order has the only extension which is the predicated assembled by the code below: 
+The example demonstrates the principles of how the predicate calldata is assembled. The only extension to the order is the predicate assembled by the code below:
 
 ```jsx
 // Predicate = (5 < call result < 15) = or(5 < call result, 15 > call result)
@@ -545,7 +541,7 @@ const { offsets, data } = joinStaticCalls([comparelt, comparegt]);
 const predicate = swap.interface.encodeFunctionData('or', [offsets, data]);
 ```
 
-The extension’s calldata produced by the code is
+The calldata produced by the code is
 
 ```
 0x000002c4000002c4000002c4000002c4000000000000000000000000000000
@@ -574,7 +570,7 @@ d4c39d9d3abcbd16989f87570700000000000000000000000000000000000000
 0000000000
 ```
 
-Below the calldata is splitted into structured parts to illustrate how it was formed. There is the length in bytes for each calldata string.
+The calldata is split into structured parts below to illustrate how it was formed. The length in bytes for each calldata string is also provided.
 
 ```bash
    |-
@@ -685,19 +681,19 @@ Below the calldata is splitted into structured parts to illustrate how it was fo
    |_
 ```
 
-## Interactions
+### Interactions
 
-Interactions are callbacks that allow to execute arbitrary code provided by maker (provided by order) or taker (provided on fill execution). There are several step in order execution logic which also includes interaction calls: 
+Interactions are callbacks that enable the execution of arbitrary code provided by the maker (provided by order) or taker (provided on fill execution). The order execution logic includes several steps that also involve interaction calls:
 
-1. Validate order
-2. **Call maker pre-interaction**
-3. Transfer maker asset to taker
-4. **Call taker interaction**
-5. Transfer taker asset to maker
-6. **Call maker post-interaction**
-7. Emit OrderFilled event
+1. Validate the order
+2. **Call the maker's pre-interaction**
+3. Transfer the maker's asset to the taker
+4. **Call the taker's interaction**
+5. Transfer the taker's asset to the maker
+6. **Call the maker's post-interaction**
+7. Emit the OrderFilled event
 
-Calls are executed in the context of limit order protocol. Target contract should implement `IPreInteraction` or `IPostInteraction` interfaces for maker’s pre- and post- interactions and `ITakerInteraction` for taker’s interaction. These interfaces declare the single callback function for maker interactions and taker interactions respectively
+Calls are executed in the context of the limit order protocol. The target contract should implement the `IPreInteraction` or `IPostInteraction` interfaces for the maker's pre- and post-interactions and the `ITakerInteraction` interface for the taker's interaction. These interfaces declare the single callback function for maker and taker interactions, respectively.
 
 ```solidity
 //Maker's pre-interaction
@@ -734,33 +730,33 @@ function takerInteraction(
     ) external returns(uint256 offeredTakingAmount);
 ```
 
-In all cases callback function receives an order, order parameters and additional calldata for interaction  
+In all cases, the callback function receives an order, its parameters, and additional calldata for interaction.
 
 | Parameter | Type | Description |
 | --- | --- | --- |
-| order | `IOrderMixin.Order` | Basic order structure |
-| orderHash | `bytes32` | Order hash (orderHash = order.hash(_domainSeparatorV4())) |
-| taker | `address` | The taker’s address who is filling the order |
-| makingAmount | `uint256` | The actual making amount for the fill. May be different from Order.makingAmount if partial fills are allowed. |
-| takingAmount | `uint256` | The actual taking amount for the fill. May be different from Order.takingAmount if partial fills are allowed. |
-| remainingMakingAmount | `uint256` | The remaining amount left to fill for the order. May be different from Order.makingAmount if order was already partially filled. |
+| order | IOrderMixin.Order | Basic order structure |
+| orderHash | `bytes32` | The order hash, which is calculated as<br/>`orderHash = order.hash(_domainSeparatorV4())` |
+| taker | `address` | The address of the taker who is filling the order |
+| makingAmount | `uint256` | The actual amount of the making asset to fill. It may differ from Order.makingAmount if partial fills are allowed. |
+| takingAmount | `uint256` | The actual amount of the taking asset to fill. It may differ from Order.takingAmount if partial fills are allowed. |
+| remainingMakingAmount | `uint256` | The remaining amount left to fill for the order. It may differ from Order.makingAmount if the order has already been partially filled |
 | extraData | `bytes` | Additional calldata passed to interaction.   |
 
-Taker interaction additionally returns `offeredTakingAmount`. The return value may be used to improve rate for taker (if order allows it, `NO_IMPROVE_RATE` flag is not set). If the value returned is less then required `takingAmount` then the protocol ignores it and fill is done using calculated `takingAmount`.
+The `offeredTakingAmount` is also returned in taker interaction. This value can be used to improve the rate for the taker, provided that the `NO_IMPROVE_RATE` flag is not set in the order. If the returned value is less than the required `takingAmount`, the protocol ignores it and fills the order using the calculated `takingAmount`.
 
-Maker’s interactions are defined in order extensions `PreInteractionData` and `PostInteractionData`. The calldata structured as described below
+The maker's interactions are defined in the order extensions `PreInteractionData` and `PostInteractionData`. The calldata is structured as follows:
 
-- First 20 bytes of calldata is callback address
-- The following bytes are extra calldata to be passed to interaction
+- The first 20 bytes of the calldata is the callback address.
+- The following bytes are extra calldata to be passed to the interaction.
 
-> **Note:** To set up maker’s interaction the flag `HAS_EXTENSION` has to be set and `PreInteractionData` and/or `PostInteractionData` should contain interaction calldata.
+> **Note:** To set up maker's interaction, the flag `HAS_EXTENSION` must be set and `PreInteractionData` and/or `PostInteractionData` must contain interaction calldata.
 > 
 
-Taker’s interaction follows the same structure (20 bytes address and extra calldata) but is passed to the protocol when a taker fill an order.
+The taker's interaction follows the same structure (20 bytes address and extra calldata), but is passed to the protocol when a taker fills an order.
 
 **Example**
 
-If the code to build interactions is
+For the code that builds interactions as
 
 ```jsx
 // interactions is a contract that implements
@@ -770,7 +766,7 @@ const postInteraction = interactions.address + abiCoder.encode(['uint256'], [4])
 const takerInteraction = interactions.address + abiCoder.encode(['uint256'], [3]).substring(2);
 ```
 
-then the order’s extension calldata will be as follows
+the extension's calldata for the order will be as follows
 
 ```bash
 0000006800000034000000000000000000000000000000000000000000000000
@@ -780,7 +776,7 @@ d48449f69242Eb8F000000000000000000000000000000000000000000000000
 0000000000000004
 ```
 
-which is interpreted like
+which is interpreted as follows
 
 ```bash
 # Extension offsets (32 bytes)
@@ -801,7 +797,7 @@ which is interpreted like
 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000004
 ```
 
-and takerInteraction will be the following
+and `takerInteraction` will be the following
 
 ```bash
 # takerInteraction calldata
@@ -811,22 +807,22 @@ and takerInteraction will be the following
 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000003
 ```
 
-# Fill order
+# Fill an order
 
-## How to fill order
+## How to fill an order
 
-To fill an order a taker should call one function of the series defined in `IOrderMixin` interface and supply order and extensions (if any), filling amount, signature, and taker filling options. The functions defined by the interface differ depending on order is filled with extensions or without, taker is the fund receiver or not, and order is filled with taker’s permit or not. The full list is below
+To fill an order, a taker should call one of the functions defined in the `IOrderMixin` interface and supply the order and any extensions, the filling amount, a signature, and taker filling options. The functions defined by the interface vary depending on whether the order is filled with or without extensions, whether the taker is the fund receiver or not, and whether the order is filled with the taker's permit or not. The full list is as follows:
 
-- `fillOrder` - fills simple order without extensions
-- `fillOrderExt` - allows to specify extensions that are used for the order
-- `fillOrderTo` - allows to specify maker’s funds destination instead of `msg.sender`
-- `fillOrderToExt` - allows to specify maker’s funds destination and extensions that are used for the order
-- `fillOrderToWithPermit` - allows to specify maker’s funds destination and calls permit before filling order.
+- `fillOrder` - fills a simple order without extensions.
+- `fillOrderExt` - allows the specification of extensions used for the order.
+- `fillOrderTo` - allows the specification of the maker's funds destination instead of `msg.sender`.
+- `fillOrderToExt` - allows the specification of the maker's funds destination and extensions used for the order.
+- `fillOrderToWithPermit` - allows the specification of the maker's funds destination and calls permit before filling the order.
 - `fillContractOrder` - uses contract-based signatures.
-- `fillContractOrderWithPermit` - uses contract-based signatures and taker’s permit.
-- `fillContractOrderExt` - uses contract-based signatures and taker’s permit and allows to specify order’s extensions.
+- `fillContractOrderWithPermit` - uses contract-based signatures and the taker's permit.
+- `fillContractOrderExt` - uses contract-based signatures, the taker's permit, and allows the specification of the order's extensions.
 
-All the function have similar signature, below are the examples covering the possible arguments and their description
+All the functions have a similar signature. Below are examples covering the possible arguments and their description.
 
 ```solidity
 // Fill from EOA
@@ -856,16 +852,16 @@ function fillContractOrderExt(
 
 | Argument | Type | Description |
 | --- | --- | --- |
-| order | `Order` (calldata) | The order structure to fill  |
-| r | `bytes32` | r-component of the maker’s signature to check that order hash is signed by the maker.  |
-| vs | `bytes32` | vs-component of the maker’s signature to check that order hash is signed by the maker. |
-| signature | `bytes` calldata | signature to verify order. Used for contract signed orders only. |
-| amount | `uint256` | The amount to fill order which can be treated as maker or taker amount depending on fill settings.<br/>If the amount is greater than the remaining amount to fill than fill will be executed only for the remaining amount.<br/>The fill will be reverted if amount doesn’t equal order making amount and partial fills aren’t allowed.<br/>The fill will be also reverted if making and taking amounts equal zero.|
+| order | `Order` (calldata) | The order structure to be filled.  |
+| r | `bytes32` | The r-component of the maker’s signature to check that the order hash is signed by the maker. |
+| vs | `bytes32` | The vs-component of the maker’s signature to check that the order hash is signed by the maker. |
+| signature | `bytes calldata` | The signature used to verify the order. It is used for contract-signed orders only. |
+| amount | `uint256` | The amount to fill the order, which can be treated as the maker or taker amount, depending on fill settings. If the amount is greater than the remaining amount to fill, the fill will be executed only for the remaining amount. When partial fills are not allowed, the fill will be reverted if the amount does not equal the order making amount. The fill will also be reverted if the making and taking amounts are equal to zero. |
 | takerTraits | `TakerTraits` (uint256) | The taker’s setting for the order fill. See Fill settings for details. |
 | target | `address` | The recipient address for maker assets transfer.. |
-| interaction | `bytes` calldata | Taker interaction to execute during the fill. See interactions for details. |
-| extension | `bytes` calldata | The order’s extension calldata. The extension keccak256 hash has to be equal to the 160-lower bit of order’s salt. |
-| permit | `bytes` calldata | a taker’s permit for taker assets transfer. |
+| interaction | `bytes calldata` | The taker interaction to execute during the fill. See interactions for details. |
+| extension | `bytes calldata` | The order’s extension calldata. The extension’s keccak256 hash has to be equal to the 160-lower bit of order’s salt. |
+| permit | `bytes calldata` | The taker’s permit for the taker assets transfer. |
 
 The return values are
 
@@ -877,49 +873,46 @@ The return values are
 
 ## Fill settings
 
-Taker has a number of options to provide during each fill which are contained in the `takerTraits` argument. The `takerTraits` contain settings as bit flags and numbers compacted in `uint256` number. The bit flags are (from highest to lowest bit)
+The `takerTraits` argument provides a number of options for the taker to choose from during each fill. These options are stored as bit flags and numbers compacted in a `uint256` number. The bit flags in `takerTraits` are arranged in descending order of significance, with the highest bit first.
 
 | Option name | Bit position | Description |
 | --- | --- | --- |
-| `MAKER_AMOUNT_FLAG` | 255 bit | If set, the protocol implies that passed amount is making amount and taking amount will be calculated based on making amount, otherwise the passed amount is taking amount and making amount is calculated based on taking amount. The amount is calculated with AmountCalculator is getters are not set, or with getters provided with extension by maker. |
-| `UNWRAP_WETH_FLAG` | 254 bit | If set, the WETH will be unwrapped into ETH before sending to taker’s target address. |
-| `SKIP_ORDER_PERMIT_FLAG` | 253 bit | If set, the order skips maker's permit application. Can be useful to skip maker’s permit application if during recursive fill the permit was already applied. |
-| `USE_PERMIT2_FLAG` | 252 bit | If set, the order uses the uniswap permit2. |
-| `THRESHOLD_AMOUNT` | 0-251 bit (uint252) | The maximum amount a taker agrees to give in exchange for a making amount. If the calculated taker amount is less then threshold than the transaction will be reverted. Zero (0) threshold skips the check.<br/>The evaluated equation<br/>$$  threshold ≤ amount*{takingAmount \over makingAmount} $$ |
+| MAKER_AMOUNT_FLAG | 255 bit | If set, the protocol implies that the passed amount is the making amount, and the taking amount will be calculated based on the making amount. Otherwise, the passed amount is the taking amount, and the making amount is calculated based on the taking amount. The amount is calculated with AmountCalculator if getters are not set, or with getters provided with an extension by the maker. |
+| UNWRAP_WETH_FLAG | 254 bit | If set, the WETH will be unwrapped into ETH before sending to the taker's target address. |
+| SKIP_ORDER_PERMIT_FLAG | 253 bit | If set, the order skips the maker's permit application. It can be useful to skip the maker's permit application if the permit was already applied during recursive fill. |
+| USE_PERMIT2_FLAG | 252 bit | If set, the order uses the [Uniswap Permit 2](https://github.com/Uniswap/permit2). |
+| THRESHOLD_AMOUNT | 0-251 bit (uint252) | The maximum amount a taker agrees to give in exchange for a making amount. If the calculated taker amount is less than the threshold, then the transaction will be reverted. A zero (0) threshold skips the check. The evaluated equation is<br/>$$  threshold ≤ amount*{takingAmount \over makingAmount} $$ |
 
-# Cancel order
+# Cancel an order
 
-There are a number of ways an order can be cancelled.
+There are several ways to cancel an order:
 
 Automatically (indirect ways)
 
-- Cancel by expiration deadline - the simplest way to cancel order automatically is to set expiration deadline using order’s `MakerTraits`. There is no way to fill an order after the expiration date has passed. 
-The fill attempts will be reverted with `OrderExpired` error.
-- Cancel by a condition defined in predicate - the order can become obsolete if the condition defined by order’s predicate evaluates to false on each check.
-In this case the fill attempts will be reverted with `PredicateIsNotTrue` error.
+- **Cancel by expiration deadline**: The simplest way to cancel an order automatically is to set an expiration deadline using the order's `MakerTraits`. Once the expiration date has passed, it is no longer possible to fill the order. Any fill attempts will be reverted with an `OrderExpired` error.
+- **Cancellation by a condition defined in a predicate**: If the condition defined by the order's predicate starts evaluating to false on each check, the order becomes obsolete and cannot be filled anymore. Any fill attempts will be reverted with a `PredicateIsNotTrue` error.
 
-or manually (direct ways)
+Manually (direct ways)
 
-- Cancel by hash - the order is cancelled by direct call to `cancelOrder` function and passing `orderHash` and `makerTraits` of the order.
+- **Cancel by hash:** The order can be cancelled by directly calling the `cancelOrder` function and passing the `orderHash` and `makerTraits` of the order.
     
-    > **Note**: Orders are cancelled using different invalidators depending on the maker traits flags `ALLOW_MULTIPLE_FILLS` and `NO_PARTIAL_FILL` that means that passing wrong traits may result that call will have no effect and an order will not be cancelled.
+    > **Note**: Orders are cancelled using different invalidators depending on the maker traits flags `ALLOW_MULTIPLE_FILLS` and `NO_PARTIAL_FILL`. Passing wrong traits may result in the call having no effect, and the order will not be cancelled.
     > 
     
-    The fill attempts will be reverted with `BitInvalidatedOrder` error if an order doesn’t allow either partial or multiple fills, or with `InvalidatedOrder` error otherwise.
+    The fill attempts will be reverted with a `BitInvalidatedOrder` error if an order doesn't allow either partial or multiple fills, or with an `InvalidatedOrder` error otherwise.
     
-- Cancel by nonce - the order is cancelled by changing order nonce. It could be used for mass order cancellation.
+- **Cancel by nonce:** the order is cancelled by changing the order nonce. This method can be used for mass order cancellation.
     
-    Each order can have series and nonce specified which stand for the
+    Each order can have a series and nonce specified, which stand for the
     
-    - **series** specifies the application that issued order
+    - **series** specifies the application that issued the order
     - **nonce** specifies the order’s generation
     
-     At the same time each maker has a unique nonce set for each series which can be incremented up to 255 units. When the order’s flag `NEED_CHECK_EPOCH_MANAGER` is set the protocol checks if maker’s nonce matches order’s nonce and reverts with `WrongSeriesNonce` error if it doesn’t. It allows mass cancellation. For example, if a maker issued several orders with his actual nonce for a specific series, and later maker’s nonce was increased for that series the order’s nonce doesn’t equal the maker nonce anymore and the orders cannot be filled.
+    At the same time, each maker has a unique nonce set for each series, which can be incremented up to 255 units. When the order’s flag `NEED_CHECK_EPOCH_MANAGER` is set, the protocol checks if the maker’s nonce matches the order’s nonce and reverts with a `WrongSeriesNonce` error if it doesn’t. This allows for mass cancellation. For example, if a maker issued several orders with his actual nonce for a specific series, and later maker’s nonce was increased for that series, the order’s nonce doesn’t equal the maker nonce anymore and the orders cannot be filled.
     
-    > **Note:** To use nonce cancellation the flag `NEED_CHECK_EPOCH_MANAGER` must be set and partial and multiple fills should be allowed, otherwise the any order fill attempt will be reverted with `EpochManagerAndBitInvalidatorsAreIncompatible` error.
+    > **Note:** To use nonce cancellation, the flag `NEED_CHECK_EPOCH_MANAGER` must be set, and partial and multiple fills should be allowed. Otherwise, any order fill attempt will be reverted with an `EpochManagerAndBitInvalidatorsAreIncompatible` error.
     > 
     
-    From the very beginning each maker has a nonce equal to zero for all series. In order to change actual maker’s nonce, the maker should call `increaseEpoch` or `advanceEpoch`. The difference is the first increases nonce by 1, and the second increases nonce by any amount below 256.
+    At the start, each maker has a nonce equal to zero for all series. To update the maker's nonce, they should call either `increaseEpoch` or `advanceEpoch`. The former increases the nonce by 1, while the latter can increase it by any amount up to 256.
     
-    This concept allows also prepare a sequence of orders with increasing nonce and increase nonce under some condition to make the following orders valid.
-    For example, there are 2 orders with nonces 0 and 1, correspondingly. And the maker sets up post-interaction which increases his actual nonce by 1 when order is filled. In this case at the start the maker has actual nonce equal to zero, and anybody can fill the first order, but not the second order. But when the first order is filled, the post-interaction changes actual makers nonce to 1 and the second order becomes valid.
+    This concept also allows for the preparation of a sequence of orders with an increasing nonce and increase nonce under some condition to make the following orders valid. For example, there are two orders with nonces 0 and 1, correspondingly. And the maker sets up post-interaction that increases his actual nonce by 1 when the order is filled. In this case, at the start, the maker has an actual nonce equal to zero, and anybody can fill the first order, but not the second order. However, when the first order is filled, the post-interaction changes the actual maker's nonce to 1, and the second order becomes valid.
