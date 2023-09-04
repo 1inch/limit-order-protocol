@@ -5,7 +5,7 @@ const { fillWithMakingAmount, buildMakerTraits, buildOrder, signOrder, compactSi
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { joinStaticCalls, ether, cutLastArg } = require('../helpers/utils');
 
-describe.only('LimitOrderProtocol usage example', function () {
+describe.skip('LimitOrderProtocol usage example', function () {
     let addr, addr1, addr2;
     const abiCoder = ethers.utils.defaultAbiCoder;
 
@@ -63,7 +63,7 @@ describe.only('LimitOrderProtocol usage example', function () {
 
     async function initContracts (dai, weth, swap, erc721proxy) {
         await dai.mint(addr1.address, ether('1000000'));
-        await dai.mint(addr .address, ether('1000000'));
+        await dai.mint(addr.address, ether('1000000'));
         await weth.deposit({ value: ether('100') });
         await weth.connect(addr1).deposit({ value: ether('100') });
         await dai.approve(swap.address, ether('1000000'));
@@ -87,7 +87,7 @@ describe.only('LimitOrderProtocol usage example', function () {
         return { dai, weth, swap, chainId, arbitraryPredicate, interactions, erc721proxy, rangeAmountCalculator };
     };
 
-    it.only('simple order example', async function () {
+    it('simple order example', async function () {
         const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
         // Build final order
         const order = buildOrder(
@@ -106,21 +106,20 @@ describe.only('LimitOrderProtocol usage example', function () {
                     shouldCheckEpoch: true,
                     unwrapWeth: true,
                     series: 1,
-                    nonce: 2,
+                    nonce: 0,
                 }),
-            }
+            },
         );
 
-        const orderCalldata = abiCoder.encode([ABIOrder],  [order]);
+        const orderCalldata = abiCoder.encode([ABIOrder], [order]);
         console.log('simple order');
         console.log(orderCalldata.substring(2).replace(/(.{8})/g, '$1 ').replace(/(.{72})/g, '$1\n'));
 
-        console.log('taker', addr.address);
-
         const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
         const filltx = swap.fillOrderExt(order, r, vs, 1, 1, order.extension);
-        //await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-        //await expect(filltx).to.changeEtherBalances(weth, [addr, addr2], [-1, 1]);
+        await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+        await expect(filltx).to.changeTokenBalance(weth, addr, -1);
+        await expect(filltx).to.changeEtherBalance(addr2, 1);
     });
 
     it('predicate example', async function () {
@@ -157,12 +156,6 @@ describe.only('LimitOrderProtocol usage example', function () {
             },
         );
 
-        console.log('copyyArgs', arbitaryFunction);
-        console.log('offsets', offsets);
-        console.log('data', data);
-        console.log('arbitrary call predicate', arbitraryCallPredicate);
-        console.log('full predicate', predicate);
-        console.log('lop address', arbitraryPredicate.address);
         console.log('order', order);
 
         const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
@@ -187,7 +180,7 @@ describe.only('LimitOrderProtocol usage example', function () {
                 takingAmount: 1,
                 maker: addr1.address,
                 makerTraits: buildMakerTraits({
-                    allowPriceImprovement : true,
+                    allowPriceImprovement: true,
                 }),
             },
             {
@@ -196,9 +189,6 @@ describe.only('LimitOrderProtocol usage example', function () {
             },
         );
 
-        console.log('preInteraction', preInteraction);
-        console.log('postInteraction', postInteraction);
-        console.log('takerInteraction', takerInteraction);
         console.log('order', order);
 
         const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
@@ -212,17 +202,17 @@ describe.only('LimitOrderProtocol usage example', function () {
 
         const makerAssetSuffix = '0x' + erc721proxy.interface.encodeFunctionData(
             'func_60iHVgK',
-                // ERC721Proxy arguments (2 last passed as extra) 
-                // address from, address to, uint256 amount, uint256 tokenId, IERC721 token
-            [addr1.address, constants.ZERO_ADDRESS, 0, 10, dai.address]
+            // ERC721Proxy arguments (2 last passed as extra)
+            // address from, address to, uint256 amount, uint256 tokenId, IERC721 token
+            [addr1.address, constants.ZERO_ADDRESS, 0, 10, dai.address],
         // leave only 2 extra arguments
         ).substring(202);
         
         const takerAssetSuffix = '0x' + erc721proxy.interface.encodeFunctionData(
             'func_60iHVgK',
-                // ERC721Proxy arguments (2 last passed as extra)
-                // address from, address to, uint256 amount, uint256 tokenId, IERC721 token
-            [constants.ZERO_ADDRESS, addr1.address, 0, 10, weth.address]
+            // ERC721Proxy arguments (2 last passed as extra)
+            // address from, address to, uint256 amount, uint256 tokenId, IERC721 token
+            [constants.ZERO_ADDRESS, addr1.address, 0, 10, weth.address],
         // leave only 2 extra arguments
         ).substring(202);
 
@@ -252,7 +242,7 @@ describe.only('LimitOrderProtocol usage example', function () {
         await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-10, 10]);
     });
 
-    it.only('getter example', async function () {
+    it('getter example', async function () {
         const { dai, weth, swap, chainId, rangeAmountCalculator } = await loadFixture(deployContractsAndInit);
 
         // Order: 10 weth -> 35000 dai with price range: 3000 -> 4000
@@ -267,7 +257,7 @@ describe.only('LimitOrderProtocol usage example', function () {
 
         const takingAmountGetter = rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
             rangeAmountCalculator.interface.encodeFunctionData('getRangeTakerAmount', [startPrice, endPrice, makingAmount, 0, 0], 64),
-        )))
+        )));
 
         // Build final order
         const order = buildOrder(
@@ -281,12 +271,8 @@ describe.only('LimitOrderProtocol usage example', function () {
             }, {
                 makingAmountGetter,
                 takingAmountGetter,
-            }
+            },
         );
-
-        const orderCalldata = abiCoder.encode([ABIOrder],  [order]);
-        console.log('extended order');
-        console.log(orderCalldata.substring(2).replace(/(.{8})/g, '$1 ').replace(/(.{72})/g, '$1\n'));
 
         console.log('order', order);
 
