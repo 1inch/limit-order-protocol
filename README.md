@@ -25,7 +25,7 @@ The repository contains smart contracts for EVM-based blockchains (such as Ether
 
 ### Limit Order
 
-The key features of the protocol are **extreme flexibility** and **high gas efficiency**, which is achieved with the following features
+The key features of the protocol are **extreme flexibility** and **high gas efficiency**, which are achieved with the following features
 
 **Basic features**
 
