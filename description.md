@@ -209,8 +209,10 @@ The following is the final calldata which includes the offsets.
 ```bash
 #  28-31    24-27    20-23    16-19    12-15     8-11      4-7      0-3
 00000098 00000098 00000098 00000078 00000000 00000000 00000000 00000000
-#         predicate end => ^^^^^^^^ ^^^^^^^^ <= predicate start
-#   permit end => ^^^^^^^^ ^^^^^^^^ <= permit start
+# The offset for a specific parameter is coded as the offset of the end of the parameter's calldata.
+# The offset of the start of the calldata is either the offset of the previous parameter, or zero for the first one.
+#         predicate end => ^^^^^^^^ ++++++++ <= predicate starts with this offset
+#   permit end => ^^^^^^^^ ++++++++ <= permit starts with this offset
 
 # followed by
 # 120 bytes of predicate calldata
