@@ -530,7 +530,7 @@ const priceCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
         ]);
 // 2. Create calldata for condition that price should be less than 1000
 const comparelt = swap.interface.encodeFunctionData('lt', [ether('1000'), priceCall])
-// 3. Create calldata for condition that price should be more then 2000
+// 3. Create calldata for condition that price should be more than 2000
 const comparegt = swap.interface.encodeFunctionData('gt', [ether('2000'), priceCall])
 // 4. Add `or` condition (joinStaticCalls - concatenates calldata)
 const { offsets, data } = joinStaticCalls([comparelt, comparegt]);
