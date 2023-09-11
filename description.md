@@ -81,7 +81,7 @@ struct Order {
 
 ## Order settings
 
-The `makerTraits` property contains order settings as bit flags and compacted numbers in a `uint256` format. The bit flags are listed from highest to lowest bit.
+The `makerTraits` property contains order settings as bit flags and compacted numbers in a `uint256` format. The bit flags are listed from highest to lowest bit, starting from zero.
 
 | Option name | Bit position | Description |
 | --- | --- | --- |
@@ -90,7 +90,7 @@ The `makerTraits` property contains order settings as bit flags and compacted nu
 | NO_IMPROVE_RATE | 253 | If set, the order does not allow the taker’s interaction to improve the rate.<br/><br/>By default, a taker can return more tokens to a maker, and limit order protocol allows it. But in some cases, this may lead to unpredictable results. For example, if a maker wants to buy NFT, changing amount will change the NFT token that the taker should transfer to the maker, because [ERC-721](https://ethereum.org/en/developers/docs/standards/tokens/erc-721/) uses tokenId instead of amount. Use this flag to avoid it. |
 | PRE_INTERACTION_CALL | 252 | If set, the order requires pre-interaction call.<br/>Set the flag to execute maker’s pre-interaction call.<br/>See [Interactions](#interactions) section for details. |
 | POST_INTERACTION_CALL | 251 | If set, the order requires post-interaction call.<br/>Set the flag to execute maker’s post-interaction call.<br/>See [Interactions](#interactions) section for details. |
-| NEED_CHECK_EPOCH_MANAGER | 250 | If set, an order uses epoch manager for cancelling.<br/>See [Cancel an order](#cancel-an-order) for details. |
+| NEED_CHECK_EPOCH_MANAGER | 250 | If set, an order uses epoch manager for cancelling.<br/>See [Cancelling an order](#cancelling-an-order) for details. |
 | HAS_EXTENSION | 249 | If set, the order applies extension(s) logic during fill.<br/>See [Order extensions](#order-extensions) for available extensions and usage details. |
 | USE_PERMIT2 | 248 | If set, the order uses [Uniswap Permit2](https://github.com/Uniswap/permit2)  |
 | UNWRAP_WETH | 247 | If set, the order requires unwrapping WETH |
@@ -101,8 +101,8 @@ The rest of the settings are located in the lowest 200 bits of the number, from 
 | --- | --- | --- | --- |
 | ALLOWED_SENDER | 80 | [0..79] | This option is used to make an order private and restrict filling to only one specified taker address. The option consists of the last 10 bytes of the allowed sender's address. A value of zero means that no restrictions will be applied. |
 | EXPIRATION | 40 | [80..119] | Expiration timestamp for the order. Order cannot be filled after the expiration deadline. Zero value means that there is no expiration time for the order. |
-| NONCE_OR_EPOCH | 40 | [120..159] | The nonce or epoch of the order. See <cancel order> for details. |
-| SERIES | 40 | [160..199] | The series of the order. See <cancel order> for details. |
+| NONCE_OR_EPOCH | 40 | [120..159] | The nonce or epoch of the order. See [Cancelling an order](#cancelling-an-order) for details. |
+| SERIES | 40 | [160..199] | The series of the order. See [Cancelling an order](#cancelling-an-order) for details. |
 
 **Example**
 
