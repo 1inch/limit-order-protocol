@@ -528,13 +528,13 @@ const priceCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
             daiOracle.address,
             daiOracle.interface.encodeFunctionData('latestAnswer'),
         ]);
-// 2. Create calldata for condition that price should be less then 1000
+// 2. Create calldata for condition that price should be less than 1000
 const comparelt = swap.interface.encodeFunctionData('lt', [ether('1000'), priceCall])
 // 3. Create calldata for condition that price should be more then 2000
 const comparegt = swap.interface.encodeFunctionData('gt', [ether('2000'), priceCall])
 // 4. Add `or` condition (joinStaticCalls - concatenates calldata)
 const { offsets, data } = joinStaticCalls([comparelt, comparegt]);
-**predicate** = swap.interface.encodeFunctionData('or', [offsets, data]);
+predicate = swap.interface.encodeFunctionData('or', [offsets, data]);
 ```
 
 > **Note**: To use predicates, the `HAS_EXTENSIONS` flag must be set to true. Otherwise, if a predicate is defined for an order and the flag is not set, order fill will be reverted.
@@ -881,7 +881,7 @@ function fillContractOrderExt(
 | vs | `bytes32` | The vs-component of the maker’s signature to check that the order hash is signed by the maker. |
 | signature | `bytes calldata` | The signature used to verify the order. It is used for contract-signed orders only. See [ERC-1271](https://eips.ethereum.org/EIPS/eip-1271) for validation details. |
 | amount | `uint256` | The amount to fill the order, which can be treated as the maker or taker amount, depending on fill settings. If the amount is greater than the remaining amount to fill, the fill will be executed only for the remaining amount. When partial fills are not allowed, the fill will be reverted if the amount does not equal the order making amount. The fill will also be reverted if calculated making or taking amounts are equal to zero. |
-| takerTraits | `TakerTraits` (uint256) | The taker’s setting for the order fill. See Fill settings for details. |
+| takerTraits | `TakerTraits` (uint256) | The taker’s setting for the order fill. See [Fill settings](#fill-settings) for details. |
 | target | `address` | The recipient address for maker assets transfer. |
 | interaction | `bytes calldata` | The taker interaction to execute during the fill. See [Interactions](#interactions) section for details. |
 | extension | `bytes calldata` | The order’s extension calldata. The extension’s keccak256 hash has to be equal to the 160-lower bit of order’s salt. |
@@ -930,7 +930,7 @@ Manual methods require sending a cancel transaction, which requires spending gas
 
 - **Cancel by nonce:** the order is cancelled by changing the order nonce. This method can be used for mass order cancellation. Each order can have a series and nonces specified. They are defined as:
     - **series** - specifies the application that issued the order
-    - **nonce** - ****specifies the order’s generation
+    - **nonce** - specifies the order’s generation
 
     At the same time, each maker has a unique nonce set for each series, which can be incremented up to 255 units. When the order’s flag `NEED_CHECK_EPOCH_MANAGER` is set, the protocol checks if the maker’s nonce matches the order’s nonce and reverts with a `WrongSeriesNonce` error if it doesn’t. This allows for mass cancellation. For example, if a maker issued several orders with his actual nonce for a specific series, and later maker’s nonce was increased for that series, the order’s nonce doesn’t equal the maker nonce anymore and the orders cannot be filled.
 
