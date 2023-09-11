@@ -897,7 +897,7 @@ The return values are:
 
 ## Fill settings
 
-The `takerTraits` argument provides a number of options for the taker to choose from during each fill. These options are stored as bit flags and numbers compacted in a `uint256` number. The bit flags in `takerTraits` are arranged in descending order of significance, with the highest bit first.
+The `takerTraits` argument provides a number of options for the taker to choose from during each fill. These options are stored as bit flags and numbers compacted in a `uint256` number. The bit flags in `takerTraits` are arranged in descending order of significance, with the highest bit first, starting from zero.
 
 | Option name | Bit position | Description |
 | --- | --- | --- |
