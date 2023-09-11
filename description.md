@@ -879,7 +879,7 @@ function fillContractOrderExt(
 | order | `Order` (calldata) | The order structure to be filled.  |
 | r | `bytes32` | The r-component of the maker’s signature to check that the order hash is signed by the maker. |
 | vs | `bytes32` | The vs-component of the maker’s signature to check that the order hash is signed by the maker. |
-| signature | `bytes calldata` | The signature used to verify the order. It is used for contract-signed orders only. |
+| signature | `bytes calldata` | The signature used to verify the order. It is used for contract-signed orders only. See [ERC-1271](https://eips.ethereum.org/EIPS/eip-1271) for validation details. |
 | amount | `uint256` | The amount to fill the order, which can be treated as the maker or taker amount, depending on fill settings. If the amount is greater than the remaining amount to fill, the fill will be executed only for the remaining amount. When partial fills are not allowed, the fill will be reverted if the amount does not equal the order making amount. The fill will also be reverted if the making and taking amounts are equal to zero. |
 | takerTraits | `TakerTraits` (uint256) | The taker’s setting for the order fill. See Fill settings for details. |
 | target | `address` | The recipient address for maker assets transfer. |
