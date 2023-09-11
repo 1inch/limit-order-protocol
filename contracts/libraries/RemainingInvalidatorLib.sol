@@ -8,8 +8,8 @@ type RemainingInvalidator is uint256;
  * @title RemainingInvalidatorLib
  * @notice The library provides a mechanism to invalidate order based on the remaining amount of the order.
  * @dev The remaining amount is used as a nonce to invalidate the order.
- * When order is created, the remaining invalidator is 0. When the order is filled, the remaining invalidator is 1.
- * When order is filled partially, the remaining invalidator is the remaining amount plus 1. 
+ * When order is created, the remaining invalidator is 0. When the order is filled, the remaining invalidator is type(uint256).max.
+ * When order is filled partially, the remaining invalidator is the negation of the remaining amount. 
  */
 library RemainingInvalidatorLib {
 
@@ -37,7 +37,7 @@ library RemainingInvalidatorLib {
             revert RemainingInvalidatedOrder();
         }
         unchecked {
-            return value - 1;
+            return ~value;
         }
     }
 
@@ -54,7 +54,7 @@ library RemainingInvalidatorLib {
             return orderMakerAmount;
         }
         unchecked {
-            return value - 1;
+            return ~value;
         }
     }
 
@@ -66,7 +66,7 @@ library RemainingInvalidatorLib {
      */
     function remains(uint256 remainingMakingAmount, uint256 makingAmount) internal pure returns(RemainingInvalidator) {
         unchecked {
-            return RemainingInvalidator.wrap(remainingMakingAmount - makingAmount + 1);
+            return RemainingInvalidator.wrap(~(remainingMakingAmount - makingAmount));
         }
     }
 
@@ -75,6 +75,6 @@ library RemainingInvalidatorLib {
      * @return result The remaining invalidator for a fully filled order.
      */
     function fullyFilled() internal pure returns(RemainingInvalidator) {
-        return RemainingInvalidator.wrap(1);
+        return RemainingInvalidator.wrap(type(uint256).max);
     }
 }
