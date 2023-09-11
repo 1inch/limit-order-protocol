@@ -31,7 +31,7 @@ The key features of the protocol are **extreme flexibility** and **high gas effi
 
 - Select an asset receiver for an order.
 - Choose whether to allow or disallow partial and multiple fills.
-- Define conditions that must be met before execution can proceed (e.g. provide an example).
+- Define conditions that must be met before execution can proceed (e.g. stop-loss, take-profit orders).
 - Specify interactions (arbitrary maker's code) to execute before and after order filling.
 - Choose an approval scheme for token spend (approve, permit, permit2).
 - Request that WETH be unwrapped to ETH either before (to sell ETH) or after the swap (to receive ETH).
