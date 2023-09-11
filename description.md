@@ -97,12 +97,12 @@ The `makerTraits` property contains order settings as bit flags and compacted nu
 
 The rest of the settings are located in the lowest 200 bits of the number, from lowest to highest.
 
-| Option name | Size, bits | Description |
-| --- | --- | --- |
-| ALLOWED_SENDER | 80 | This option is used to make an order private and restrict filling to only one specified taker address. The option consists of the last 10 bytes of the allowed sender's address. A value of zero means that no restrictions will be applied. |
-| EXPIRATION | 40 | Expiration timestamp for the order. Order cannot be filled after the expiration deadline. Zero value means that there is no expiration time for the order. |
-| NONCE_OR_EPOCH | 40 | The nonce or epoch of the order. See <cancel order> for details. |
-| SERIES | 40 | The series of the order. See <cancel order> for details. |
+| Option name | Size, bits | Location, bits | Description |
+| --- | --- | --- | --- |
+| ALLOWED_SENDER | 80 | [0..79] | This option is used to make an order private and restrict filling to only one specified taker address. The option consists of the last 10 bytes of the allowed sender's address. A value of zero means that no restrictions will be applied. |
+| EXPIRATION | 40 | [80..119] | Expiration timestamp for the order. Order cannot be filled after the expiration deadline. Zero value means that there is no expiration time for the order. |
+| NONCE_OR_EPOCH | 40 | [120..159] | The nonce or epoch of the order. See <cancel order> for details. |
+| SERIES | 40 | [160..199] | The series of the order. See <cancel order> for details. |
 
 **Example**
 
@@ -232,8 +232,8 @@ Examples of tokens that have already implemented this method are based on the fo
 To implement your custom proxy:
 
 1. Implement a function that receives `from`, `to`, and `amount` as the first three parameters, along with additional parameters that will be passed with `makerAssetSuffix` and/or `takerAssetSuffix`.
-2. Find the function name whose selector equals `transferFrom(from,to,amount)`.
-3. Implement `transferFrom` for the token.
+2. Compute and select a function name whose selector matches `transferFrom(from,to,amount)`.
+3. Implement your own `transferFrom` method in the function from item 2 for the token
 
 **Implementation example**
 
@@ -269,7 +269,7 @@ As you can see, the `amount` parameter is not used, but the function still needs
 
 **Example**
 
-Here is the code that creates an order:
+Here is the sample code that creates an order, serving as an example for the previously described `ERC721Proxy` implementation:
 
 ```javascript
 const makerAssetSuffix = '0x' + erc721proxy.interface.encodeFunctionData(
@@ -379,6 +379,8 @@ const makingAmount = ether('10');
 const takingAmount = ether('35000');
 const startPrice = ether('3000');
 const endPrice = ether('4000');
+
+const rangeAmountCalculator = await ethers.getContractFactory('RangeAmountCalculator');
 
 const makingAmountGetter = rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
     rangeAmountCalculator.interface.encodeFunctionData('getRangeMakerAmount', [startPrice, endPrice, makingAmount, 0, 0], 64),
@@ -878,8 +880,8 @@ function fillContractOrderExt(
 | signature | `bytes calldata` | The signature used to verify the order. It is used for contract-signed orders only. |
 | amount | `uint256` | The amount to fill the order, which can be treated as the maker or taker amount, depending on fill settings. If the amount is greater than the remaining amount to fill, the fill will be executed only for the remaining amount. When partial fills are not allowed, the fill will be reverted if the amount does not equal the order making amount. The fill will also be reverted if the making and taking amounts are equal to zero. |
 | takerTraits | `TakerTraits` (uint256) | The taker’s setting for the order fill. See Fill settings for details. |
-| target | `address` | The recipient address for maker assets transfer.. |
-| interaction | `bytes calldata` | The taker interaction to execute during the fill. See interactions for details. |
+| target | `address` | The recipient address for maker assets transfer. |
+| interaction | `bytes calldata` | The taker interaction to execute during the fill. See [Interactions](#interactions) section for details. |
 | extension | `bytes calldata` | The order’s extension calldata. The extension’s keccak256 hash has to be equal to the 160-lower bit of order’s salt. |
 | permit | `bytes calldata` | The taker’s permit for the taker assets transfer. |
 
@@ -888,7 +890,7 @@ The return values are:
 | Return value | Type | Description |
 | --- | --- | --- |
 | makingAmount | `uint256` | The actual amount the maker received  |
-| takingAmount | `uint256` | The actual amount the taker recieved |
+| takingAmount | `uint256` | The actual amount the taker received |
 | orderHash | `bytes32` | The hash of the order |
 
 ## Fill settings
