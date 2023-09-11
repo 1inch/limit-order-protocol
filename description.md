@@ -925,7 +925,8 @@ Manual methods require sending a cancel transaction, which requires spending gas
     > **Note**: Orders are cancelled using different invalidators depending on the maker traits flags `ALLOW_MULTIPLE_FILLS` and `NO_PARTIAL_FILL`. Passing wrong traits may result in the call having no effect, and the order will not be cancelled.
     > 
 
-    The fill attempts will be reverted with a `BitInvalidatedOrder` error if an order doesn't allow either partial or multiple fills, or with an `InvalidatedOrder` error otherwise.
+    If partial or multiple fills are not allowed then the protocol uses `BitInvalidator` for cancelling an order, and `RemainingInvalidator` otherwise.
+    The cancelled order fill attempts will be reverted with a `BitInvalidatedOrder` error if an order uses `BitInvalidator`, or with an `InvalidatedOrder` error otherwise.
 
 - **Cancel by nonce:** the order is cancelled by changing the order nonce. This method can be used for mass order cancellation. Each order can have a series and nonces specified. They are defined as:
     - **series** - specifies the application that issued the order
