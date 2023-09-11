@@ -16,7 +16,7 @@ Limit order protocol v4
 - [Fill an order](#fill-an-order)
     - [How to fill an order](#how-to-fill-an-order)
     - [Fill settings](#fill-settings)
-- [Cancel an order](#cancel-an-order)
+- [Cancelling an order](#cancelling-an-order)
 
 # Overview
 
