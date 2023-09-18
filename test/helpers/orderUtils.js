@@ -224,14 +224,6 @@ async function signOrder (order, chainId, target, wallet) {
     return await wallet._signTypedData(orderData.domain, orderData.types, orderData.value);
 }
 
-function compactSignature (signature) {
-    const sig = ethers.utils.splitSignature(signature);
-    return {
-        r: sig.r,
-        vs: sig._vs,
-    };
-}
-
 function fillWithMakingAmount (amount) {
     return setn(amount, 255, true).toString();
 }
@@ -252,7 +244,6 @@ module.exports = {
     buildOrderRFQ,
     buildOrderData,
     signOrder,
-    compactSignature,
     fillWithMakingAmount,
     unwrapWethTaker,
     skipMakerPermit,
