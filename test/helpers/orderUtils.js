@@ -1,6 +1,5 @@
 const { constants, trim0x } = require('@1inch/solidity-utils');
 const { assert } = require('chai');
-const { ethers } = require('ethers');
 const { keccak256 } = require('ethers/lib/utils');
 const { setn } = require('./utils');
 
