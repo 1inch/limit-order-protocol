@@ -37,6 +37,7 @@ interface IOrderMixin {
     error MismatchArraysLengths();
     error InvalidPermit2Transfer();
     error SimulationResults(bool success, bytes res);
+    error InvalidExtension();
 
     /**
      * @notice Emitted when order gets filled
