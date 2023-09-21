@@ -146,9 +146,10 @@ import "./helpers/AmountCalculator.sol";
     }
 
     /**
-      * @dev Validates the extension associated with an order. Reverts if invalid.
+      * @dev Validates the extension associated with an order.
       * @param order The order to validate against.
       * @param extension The extension associated with the order.
+      * @return True if the extension is valid, false otherwise.
       */
     function validateExtension(IOrderMixin.Order calldata order, bytes calldata extension) internal pure returns(bool) {
         if (order.makerTraits.hasExtension()) {
