@@ -1,7 +1,7 @@
 const hre = require('hardhat');
 const { ethers } = hre;
 const { expect, time, constants, trim0x } = require('@1inch/solidity-utils');
-const { fillWithMakingAmount, buildMakerTraits, buildOrder, signOrder, compactSignature, ABIOrder } = require('../helpers/orderUtils');
+const { fillWithMakingAmount, buildMakerTraits, buildOrder, signOrder, ABIOrder } = require('../helpers/orderUtils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { joinStaticCalls, ether, cutLastArg } = require('../helpers/utils');
 
@@ -115,7 +115,7 @@ describe.skip('LimitOrderProtocol usage example', function () {
         console.log('simple order');
         console.log(orderCalldata.substring(2).replace(/(.{8})/g, '$1 ').replace(/(.{72})/g, '$1\n'));
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+        const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
         const filltx = swap.fillOrderExt(order, r, vs, 1, 1, order.extension);
         await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
         await expect(filltx).to.changeTokenBalance(weth, addr, -1);
@@ -158,7 +158,7 @@ describe.skip('LimitOrderProtocol usage example', function () {
 
         console.log('order', order);
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+        const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
         const filltx = swap.fillOrderExt(order, r, vs, 1, 1, order.extension);
         await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
         await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
@@ -191,7 +191,7 @@ describe.skip('LimitOrderProtocol usage example', function () {
 
         console.log('order', order);
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+        const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
         const filltx = swap.fillOrderToExt(order, r, vs, 1, 1, addr.address, order.extension, takerInteraction);
         await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
         await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-4, 4]);
@@ -207,7 +207,7 @@ describe.skip('LimitOrderProtocol usage example', function () {
             [addr1.address, constants.ZERO_ADDRESS, 0, 10, dai.address],
         // leave only 2 extra arguments
         ).substring(202);
-        
+
         const takerAssetSuffix = '0x' + erc721proxy.interface.encodeFunctionData(
             'func_60iHVgK',
             // ERC721Proxy arguments (2 last passed as extra)
@@ -236,7 +236,7 @@ describe.skip('LimitOrderProtocol usage example', function () {
 
         console.log('order', order);
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+        const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
         const filltx = swap.fillOrderExt(order, r, vs, 10, fillWithMakingAmount(10), order.extension);
         await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [10, -10]);
         await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-10, 10]);
@@ -276,7 +276,7 @@ describe.skip('LimitOrderProtocol usage example', function () {
 
         console.log('order', order);
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+        const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
         const filltx = swap.fillOrderExt(order, r, vs, ether('2'), fillWithMakingAmount(ether('6200')), order.extension);
         await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [ether('2'), ether('-2')]);
         await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [ether('-6200'), ether('6200')]);

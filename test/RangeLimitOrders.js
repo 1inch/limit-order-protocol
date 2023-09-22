@@ -2,7 +2,7 @@ const { ethers } = require('hardhat');
 const { parseUnits } = require('ethers/lib/utils.js');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { expect, trim0x } = require('@1inch/solidity-utils');
-const { fillWithMakingAmount, buildMakerTraits, buildOrder, signOrder, compactSignature } = require('./helpers/orderUtils');
+const { fillWithMakingAmount, buildMakerTraits, buildOrder, signOrder } = require('./helpers/orderUtils');
 const { cutLastArg, ether } = require('./helpers/utils');
 const { deploySwapTokens, deployRangeAmountCalculator } = require('./helpers/fixtures');
 
@@ -72,7 +72,7 @@ describe('RangeLimitOrders', function () {
             ))),
         });
         const signature = await signOrder(order, chainId, swap.address, maker);
-        const { r, vs } = compactSignature(signature);
+        const { r, _vs: vs } = ethers.utils.splitSignature(signature);
         return { order, r, vs, startPrice, endPrice, makingAmount, takingAmount };
     }
 
