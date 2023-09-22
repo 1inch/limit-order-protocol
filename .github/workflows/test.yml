@@ -27,3 +27,6 @@ jobs:
       - uses: ./.github/actions/setup
       - run: yarn coverage
       - uses: codecov/codecov-action@v3
+        with:
+          files: coverage.json
+          verbose: true
