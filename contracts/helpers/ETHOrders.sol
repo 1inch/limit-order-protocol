@@ -19,7 +19,7 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
 
     error AccessDenied();
     error InvalidOrder();
-    error InvalidExtension();
+    error InvalidExtension(bytes4 errorSelector);
     error NotEnoughBalance();
     error ExistingOrder();
 
@@ -65,7 +65,8 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
      */
     function ethOrderDeposit(IOrderMixin.Order calldata order, bytes calldata extension) external payable returns(bytes32 orderHash) {
         if (!order.makerTraits.needPostInteractionCall()) revert InvalidOrder();
-        if (!order.validateExtension(extension)) revert InvalidExtension();
+        (bool isValid, bytes4 validationResult) = order.isValidExtension(extension);
+        if (!isValid) revert InvalidExtension(validationResult);
         if (order.maker.get() != address(this)) revert AccessDenied();
         if (order.getReceiver() != msg.sender) revert AccessDenied();
         if (order.makingAmount != msg.value) revert InvalidOrder();

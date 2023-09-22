@@ -722,6 +722,50 @@ describe('LimitOrderProtocol', function () {
             await expect(ethOrders.connect(addr1).ethOrderDeposit(order, order.extension, { value: ether('0.3') }))
                 .to.be.revertedWithCustomError(ethOrders, 'InvalidOrder');
         });
+
+        it('Invalid extension (empty extension)', async function () {
+            const { dai, weth, ethOrders } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder(
+                {
+                    maker: ethOrders.address,
+                    receiver: addr1.address,
+                    makerAsset: weth.address,
+                    takerAsset: dai.address,
+                    makingAmount: ether('0.3'),
+                    takingAmount: ether('300'),
+                },
+                {
+                    postInteraction: ethOrders.address,
+                },
+            );
+
+            const errorSelector = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('MissingOrderExtension()')).slice(0, 10);
+            await expect(ethOrders.connect(addr1).ethOrderDeposit(order, [], { value: ether('0.3') }))
+                .to.be.revertedWithCustomError(ethOrders, 'InvalidExtension').withArgs(errorSelector);
+        });
+
+        it('Invalid extension (mismatched extension)', async function () {
+            const { dai, weth, ethOrders } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder(
+                {
+                    maker: ethOrders.address,
+                    receiver: addr1.address,
+                    makerAsset: weth.address,
+                    takerAsset: dai.address,
+                    makingAmount: ether('0.3'),
+                    takingAmount: ether('300'),
+                },
+                {
+                    postInteraction: ethOrders.address,
+                },
+            );
+
+            const errorSelector = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('ExtensionInvalid()')).slice(0, 10);
+            await expect(ethOrders.connect(addr1).ethOrderDeposit(order, order.extension.slice(0, -6), { value: ether('0.3') }))
+                .to.be.revertedWithCustomError(ethOrders, 'InvalidExtension').withArgs(errorSelector);
+        });
     });
 
     describe('Remaining invalidator', function () {
@@ -1119,6 +1163,81 @@ describe('LimitOrderProtocol', function () {
             const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
             await expect(swap.fillOrderExt(order, r, vs, 1, 1, order.extension))
                 .to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
+        });
+
+        it('should fail with invalid extension (empty extension)', async function () {
+            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+
+            const arbitraryCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
+                arbitraryPredicate.address,
+                arbitraryPredicate.interface.encodeFunctionData('copyArg', [1]),
+            ]);
+            const predicate = swap.interface.encodeFunctionData('lt', [10, arbitraryCall]);
+
+            const order = buildOrder(
+                {
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    maker: addr1.address,
+                },
+                {
+                    predicate,
+                },
+            );
+
+            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            const errorSelector = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('MissingOrderExtension()')).slice(0, 10);
+            await expect(swap.fillOrderExt(order, r, vs, 1, 1, []))
+                .to.be.revertedWithCustomError(swap, 'InvalidExtension').withArgs(errorSelector);
+        });
+
+        it('should fail with invalid extension (mismatched extension)', async function () {
+            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+
+            const arbitraryCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
+                arbitraryPredicate.address,
+                arbitraryPredicate.interface.encodeFunctionData('copyArg', [1]),
+            ]);
+            const predicate = swap.interface.encodeFunctionData('lt', [10, arbitraryCall]);
+
+            const order = buildOrder(
+                {
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    maker: addr1.address,
+                },
+                {
+                    predicate,
+                },
+            );
+
+            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            const errorSelector = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('ExtensionInvalid()')).slice(0, 10);
+            await expect(swap.fillOrderExt(order, r, vs, 1, 1, order.extension.slice(0, -6)))
+                .to.be.revertedWithCustomError(swap, 'InvalidExtension').withArgs(errorSelector);
+        });
+
+        it('should fail with invalid extension (unexpected extension)', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder(
+                {
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    maker: addr1.address,
+                },
+            );
+
+            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            const errorSelector = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('UnexpectedOrderExtension()')).slice(0, 10);
+            await expect(swap.fillOrderExt(order, r, vs, 1, 1, ethers.utils.toUtf8Bytes('test')))
+                .to.be.revertedWithCustomError(swap, 'InvalidExtension').withArgs(errorSelector);
         });
     });
 

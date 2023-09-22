@@ -175,7 +175,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes calldata extension,
         bytes calldata interaction
     ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        if (!order.validateExtension(extension)) revert InvalidExtension();
+        (bool isValid, bytes4 validationResult) = order.isValidExtension(extension);
+        if (!isValid) revert InvalidExtension(validationResult);
         orderHash = order.hash(_domainSeparatorV4());
 
         // Check signature and apply order permit only on the first fill
@@ -253,7 +254,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         if (permit.length > 0) {
             IERC20(order.takerAsset.get()).safePermit(permit);
         }
-        if(!order.validateExtension(extension)) revert InvalidExtension();
+        (bool isValid, bytes4 validationResult) = order.isValidExtension(extension);
+        if (!isValid) revert InvalidExtension(validationResult);
         orderHash = order.hash(_domainSeparatorV4());
 
         // Check signature and apply order permit only on the first fill
