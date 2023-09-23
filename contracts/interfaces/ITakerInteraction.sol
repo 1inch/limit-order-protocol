@@ -14,6 +14,7 @@ interface ITakerInteraction {
      * @notice Callback method that gets called after maker fund transfer but before taker fund transfer
      * @param order Order being processed
      * @param orderHash Hash of the order being processed
+     * @param extension Extension data
      * @param taker Taker address
      * @param makingAmount Actual making amount
      * @param takingAmount Actual taking amount
@@ -23,6 +24,7 @@ interface ITakerInteraction {
     function takerInteraction(
         IOrderMixin.Order calldata order,
         bytes32 orderHash,
+        bytes calldata extension,
         address taker,
         uint256 makingAmount,
         uint256 takingAmount,

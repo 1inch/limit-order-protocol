@@ -1,6 +1,5 @@
 const { constants, trim0x } = require('@1inch/solidity-utils');
 const { assert } = require('chai');
-const { ethers } = require('ethers');
 const { keccak256 } = require('ethers/lib/utils');
 const { setn } = require('./utils');
 
@@ -156,6 +155,7 @@ function buildOrder (
         permit = '0x',
         preInteraction = '0x',
         postInteraction = '0x',
+        customData = '0x',
     } = {},
 ) {
     const allInteractions = [
@@ -169,7 +169,7 @@ function buildOrder (
         postInteraction,
     ];
 
-    const allInteractionsConcat = allInteractions.map(trim0x).join('');
+    const allInteractionsConcat = allInteractions.map(trim0x).join('') + trim0x(customData);
 
     // https://stackoverflow.com/a/55261098/440168
     const cumulativeSum = (sum => value => { sum += value; return sum; })(0);
@@ -223,14 +223,6 @@ async function signOrder (order, chainId, target, wallet) {
     return await wallet._signTypedData(orderData.domain, orderData.types, orderData.value);
 }
 
-function compactSignature (signature) {
-    const sig = ethers.utils.splitSignature(signature);
-    return {
-        r: sig.r,
-        vs: sig._vs,
-    };
-}
-
 function fillWithMakingAmount (amount) {
     return setn(amount, 255, true).toString();
 }
@@ -251,7 +243,6 @@ module.exports = {
     buildOrderRFQ,
     buildOrderData,
     signOrder,
-    compactSignature,
     fillWithMakingAmount,
     unwrapWethTaker,
     skipMakerPermit,

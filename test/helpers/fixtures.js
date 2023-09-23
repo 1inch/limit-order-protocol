@@ -34,6 +34,13 @@ async function deployUSDC () {
     return { usdc };
 };
 
+async function deployArbitraryPredicate () {
+    const ArbitraryPredicateMock = await ethers.getContractFactory('ArbitraryPredicateMock');
+    const arbitraryPredicate = await ArbitraryPredicateMock.deploy();
+    await arbitraryPredicate.deployed();
+    return { arbitraryPredicate };
+};
+
 async function deployUSDT () {
     const TokenMock = await ethers.getContractFactory('TokenMock');
     const usdt = await TokenMock.deploy('USDT', 'USDT');
@@ -61,5 +68,6 @@ module.exports = {
     deployRangeAmountCalculator,
     deployUSDT,
     deployUSDC,
+    deployArbitraryPredicate,
     deploySwap,
 };
