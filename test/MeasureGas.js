@@ -3,7 +3,7 @@ const { ethers } = hre;
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ether } = require('./helpers/utils');
-const { fillWithMakingAmount, signOrder, buildOrder, compactSignature, buildMakerTraits } = require('./helpers/orderUtils');
+const { fillWithMakingAmount, signOrder, buildOrder, buildMakerTraits } = require('./helpers/orderUtils');
 
 describe('MeasureGas', function () {
     before(async function () {
@@ -39,7 +39,7 @@ describe('MeasureGas', function () {
             maker: addrs[1].address,
         });
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addrs[1]));
+        const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addrs[1]));
         const tx = await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
         console.log(`swap without predicates gasUsed: ${(await tx.wait()).gasUsed}`);
     });
@@ -55,7 +55,7 @@ describe('MeasureGas', function () {
             maker: addrs[1].address,
         });
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addrs[1]));
+        const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addrs[1]));
         const tx = await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
         console.log(`swap partial fill without predicates gasUsed: ${(await tx.wait()).gasUsed}`);
     });
@@ -72,7 +72,7 @@ describe('MeasureGas', function () {
             makerTraits: buildMakerTraits({ nonce: 1 }),
         });
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addrs[1]));
+        const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addrs[1]));
         const tx = await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
         console.log(`swap with predicate nonce gasUsed: ${(await tx.wait()).gasUsed}`);
     });
@@ -89,7 +89,7 @@ describe('MeasureGas', function () {
             makerTraits: buildMakerTraits({ expiry: 0xff00000000 }),
         });
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addrs[1]));
+        const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addrs[1]));
         const tx = await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
         console.log(`swap with predicate expiry gasUsed: ${(await tx.wait()).gasUsed}`);
     });
@@ -106,7 +106,7 @@ describe('MeasureGas', function () {
             makerTraits: buildMakerTraits({ nonce: 1, expiry: 0xff00000000 }),
         });
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addrs[1]));
+        const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addrs[1]));
         const tx = await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
         console.log(`swap with predicate nonce and expiry gasUsed: ${(await tx.wait()).gasUsed}`);
     });

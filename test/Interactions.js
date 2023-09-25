@@ -3,7 +3,7 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
-const { fillWithMakingAmount, signOrder, buildOrder, compactSignature, buildMakerTraits } = require('./helpers/orderUtils');
+const { fillWithMakingAmount, signOrder, buildOrder, buildMakerTraits } = require('./helpers/orderUtils');
 
 describe('Interactions', function () {
     let addr, addr1;
@@ -76,10 +76,11 @@ describe('Interactions', function () {
                 ],
             ).substring(2);
 
+            const { r: backOrderR, _vs: backOrderVs } = ethers.utils.splitSignature(signatureBackOrder);
             const interaction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderTo', [
                 backOrder,
-                compactSignature(signatureBackOrder).r,
-                compactSignature(signatureBackOrder).vs,
+                backOrderR,
+                backOrderVs,
                 ether('0.1'),
                 fillWithMakingAmount(ether('100')),
                 matcher.address,
@@ -91,7 +92,7 @@ describe('Interactions', function () {
             const addrdai = await dai.balanceOf(addr.address);
             const addr1dai = await dai.balanceOf(addr1.address);
 
-            const { r, vs } = compactSignature(signature);
+            const { r, _vs: vs } = ethers.utils.splitSignature(signature);
             await matcher.matchOrders(swap.address, order, r, vs, ether('100'), fillWithMakingAmount(ether('0.1')), interaction);
 
             expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.1')));
@@ -140,10 +141,11 @@ describe('Interactions', function () {
                 ],
             ).substring(2);
 
+            const { r: backOrderR, _vs: backOrderVs } = ethers.utils.splitSignature(signatureBackOrder);
             const interaction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderTo', [
                 backOrder,
-                compactSignature(signatureBackOrder).r,
-                compactSignature(signatureBackOrder).vs,
+                backOrderR,
+                backOrderVs,
                 ether('15'),
                 fillWithMakingAmount(ether('0.015')),
                 matcher.address,
@@ -156,7 +158,7 @@ describe('Interactions', function () {
             const addr1dai = await dai.balanceOf(addr1.address);
 
             await weth.approve(matcher.address, ether('0.025'));
-            const { r, vs } = compactSignature(signature);
+            const { r, _vs: vs } = ethers.utils.splitSignature(signature);
             await matcher.matchOrders(swap.address, order, r, vs, ether('10'), fillWithMakingAmount(ether('0.01')), interaction);
 
             expect(await weth.balanceOf(addr.address)).to.equal(addrweth.sub(ether('0.025')));
@@ -213,20 +215,22 @@ describe('Interactions', function () {
                 ],
             ).substring(2);
 
+            const { r: backOrderR, _vs: backOrderVs } = ethers.utils.splitSignature(signatureBackOrder);
             const internalInteraction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderTo', [
                 backOrder,
-                compactSignature(signatureBackOrder).r,
-                compactSignature(signatureBackOrder).vs,
+                backOrderR,
+                backOrderVs,
                 ether('0.025'),
                 fillWithMakingAmount(ether('25')),
                 matcher.address,
                 matchingParams,
             ]).substring(10);
 
+            const { r: order2R, _vs: order2Vs } = ethers.utils.splitSignature(signature2);
             const externalInteraction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderTo', [
                 order2,
-                compactSignature(signature2).r,
-                compactSignature(signature2).vs,
+                order2R,
+                order2Vs,
                 ether('15'),
                 fillWithMakingAmount(ether('0.015')),
                 matcher.address,
@@ -238,7 +242,7 @@ describe('Interactions', function () {
             const addrdai = await dai.balanceOf(addr.address);
             const addr1dai = await dai.balanceOf(addr1.address);
 
-            const { r, vs } = compactSignature(signature1);
+            const { r, _vs: vs } = ethers.utils.splitSignature(signature1);
             await matcher.matchOrders(swap.address, order1, r, vs, ether('10'), fillWithMakingAmount(ether('0.01')), externalInteraction);
 
             expect(await weth.balanceOf(addr.address)).to.equal(addrweth.sub(ether('0.025')));
@@ -284,7 +288,7 @@ describe('Interactions', function () {
 
             await hashChecker.setHashOrderStatus(order, true);
 
-            const { r, vs } = compactSignature(signature);
+            const { r, _vs: vs } = ethers.utils.splitSignature(signature);
             await swap.fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.1')), order.extension);
 
             expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(ether('100')));
@@ -312,7 +316,7 @@ describe('Interactions', function () {
 
             const signature = await signOrder(order, chainId, swap.address, addr1);
 
-            const { r, vs } = compactSignature(signature);
+            const { r, _vs: vs } = ethers.utils.splitSignature(signature);
             await expect(swap.fillOrderExt(order, r, vs, ether('100'), fillWithMakingAmount(ether('0.1')), order.extension))
                 .to.be.revertedWithCustomError(hashChecker, 'IncorrectOrderHash');
         });
@@ -353,7 +357,7 @@ describe('Interactions', function () {
             const addrdai = await dai.balanceOf(addr.address);
             const addr1dai = await dai.balanceOf(addr1.address);
 
-            const { r, vs } = compactSignature(signature);
+            const { r, _vs: vs } = ethers.utils.splitSignature(signature);
             await swap.connect(addr1).fillOrderExt(order, r, vs, ether('50'), fillWithMakingAmount(ether('0.1')), order.extension);
 
             expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.05')));
@@ -410,7 +414,7 @@ describe('Interactions', function () {
             const addrdai = await dai.balanceOf(addr.address);
             const addr1dai = await dai.balanceOf(addr1.address);
 
-            const { r, vs } = compactSignature(signature);
+            const { r, _vs: vs } = ethers.utils.splitSignature(signature);
             await swap.connect(addr1).fillOrderExt(order, r, vs, ether('50'), fillWithMakingAmount(ether('0.1')), order.extension);
 
             expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.05')));
@@ -418,7 +422,7 @@ describe('Interactions', function () {
             expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('50')));
             expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('50')));
 
-            const { r: r2, vs: vs2 } = compactSignature(signaturePartial);
+            const { r: r2, _vs: vs2 } = ethers.utils.splitSignature(signaturePartial);
             await expect(swap.connect(addr1).fillOrderExt(partialOrder, r2, vs2, ether('50'), fillWithMakingAmount(ether('0.1')), order.extension))
                 .to.be.revertedWithCustomError(orderIdInvalidator, 'InvalidOrderHash');
         });
@@ -441,7 +445,7 @@ describe('Interactions', function () {
         });
 
         const signature = await signOrder(order, chainId, swap.address, addr1);
-        const { r, vs } = compactSignature(signature);
+        const { r, _vs: vs } = ethers.utils.splitSignature(signature);
 
         const interaction = takerIncreaser.address + abiCoder.encode(
             ['address[]', 'bytes[]'],
