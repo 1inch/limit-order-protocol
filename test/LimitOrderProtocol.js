@@ -1187,7 +1187,7 @@ describe('LimitOrderProtocol', function () {
                 },
             );
 
-            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const errorSelector = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('MissingOrderExtension()')).slice(0, 10);
             await expect(swap.fillOrderExt(order, r, vs, 1, 1, []))
                 .to.be.revertedWithCustomError(swap, 'InvalidExtension').withArgs(errorSelector);
@@ -1215,7 +1215,7 @@ describe('LimitOrderProtocol', function () {
                 },
             );
 
-            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const errorSelector = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('ExtensionInvalid()')).slice(0, 10);
             await expect(swap.fillOrderExt(order, r, vs, 1, 1, order.extension.slice(0, -6)))
                 .to.be.revertedWithCustomError(swap, 'InvalidExtension').withArgs(errorSelector);
@@ -1234,7 +1234,7 @@ describe('LimitOrderProtocol', function () {
                 },
             );
 
-            const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addr1));
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const errorSelector = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('UnexpectedOrderExtension()')).slice(0, 10);
             await expect(swap.fillOrderExt(order, r, vs, 1, 1, ethers.utils.toUtf8Bytes('test')))
                 .to.be.revertedWithCustomError(swap, 'InvalidExtension').withArgs(errorSelector);
