@@ -59,18 +59,19 @@ function buildTakerTraits ({
     extension = '0x',
     interaction = '0x',
     takerPermit = '0x',
+    minReturn = 0n,
 } = {}) {
     return {
-        takerTraits: '0x' + (
+        traits: BigInt(minReturn) | (
             (makingAmount ? TakerTrainsConstants._MAKER_AMOUNT_FLAG : 0n) |
             (unwrapWeth ? TakerTrainsConstants._UNWRAP_WETH_FLAG : 0n) |
             (skipMakerPermit ? TakerTrainsConstants._SKIP_ORDER_PERMIT_FLAG : 0n) |
             (usePermit2 ? TakerTrainsConstants._USE_PERMIT2_FLAG : 0n) |
             (trim0x(target).length > 0 ? TakerTrainsConstants._ARGS_HAS_TARGET : 0n) |
-            (BigInt(extension.length) << TakerTrainsConstants._ARGS_EXTENSION_LENGTH_OFFSET) |
-            (BigInt(interaction.length) << TakerTrainsConstants._ARGS_INTERACTION_LENGTH_OFFSET) |
-            (BigInt(takerPermit.length) << TakerTrainsConstants._ARGS_TAKER_PERMIT_LENGTH_OFFSET)
-        ).toString(16).padStart(64, '0'),
+            (BigInt(trim0x(extension).length / 2) << TakerTrainsConstants._ARGS_EXTENSION_LENGTH_OFFSET) |
+            (BigInt(trim0x(interaction).length / 2) << TakerTrainsConstants._ARGS_INTERACTION_LENGTH_OFFSET) |
+            (BigInt(trim0x(takerPermit).length / 2) << TakerTrainsConstants._ARGS_TAKER_PERMIT_LENGTH_OFFSET)
+        ),
         args: ethers.utils.solidityPack(
             ['bytes', 'bytes', 'bytes', 'bytes'],
             [target, extension, interaction, takerPermit],
@@ -269,15 +270,15 @@ async function signOrder (order, chainId, target, wallet) {
 }
 
 function fillWithMakingAmount (amount) {
-    return BigInt(amount) | BigInt(buildTakerTraits({ makingAmount: true }).takerTraits);
+    return BigInt(amount) | BigInt(buildTakerTraits({ makingAmount: true }).traits);
 }
 
 function unwrapWethTaker (amount) {
-    return BigInt(amount) | BigInt(buildTakerTraits({ unwrapWeth: true }).takerTraits);
+    return BigInt(amount) | BigInt(buildTakerTraits({ unwrapWeth: true }).traits);
 }
 
 function skipMakerPermit (amount) {
-    return BigInt(amount) | BigInt(buildTakerTraits({ skipMakerPermit: true }).takerTraits);
+    return BigInt(amount) | BigInt(buildTakerTraits({ skipMakerPermit: true }).traits);
 }
 
 

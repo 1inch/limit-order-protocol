@@ -1,8 +1,8 @@
 const hre = require('hardhat');
 const { ethers } = hre;
-const { expect, time, profileEVM, trackReceivedTokenAndTx, getPermit2, permit2Contract } = require('@1inch/solidity-utils');
+const { expect, time, profileEVM, trackReceivedTokenAndTx, getPermit2, permit2Contract, trim0x } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { buildOrderRFQ, signOrder, fillWithMakingAmount, unwrapWethTaker, buildMakerTraits, buildOrderData } = require('./helpers/orderUtils');
+const { buildOrderRFQ, signOrder, fillWithMakingAmount, unwrapWethTaker, buildMakerTraits, buildOrderData, buildTakerTraits } = require('./helpers/orderUtils');
 const { getPermit } = require('./helpers/eip712');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { constants } = require('ethers');
@@ -166,7 +166,8 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
                 const permit = await getPermit(addr.address, addr2, weth, '1', chainId, swap.address, '1');
                 const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-                await expect(swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, permit, emptyInteraction)).to.be.revertedWith('ERC20Permit: invalid signature');
+                const takerTraits = buildTakerTraits({ takerPermit: order.takerAsset + trim0x(permit), minReturn: 1 });
+                await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args)).to.be.revertedWith('ERC20Permit: invalid signature');
             });
 
             it('rejects expired permit', async function () {
