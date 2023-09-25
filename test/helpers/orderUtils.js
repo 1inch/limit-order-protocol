@@ -269,15 +269,15 @@ async function signOrder (order, chainId, target, wallet) {
 }
 
 function fillWithMakingAmount (amount) {
-    return buildTakerTraits({ makingAmount: true }).takerTraits;
+    return BigInt(amount) | BigInt(buildTakerTraits({ makingAmount: true }).takerTraits);
 }
 
 function unwrapWethTaker (amount) {
-    return buildTakerTraits({ unwrapWeth: true }).takerTraits;
+    return BigInt(amount) | BigInt(buildTakerTraits({ unwrapWeth: true }).takerTraits);
 }
 
 function skipMakerPermit (amount) {
-    return buildTakerTraits({ skipMakerPermit: true }).takerTraits;
+    return BigInt(amount) | BigInt(buildTakerTraits({ skipMakerPermit: true }).takerTraits);
 }
 
 
