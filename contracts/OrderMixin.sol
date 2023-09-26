@@ -204,7 +204,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes calldata permit,
         bytes calldata interaction
     ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
-        IERC20(order.takerAsset.get()).safePermit(permit);
+        if (!IERC20(order.takerAsset.get()).tryPermit(msg.sender, address(this), permit)) {
+            if (!IERC20(order.takerAsset.get()).allowance(msg.sender, address(this)) >= amount) {
+                revert RevertReasonForwarder.reRevert();
+            }
+        }
         return fillOrderToExt(order, r, vs, amount, takerTraits, target, msg.data[:0], interaction);
     }
 
@@ -251,7 +255,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes calldata interaction
     ) public returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
         if (permit.length > 0) {
-            IERC20(order.takerAsset.get()).safePermit(permit);
+            if (!IERC20(order.takerAsset.get()).tryPermit(msg.sender, address(this), permit)) {
+                if(!IERC20(order.takerAsset.get()).allowance(msg.sender, address(this)) >= amount) {
+                    revert RevertReasonForwarder.reRevert();
+                }
+            }
         }
         order.validateExtension(extension);
         orderHash = order.hash(_domainSeparatorV4());
@@ -494,7 +502,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes calldata makerPermit = extension.makerPermit();
         if (makerPermit.length >= 20) {
             // proceed only if taker is willing to execute permit and its length is enough to store address
-            IERC20(address(bytes20(makerPermit))).safePermit(makerPermit[20:]);
+            if (!IERC20(address(bytes20(makerPermit))).tryPermit(msg.sender, address(this), makerPermit[20:])) {
+                if (!IERC20(address(bytes20(makerPermit))).allowance(msg.sender, address(this)) >= AMOUNT) {
+                    revert RevertReasonForwarder.reRevert();
+                }
+            }
             if (!order.makerTraits.useBitInvalidator()) {
                 // Bit orders are not subjects for reentrancy, but we still need to check remaining-based orders for reentrancy
                 if (!_remainingInvalidator[order.maker.get()][orderHash].isNewOrder()) revert ReentrancyDetected();
