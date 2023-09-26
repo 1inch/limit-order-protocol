@@ -95,7 +95,12 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const takerWeth = await weth.balanceOf(addr.address);
 
                 const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-                await swap.fillOrderToWithPermit(order, r, vs, 1, fillWithMakingAmount(1), addr.address, permit, emptyInteraction);
+                const takerTraits = buildTakerTraits({
+                    minReturn: 1,
+                    makingAmount: true,
+                    takerPermit: order.takerAsset + trim0x(permit),
+                });
+                await swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
 
                 expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
                 expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -125,7 +130,12 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const takerWeth = await weth.balanceOf(addr.address);
 
                 const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-                await swap.fillOrderToWithPermit(order, r, vs, 1, fillWithMakingAmount(1), addr.address, permit, emptyInteraction);
+                const takerTraits = buildTakerTraits({
+                    minReturn: 1,
+                    makingAmount: true,
+                    takerPermit: order.takerAsset + trim0x(permit),
+                });
+                await swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
 
                 expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(1));
                 expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(1));
@@ -147,7 +157,11 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
                 const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-                const requestFunc = () => swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, permit, emptyInteraction);
+                const takerTraits = buildTakerTraits({
+                    minReturn: 1,
+                    takerPermit: order.takerAsset + trim0x(permit),
+                });
+                const requestFunc = () => swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
                 await requestFunc();
                 await expect(requestFunc()).to.be.revertedWith('ERC20Permit: invalid signature');
             });
@@ -185,7 +199,11 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
                 const permit = await getPermit(addr.address, addr1, weth, '1', chainId, swap.address, '1', deadline);
                 const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-                await expect(swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, permit, emptyInteraction)).to.be.revertedWith('ERC20Permit: expired deadline');
+                const takerTraits = buildTakerTraits({
+                    minReturn: 1,
+                    takerPermit: order.takerAsset + trim0x(permit),
+                });
+                await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args)).to.be.revertedWith('ERC20Permit: expired deadline');
             });
         });
     });
