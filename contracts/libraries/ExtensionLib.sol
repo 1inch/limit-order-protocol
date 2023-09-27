@@ -16,8 +16,8 @@ library ExtensionLib {
     enum DynamicField {
         MakerAssetSuffix,
         TakerAssetSuffix,
-        MakingAmountGetter,
-        TakingAmountGetter,
+        MakingAmountData,
+        TakingAmountData,
         Predicate,
         MakerPermit,
         PreInteractionData,
@@ -44,21 +44,21 @@ library ExtensionLib {
     }
 
     /**
-     * @notice Returns the MakingAmountGetter from the provided extension calldata.
-     * @param extension The calldata from which the MakingAmountGetter is to be retrieved.
-     * @return calldata Bytes representing the MakingAmountGetter.
+     * @notice Returns the MakingAmountData from the provided extension calldata.
+     * @param extension The calldata from which the MakingAmountData is to be retrieved.
+     * @return calldata Bytes representing the MakingAmountData.
      */
-    function makingAmountGetter(bytes calldata extension) internal pure returns(bytes calldata) {
-        return _get(extension, DynamicField.MakingAmountGetter);
+    function makingAmountData(bytes calldata extension) internal pure returns(bytes calldata) {
+        return _get(extension, DynamicField.MakingAmountData);
     }
 
     /**
-     * @notice Returns the TakingAmountGetter from the provided extension calldata.
-     * @param extension The calldata from which the TakingAmountGetter is to be retrieved.
-     * @return calldata Bytes representing the TakingAmountGetter.
+     * @notice Returns the TakingAmountData from the provided extension calldata.
+     * @param extension The calldata from which the TakingAmountData is to be retrieved.
+     * @return calldata Bytes representing the TakingAmountData.
      */
-    function takingAmountGetter(bytes calldata extension) internal pure returns(bytes calldata) {
-        return _get(extension, DynamicField.TakingAmountGetter);
+    function takingAmountData(bytes calldata extension) internal pure returns(bytes calldata) {
+        return _get(extension, DynamicField.TakingAmountData);
     }
 
     /**

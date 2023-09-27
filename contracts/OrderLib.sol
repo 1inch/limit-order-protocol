@@ -9,12 +9,13 @@ import "./interfaces/IOrderMixin.sol";
 import "./libraries/MakerTraitsLib.sol";
 import "./libraries/ExtensionLib.sol";
 import "./helpers/AmountCalculator.sol";
+import "./interfaces/IAmountGetter.sol";
 
 /**
  * @title OrderLib
- * @dev The library provides common functionality for processing and manipulating limit orders. 
- * It provides functionality to calculate and verify order hashes, calculate trade amounts, and validate 
- * extension data associated with orders. The library also contains helper methods to get the receiver of 
+ * @dev The library provides common functionality for processing and manipulating limit orders.
+ * It provides functionality to calculate and verify order hashes, calculate trade amounts, and validate
+ * extension data associated with orders. The library also contains helper methods to get the receiver of
  * an order and call getter functions.
  */
  library OrderLib {
@@ -78,7 +79,7 @@ import "./helpers/AmountCalculator.sol";
         return receiver != address(0) ? receiver : order.maker.get();
     }
 
-    /** 
+    /**
       * @notice Calculates the making amount based on the requested taking amount.
       * @dev If getter is specified in the extension data, the getter is called to calculate the making amount,
       * otherwise the making amount is calculated linearly.
@@ -96,12 +97,20 @@ import "./helpers/AmountCalculator.sol";
         uint256 remainingMakingAmount,
         bytes32 orderHash
     ) internal view returns(uint256) {
-        bytes calldata getter = extension.makingAmountGetter();
-        if (getter.length == 0) {
+        bytes calldata data = extension.makingAmountData();
+        if (data.length == 0) {
             // Linear proportion
             return AmountCalculator.getMakingAmount(order.makingAmount, order.takingAmount, requestedTakingAmount);
         }
-        return _callGetter(getter, requestedTakingAmount, remainingMakingAmount, orderHash);
+        return IAmountGetter(address(bytes20(data))).getMakingAmount(
+            order,
+            extension,
+            orderHash,
+            msg.sender,
+            requestedTakingAmount,
+            remainingMakingAmount,
+            data[20:]
+        );
     }
 
     /**
@@ -122,33 +131,20 @@ import "./helpers/AmountCalculator.sol";
         uint256 remainingMakingAmount,
         bytes32 orderHash
     ) internal view returns(uint256) {
-        bytes calldata getter = extension.takingAmountGetter();
-        if (getter.length == 0) {
+        bytes calldata data = extension.takingAmountData();
+        if (data.length == 0) {
             // Linear proportion
             return AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, requestedMakingAmount);
         }
-        return _callGetter(getter, requestedMakingAmount, remainingMakingAmount, orderHash);
-    }
-
-    /**
-      * @notice Calls the getter function to calculate an amount for a trade.
-      * @param getter The address of the getter function.
-      * @param requestedAmount The amount requested by the taker.
-      * @param remainingMakingAmount The remaining amount of the asset left to fill.
-      * @param orderHash The hash of the order.
-      * @return amount The calculated amount.
-      */
-    function _callGetter(
-        bytes calldata getter,
-        uint256 requestedAmount,
-        uint256 remainingMakingAmount,
-        bytes32 orderHash
-    ) private view returns(uint256) {
-        if (getter.length < 20) revert WrongGetter();
-
-        (bool success, bytes memory result) = address(bytes20(getter)).staticcall(abi.encodePacked(getter[20:], requestedAmount, remainingMakingAmount, orderHash));
-        if (!success || result.length != 32) revert GetAmountCallFailed();
-        return abi.decode(result, (uint256));
+        return IAmountGetter(address(bytes20(data))).getTakingAmount(
+            order,
+            extension,
+            orderHash,
+            msg.sender,
+            requestedMakingAmount,
+            remainingMakingAmount,
+            data[20:]
+        );
     }
 
     /**

@@ -16,6 +16,7 @@ contract InteractionMock is IPreInteraction, IPostInteraction, ITakerInteraction
 
     function preInteraction(
         IOrderMixin.Order calldata /* order */,
+        bytes calldata /* extension */,
         bytes32 /* orderHash */,
         address /* taker */,
         uint256 /* makingAmount */,
@@ -35,6 +36,7 @@ contract InteractionMock is IPreInteraction, IPostInteraction, ITakerInteraction
 
     function postInteraction(
         IOrderMixin.Order calldata /* order */,
+        bytes calldata /* extension */,
         bytes32 /* orderHash */,
         address /* taker */,
         uint256 /* makingAmount */,
@@ -54,8 +56,8 @@ contract InteractionMock is IPreInteraction, IPostInteraction, ITakerInteraction
 
     function takerInteraction(
         IOrderMixin.Order calldata /* order */,
-        bytes32 /* orderHash */,
         bytes calldata /* extension */,
+        bytes32 /* orderHash */,
         address /* taker */,
         uint256 /* makingAmount */,
         uint256 takingAmount,

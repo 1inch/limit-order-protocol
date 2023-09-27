@@ -1,6 +1,6 @@
-const { expect, trim0x, time, assertRoughlyEqualValues } = require('@1inch/solidity-utils');
+const { expect, time, assertRoughlyEqualValues } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { cutLastArg, ether } = require('./helpers/utils');
+const { ether } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { fillWithMakingAmount, buildOrder, signOrder } = require('./helpers/orderUtils');
 const { ethers } = require('hardhat');
@@ -40,12 +40,14 @@ describe('Dutch auction', function () {
                 maker: addr.address,
             },
             {
-                makingAmountGetter: dutchAuctionCalculator.address + cutLastArg(trim0x(dutchAuctionCalculator.interface.encodeFunctionData('getMakingAmount',
-                    [startEndTs.toString(), ether('0.1'), ether('0.05'), ether('100'), 0],
-                )), 64),
-                takingAmountGetter: dutchAuctionCalculator.address + cutLastArg(trim0x(dutchAuctionCalculator.interface.encodeFunctionData('getTakingAmount',
-                    [startEndTs.toString(), ether('0.1'), ether('0.05'), ether('100'), 0],
-                )), 64),
+                makingAmountData: ethers.utils.solidityPack(
+                    ['address', 'uint256', 'uint256', 'uint256'],
+                    [dutchAuctionCalculator.address, startEndTs.toString(), ether('0.1'), ether('0.05')],
+                ),
+                takingAmountData: ethers.utils.solidityPack(
+                    ['address', 'uint256', 'uint256', 'uint256'],
+                    [dutchAuctionCalculator.address, startEndTs.toString(), ether('0.1'), ether('0.05')],
+                ),
             },
         );
         const signature = await signOrder(order, chainId, swap.address, addr);

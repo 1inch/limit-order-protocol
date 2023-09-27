@@ -1,9 +1,9 @@
 const { ethers } = require('hardhat');
 const { parseUnits } = require('ethers/lib/utils.js');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { expect, trim0x } = require('@1inch/solidity-utils');
+const { expect } = require('@1inch/solidity-utils');
 const { fillWithMakingAmount, buildMakerTraits, buildOrder, signOrder } = require('./helpers/orderUtils');
-const { cutLastArg, ether } = require('./helpers/utils');
+const { ether } = require('./helpers/utils');
 const { deploySwapTokens, deployRangeAmountCalculator } = require('./helpers/fixtures');
 
 describe('RangeLimitOrders', function () {
@@ -64,12 +64,14 @@ describe('RangeLimitOrders', function () {
             maker: maker.address,
             makerTraits: buildMakerTraits({ allowMultipleFills: true }),
         }, {
-            makingAmountGetter: rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
-                rangeAmountCalculator.interface.encodeFunctionData('getRangeMakerAmount', [startPrice, endPrice, makingAmount, 0, 0], 64),
-            ))),
-            takingAmountGetter: rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
-                rangeAmountCalculator.interface.encodeFunctionData('getRangeTakerAmount', [startPrice, endPrice, makingAmount, 0, 0], 64),
-            ))),
+            makingAmountData: ethers.utils.solidityPack(
+                ['address', 'uint256', 'uint256'],
+                [rangeAmountCalculator.address, startPrice, endPrice],
+            ),
+            takingAmountData: ethers.utils.solidityPack(
+                ['address', 'uint256', 'uint256'],
+                [rangeAmountCalculator.address, startPrice, endPrice],
+            ),
         });
         const signature = await signOrder(order, chainId, swap.address, maker);
         const { r, _vs: vs } = ethers.utils.splitSignature(signature);

@@ -541,7 +541,7 @@ describe('LimitOrderProtocol', function () {
             return { dai, weth, swap, chainId };
         };
 
-        it('empty takingAmountGetter should work on full fill', async function () {
+        it('empty takingAmountData should work on full fill', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
@@ -559,7 +559,7 @@ describe('LimitOrderProtocol', function () {
             await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-10, 10]);
         });
 
-        it('empty takingAmountGetter should revert on partial fill', async function () {
+        it('empty takingAmountData should revert on partial fill', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
@@ -576,7 +576,7 @@ describe('LimitOrderProtocol', function () {
                 .to.be.revertedWithCustomError(swap, 'PartialFillNotAllowed');
         });
 
-        it('empty makingAmountGetter should revert on partial fill', async function () {
+        it('empty makingAmountData should revert on partial fill', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
@@ -593,7 +593,7 @@ describe('LimitOrderProtocol', function () {
                 .to.be.revertedWithCustomError(swap, 'PartialFillNotAllowed');
         });
 
-        it('empty makingAmountGetter should work on full fill', async function () {
+        it('empty makingAmountData should work on full fill', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({

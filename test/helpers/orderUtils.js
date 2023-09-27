@@ -100,8 +100,8 @@ function buildOrderRFQ (
     {
         makerAssetSuffix = '0x',
         takerAssetSuffix = '0x',
-        makingAmountGetter = '0x',
-        takingAmountGetter = '0x',
+        makingAmountData = '0x',
+        takingAmountData = '0x',
         predicate = '0x',
         permit = '0x',
         preInteraction = '0x',
@@ -126,8 +126,8 @@ function buildOrderRFQ (
         {
             makerAssetSuffix,
             takerAssetSuffix,
-            makingAmountGetter,
-            takingAmountGetter,
+            makingAmountData,
+            takingAmountData,
             predicate,
             permit,
             preInteraction,
@@ -149,8 +149,8 @@ function buildOrder (
     {
         makerAssetSuffix = '0x',
         takerAssetSuffix = '0x',
-        makingAmountGetter = '0x',
-        takingAmountGetter = '0x',
+        makingAmountData = '0x',
+        takingAmountData = '0x',
         predicate = '0x',
         permit = '0x',
         preInteraction = '0x',
@@ -161,8 +161,8 @@ function buildOrder (
     const allInteractions = [
         makerAssetSuffix,
         takerAssetSuffix,
-        makingAmountGetter,
-        takingAmountGetter,
+        makingAmountData,
+        takingAmountData,
         predicate,
         permit,
         preInteraction,
