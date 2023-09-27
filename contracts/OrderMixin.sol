@@ -168,14 +168,25 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             target = msg.sender;
         }
 
-        extension = args[:takerTraits.argsExtensionLength()];
-        args = args[extension.length:];
+        uint256 extensionLength = takerTraits.argsExtensionLength();
+        if (extensionLength > 0) {
+            extension = args[:extensionLength];
+            args = args[extensionLength:];
+        } else {
+            extension = msg.data[:0];
+        }
 
-        interaction = args[:takerTraits.argsInteractionLength()];
-        args = args[interaction.length:];
+        uint256 interactionLength = takerTraits.argsInteractionLength();
+        if (interactionLength > 0) {
+            interaction = args[:interactionLength];
+            args = args[interactionLength:];
+        } else {
+            interaction = msg.data[:0];
+        }
 
-        bytes calldata takerPermit = args[:takerTraits.argsTakerPermitLength()];
-        if (takerPermit.length >= 20) {
+        uint256 takerPermitLength = takerTraits.argsTakerPermitLength();
+        if (takerPermitLength >= 20) {
+            bytes calldata takerPermit = args[:takerTraits.argsTakerPermitLength()];
             IERC20(address(bytes20(takerPermit))).safePermit(takerPermit[20:]);
         }
     }
