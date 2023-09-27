@@ -8,7 +8,6 @@ const { deploySwapTokens } = require('./helpers/fixtures');
 const { constants } = require('ethers');
 
 describe('RFQ Orders in LimitOrderProtocol', function () {
-    const emptyInteraction = '0x';
     let addr, addr1, addr2;
 
     before(async function () {

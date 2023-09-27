@@ -4,10 +4,8 @@ const { ABIOrder, fillWithMakingAmount, buildMakerTraitsRFQ, buildOrderRFQ } = r
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
 const { deploySwap, deployUSDC, deployUSDT } = require('./helpers/fixtures');
-const { constants } = require('ethers');
 
 describe('MakerContract', function () {
-    const emptyInteraction = '0x';
     const abiCoder = ethers.utils.defaultAbiCoder;
     let addr;
 

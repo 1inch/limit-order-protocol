@@ -4,7 +4,6 @@ const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
 const { buildOrderRFQ, signOrder, buildMakerTraits, buildTakerTraits } = require('./helpers/orderUtils');
-const { constants } = require('ethers');
 
 describe('RfqInteractions', function () {
     let addr, addr1;

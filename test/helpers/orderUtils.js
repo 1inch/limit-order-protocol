@@ -34,7 +34,6 @@ const _HAS_EXTENSION_FLAG = 249n;
 const _USE_PERMIT2_FLAG = 248n;
 const _UNWRAP_WETH_FLAG = 247n;
 
-
 const TakerTrainsConstants = {
     _MAKER_AMOUNT_FLAG: 1n << 255n,
     _UNWRAP_WETH_FLAG: 1n << 254n,
@@ -280,7 +279,6 @@ function unwrapWethTaker (amount) {
 function skipMakerPermit (amount) {
     return BigInt(amount) | BigInt(buildTakerTraits({ skipMakerPermit: true }).traits);
 }
-
 
 module.exports = {
     ABIOrder,

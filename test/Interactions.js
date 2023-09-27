@@ -3,7 +3,7 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
-const { fillWithMakingAmount, signOrder, buildOrder, buildMakerTraits, buildTakerTraits } = require('./helpers/orderUtils');
+const { signOrder, buildOrder, buildMakerTraits, buildTakerTraits } = require('./helpers/orderUtils');
 
 describe('Interactions', function () {
     let addr, addr1;
