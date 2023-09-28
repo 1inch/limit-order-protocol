@@ -160,9 +160,10 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                     minReturn: 1,
                     takerPermit: order.takerAsset + trim0x(permit),
                 });
-                const requestFunc = () => swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
-                await requestFunc();
-                await expect(requestFunc()).to.be.revertedWith('ERC20Permit: invalid signature');
+
+                const tx = await swap.populateTransaction.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                await addr.sendTransaction(tx);
+                await expect(addr.sendTransaction(tx)).to.be.revertedWithCustomError(swap, 'BitInvalidatedOrder');
             });
 
             it('rejects other signature', async function () {
@@ -181,8 +182,8 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const { r, _vs: vs } = ethers.utils.splitSignature(signature);
                 const takerTraits = buildTakerTraits({ takerPermit: order.takerAsset + trim0x(permit), minReturn: 1 });
                 await weth.approve(swap.address, 0);
-                await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
-                    .to.be.revertedWith('ERC20Permit: invalid signature');
+                const tx = await swap.populateTransaction.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                await expect(addr.sendTransaction(tx)).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
             });
 
             it('rejects expired permit', async function () {
@@ -205,8 +206,8 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                     takerPermit: order.takerAsset + trim0x(permit),
                 });
                 await weth.approve(swap.address, 0);
-                await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
-                    .to.be.revertedWith('ERC20Permit: expired deadline');
+                const tx = await swap.populateTransaction.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                await expect(addr.sendTransaction(tx)).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
             });
         });
     });

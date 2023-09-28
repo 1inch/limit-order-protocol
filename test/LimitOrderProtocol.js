@@ -484,9 +484,9 @@ describe('LimitOrderProtocol', function () {
                     minReturn: 1n,
                     takerPermit: order.takerAsset + trim0x(permit),
                 });
-                await swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
-                await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
-                    .to.be.revertedWith('ERC20Permit: invalid signature');
+                const tx = await swap.populateTransaction.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                await addr.sendTransaction(tx);
+                await expect(addr.sendTransaction(tx)).to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
             });
 
             it('skips wrong signature is allowance is enough', async function () {
@@ -514,8 +514,9 @@ describe('LimitOrderProtocol', function () {
                     takerPermit: order.takerAsset + trim0x(permit),
                 });
                 await weth.approve(swap.address, 0);
-                await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
-                    .to.be.revertedWith('ERC20Permit: invalid signature');
+
+                const tx = await swap.populateTransaction.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                await expect(addr.sendTransaction(tx)).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
             });
 
             it('skips expired permit if allowance is enough', async function () {
@@ -545,8 +546,9 @@ describe('LimitOrderProtocol', function () {
                     takerPermit: order.takerAsset + trim0x(permit),
                 });
                 await weth.approve(swap.address, 0);
-                await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
-                    .to.be.revertedWith('ERC20Permit: expired deadline');
+
+                const tx = await swap.populateTransaction.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                await expect(addr.sendTransaction(tx)).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
             });
         });
 
