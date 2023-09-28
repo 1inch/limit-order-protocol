@@ -142,7 +142,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(1));
             });
 
-            it('rejects reused signature', async function () {
+            it('reverts in case of reused permit and not enough allowance', async function () {
                 const { dai, weth, swap, chainId } = await loadFixture(initContracts);
                 const order = buildOrderRFQ({
                     maker: addr1.address,
@@ -161,9 +161,20 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                     takerPermit: order.takerAsset + trim0x(permit),
                 });
 
-                const tx = await swap.populateTransaction.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
-                await addr.sendTransaction(tx);
-                await expect(addr.sendTransaction(tx)).to.be.revertedWithCustomError(swap, 'BitInvalidatedOrder');
+                await swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+
+                const order2 = buildOrderRFQ({
+                    maker: addr1.address,
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 2,
+                    takingAmount: 1,
+                    makerTraits: buildMakerTraits({ nonce: 1 }),
+                });
+                const signature2 = await signOrder(order2, chainId, swap.address, addr1);
+                const { r: r2, _vs: vs2 } = ethers.utils.splitSignature(signature2);
+
+                await expect(swap.fillOrderArgs(order2, r2, vs2, 1, takerTraits.traits, takerTraits.args)).to.be.revertedWithCustomError(swap, 'BitInvalidatedOrder');
             });
 
             it('rejects other signature', async function () {
@@ -182,8 +193,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                 const { r, _vs: vs } = ethers.utils.splitSignature(signature);
                 const takerTraits = buildTakerTraits({ takerPermit: order.takerAsset + trim0x(permit), minReturn: 1 });
                 await weth.approve(swap.address, 0);
-                const tx = await swap.populateTransaction.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
-                await expect(addr.sendTransaction(tx)).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
+                await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args)).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
             });
 
             it('rejects expired permit', async function () {
@@ -206,8 +216,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
                     takerPermit: order.takerAsset + trim0x(permit),
                 });
                 await weth.approve(swap.address, 0);
-                const tx = await swap.populateTransaction.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
-                await expect(addr.sendTransaction(tx)).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
+                await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args)).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
             });
         });
     });
