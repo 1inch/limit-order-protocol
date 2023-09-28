@@ -147,8 +147,8 @@ import "./interfaces/IAmountGetter.sol";
       * @dev Validates the extension associated with an order.
       * @param order The order to validate against.
       * @param extension The extension associated with the order.
-      * @return True if the extension is valid, false otherwise.
-      * @return The error selector if the extension is invalid, 0x00000000 otherwise.
+      * @return success True if the extension is valid, false otherwise.
+      * @return errorSelector The error selector if the extension is invalid, 0x00000000 otherwise.
       */
     function isValidExtension(IOrderMixin.Order calldata order, bytes calldata extension) internal pure returns(bool, bytes4) {
         if (order.makerTraits.hasExtension()) {
