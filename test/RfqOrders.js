@@ -147,9 +147,9 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
                 const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-                const requestFunc = () => swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, permit, emptyInteraction);
-                await requestFunc();
-                await expect(requestFunc()).to.be.revertedWith('ERC20Permit: invalid signature');
+                const tx = await swap.populateTransaction.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, permit, emptyInteraction);
+                await addr.sendTransaction(tx);
+                await expect(addr.sendTransaction(tx)).to.be.revertedWithCustomError(swap, 'InvalidPermitTransfer');
             });
 
             it('rejects other signature', async function () {

@@ -462,8 +462,9 @@ describe('LimitOrderProtocol', function () {
 
                 const { r, _vs: vs } = ethers.utils.splitSignature(signature);
                 await swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, permit, '0x');
-                await expect(swap.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, permit, '0x'))
-                    .to.be.revertedWith('ERC20Permit: invalid signature');
+
+                const txn1 = await swap.populateTransaction.fillOrderToWithPermit(order, r, vs, 1, 1, addr.address, permit, '0x');
+                await expect(addr.sendTransaction(txn1)).to.be.revertedWithCustomError(swap, 'InvalidPermitTransfer');
             });
 
             it('rejects wrong signature', async function () {
