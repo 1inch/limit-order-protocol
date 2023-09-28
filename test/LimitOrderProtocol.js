@@ -660,7 +660,8 @@ describe('LimitOrderProtocol', function () {
             const ETHOrders = await ethers.getContractFactory('ETHOrders');
             const ethOrders = await ETHOrders.deploy(weth.address, swap.address);
             await ethOrders.deployed();
-            return { dai, weth, swap, chainId, ethOrders };
+            const orderLibFactory = await ethers.getContractFactory('OrderLib');
+            return { dai, weth, swap, orderLibFactory, chainId, ethOrders };
         };
 
         it('Partial fill', async function () {
@@ -781,7 +782,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('Invalid extension (empty extension)', async function () {
-            const { dai, weth, ethOrders } = await loadFixture(deployContractsAndInit);
+            const { dai, weth, orderLibFactory, ethOrders } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
                 {
@@ -797,13 +798,12 @@ describe('LimitOrderProtocol', function () {
                 },
             );
 
-            const errorSelector = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('MissingOrderExtension()')).slice(0, 10);
             await expect(ethOrders.connect(addr1).ethOrderDeposit(order, [], { value: ether('0.3') }))
-                .to.be.revertedWithCustomError(ethOrders, 'InvalidExtension').withArgs(errorSelector);
+                .to.be.revertedWithCustomError(orderLibFactory, 'MissingOrderExtension');
         });
 
         it('Invalid extension (mismatched extension)', async function () {
-            const { dai, weth, ethOrders } = await loadFixture(deployContractsAndInit);
+            const { dai, weth, orderLibFactory, ethOrders } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
                 {
@@ -819,9 +819,8 @@ describe('LimitOrderProtocol', function () {
                 },
             );
 
-            const errorSelector = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('ExtensionInvalid()')).slice(0, 10);
             await expect(ethOrders.connect(addr1).ethOrderDeposit(order, order.extension.slice(0, -6), { value: ether('0.3') }))
-                .to.be.revertedWithCustomError(ethOrders, 'InvalidExtension').withArgs(errorSelector);
+                .to.be.revertedWithCustomError(orderLibFactory, 'InvalidExtensionHash');
         });
     });
 
@@ -1038,7 +1037,8 @@ describe('LimitOrderProtocol', function () {
             const { dai, weth, swap, chainId } = await deploySwapTokens();
             const { arbitraryPredicate } = await deployArbitraryPredicate();
             await initContracts(dai, weth, swap);
-            return { dai, weth, swap, chainId, arbitraryPredicate };
+            const orderLibFactory = await ethers.getContractFactory('OrderLib');
+            return { dai, weth, swap, chainId, arbitraryPredicate, orderLibFactory };
         };
 
         it('arbitrary call predicate should pass', async function () {
@@ -1247,7 +1247,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should fail with invalid extension (empty extension)', async function () {
-            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+            const { dai, weth, swap, orderLibFactory, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
 
             const arbitraryCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
                 arbitraryPredicate.address,
@@ -1269,13 +1269,15 @@ describe('LimitOrderProtocol', function () {
             );
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const errorSelector = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('MissingOrderExtension()')).slice(0, 10);
-            await expect(swap.fillOrderExt(order, r, vs, 1, 1, []))
-                .to.be.revertedWithCustomError(swap, 'InvalidExtension').withArgs(errorSelector);
+            const takerTraits = buildTakerTraits({
+                minRetrun: 1n,
+            });
+            await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
+                .to.be.revertedWithCustomError(orderLibFactory, 'MissingOrderExtension');
         });
 
         it('should fail with invalid extension (mismatched extension)', async function () {
-            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+            const { dai, weth, swap, orderLibFactory, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
 
             const arbitraryCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
                 arbitraryPredicate.address,
@@ -1297,13 +1299,16 @@ describe('LimitOrderProtocol', function () {
             );
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const errorSelector = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('ExtensionInvalid()')).slice(0, 10);
-            await expect(swap.fillOrderExt(order, r, vs, 1, 1, order.extension.slice(0, -6)))
-                .to.be.revertedWithCustomError(swap, 'InvalidExtension').withArgs(errorSelector);
+            const takerTraits = buildTakerTraits({
+                minRetrun: 1n,
+                extension: order.extension + '0011223344',
+            });
+            await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
+                .to.be.revertedWithCustomError(orderLibFactory, 'InvalidExtensionHash');
         });
 
         it('should fail with invalid extension (unexpected extension)', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { dai, weth, swap, orderLibFactory, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
                 {
@@ -1316,9 +1321,12 @@ describe('LimitOrderProtocol', function () {
             );
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const errorSelector = ethers.utils.keccak256(ethers.utils.toUtf8Bytes('UnexpectedOrderExtension()')).slice(0, 10);
-            await expect(swap.fillOrderExt(order, r, vs, 1, 1, ethers.utils.toUtf8Bytes('test')))
-                .to.be.revertedWithCustomError(swap, 'InvalidExtension').withArgs(errorSelector);
+            const takerTraits = buildTakerTraits({
+                minRetrun: 1n,
+                extension: '0xabacabac',
+            });
+            await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
+                .to.be.revertedWithCustomError(orderLibFactory, 'UnexpectedOrderExtension');
         });
     });
 

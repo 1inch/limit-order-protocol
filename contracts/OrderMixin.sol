@@ -301,8 +301,16 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes calldata interaction
     ) private returns(uint256 makingAmount, uint256 takingAmount) {
         // Validate order
-        (bool isValid, bytes4 validationResult) = order.isValidExtension(extension);
-        if (!isValid) revert InvalidExtension(validationResult);
+        {
+            (bool valid, bytes4 validationResult) = order.isValidExtension(extension);
+            if (!valid) {
+                // solhint-disable-next-line no-inline-assembly
+                assembly ("memory-safe") {
+                    mstore(0, validationResult)
+                    revert(0, 4)
+                }
+            }
+        }
         if (!order.makerTraits.isAllowedSender(msg.sender)) revert PrivateOrder();
         if (order.makerTraits.isExpired()) revert OrderExpired();
         if (order.makerTraits.needCheckEpochManager()) {

@@ -23,16 +23,12 @@ import "./interfaces/IAmountGetter.sol";
     using MakerTraitsLib for MakerTraits;
     using ExtensionLib for bytes;
 
-    /// @dev Error to be thrown when the incorrect getter function called.
-    error WrongGetter();
-    /// @dev Error to be thrown when the call to get the amount fails.
-    error GetAmountCallFailed();
     /// @dev Error to be thrown when the extension data of an order is missing.
     error MissingOrderExtension();
     /// @dev Error to be thrown when the order has an unexpected extension.
     error UnexpectedOrderExtension();
-    /// @dev Error to be thrown when the order extension is invalid.
-    error ExtensionInvalid();
+    /// @dev Error to be thrown when the order extension hash is invalid.
+    error InvalidExtensionHash();
 
     /// @dev The typehash of the order struct.
     bytes32 constant internal _LIMIT_ORDER_TYPEHASH = keccak256(
@@ -158,7 +154,7 @@ import "./interfaces/IAmountGetter.sol";
         if (order.makerTraits.hasExtension()) {
             if (extension.length == 0) return (false, MissingOrderExtension.selector);
             // Lowest 160 bits of the order salt must be equal to the lowest 160 bits of the extension hash
-            if (uint256(keccak256(extension)) & type(uint160).max != order.salt & type(uint160).max) return (false, ExtensionInvalid.selector);
+            if (uint256(keccak256(extension)) & type(uint160).max != order.salt & type(uint160).max) return (false, InvalidExtensionHash.selector);
         } else {
             if (extension.length > 0) return (false, UnexpectedOrderExtension.selector);
         }
