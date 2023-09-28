@@ -2,6 +2,7 @@ const { constants, trim0x } = require('@1inch/solidity-utils');
 const { assert } = require('chai');
 const { keccak256 } = require('ethers/lib/utils');
 const { setn } = require('./utils');
+const { ethers } = require('hardhat');
 
 const Order = [
     { name: 'salt', type: 'uint256' },
@@ -32,6 +33,50 @@ const _NEED_EPOCH_CHECK_FLAG = 250n;
 const _HAS_EXTENSION_FLAG = 249n;
 const _USE_PERMIT2_FLAG = 248n;
 const _UNWRAP_WETH_FLAG = 247n;
+
+const TakerTrainsConstants = {
+    _MAKER_AMOUNT_FLAG: 1n << 255n,
+    _UNWRAP_WETH_FLAG: 1n << 254n,
+    _SKIP_ORDER_PERMIT_FLAG: 1n << 253n,
+    _USE_PERMIT2_FLAG: 1n << 252n,
+    _ARGS_HAS_TARGET: 1n << 251n,
+
+    _ARGS_EXTENSION_LENGTH_OFFSET: 224n,
+    _ARGS_EXTENSION_LENGTH_MASK: 0xffffff,
+    _ARGS_INTERACTION_LENGTH_OFFSET: 200n,
+    _ARGS_INTERACTION_LENGTH_MASK: 0xffffff,
+    _ARGS_TAKER_PERMIT_LENGTH_OFFSET: 184n,
+    _ARGS_TAKER_PERMIT_LENGTH_MASK: 0xffff,
+};
+
+function buildTakerTraits ({
+    makingAmount = false,
+    unwrapWeth = false,
+    skipMakerPermit = false,
+    usePermit2 = false,
+    target = '0x',
+    extension = '0x',
+    interaction = '0x',
+    takerPermit = '0x',
+    minReturn = 0n,
+} = {}) {
+    return {
+        traits: BigInt(minReturn) | (
+            (makingAmount ? TakerTrainsConstants._MAKER_AMOUNT_FLAG : 0n) |
+            (unwrapWeth ? TakerTrainsConstants._UNWRAP_WETH_FLAG : 0n) |
+            (skipMakerPermit ? TakerTrainsConstants._SKIP_ORDER_PERMIT_FLAG : 0n) |
+            (usePermit2 ? TakerTrainsConstants._USE_PERMIT2_FLAG : 0n) |
+            (trim0x(target).length > 0 ? TakerTrainsConstants._ARGS_HAS_TARGET : 0n) |
+            (BigInt(trim0x(extension).length / 2) << TakerTrainsConstants._ARGS_EXTENSION_LENGTH_OFFSET) |
+            (BigInt(trim0x(interaction).length / 2) << TakerTrainsConstants._ARGS_INTERACTION_LENGTH_OFFSET) |
+            (BigInt(trim0x(takerPermit).length / 2) << TakerTrainsConstants._ARGS_TAKER_PERMIT_LENGTH_OFFSET)
+        ),
+        args: ethers.utils.solidityPack(
+            ['bytes', 'bytes', 'bytes', 'bytes'],
+            [target, extension, interaction, takerPermit],
+        ),
+    };
+}
 
 function buildMakerTraitsRFQ ({
     allowedSender = constants.ZERO_ADDRESS,
@@ -224,19 +269,20 @@ async function signOrder (order, chainId, target, wallet) {
 }
 
 function fillWithMakingAmount (amount) {
-    return setn(amount, 255, true).toString();
+    return BigInt(amount) | BigInt(buildTakerTraits({ makingAmount: true }).traits);
 }
 
 function unwrapWethTaker (amount) {
-    return setn(amount, 254, true).toString();
+    return BigInt(amount) | BigInt(buildTakerTraits({ unwrapWeth: true }).traits);
 }
 
 function skipMakerPermit (amount) {
-    return setn(amount, 253, true).toString();
+    return BigInt(amount) | BigInt(buildTakerTraits({ skipMakerPermit: true }).traits);
 }
 
 module.exports = {
     ABIOrder,
+    buildTakerTraits,
     buildMakerTraits,
     buildMakerTraitsRFQ,
     buildOrder,

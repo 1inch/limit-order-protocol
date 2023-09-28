@@ -1,7 +1,7 @@
 const { expect } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { fillWithMakingAmount, signOrder, buildOrder } = require('./helpers/orderUtils');
 const { ether } = require('./helpers/utils');
+const { signOrder, buildOrder, buildTakerTraits } = require('./helpers/orderUtils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 
@@ -64,7 +64,12 @@ describe('ChainLinkExample', function () {
 
         const { r, _vs: vs } = ethers.utils.splitSignature(signature);
         // taking threshold = 4000 + 1% + eps
-        const filltx = swap.fillOrderExt(order, r, vs, ether('1'), fillWithMakingAmount(ether('4040.01')), order.extension);
+        const takerTraits = buildTakerTraits({
+            makingAmount: true,
+            extension: order.extension,
+            minReturn: ether('4040.01'),
+        });
+        const filltx = swap.fillOrderArgs(order, r, vs, ether('1'), takerTraits.traits, takerTraits.args);
         await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [ether('-4040'), ether('4040')]);
         await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [ether('1'), ether('-1')]);
     });
@@ -94,7 +99,12 @@ describe('ChainLinkExample', function () {
 
         const { r, _vs: vs } = ethers.utils.splitSignature(signature);
         // taking threshold = exact taker amount + eps
-        const filltx = swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount.add(ether('0.01'))), order.extension);
+        const takerTraits = buildTakerTraits({
+            makingAmount: true,
+            extension: order.extension,
+            minReturn: takingAmount.add(ether('0.01')),
+        });
+        const filltx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount]);
         await expect(filltx).to.changeTokenBalances(inch, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
     });
@@ -121,8 +131,13 @@ describe('ChainLinkExample', function () {
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+        const takerTraits = buildTakerTraits({
+            makingAmount: true,
+            extension: order.extension,
+            minReturn: takingAmount.add(ether('0.01')),
+        });
         await expect(
-            swap.fillOrderExt(order, r, vs, fillWithMakingAmount(makingAmount), takingAmount.add(ether('0.01')), order.extension), // taking threshold = exact taker amount + eps
+            swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args), // taking threshold = exact taker amount + eps
         ).to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
     });
 
@@ -151,7 +166,12 @@ describe('ChainLinkExample', function () {
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-        const filltx = swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount), order.extension);
+        const takerTraits = buildTakerTraits({
+            makingAmount: true,
+            extension: order.extension,
+            minReturn: takingAmount,
+        });
+        const filltx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount]);
         await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
     });

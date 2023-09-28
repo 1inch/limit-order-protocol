@@ -2,8 +2,8 @@ const { ethers } = require('hardhat');
 const { parseUnits } = require('ethers/lib/utils.js');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { expect } = require('@1inch/solidity-utils');
-const { fillWithMakingAmount, buildMakerTraits, buildOrder, signOrder } = require('./helpers/orderUtils');
 const { ether } = require('./helpers/utils');
+const { buildMakerTraits, buildOrder, signOrder, buildTakerTraits } = require('./helpers/orderUtils');
 const { deploySwapTokens, deployRangeAmountCalculator } = require('./helpers/fixtures');
 
 describe('RangeLimitOrders', function () {
@@ -97,13 +97,17 @@ describe('RangeLimitOrders', function () {
         const { order, r, vs, startPrice, endPrice, makingAmount } = await createOrder({ makerAsset, takerAsset, maker, swap, rangeAmountCalculator, chainId });
 
         // first fill order
-        let fillOrder = swap.fillOrderExt(
+        const takerTraits = buildTakerTraits({
+            minReturn: makerAsset.parseAmount(fillParams.firstFill.thresholdAmount),
+            extension: order.extension,
+        });
+        let fillOrder = swap.fillOrderArgs(
             order,
             r,
             vs,
             takerAsset.parseAmount(fillParams.firstFill.takingAmount),
-            makerAsset.parseAmount(fillParams.firstFill.thresholdAmount),
-            order.extension,
+            takerTraits.traits,
+            takerTraits.args,
         );
         const rangeAmount1 = await rangeAmountCalculator.getRangeMakerAmount(
             startPrice,
@@ -124,13 +128,17 @@ describe('RangeLimitOrders', function () {
             ]);
 
         // second fill order
-        fillOrder = swap.fillOrderExt(
+        const secondTakerTraits = buildTakerTraits({
+            minReturn: makerAsset.parseAmount(fillParams.secondFill.thresholdAmount),
+            extension: order.extension,
+        });
+        fillOrder = swap.fillOrderArgs(
             order,
             r,
             vs,
             takerAsset.parseAmount(fillParams.secondFill.takingAmount),
-            makerAsset.parseAmount(fillParams.secondFill.thresholdAmount),
-            order.extension,
+            secondTakerTraits.traits,
+            secondTakerTraits.args,
         );
         const rangeAmount2 = await rangeAmountCalculator.getRangeMakerAmount(
             startPrice,
@@ -170,13 +178,18 @@ describe('RangeLimitOrders', function () {
         const { order, r, vs, startPrice, endPrice, makingAmount } = await createOrder({ makerAsset, takerAsset, maker, swap, rangeAmountCalculator, chainId });
 
         // first fill order
-        let fillOrder = swap.fillOrderExt(
+        const takerTraits = buildTakerTraits({
+            minReturn: takerAsset.parseAmount(fillParams.firstFill.thresholdAmount),
+            makingAmount: true,
+            extension: order.extension,
+        });
+        let fillOrder = swap.fillOrderArgs(
             order,
             r,
             vs,
             makerAsset.parseAmount(fillParams.firstFill.makingAmount),
-            fillWithMakingAmount(takerAsset.parseAmount(fillParams.firstFill.thresholdAmount)),
-            order.extension,
+            takerTraits.traits,
+            takerTraits.args,
         );
         const rangeAmount1 = await rangeAmountCalculator.getRangeTakerAmount(
             startPrice,
@@ -197,13 +210,18 @@ describe('RangeLimitOrders', function () {
             ]);
 
         // second fill order
-        fillOrder = swap.fillOrderExt(
+        const secondTakerTraits = buildTakerTraits({
+            minReturn: takerAsset.parseAmount(fillParams.secondFill.thresholdAmount),
+            makingAmount: true,
+            extension: order.extension,
+        });
+        fillOrder = swap.fillOrderArgs(
             order,
             r,
             vs,
             makerAsset.parseAmount(fillParams.secondFill.makingAmount),
-            fillWithMakingAmount(takerAsset.parseAmount(fillParams.secondFill.thresholdAmount)),
-            order.extension,
+            secondTakerTraits.traits,
+            secondTakerTraits.args,
         );
         const rangeAmount2 = await rangeAmountCalculator.getRangeTakerAmount(
             startPrice,
