@@ -23,16 +23,12 @@ import "./interfaces/IAmountGetter.sol";
     using MakerTraitsLib for MakerTraits;
     using ExtensionLib for bytes;
 
-    /// @dev Error to be thrown when the incorrect getter function called.
-    error WrongGetter();
-    /// @dev Error to be thrown when the call to get the amount fails.
-    error GetAmountCallFailed();
     /// @dev Error to be thrown when the extension data of an order is missing.
     error MissingOrderExtension();
     /// @dev Error to be thrown when the order has an unexpected extension.
     error UnexpectedOrderExtension();
-    /// @dev Error to be thrown when the order extension is invalid.
-    error ExtensionInvalid();
+    /// @dev Error to be thrown when the order extension hash is invalid.
+    error InvalidExtensionHash();
 
     /// @dev The typehash of the order struct.
     bytes32 constant internal _LIMIT_ORDER_TYPEHASH = keccak256(
@@ -148,17 +144,20 @@ import "./interfaces/IAmountGetter.sol";
     }
 
     /**
-      * @dev Validates the extension associated with an order. Reverts if invalid.
+      * @dev Validates the extension associated with an order.
       * @param order The order to validate against.
       * @param extension The extension associated with the order.
+      * @return valid True if the extension is valid, false otherwise.
+      * @return errorSelector The error selector if the extension is invalid, 0x00000000 otherwise.
       */
-    function validateExtension(IOrderMixin.Order calldata order, bytes calldata extension) internal pure {
+    function isValidExtension(IOrderMixin.Order calldata order, bytes calldata extension) internal pure returns(bool, bytes4) {
         if (order.makerTraits.hasExtension()) {
-            if (extension.length == 0) revert MissingOrderExtension();
+            if (extension.length == 0) return (false, MissingOrderExtension.selector);
             // Lowest 160 bits of the order salt must be equal to the lowest 160 bits of the extension hash
-            if (uint256(keccak256(extension)) & type(uint160).max != order.salt & type(uint160).max) revert ExtensionInvalid();
+            if (uint256(keccak256(extension)) & type(uint160).max != order.salt & type(uint160).max) return (false, InvalidExtensionHash.selector);
         } else {
-            if (extension.length > 0) revert UnexpectedOrderExtension();
+            if (extension.length > 0) return (false, UnexpectedOrderExtension.selector);
         }
+        return (true, 0x00000000);
     }
 }
