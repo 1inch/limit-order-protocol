@@ -474,8 +474,8 @@ describe('LimitOrderProtocol', function () {
                 await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
             });
 
-            it('rejects reused permit', async function () {
-                const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
+            it('reverts in case of reused permit and not enough allowance', async function () {
+                const { dai, weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
 
@@ -485,25 +485,48 @@ describe('LimitOrderProtocol', function () {
                     takerPermit: order.takerAsset + trim0x(permit),
                 });
                 await swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
-                await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
-                    .to.be.revertedWith('ERC20Permit: invalid signature');
+
+                const order2 = buildOrder({
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 2,
+                    takingAmount: 1,
+                    maker: addr1.address,
+                });
+                const signature2 = await signOrder(order2, chainId, swap.address, addr1);
+                const { r: r2, _vs: vs2 } = ethers.utils.splitSignature(signature2);
+
+                await expect(swap.fillOrderArgs(order2, r2, vs2, 1, takerTraits.traits, takerTraits.args)).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
             });
 
-            it('rejects wrong signature', async function () {
-                const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
+            it('skips bad permit if allowance is enough', async function () {
+                const { weth, swap, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
-                const permit = await getPermit(addr.address, addr2, weth, '1', chainId, swap.address, '1');
+                const permit = await getPermit(addr.address, addr2, weth, '1', 1234, swap.address, '1', 100);
 
                 const { r, _vs: vs } = ethers.utils.splitSignature(signature);
                 const takerTraits = buildTakerTraits({
                     minReturn: 1n,
                     takerPermit: order.takerAsset + trim0x(permit),
                 });
-                await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
-                    .to.be.revertedWith('ERC20Permit: invalid signature');
+                await swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
             });
 
-            it('rejects expired permit', async function () {
+            it('reverts after bad permit if allowance is not enough', async function () {
+                const { weth, swap, order, signature } = await loadFixture(deployContractsAndInitPermit);
+
+                const permit = await getPermit(addr.address, addr2, weth, '1', 1234, swap.address, '1');
+
+                const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+                const takerTraits = buildTakerTraits({
+                    minReturn: 1n,
+                    takerPermit: order.takerAsset + trim0x(permit),
+                });
+                await weth.approve(swap.address, 0);
+                await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args)).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
+            });
+
+            it('skips expired permit if allowance is enough', async function () {
                 const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
                 const deadline = (await time.latest()) - time.duration.weeks(1);
@@ -514,8 +537,22 @@ describe('LimitOrderProtocol', function () {
                     minReturn: 1n,
                     takerPermit: order.takerAsset + trim0x(permit),
                 });
-                await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
-                    .to.be.revertedWith('ERC20Permit: expired deadline');
+                await swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+            });
+
+            it('rejects expired permit when allowance is not enough', async function () {
+                const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
+
+                const deadline = (await time.latest()) - time.duration.weeks(1);
+                const permit = await getPermit(addr.address, addr1, weth, '1', chainId, swap.address, '1', deadline);
+
+                const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+                const takerTraits = buildTakerTraits({
+                    minReturn: 1n,
+                    takerPermit: order.takerAsset + trim0x(permit),
+                });
+                await weth.approve(swap.address, 0);
+                await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args)).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
             });
         });
 

@@ -153,44 +153,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         return _fillOrder(order, r, vs, amount, takerTraits, target, extension, interaction);
     }
 
-    function _processArgs(TakerTraits takerTraits, bytes calldata args)
-        private
-        returns(
-            address target,
-            bytes calldata extension,
-            bytes calldata interaction
-        )
-    {
-        if (takerTraits.argsHasTarget()) {
-            target = address(bytes20(args));
-            args = args[20:];
-        } else {
-            target = msg.sender;
-        }
-
-        uint256 extensionLength = takerTraits.argsExtensionLength();
-        if (extensionLength > 0) {
-            extension = args[:extensionLength];
-            args = args[extensionLength:];
-        } else {
-            extension = msg.data[:0];
-        }
-
-        uint256 interactionLength = takerTraits.argsInteractionLength();
-        if (interactionLength > 0) {
-            interaction = args[:interactionLength];
-            args = args[interactionLength:];
-        } else {
-            interaction = msg.data[:0];
-        }
-
-        uint256 takerPermitLength = takerTraits.argsTakerPermitLength();
-        if (takerPermitLength >= 20) {
-            bytes calldata takerPermit = args[:takerTraits.argsTakerPermitLength()];
-            IERC20(address(bytes20(takerPermit))).safePermit(takerPermit[20:]);
-        }
-    }
-
     function _fillOrder(
         IOrderMixin.Order calldata order,
         bytes32 r,
@@ -474,6 +436,53 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     }
 
     /**
+      * @notice Processes the taker interaction arguments.
+      * @dev The function will revert if the taker permit is invalid.
+      * @param takerTraits The taker preferences for the order.
+      * @param args The taker interaction arguments.
+      * @return target The address to which the order is filled.
+      * @return extension The extension calldata of the order.
+      * @return interaction The interaction calldata.
+      */
+    function _processArgs(TakerTraits takerTraits, bytes calldata args)
+        private
+        returns(
+            address target,
+            bytes calldata extension,
+            bytes calldata interaction
+        )
+    {
+        if (takerTraits.argsHasTarget()) {
+            target = address(bytes20(args));
+            args = args[20:];
+        } else {
+            target = msg.sender;
+        }
+
+        uint256 extensionLength = takerTraits.argsExtensionLength();
+        if (extensionLength > 0) {
+            extension = args[:extensionLength];
+            args = args[extensionLength:];
+        } else {
+            extension = msg.data[:0];
+        }
+
+        uint256 interactionLength = takerTraits.argsInteractionLength();
+        if (interactionLength > 0) {
+            interaction = args[:interactionLength];
+            args = args[interactionLength:];
+        } else {
+            interaction = msg.data[:0];
+        }
+
+        uint256 takerPermitLength = takerTraits.argsTakerPermitLength();
+        if (takerPermitLength >= 20) {
+            bytes calldata permit = args[:takerPermitLength];
+            IERC20(address(bytes20(permit))).tryPermit(msg.sender, address(this), permit[20:]);
+        }
+    }
+
+    /**
       * @notice Checks the remaining making amount for the order.
       * @dev If the order has been invalidated, the function will revert.
       * @param order The order to check.
@@ -499,7 +508,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes calldata makerPermit = extension.makerPermit();
         if (makerPermit.length >= 20) {
             // proceed only if taker is willing to execute permit and its length is enough to store address
-            IERC20(address(bytes20(makerPermit))).safePermit(makerPermit[20:]);
+            IERC20(address(bytes20(makerPermit))).tryPermit(msg.sender, address(this), makerPermit[20:]);
             if (!order.makerTraits.useBitInvalidator()) {
                 // Bit orders are not subjects for reentrancy, but we still need to check remaining-based orders for reentrancy
                 if (!_remainingInvalidator[order.maker.get()][orderHash].isNewOrder()) revert ReentrancyDetected();
