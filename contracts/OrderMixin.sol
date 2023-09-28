@@ -171,7 +171,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             address maker = order.maker.get();
             if (maker == address(0) || maker != ECDSA.recover(orderHash, r, vs)) revert BadSignature();
             if (!takerTraits.skipMakerPermit()) {
-                _applyMakerPermit(order, orderHash, extension);
+                _applyMakerPermit(order, orderHash, maker, extension);
             }
         }
 
@@ -224,7 +224,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         if (remainingMakingAmount == order.makingAmount) {
             if (!ECDSA.isValidSignature(order.maker.get(), orderHash, signature)) revert BadSignature();
             if (!takerTraits.skipMakerPermit()) {
-                _applyMakerPermit(order, orderHash, extension);
+                _applyMakerPermit(order, orderHash, order.maker.get(), extension);
             }
         }
 
@@ -505,11 +505,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
       * @param orderHash The hash of the order.
       * @param extension The extension data associated with the order.
       */
-    function _applyMakerPermit(IOrderMixin.Order calldata order, bytes32 orderHash, bytes calldata extension) private {
+    function _applyMakerPermit(IOrderMixin.Order calldata order, bytes32 orderHash, address maker, bytes calldata extension) private {
         bytes calldata makerPermit = extension.makerPermit();
         if (makerPermit.length >= 20) {
             // proceed only if taker is willing to execute permit and its length is enough to store address
-            IERC20(address(bytes20(makerPermit))).tryPermit(msg.sender, address(this), makerPermit[20:]);
+            IERC20(address(bytes20(makerPermit))).tryPermit(maker, address(this), makerPermit[20:]);
             if (!order.makerTraits.useBitInvalidator()) {
                 // Bit orders are not subjects for reentrancy, but we still need to check remaining-based orders for reentrancy
                 if (!_remainingInvalidator[order.maker.get()][orderHash].isNewOrder()) revert ReentrancyDetected();
