@@ -49,6 +49,13 @@ interface IOrderMixin {
     );
 
     /**
+     * @notice Emitted when order gets filled
+     */
+    event OrderCancelled(
+        bytes32 orderHash
+    );
+
+    /**
      * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
      * @param maker Maker address
      * @param slot Slot number to return bitmask for

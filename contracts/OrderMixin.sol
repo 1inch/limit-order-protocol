@@ -83,6 +83,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         } else {
             _remainingInvalidator[msg.sender][orderHash] = RemainingInvalidatorLib.fullyFilled();
         }
+        emit OrderCancelled(orderHash);
     }
 
     /**
