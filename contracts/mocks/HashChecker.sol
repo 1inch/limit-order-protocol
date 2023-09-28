@@ -28,6 +28,7 @@ contract HashChecker is IPreInteraction, Ownable {
 
     function preInteraction(
         IOrderMixin.Order calldata order,
+        bytes calldata extension,
         bytes32 orderHash,
         address taker,
         uint256 makingAmount,
@@ -40,6 +41,7 @@ contract HashChecker is IPreInteraction, Ownable {
         if (extraData.length != 0) {
             IPreInteraction(address(bytes20(extraData))).preInteraction(
                 order,
+                extension,
                 orderHash,
                 taker,
                 makingAmount,

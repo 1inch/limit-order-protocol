@@ -9,12 +9,13 @@ import "./interfaces/IOrderMixin.sol";
 import "./libraries/MakerTraitsLib.sol";
 import "./libraries/ExtensionLib.sol";
 import "./helpers/AmountCalculator.sol";
+import "./interfaces/IAmountGetter.sol";
 
 /**
  * @title OrderLib
- * @dev The library provides common functionality for processing and manipulating limit orders. 
- * It provides functionality to calculate and verify order hashes, calculate trade amounts, and validate 
- * extension data associated with orders. The library also contains helper methods to get the receiver of 
+ * @dev The library provides common functionality for processing and manipulating limit orders.
+ * It provides functionality to calculate and verify order hashes, calculate trade amounts, and validate
+ * extension data associated with orders. The library also contains helper methods to get the receiver of
  * an order and call getter functions.
  */
  library OrderLib {
@@ -22,16 +23,12 @@ import "./helpers/AmountCalculator.sol";
     using MakerTraitsLib for MakerTraits;
     using ExtensionLib for bytes;
 
-    /// @dev Error to be thrown when the incorrect getter function called.
-    error WrongGetter();
-    /// @dev Error to be thrown when the call to get the amount fails.
-    error GetAmountCallFailed();
     /// @dev Error to be thrown when the extension data of an order is missing.
     error MissingOrderExtension();
     /// @dev Error to be thrown when the order has an unexpected extension.
     error UnexpectedOrderExtension();
-    /// @dev Error to be thrown when the order extension is invalid.
-    error ExtensionInvalid();
+    /// @dev Error to be thrown when the order extension hash is invalid.
+    error InvalidExtensionHash();
 
     /// @dev The typehash of the order struct.
     bytes32 constant internal _LIMIT_ORDER_TYPEHASH = keccak256(
@@ -78,7 +75,7 @@ import "./helpers/AmountCalculator.sol";
         return receiver != address(0) ? receiver : order.maker.get();
     }
 
-    /** 
+    /**
       * @notice Calculates the making amount based on the requested taking amount.
       * @dev If getter is specified in the extension data, the getter is called to calculate the making amount,
       * otherwise the making amount is calculated linearly.
@@ -96,12 +93,20 @@ import "./helpers/AmountCalculator.sol";
         uint256 remainingMakingAmount,
         bytes32 orderHash
     ) internal view returns(uint256) {
-        bytes calldata getter = extension.makingAmountGetter();
-        if (getter.length == 0) {
+        bytes calldata data = extension.makingAmountData();
+        if (data.length == 0) {
             // Linear proportion
             return AmountCalculator.getMakingAmount(order.makingAmount, order.takingAmount, requestedTakingAmount);
         }
-        return _callGetter(getter, requestedTakingAmount, remainingMakingAmount, orderHash);
+        return IAmountGetter(address(bytes20(data))).getMakingAmount(
+            order,
+            extension,
+            orderHash,
+            msg.sender,
+            requestedTakingAmount,
+            remainingMakingAmount,
+            data[20:]
+        );
     }
 
     /**
@@ -122,47 +127,37 @@ import "./helpers/AmountCalculator.sol";
         uint256 remainingMakingAmount,
         bytes32 orderHash
     ) internal view returns(uint256) {
-        bytes calldata getter = extension.takingAmountGetter();
-        if (getter.length == 0) {
+        bytes calldata data = extension.takingAmountData();
+        if (data.length == 0) {
             // Linear proportion
             return AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, requestedMakingAmount);
         }
-        return _callGetter(getter, requestedMakingAmount, remainingMakingAmount, orderHash);
+        return IAmountGetter(address(bytes20(data))).getTakingAmount(
+            order,
+            extension,
+            orderHash,
+            msg.sender,
+            requestedMakingAmount,
+            remainingMakingAmount,
+            data[20:]
+        );
     }
 
     /**
-      * @notice Calls the getter function to calculate an amount for a trade.
-      * @param getter The address of the getter function.
-      * @param requestedAmount The amount requested by the taker.
-      * @param remainingMakingAmount The remaining amount of the asset left to fill.
-      * @param orderHash The hash of the order.
-      * @return amount The calculated amount.
-      */
-    function _callGetter(
-        bytes calldata getter,
-        uint256 requestedAmount,
-        uint256 remainingMakingAmount,
-        bytes32 orderHash
-    ) private view returns(uint256) {
-        if (getter.length < 20) revert WrongGetter();
-
-        (bool success, bytes memory result) = address(bytes20(getter)).staticcall(abi.encodePacked(getter[20:], requestedAmount, remainingMakingAmount, orderHash));
-        if (!success || result.length != 32) revert GetAmountCallFailed();
-        return abi.decode(result, (uint256));
-    }
-
-    /**
-      * @dev Validates the extension associated with an order. Reverts if invalid.
+      * @dev Validates the extension associated with an order.
       * @param order The order to validate against.
       * @param extension The extension associated with the order.
+      * @return valid True if the extension is valid, false otherwise.
+      * @return errorSelector The error selector if the extension is invalid, 0x00000000 otherwise.
       */
-    function validateExtension(IOrderMixin.Order calldata order, bytes calldata extension) internal pure {
+    function isValidExtension(IOrderMixin.Order calldata order, bytes calldata extension) internal pure returns(bool, bytes4) {
         if (order.makerTraits.hasExtension()) {
-            if (extension.length == 0) revert MissingOrderExtension();
+            if (extension.length == 0) return (false, MissingOrderExtension.selector);
             // Lowest 160 bits of the order salt must be equal to the lowest 160 bits of the extension hash
-            if (uint256(keccak256(extension)) & type(uint160).max != order.salt & type(uint160).max) revert ExtensionInvalid();
+            if (uint256(keccak256(extension)) & type(uint160).max != order.salt & type(uint160).max) return (false, InvalidExtensionHash.selector);
         } else {
-            if (extension.length > 0) revert UnexpectedOrderExtension();
+            if (extension.length > 0) return (false, UnexpectedOrderExtension.selector);
         }
+        return (true, 0x00000000);
     }
 }

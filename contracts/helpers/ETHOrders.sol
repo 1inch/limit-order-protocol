@@ -64,7 +64,16 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
      */
     function ethOrderDeposit(IOrderMixin.Order calldata order, bytes calldata extension) external payable returns(bytes32 orderHash) {
         if (!order.makerTraits.needPostInteractionCall()) revert InvalidOrder();
-        order.validateExtension(extension);
+        {
+            (bool valid, bytes4 validationResult) = order.isValidExtension(extension);
+            if (!valid) {
+                // solhint-disable-next-line no-inline-assembly
+                assembly ("memory-safe") {
+                    mstore(0, validationResult)
+                    revert(0, 4)
+                }
+            }
+        }
         if (order.maker.get() != address(this)) revert AccessDenied();
         if (order.getReceiver() != msg.sender) revert AccessDenied();
         if (order.makingAmount != msg.value) revert InvalidOrder();
@@ -111,6 +120,7 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
      */
     function postInteraction(
         IOrderMixin.Order calldata /*order*/,
+        bytes calldata /* extension */,
         bytes32 orderHash,
         address /*taker*/,
         uint256 makingAmount,

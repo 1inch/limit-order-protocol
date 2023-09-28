@@ -300,7 +300,16 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes calldata interaction
     ) private returns(uint256 makingAmount, uint256 takingAmount) {
         // Validate order
-        order.validateExtension(extension);
+        {
+            (bool valid, bytes4 validationResult) = order.isValidExtension(extension);
+            if (!valid) {
+                // solhint-disable-next-line no-inline-assembly
+                assembly ("memory-safe") {
+                    mstore(0, validationResult)
+                    revert(0, 4)
+                }
+            }
+        }
         if (!order.makerTraits.isAllowedSender(msg.sender)) revert PrivateOrder();
         if (order.makerTraits.isExpired()) revert OrderExpired();
         if (order.makerTraits.needCheckEpochManager()) {
@@ -370,7 +379,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 data = data[20:];
             }
             IPreInteraction(listener).preInteraction(
-                order, orderHash, msg.sender, makingAmount, takingAmount, remainingMakingAmount, data
+                order, extension, orderHash, msg.sender, makingAmount, takingAmount, remainingMakingAmount, data
             );
         }
 
@@ -398,7 +407,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         if (interaction.length >= 20) {
             // proceed only if interaction length is enough to store address
             uint256 offeredTakingAmount = ITakerInteraction(address(bytes20(interaction))).takerInteraction(
-                order, orderHash, extension, msg.sender, makingAmount, takingAmount, remainingMakingAmount, interaction[20:]
+                order, extension, orderHash, msg.sender, makingAmount, takingAmount, remainingMakingAmount, interaction[20:]
             );
             if (offeredTakingAmount > takingAmount && order.makerTraits.allowImproveRateViaInteraction()) {
                 takingAmount = offeredTakingAmount;
@@ -456,7 +465,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
                 data = data[20:];
             }
             IPostInteraction(listener).postInteraction(
-                order, orderHash, msg.sender, makingAmount, takingAmount, remainingMakingAmount, data
+                order, extension, orderHash, msg.sender, makingAmount, takingAmount, remainingMakingAmount, data
             );
         }
 

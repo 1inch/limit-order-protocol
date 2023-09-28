@@ -35,8 +35,8 @@ contract RecursiveMatcher is ITakerInteraction {
 
     function takerInteraction(
         IOrderMixin.Order calldata /* order */,
-        bytes32 /* orderHash */,
         bytes calldata /* extension */,
+        bytes32 /* orderHash */,
         address /* taker */,
         uint256 /* makingAmount */,
         uint256 /* takingAmount */,
