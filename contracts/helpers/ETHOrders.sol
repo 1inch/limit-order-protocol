@@ -111,6 +111,7 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
      */
     function postInteraction(
         IOrderMixin.Order calldata /*order*/,
+        bytes calldata /* extension */,
         bytes32 orderHash,
         address /*taker*/,
         uint256 makingAmount,

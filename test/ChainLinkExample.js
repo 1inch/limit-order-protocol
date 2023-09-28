@@ -1,7 +1,7 @@
-const { expect, trim0x } = require('@1inch/solidity-utils');
+const { expect } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
+const { ether } = require('./helpers/utils');
 const { signOrder, buildOrder, buildTakerTraits } = require('./helpers/orderUtils');
-const { cutLastArg, ether, setn } = require('./helpers/utils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 
@@ -11,18 +11,6 @@ describe('ChainLinkExample', function () {
     before(async function () {
         [addr, addr1] = await ethers.getSigners();
     });
-
-    function buildInverseWithSpread (inverse, spread) {
-        return setn(spread, 255, inverse).toString();
-    }
-
-    function buildSinglePriceGetter (chainlink, oracle, inverse, spread, amount = '0') {
-        return chainlink.address + trim0x(chainlink.interface.encodeFunctionData('singlePrice', [oracle.address, buildInverseWithSpread(inverse, spread), amount]));
-    }
-
-    function buildDoublePriceGetter (chainlink, oracle1, oracle2, spread, amount = '0') {
-        return chainlink.address + trim0x(chainlink.interface.encodeFunctionData('doublePrice', [oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount]));
-    }
 
     async function deployContractsAndInit () {
         const { dai, weth, inch, swap, chainId } = await deploySwapTokens();
@@ -67,8 +55,8 @@ describe('ChainLinkExample', function () {
                 maker: addr1.address,
             },
             {
-                makingAmountGetter: cutLastArg(buildSinglePriceGetter(chainlink, daiOracle, false, '990000000')), // maker offset is 0.99
-                takingAmountGetter: cutLastArg(buildSinglePriceGetter(chainlink, daiOracle, true, '1010000000')), // taker offset is 1.01
+                makingAmountData: ethers.utils.solidityPack(['address', 'uint256', 'uint256'], [chainlink.address, daiOracle.address, '990000000']), // maker offset is 0.99
+                takingAmountData: ethers.utils.solidityPack(['address', 'uint256', 'uint256'], [chainlink.address, daiOracle.address, '1010000000']), // taker offset is 1.01
             },
         );
 
@@ -93,7 +81,7 @@ describe('ChainLinkExample', function () {
         const takingAmount = ether('631');
         const priceCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
             chainlink.address,
-            chainlink.interface.encodeFunctionData('doublePrice', [inchOracle.address, daiOracle.address, buildInverseWithSpread(false, '1000000000'), '0', ether('1')]),
+            chainlink.interface.encodeFunctionData('doublePrice', [inchOracle.address, daiOracle.address, '1000000000', '0', ether('1')]),
         ]);
 
         const order = buildOrder(
@@ -126,7 +114,7 @@ describe('ChainLinkExample', function () {
 
         const makingAmount = ether('100');
         const takingAmount = ether('631');
-        const priceCall = buildDoublePriceGetter(chainlink, inchOracle, daiOracle, '1000000000', ether('1'));
+        const priceCall = chainlink.interface.encodeFunctionData('doublePrice', [inchOracle.address, daiOracle.address, '1000000000', '0', ether('1')]);
 
         const order = buildOrder(
             {

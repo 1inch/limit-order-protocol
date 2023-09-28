@@ -1,9 +1,9 @@
 const hre = require('hardhat');
 const { ethers } = hre;
-const { expect, time, constants, trim0x } = require('@1inch/solidity-utils');
+const { expect, time, constants } = require('@1inch/solidity-utils');
 const { fillWithMakingAmount, buildMakerTraits, buildOrder, signOrder, ABIOrder } = require('../helpers/orderUtils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { joinStaticCalls, ether, cutLastArg } = require('../helpers/utils');
+const { joinStaticCalls, ether } = require('../helpers/utils');
 
 describe.skip('LimitOrderProtocol usage example', function () {
     let addr, addr1, addr2;
@@ -251,13 +251,15 @@ describe.skip('LimitOrderProtocol usage example', function () {
         const startPrice = ether('3000');
         const endPrice = ether('4000');
 
-        const makingAmountGetter = rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
-            rangeAmountCalculator.interface.encodeFunctionData('getRangeMakerAmount', [startPrice, endPrice, makingAmount, 0, 0], 64),
-        )));
+        const makingAmountData = ethers.utils.solidityPack(
+            ['address', 'uint256', 'uint256'],
+            [rangeAmountCalculator.address, startPrice, endPrice],
+        );
 
-        const takingAmountGetter = rangeAmountCalculator.address + trim0x(cutLastArg(cutLastArg(
-            rangeAmountCalculator.interface.encodeFunctionData('getRangeTakerAmount', [startPrice, endPrice, makingAmount, 0, 0], 64),
-        )));
+        const takingAmountData = ethers.utils.solidityPack(
+            ['address', 'uint256', 'uint256'],
+            [rangeAmountCalculator.address, startPrice, endPrice],
+        );
 
         // Build final order
         const order = buildOrder(
@@ -269,8 +271,8 @@ describe.skip('LimitOrderProtocol usage example', function () {
                 maker: addr1.address,
                 makerTraits: buildMakerTraits({ allowMultipleFills: true }),
             }, {
-                makingAmountGetter,
-                takingAmountGetter,
+                makingAmountData,
+                takingAmountData,
             },
         );
 

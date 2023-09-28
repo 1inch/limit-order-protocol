@@ -8,6 +8,7 @@ interface IPreInteraction {
     /**
      * @notice Callback method that gets called before any funds transfers
      * @param order Order being processed
+     * @param extension Order extension data
      * @param orderHash Hash of the order being processed
      * @param taker Taker address
      * @param makingAmount Actual making amount
@@ -17,6 +18,7 @@ interface IPreInteraction {
      */
     function preInteraction(
         IOrderMixin.Order calldata order,
+        bytes calldata extension,
         bytes32 orderHash,
         address taker,
         uint256 makingAmount,
