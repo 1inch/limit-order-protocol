@@ -13,8 +13,8 @@ interface ITakerInteraction {
      * @dev This callback allows to interactively handle maker aseets to produce takers assets, doesn't supports ETH as taker assets
      * @notice Callback method that gets called after maker fund transfer but before taker fund transfer
      * @param order Order being processed
+     * @param extension Order extension data
      * @param orderHash Hash of the order being processed
-     * @param extension Extension data
      * @param taker Taker address
      * @param makingAmount Actual making amount
      * @param takingAmount Actual taking amount
@@ -23,8 +23,8 @@ interface ITakerInteraction {
      */
     function takerInteraction(
         IOrderMixin.Order calldata order,
-        bytes32 orderHash,
         bytes calldata extension,
+        bytes32 orderHash,
         address taker,
         uint256 makingAmount,
         uint256 takingAmount,
