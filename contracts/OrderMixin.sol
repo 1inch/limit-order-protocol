@@ -148,46 +148,9 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             address target,
             bytes calldata extension,
             bytes calldata interaction
-        ) = _processArgs(amount, takerTraits, args);
+        ) = _processArgs(takerTraits, args);
 
         return _fillOrder(order, r, vs, amount, takerTraits, target, extension, interaction);
-    }
-
-    function _processArgs(uint256 amount, TakerTraits takerTraits, bytes calldata args)
-        private
-        returns(
-            address target,
-            bytes calldata extension,
-            bytes calldata interaction
-        )
-    {
-        if (takerTraits.argsHasTarget()) {
-            target = address(bytes20(args));
-            args = args[20:];
-        } else {
-            target = msg.sender;
-        }
-
-        uint256 extensionLength = takerTraits.argsExtensionLength();
-        if (extensionLength > 0) {
-            extension = args[:extensionLength];
-            args = args[extensionLength:];
-        } else {
-            extension = msg.data[:0];
-        }
-
-        uint256 interactionLength = takerTraits.argsInteractionLength();
-        if (interactionLength > 0) {
-            interaction = args[:interactionLength];
-            args = args[interactionLength:];
-        } else {
-            interaction = msg.data[:0];
-        }
-
-        uint256 takerPermitLength = takerTraits.argsTakerPermitLength();
-        if (takerPermitLength >= 20) {
-            _applyTakerPermit(args[:takerTraits.argsTakerPermitLength()], amount);
-        }
     }
 
     function _fillOrder(
@@ -240,7 +203,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             address target,
             bytes calldata extension,
             bytes calldata interaction
-        ) = _processArgs(amount, takerTraits, args);
+        ) = _processArgs(takerTraits, args);
 
         return _fillContractOrder(order, signature, amount, takerTraits, target, extension, interaction);
     }
@@ -473,6 +436,53 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     }
 
     /**
+      * @notice Processes the taker interaction arguments.
+      * @dev The function will revert if the taker permit is invalid.
+      * @param takerTraits The taker preferences for the order.
+      * @param args The taker interaction arguments.
+      * @return target The address to which the order is filled.
+      * @return extension The extension calldata of the order.
+      * @return interaction The interaction calldata.
+      */
+    function _processArgs(TakerTraits takerTraits, bytes calldata args)
+        private
+        returns(
+            address target,
+            bytes calldata extension,
+            bytes calldata interaction
+        )
+    {
+        if (takerTraits.argsHasTarget()) {
+            target = address(bytes20(args));
+            args = args[20:];
+        } else {
+            target = msg.sender;
+        }
+
+        uint256 extensionLength = takerTraits.argsExtensionLength();
+        if (extensionLength > 0) {
+            extension = args[:extensionLength];
+            args = args[extensionLength:];
+        } else {
+            extension = msg.data[:0];
+        }
+
+        uint256 interactionLength = takerTraits.argsInteractionLength();
+        if (interactionLength > 0) {
+            interaction = args[:interactionLength];
+            args = args[interactionLength:];
+        } else {
+            interaction = msg.data[:0];
+        }
+
+        uint256 takerPermitLength = takerTraits.argsTakerPermitLength();
+        if (takerPermitLength >= 20) {
+            bytes calldata permit = args[:takerPermitLength];
+            IERC20(address(bytes20(permit))).tryPermit(msg.sender, address(this), permit[20:]);
+        }
+    }
+
+    /**
       * @notice Checks the remaining making amount for the order.
       * @dev If the order has been invalidated, the function will revert.
       * @param order The order to check.
@@ -507,23 +517,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     }
 
     /**
-      * @notice Executes the taker's permit and checks for potential reentrancy attacks.
-      * @param permit The permit to apply.
-      * @param minRequiredAllowance The minimum required allowance.
-      */
-    function _applyTakerPermit(bytes calldata permit, uint256 minRequiredAllowance) private {
-        IERC20 asset = IERC20(address(bytes20(permit)));
-        if (!asset.tryPermit(msg.sender, address(this), permit[20:])) {
-            bytes memory reason = _reReason();
-            if (asset.allowance(msg.sender, address(this)) < minRequiredAllowance) {
-                assembly ("memory-safe") {  // solhint-disable-line no-inline-assembly
-                    revert(add(reason, 0x20), mload(reason))
-                }
-            }
-        }
-    }
-
-    /**
       * @notice Calls the transferFrom function with an arbitrary suffix.
       * @dev The suffix is appended to the end of the standard ERC20 transferFrom function parameters.
       * @param asset The token to be transferred.
@@ -546,17 +539,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             }
             let status := call(gas(), asset, 0, data, add(0x64, suffix.length), 0x0, 0x20)
             success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
-        }
-    }
-
-    /// @dev Returns latest external call revert reason.
-    function _reReason() private pure returns (bytes memory reason) {
-        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
-            reason := mload(0x40)
-            let length := returndatasize()
-            mstore(reason, length)
-            returndatacopy(add(reason, 0x20), 0, length)
-            mstore(0x40, add(reason, add(0x20, length)))
         }
     }
 }
