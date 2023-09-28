@@ -36,7 +36,6 @@ interface IOrderMixin {
     error TransferFromTakerToMakerFailed();
     error MismatchArraysLengths();
     error InvalidPermit2Transfer();
-    error InvalidPermitTransfer();
     error SimulationResults(bool success, bytes res);
 
     /**
