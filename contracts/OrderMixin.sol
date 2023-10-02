@@ -438,7 +438,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             );
         }
 
-        emit OrderFilled(orderHash, makingAmount);
+        emit OrderFilled(orderHash, remainingMakingAmount);
     }
 
     /**

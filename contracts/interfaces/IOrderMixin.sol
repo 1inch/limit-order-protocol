@@ -41,15 +41,16 @@ interface IOrderMixin {
     /**
      * @notice Emitted when order gets filled
      * @param orderHash Hash of the order
-     * @param makingAmount Amount of the maker asset that was transferred from maker to taker
+     * @param remainingAmount Amount of the maker asset that remains to be filled
      */
     event OrderFilled(
         bytes32 orderHash,
-        uint256 makingAmount
+        uint256 remainingAmount
     );
 
     /**
      * @notice Emitted when order gets filled
+     * @param orderHash Hash of the order
      */
     event OrderCancelled(
         bytes32 orderHash
