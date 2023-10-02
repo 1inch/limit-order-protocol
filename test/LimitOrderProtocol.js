@@ -146,9 +146,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            const fillTx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
 
             if (hre.__SOLIDITY_COVERAGE_RUNNING === undefined) {
                 const trace = findTrace(tracer, 'CALL', swap.address);
@@ -171,9 +171,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            const fillTx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
 
             if (hre.__SOLIDITY_COVERAGE_RUNNING === undefined) {
                 const trace = findTrace(tracer, 'CALL', swap.address);
@@ -196,9 +196,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 9, 1);
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-9, 9]);
+            const fillTx = swap.fillOrder(order, r, vs, 9, 1);
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-9, 9]);
         });
 
         it('should fail on floor maker amount = 0', async function () {
@@ -233,9 +233,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 4, fillWithMakingAmount(1));
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [4, -4]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            const fillTx = swap.fillOrder(order, r, vs, 4, fillWithMakingAmount(1));
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [4, -4]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
         });
 
         it('should unwrap weth', async function () {
@@ -254,10 +254,10 @@ describe('LimitOrderProtocol', function () {
             await weth.connect(addr1).deposit({ value: ether('2') });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, ether('5'), unwrapWethTaker(ether('1')));
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [ether('-5'), ether('5')]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [ether('0'), ether('-1')]);
-            await expect(filltx).to.changeEtherBalance(addr, ether('1'));
+            const fillTx = swap.fillOrder(order, r, vs, ether('5'), unwrapWethTaker(ether('1')));
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [ether('-5'), ether('5')]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [ether('0'), ether('-1')]);
+            await expect(fillTx).to.changeEtherBalance(addr, ether('1'));
         });
 
         it('ERC721Proxy should work', async function () {
@@ -291,9 +291,9 @@ describe('LimitOrderProtocol', function () {
                 makingAmount: true,
                 extension: order.extension,
             });
-            const filltx = swap.fillOrderArgs(order, r, vs, 10, takerTraits.traits, takerTraits.args);
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [10, -10]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-10, 10]);
+            const fillTx = swap.fillOrderArgs(order, r, vs, 10, takerTraits.traits, takerTraits.args);
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [10, -10]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-10, 10]);
         });
     });
 
@@ -321,9 +321,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 4, fillWithMakingAmount(1));
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [4, -4]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            const fillTx = swap.fillOrder(order, r, vs, 4, fillWithMakingAmount(1));
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [4, -4]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
 
             await expect(swap.fillOrder(order, r, vs, 4, fillWithMakingAmount(1)))
                 .to.be.revertedWithCustomError(swap, 'BitInvalidatedOrder');
@@ -344,9 +344,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 4, fillWithMakingAmount(1));
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [4, -4]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            const fillTx = swap.fillOrder(order, r, vs, 4, fillWithMakingAmount(1));
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [4, -4]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
         });
 
         it('need epoch manager, fail', async function () {
@@ -383,10 +383,10 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 10, fillWithMakingAmount(2));
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [10, -10]);
-            await expect(filltx).to.changeTokenBalance(weth, addr, -2);
-            await expect(filltx).to.changeEtherBalance(addr1, 2);
+            const fillTx = swap.fillOrder(order, r, vs, 10, fillWithMakingAmount(2));
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [10, -10]);
+            await expect(fillTx).to.changeTokenBalance(weth, addr, -2);
+            await expect(fillTx).to.changeEtherBalance(addr1, 2);
         });
 
         it('allow taker rate improvement', async function () {
@@ -408,9 +408,9 @@ describe('LimitOrderProtocol', function () {
                 minRetrun: 2n,
                 interaction: takerIncreaser.address,
             });
-            const filltx = swap.fillOrderArgs(order, r, vs, 10, takerTraits.traits, takerTraits.args);
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [10, -10]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-3, 3]);
+            const fillTx = swap.fillOrderArgs(order, r, vs, 10, takerTraits.traits, takerTraits.args);
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [10, -10]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-3, 3]);
         });
     });
 
@@ -442,9 +442,9 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: true,
                     takerPermit: order.takerAsset + trim0x(permit),
                 });
-                const filltx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
-                await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-                await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+                const fillTx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+                await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
             });
 
             it('DAI => WETH, permit2 maker', async function () {
@@ -469,9 +469,9 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: true,
                     takerPermit: order.takerAsset + trim0x(permit),
                 });
-                const filltx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
-                await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-                await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+                const fillTx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+                await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
             });
 
             it('reverts in case of reused permit and not enough allowance', async function () {
@@ -591,9 +591,9 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: true,
                     extension: order.extension,
                 });
-                const filltx = swap.connect(addr1).fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
-                await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-                await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+                const fillTx = swap.connect(addr1).fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+                await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
             });
 
             it('skips order permit flag', async function () {
@@ -605,9 +605,9 @@ describe('LimitOrderProtocol', function () {
                     skipMakerPermit: true,
                     extension: order.extension,
                 });
-                const filltx = swap.connect(addr1).fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
-                await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-                await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+                const fillTx = swap.connect(addr1).fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+                await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
             });
         });
     });
@@ -632,9 +632,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 10, fillWithMakingAmount(10));
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [10, -10]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-10, 10]);
+            const fillTx = swap.fillOrder(order, r, vs, 10, fillWithMakingAmount(10));
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [10, -10]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-10, 10]);
         });
 
         it('empty takingAmountData should revert on partial fill', async function () {
@@ -684,9 +684,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 10, 10);
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [10, -10]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-10, 10]);
+            const fillTx = swap.fillOrder(order, r, vs, 10, 10);
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [10, -10]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-10, 10]);
         });
     });
 
@@ -738,18 +738,18 @@ describe('LimitOrderProtocol', function () {
                 minReturn: ether('0.2'),
                 extension: order.extension,
             });
-            const filltx1 = swap.fillContractOrderArgs(order, signature, ether('200'), takerTraits1.traits, takerTraits1.args);
-            await expect(filltx1).to.changeTokenBalances(dai, [addr, ethOrders, addr1], [ether('-200'), '0', ether('200')]);
-            await expect(filltx1).to.changeTokenBalances(weth, [addr, ethOrders, addr1], [ether('0.2'), ether('-0.2'), '0']);
+            const fillTx1 = swap.fillContractOrderArgs(order, signature, ether('200'), takerTraits1.traits, takerTraits1.args);
+            await expect(fillTx1).to.changeTokenBalances(dai, [addr, ethOrders, addr1], [ether('-200'), '0', ether('200')]);
+            await expect(fillTx1).to.changeTokenBalances(weth, [addr, ethOrders, addr1], [ether('0.2'), ether('-0.2'), '0']);
 
             /// Remaining fill
             const takerTraits2 = buildTakerTraits({
                 minReturn: ether('0.1'),
                 extension: order.extension,
             });
-            const filltx2 = swap.fillContractOrderArgs(order, signature, ether('100'), takerTraits2.traits, takerTraits2.args);
-            await expect(filltx2).to.changeTokenBalances(dai, [addr, ethOrders, addr1], [ether('-100'), '0', ether('100')]);
-            await expect(filltx2).to.changeTokenBalances(weth, [addr, ethOrders, addr1], [ether('0.1'), ether('-0.1'), '0']);
+            const fillTx2 = swap.fillContractOrderArgs(order, signature, ether('100'), takerTraits2.traits, takerTraits2.args);
+            await expect(fillTx2).to.changeTokenBalances(dai, [addr, ethOrders, addr1], [ether('-100'), '0', ether('100')]);
+            await expect(fillTx2).to.changeTokenBalances(weth, [addr, ethOrders, addr1], [ether('0.1'), ether('-0.1'), '0']);
 
             orderMakerBalance = await ethOrders.ordersMakersBalances(orderHash);
             expect(orderMakerBalance.balance).to.equal(0);
@@ -784,9 +784,9 @@ describe('LimitOrderProtocol', function () {
                 minReturn: ether('0.2'),
                 extension: order.extension,
             });
-            const filltx = swap.fillContractOrderArgs(order, signature, ether('200'), fillTakerTraits.traits, fillTakerTraits.args);
-            await expect(filltx).to.changeTokenBalances(dai, [addr, ethOrders, addr1], [ether('-200'), '0', ether('200')]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, ethOrders, addr1], [ether('0.2'), ether('-0.2'), '0']);
+            const fillTx = swap.fillContractOrderArgs(order, signature, ether('200'), fillTakerTraits.traits, fillTakerTraits.args);
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, ethOrders, addr1], [ether('-200'), '0', ether('200')]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, ethOrders, addr1], [ether('0.2'), ether('-0.2'), '0']);
 
             /// Cancel order
             const canceltx = ethOrders.connect(addr1).cancelOrder(order.makerTraits, orderHash);
@@ -1000,18 +1000,18 @@ describe('LimitOrderProtocol', function () {
             await swap.connect(addr2).increaseEpoch(1);
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            const fillTx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
         });
 
         it('epoch change, partially filled order should fail', async function () {
             const { dai, weth, swap, chainId, order } = await loadFixture(orderWithEpochInit);
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            const fillTx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
 
             await swap.connect(addr1).increaseEpoch(1);
 
@@ -1046,9 +1046,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            const fillTx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
         });
 
         it('should not fill with incorrect taker', async function () {
@@ -1105,9 +1105,9 @@ describe('LimitOrderProtocol', function () {
                 minReturn: 1n,
                 extension: order.extension,
             });
-            const filltx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            const fillTx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
         });
 
         it('arbitrary call predicate should fail', async function () {
@@ -1172,9 +1172,9 @@ describe('LimitOrderProtocol', function () {
                 minReturn: 1n,
                 extension: order.extension,
             });
-            const filltx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            const fillTx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
         });
 
         it('`or` should fail', async function () {
@@ -1243,9 +1243,9 @@ describe('LimitOrderProtocol', function () {
                 minReturn: 1n,
                 extension: order.extension,
             });
-            const filltx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            const fillTx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
         });
 
         it('`and` should fail', async function () {
@@ -1387,9 +1387,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, fillWithMakingAmount(1), 1);
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            const fillTx = swap.fillOrder(order, r, vs, fillWithMakingAmount(1), 1);
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
         });
 
         it('should not fill when expired', async function () {
@@ -1439,9 +1439,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            const fillTx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
 
             await time.increase(3600);
 
@@ -1461,9 +1461,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 3, 2);
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [2, -2]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-2, 2]);
+            const fillTx = swap.fillOrder(order, r, vs, 3, 2);
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [2, -2]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-2, 2]);
         });
 
         it('should fill partially if not enough coins (maker)', async function () {
@@ -1478,9 +1478,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 3, fillWithMakingAmount(3));
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [2, -2]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-2, 2]);
+            const fillTx = swap.fillOrder(order, r, vs, 3, fillWithMakingAmount(3));
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [2, -2]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-2, 2]);
         });
     });
 
@@ -1503,10 +1503,10 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 3 });
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [900, -900]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [0, 3]);
-            await expect(filltx).to.changeEtherBalance(addr, -3);
+            const fillTx = swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 3 });
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [900, -900]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [0, 3]);
+            await expect(fillTx).to.changeEtherBalance(addr, -3);
         });
 
         it('should revert with takerAsset WETH and not enough msg.value', async function () {
@@ -1537,10 +1537,10 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const filltx = swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 4 });
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [900, -900]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [0, 3]);
-            await expect(filltx).to.changeEtherBalance(addr, -3);
+            const fillTx = swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 4 });
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [900, -900]);
+            await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [0, 3]);
+            await expect(fillTx).to.changeEtherBalance(addr, -3);
         });
 
         it('should reverted with takerAsset non-WETH and msg.value greater than 0', async function () {

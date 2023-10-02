@@ -114,12 +114,13 @@ interface IOrderMixin {
     function simulate(address target, bytes calldata data) external;
 
     /**
-     * @notice Fills order's quote, fully or partially (whichever is possible)
+     * @notice Fills order's quote, fully or partially (whichever is possible).
      * @param order Order quote to fill
      * @param r R component of signature
      * @param vs VS component of signature
      * @param amount Taker amount to fill
-     * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise
+     * specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -133,12 +134,13 @@ interface IOrderMixin {
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
-     * @notice Same as `fillOrder` but allows to specify extensions that are used for the order
+     * @notice Same as `fillOrder` but allows to specify arguments that are used by the taker.
      * @param order Order quote to fill
      * @param r R component of signature
      * @param vs VS component of signature
      * @param amount Taker amount to fill
-     * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise
+     * specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @param args Arguments that are used by the taker (target, extension, interaction, permit)
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
@@ -154,11 +156,12 @@ interface IOrderMixin {
     ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
-     * @notice Same as `fillOrderTo` but uses contract-based signatures.
+     * @notice Same as `fillOrder` but uses contract-based signatures.
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
      * @param amount Taker amount to fill
-     * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
+     * @param takerTraits Specifies threshold as maximum allowed takingAmount when takingAmount is zero, otherwise
+     * specifies minimum allowed makingAmount. Top-most bit specifies whether taker wants to skip maker's permit.
      * @return makingAmount Actual amount transferred from maker to taker
      * @return takingAmount Actual amount transferred from taker to maker
      * @return orderHash Hash of the filled order
@@ -172,7 +175,7 @@ interface IOrderMixin {
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
-     * @notice Same as `fillContractOrder` but calls permit first.
+     * @notice Same as `fillContractOrder` but allows to specify arguments that are used by the taker.
      * @param order Order quote to fill
      * @param signature Signature to confirm quote ownership
      * @param amount Taker amount to fill

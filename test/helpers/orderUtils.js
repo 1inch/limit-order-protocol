@@ -34,7 +34,7 @@ const _HAS_EXTENSION_FLAG = 249n;
 const _USE_PERMIT2_FLAG = 248n;
 const _UNWRAP_WETH_FLAG = 247n;
 
-const TakerTrainsConstants = {
+const TakerTraitsConstants = {
     _MAKER_AMOUNT_FLAG: 1n << 255n,
     _UNWRAP_WETH_FLAG: 1n << 254n,
     _SKIP_ORDER_PERMIT_FLAG: 1n << 253n,
@@ -62,14 +62,14 @@ function buildTakerTraits ({
 } = {}) {
     return {
         traits: BigInt(minReturn) | (
-            (makingAmount ? TakerTrainsConstants._MAKER_AMOUNT_FLAG : 0n) |
-            (unwrapWeth ? TakerTrainsConstants._UNWRAP_WETH_FLAG : 0n) |
-            (skipMakerPermit ? TakerTrainsConstants._SKIP_ORDER_PERMIT_FLAG : 0n) |
-            (usePermit2 ? TakerTrainsConstants._USE_PERMIT2_FLAG : 0n) |
-            (trim0x(target).length > 0 ? TakerTrainsConstants._ARGS_HAS_TARGET : 0n) |
-            (BigInt(trim0x(extension).length / 2) << TakerTrainsConstants._ARGS_EXTENSION_LENGTH_OFFSET) |
-            (BigInt(trim0x(interaction).length / 2) << TakerTrainsConstants._ARGS_INTERACTION_LENGTH_OFFSET) |
-            (BigInt(trim0x(takerPermit).length / 2) << TakerTrainsConstants._ARGS_TAKER_PERMIT_LENGTH_OFFSET)
+            (makingAmount ? TakerTraitsConstants._MAKER_AMOUNT_FLAG : 0n) |
+            (unwrapWeth ? TakerTraitsConstants._UNWRAP_WETH_FLAG : 0n) |
+            (skipMakerPermit ? TakerTraitsConstants._SKIP_ORDER_PERMIT_FLAG : 0n) |
+            (usePermit2 ? TakerTraitsConstants._USE_PERMIT2_FLAG : 0n) |
+            (trim0x(target).length > 0 ? TakerTraitsConstants._ARGS_HAS_TARGET : 0n) |
+            (BigInt(trim0x(extension).length / 2) << TakerTraitsConstants._ARGS_EXTENSION_LENGTH_OFFSET) |
+            (BigInt(trim0x(interaction).length / 2) << TakerTraitsConstants._ARGS_INTERACTION_LENGTH_OFFSET) |
+            (BigInt(trim0x(takerPermit).length / 2) << TakerTraitsConstants._ARGS_TAKER_PERMIT_LENGTH_OFFSET)
         ),
         args: ethers.utils.solidityPack(
             ['bytes', 'bytes', 'bytes', 'bytes'],
