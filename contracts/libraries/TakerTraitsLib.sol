@@ -26,8 +26,6 @@ library TakerTraitsLib {
     uint256 private constant _ARGS_EXTENSION_LENGTH_MASK = 0xffffff;
     uint256 private constant _ARGS_INTERACTION_LENGTH_OFFSET = 200;
     uint256 private constant _ARGS_INTERACTION_LENGTH_MASK = 0xffffff;
-    uint256 private constant _ARGS_TAKER_PERMIT_LENGTH_OFFSET = 184;
-    uint256 private constant _ARGS_TAKER_PERMIT_LENGTH_MASK = 0xffff;
 
     uint256 private constant _AMOUNT_MASK = 0x000000000000000000ffffffffffffffffffffffffffffffffffffffffffffff;
 
@@ -41,10 +39,6 @@ library TakerTraitsLib {
 
     function argsInteractionLength(TakerTraits takerTraits) internal pure returns (uint256) {
         return (TakerTraits.unwrap(takerTraits) >> _ARGS_INTERACTION_LENGTH_OFFSET) & _ARGS_INTERACTION_LENGTH_MASK;
-    }
-
-    function argsTakerPermitLength(TakerTraits takerTraits) internal pure returns (uint256) {
-        return (TakerTraits.unwrap(takerTraits) >> _ARGS_TAKER_PERMIT_LENGTH_OFFSET) & _ARGS_TAKER_PERMIT_LENGTH_MASK;
     }
 
     /**

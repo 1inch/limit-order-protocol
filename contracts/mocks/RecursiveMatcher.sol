@@ -42,7 +42,7 @@ contract RecursiveMatcher is ITakerInteraction {
         uint256 /* takingAmount */,
         uint256 /* remainingMakingAmount */,
         bytes calldata extraData
-    ) external returns(uint256 offeredTakingAmount) {
+    ) external {
         if(extraData[0] & _FINALIZE_INTERACTION != 0x0) {
             (
                 address[] memory targets,
@@ -62,6 +62,5 @@ contract RecursiveMatcher is ITakerInteraction {
             );
             if (!success) revert FailedExternalCall(reason);
         }
-        return 0;
     }
 }
