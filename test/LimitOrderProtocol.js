@@ -287,7 +287,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const takerTraits = buildTakerTraits({
-                minRetrun: 10n,
+                minReturn: 10n,
                 makingAmount: true,
                 extension: order.extension,
             });
@@ -1323,7 +1323,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const takerTraits = buildTakerTraits({
-                minRetrun: 1n,
+                minReturn: 1n,
             });
             await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
                 .to.be.revertedWithCustomError(orderLibFactory, 'MissingOrderExtension');
@@ -1353,7 +1353,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const takerTraits = buildTakerTraits({
-                minRetrun: 1n,
+                minReturn: 1n,
                 extension: order.extension + '0011223344',
             });
             await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
@@ -1375,7 +1375,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const takerTraits = buildTakerTraits({
-                minRetrun: 1n,
+                minReturn: 1n,
                 extension: '0xabacabac',
             });
             await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
