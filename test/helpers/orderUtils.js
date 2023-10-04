@@ -45,8 +45,6 @@ const TakerTraitsConstants = {
     _ARGS_EXTENSION_LENGTH_MASK: 0xffffff,
     _ARGS_INTERACTION_LENGTH_OFFSET: 200n,
     _ARGS_INTERACTION_LENGTH_MASK: 0xffffff,
-    _ARGS_TAKER_PERMIT_LENGTH_OFFSET: 184n,
-    _ARGS_TAKER_PERMIT_LENGTH_MASK: 0xffff,
 };
 
 function buildTakerTraits ({
@@ -57,7 +55,6 @@ function buildTakerTraits ({
     target = '0x',
     extension = '0x',
     interaction = '0x',
-    takerPermit = '0x',
     minReturn = 0n,
 } = {}) {
     return {
@@ -68,8 +65,7 @@ function buildTakerTraits ({
             (usePermit2 ? TakerTraitsConstants._USE_PERMIT2_FLAG : 0n) |
             (trim0x(target).length > 0 ? TakerTraitsConstants._ARGS_HAS_TARGET : 0n) |
             (BigInt(trim0x(extension).length / 2) << TakerTraitsConstants._ARGS_EXTENSION_LENGTH_OFFSET) |
-            (BigInt(trim0x(interaction).length / 2) << TakerTraitsConstants._ARGS_INTERACTION_LENGTH_OFFSET) |
-            (BigInt(trim0x(takerPermit).length / 2) << TakerTraitsConstants._ARGS_TAKER_PERMIT_LENGTH_OFFSET)
+            (BigInt(trim0x(interaction).length / 2) << TakerTraitsConstants._ARGS_INTERACTION_LENGTH_OFFSET)
         ),
         args: ethers.utils.solidityPack(
             ['bytes', 'bytes', 'bytes', 'bytes'],
