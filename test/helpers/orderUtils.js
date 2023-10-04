@@ -68,8 +68,8 @@ function buildTakerTraits ({
             (BigInt(trim0x(interaction).length / 2) << TakerTraitsConstants._ARGS_INTERACTION_LENGTH_OFFSET)
         ),
         args: ethers.utils.solidityPack(
-            ['bytes', 'bytes', 'bytes', 'bytes'],
-            [target, extension, interaction, takerPermit],
+            ['bytes', 'bytes', 'bytes'],
+            [target, extension, interaction],
         ),
     };
 }
