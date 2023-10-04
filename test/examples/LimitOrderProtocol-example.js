@@ -179,9 +179,6 @@ describe.skip('LimitOrderProtocol usage example', function () {
                 makingAmount: 1,
                 takingAmount: 1,
                 maker: addr1.address,
-                makerTraits: buildMakerTraits({
-                    allowPriceImprovement: true,
-                }),
             },
             {
                 preInteraction,

@@ -26,7 +26,6 @@ const version = '4';
 
 const _NO_PARTIAL_FILLS_FLAG = 255n;
 const _ALLOW_MULTIPLE_FILLS_FLAG = 254n;
-const _NO_PRICE_IMPROVEMENT_FLAG = 253n;
 const _NEED_PREINTERACTION_FLAG = 252n;
 const _NEED_POSTINTERACTION_FLAG = 251n;
 const _NEED_EPOCH_CHECK_FLAG = 250n;
@@ -78,7 +77,6 @@ function buildMakerTraitsRFQ ({
     allowedSender = constants.ZERO_ADDRESS,
     shouldCheckEpoch = false,
     allowPartialFill = true,
-    allowPriceImprovement = true,
     allowMultipleFills = false,
     usePermit2 = false,
     expiry = 0,
@@ -89,7 +87,6 @@ function buildMakerTraitsRFQ ({
         allowedSender,
         shouldCheckEpoch,
         allowPartialFill,
-        allowPriceImprovement,
         allowMultipleFills,
         usePermit2,
         expiry,
@@ -102,7 +99,6 @@ function buildMakerTraits ({
     allowedSender = constants.ZERO_ADDRESS,
     shouldCheckEpoch = false,
     allowPartialFill = true,
-    allowPriceImprovement = true,
     allowMultipleFills = true,
     usePermit2 = false,
     unwrapWeth = false,
@@ -122,7 +118,6 @@ function buildMakerTraits ({
         setn(0n, _UNWRAP_WETH_FLAG, unwrapWeth) |
         setn(0n, _ALLOW_MULTIPLE_FILLS_FLAG, allowMultipleFills) |
         setn(0n, _NO_PARTIAL_FILLS_FLAG, !allowPartialFill) |
-        setn(0n, _NO_PRICE_IMPROVEMENT_FLAG, !allowPriceImprovement) |
         setn(0n, _NEED_EPOCH_CHECK_FLAG, shouldCheckEpoch) |
         setn(0n, _USE_PERMIT2_FLAG, usePermit2)
     ).toString(16).padStart(64, '0');
@@ -151,7 +146,6 @@ function buildOrderRFQ (
 ) {
     makerTraits = '0x' + setn(BigInt(makerTraits), _ALLOW_MULTIPLE_FILLS_FLAG, false).toString(16).padStart(64, '0');
     makerTraits = '0x' + setn(BigInt(makerTraits), _NO_PARTIAL_FILLS_FLAG, false).toString(16).padStart(64, '0');
-    makerTraits = '0x' + setn(BigInt(makerTraits), _NO_PRICE_IMPROVEMENT_FLAG, false).toString(16).padStart(64, '0');
     makerTraits = '0x' + setn(BigInt(makerTraits), _NEED_EPOCH_CHECK_FLAG, false).toString(16).padStart(64, '0');
 
     return buildOrder(
