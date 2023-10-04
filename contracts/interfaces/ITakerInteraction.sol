@@ -30,5 +30,5 @@ interface ITakerInteraction {
         uint256 takingAmount,
         uint256 remainingMakingAmount,
         bytes calldata extraData
-    ) external returns(uint256 offeredTakingAmount);
+    ) external;
 }

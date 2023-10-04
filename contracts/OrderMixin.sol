@@ -373,14 +373,11 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             }
         }
 
-        if (interaction.length >= 20) {
+        if (interaction.length > 19) {
             // proceed only if interaction length is enough to store address
-            uint256 offeredTakingAmount = ITakerInteraction(address(bytes20(interaction))).takerInteraction(
+            ITakerInteraction(address(bytes20(interaction))).takerInteraction(
                 order, extension, orderHash, msg.sender, makingAmount, takingAmount, remainingMakingAmount, interaction[20:]
             );
-            if (offeredTakingAmount > takingAmount && order.makerTraits.allowImproveRateViaInteraction()) {
-                takingAmount = offeredTakingAmount;
-            }
         }
 
         // Taker => Maker
