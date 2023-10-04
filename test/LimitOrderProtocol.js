@@ -1,6 +1,6 @@
 const hre = require('hardhat');
 const { ethers, tracer } = hre;
-const { expect, time, constants, getPermit2, permit2Contract, trim0x } = require('@1inch/solidity-utils');
+const { expect, time, constants, getPermit2, permit2Contract } = require('@1inch/solidity-utils');
 const { fillWithMakingAmount, unwrapWethTaker, buildMakerTraits, buildOrder, signOrder, buildOrderData, buildTakerTraits } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, ether, findTrace, countAllItems } = require('./helpers/utils');
@@ -494,7 +494,7 @@ describe('LimitOrderProtocol', function () {
                         [weth.address, permit],
                     ),
                     swap.interface.encodeFunctionData('fillOrderArgs', [
-                        order, r, vs, 1, takerTraits.traits, takerTraits.args
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
                     ]),
                 );
 
@@ -514,7 +514,7 @@ describe('LimitOrderProtocol', function () {
                         [weth.address, permit],
                     ),
                     swap.interface.encodeFunctionData('fillOrderArgs', [
-                        order2, r2, vs2, 1, takerTraits.traits, takerTraits.args
+                        order2, r2, vs2, 1, takerTraits.traits, takerTraits.args,
                     ]),
                 )).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
             });
@@ -533,7 +533,7 @@ describe('LimitOrderProtocol', function () {
                         [weth.address, permit],
                     ),
                     swap.interface.encodeFunctionData('fillOrderArgs', [
-                        order, r, vs, 1, takerTraits.traits, takerTraits.args
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
                     ]),
                 ));
             });
@@ -551,7 +551,7 @@ describe('LimitOrderProtocol', function () {
                         [weth.address, permit],
                     ),
                     swap.interface.encodeFunctionData('fillOrderArgs', [
-                        order, r, vs, 1, takerTraits.traits, takerTraits.args
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
                     ]),
                 )).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
             });
@@ -571,7 +571,7 @@ describe('LimitOrderProtocol', function () {
                         [weth.address, permit],
                     ),
                     swap.interface.encodeFunctionData('fillOrderArgs', [
-                        order, r, vs, 1, takerTraits.traits, takerTraits.args
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
                     ]),
                 ));
             });
@@ -590,7 +590,7 @@ describe('LimitOrderProtocol', function () {
                         [weth.address, permit],
                     ),
                     swap.interface.encodeFunctionData('fillOrderArgs', [
-                        order, r, vs, 1, takerTraits.traits, takerTraits.args
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
                     ]),
                 )).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
             });

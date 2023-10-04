@@ -74,7 +74,7 @@ describe('RFQ Orders in LimitOrderProtocol', function () {
 
     describe('Permit', function () {
         describe('Taker Permit', function () {
-            async function initPermit() {
+            async function initPermit () {
                 const { dai, weth, swap, chainId, usdc } = await initContracts();
                 await weth.approve(swap.address, 0);
                 const order = buildOrderRFQ({
