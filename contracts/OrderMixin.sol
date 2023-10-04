@@ -44,6 +44,24 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         _WETH = weth;
     }
 
+    function permitAndCall(bytes calldata permit, bytes calldata action) external {
+        IERC20(address(bytes20(permit))).tryPermit(msg.sender, address(this), permit[20:]);
+        // solhint-disable-next-line no-inline-assembly
+        assembly ("memory-safe") {
+            let ptr := mload(0x40)
+            calldatacopy(ptr, action.offset, action.length)
+            let success := delegatecall(gas(), address(), ptr, action.length, 0, 0)
+            returndatacopy(ptr, 0, returndatasize())
+            switch success
+            case 0 {
+                revert(ptr, returndatasize())
+            }
+            default {
+                return(ptr, returndatasize())
+            }
+        }
+    }
+
     /**
      * @notice See {IOrderMixin-bitInvalidatorForOrder}.
      */
@@ -149,7 +167,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             address target,
             bytes calldata extension,
             bytes calldata interaction
-        ) = _processArgs(takerTraits, args);
+        ) = _parseArgs(takerTraits, args);
 
         return _fillOrder(order, r, vs, amount, takerTraits, target, extension, interaction);
     }
@@ -212,7 +230,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             address target,
             bytes calldata extension,
             bytes calldata interaction
-        ) = _processArgs(takerTraits, args);
+        ) = _parseArgs(takerTraits, args);
 
         return _fillContractOrder(order, signature, amount, takerTraits, target, extension, interaction);
     }
@@ -447,8 +465,9 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
       * @return extension The extension calldata of the order.
       * @return interaction The interaction calldata.
       */
-    function _processArgs(TakerTraits takerTraits, bytes calldata args)
+    function _parseArgs(TakerTraits takerTraits, bytes calldata args)
         private
+        view
         returns(
             address target,
             bytes calldata extension,
@@ -476,12 +495,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             args = args[interactionLength:];
         } else {
             interaction = msg.data[:0];
-        }
-
-        uint256 takerPermitLength = takerTraits.argsTakerPermitLength();
-        if (takerPermitLength >= 20) {
-            bytes calldata permit = args[:takerPermitLength];
-            IERC20(address(bytes20(permit))).tryPermit(msg.sender, address(this), permit[20:]);
         }
     }
 
