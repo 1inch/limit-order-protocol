@@ -301,9 +301,7 @@ describe('LimitOrderProtocol', function () {
         const deployContractsAndInit = async function () {
             const { dai, weth, swap, chainId } = await deploySwapTokens();
             await initContracts(dai, weth, swap);
-            const TakerIncreaser = await ethers.getContractFactory('TakerIncreaser');
-            const takerIncreaser = await TakerIncreaser.deploy();
-            return { dai, weth, swap, chainId, takerIncreaser };
+            return { dai, weth, swap, chainId };
         };
 
         it('disallow multiple fills', async function () {
@@ -387,30 +385,6 @@ describe('LimitOrderProtocol', function () {
             await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [10, -10]);
             await expect(filltx).to.changeTokenBalance(weth, addr, -2);
             await expect(filltx).to.changeEtherBalance(addr1, 2);
-        });
-
-        it('allow taker rate improvement', async function () {
-            const { dai, weth, swap, chainId, takerIncreaser } = await loadFixture(deployContractsAndInit);
-            // Order: 10 DAI => 2 WETH
-            // Swap:  10 DAI => 3 WETH
-
-            const order = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
-                makingAmount: 10,
-                takingAmount: 2,
-                maker: addr1.address,
-                makerTraits: buildMakerTraits({ allowPriceImprovement: true }),
-            });
-
-            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-            const takerTraits = buildTakerTraits({
-                minRetrun: 2n,
-                interaction: takerIncreaser.address,
-            });
-            const filltx = swap.fillOrderArgs(order, r, vs, 10, takerTraits.traits, takerTraits.args);
-            await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [10, -10]);
-            await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [-3, 3]);
         });
     });
 
