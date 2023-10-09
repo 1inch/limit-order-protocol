@@ -3,12 +3,14 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { ether } = require('./helpers/utils');
 const { signOrder, buildOrder, buildTakerTraits } = require('./helpers/orderUtils');
 const { deploySwapTokens } = require('./helpers/fixtures');
-const { ethers } = require('hardhat');
+const hre = require('hardhat');
+const { ethers, network } = hre;
 
 describe('PriorityFeeLimiter', function () {
     let addr, addr1;
 
     before(async function () {
+        if (hre.__SOLIDITY_COVERAGE_RUNNING) { this.skip(); }
         [addr, addr1] = await ethers.getSigners();
     });
 
@@ -54,15 +56,24 @@ describe('PriorityFeeLimiter', function () {
     it('8 gwei base, 4 gwei priority should work', async function () {
         const { swap, order, r, vs, takerTraits } = await loadFixture(deployContractsAndInit);
 
-        await network.provider.send("hardhat_setNextBlockBaseFeePerGas", [ '0x1dcd65000' /* 8 gwei */ ]);
+        await network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x1dcd65000']);  // 8 gwei
 
         await swap.fillOrderArgs(order, r, vs, order.makingAmount, takerTraits.traits, takerTraits.args, { maxPriorityFeePerGas: 4000000000 });
+    });
+
+    it('8 gwei base, 6 gwei priority should not work', async function () {
+        const { swap, order, r, vs, takerTraits } = await loadFixture(deployContractsAndInit);
+
+        await network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x1dcd65000']);  // 8 gwei
+
+        const fillTx = swap.fillOrderArgs(order, r, vs, order.makingAmount, takerTraits.traits, takerTraits.args, { maxPriorityFeePerGas: 6000000000 });
+        await expect(fillTx).to.revertedWithCustomError(swap, 'PredicateIsNotTrue');
     });
 
     it('50 gwei base, 25 gwei priority should work', async function () {
         const { swap, order, r, vs, takerTraits } = await loadFixture(deployContractsAndInit);
 
-        await network.provider.send("hardhat_setNextBlockBaseFeePerGas", [ '0xba43b7400' /* 50 gwei */ ]);
+        await network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0xba43b7400']);  // 50 gwei
 
         await swap.fillOrderArgs(order, r, vs, order.makingAmount, takerTraits.traits, takerTraits.args, { maxPriorityFeePerGas: 25000000000 });
     });
@@ -70,7 +81,7 @@ describe('PriorityFeeLimiter', function () {
     it('50 gwei base, 26 gwei priority should not work', async function () {
         const { swap, order, r, vs, takerTraits } = await loadFixture(deployContractsAndInit);
 
-        await network.provider.send("hardhat_setNextBlockBaseFeePerGas", [ '0xba43b7400' /* 50 gwei */ ]);
+        await network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0xba43b7400']);  // 50 gwei
 
         const fillTx = swap.fillOrderArgs(order, r, vs, order.makingAmount, takerTraits.traits, takerTraits.args, { maxPriorityFeePerGas: 26000000000 });
         await expect(fillTx).to.revertedWithCustomError(swap, 'PredicateIsNotTrue');
@@ -79,7 +90,7 @@ describe('PriorityFeeLimiter', function () {
     it('150 gwei base, 90 gwei priority should work', async function () {
         const { swap, order, r, vs, takerTraits } = await loadFixture(deployContractsAndInit);
 
-        await network.provider.send("hardhat_setNextBlockBaseFeePerGas", [ '0x22ecb25c00' /* 150 gwei */ ]);
+        await network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x22ecb25c00']);  // 150 gwei
 
         await swap.fillOrderArgs(order, r, vs, order.makingAmount, takerTraits.traits, takerTraits.args, { maxPriorityFeePerGas: 90000000000 });
     });
@@ -87,7 +98,7 @@ describe('PriorityFeeLimiter', function () {
     it('150 gwei base, 100 gwei priority should not work', async function () {
         const { swap, order, r, vs, takerTraits } = await loadFixture(deployContractsAndInit);
 
-        await network.provider.send("hardhat_setNextBlockBaseFeePerGas", [ '0x22ecb25c00' /* 150 gwei */ ]);
+        await network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x22ecb25c00']);  // 150 gwei
 
         const fillTx = swap.fillOrderArgs(order, r, vs, order.makingAmount, takerTraits.traits, takerTraits.args, { maxPriorityFeePerGas: 100000000000 });
         await expect(fillTx).to.revertedWithCustomError(swap, 'PredicateIsNotTrue');
