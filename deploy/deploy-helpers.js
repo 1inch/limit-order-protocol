@@ -63,6 +63,18 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
             address: callsSimulator.address,
         });
     }
+
+    const priorityFeeLimiter = await deploy('PriorityFeeLimiter', {
+        from: deployer,
+    });
+
+    console.log('PriorityFeeLimiter deployed to:', priorityFeeLimiter.address);
+
+    if (await getChainId() !== '31337') {
+        await hre.run('verify:verify', {
+            address: priorityFeeLimiter.address,
+        });
+    }
 };
 
 module.exports.skip = async () => true;
