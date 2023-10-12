@@ -5,6 +5,8 @@ pragma solidity 0.8.19;
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../interfaces/IAmountGetter.sol";
 
+/// @title A helper that implement price decay over time from max to min
+/// @notice This contact is used in 1inch Fusion orders
 contract DutchAuctionCalculator is IAmountGetter {
     using Math for uint256;
 

@@ -6,6 +6,8 @@ import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
+/// @title A contract that can be called within postPredicate to unwrap WETH and do payout in ETH
+/// @notice This functionality was embedded into TakerTraits, so this file probably will be removed
 contract WethUnwrapper is OnlyWethReceiver {
     using SafeERC20 for IWETH;
 
