@@ -2,8 +2,8 @@
 
 pragma solidity 0.8.19;
 
-/// @title A helper contract for calculations related to order amounts
-library AmountCalculator {
+/// @title A helper library for calculations related to order amounts
+library AmountCalculatorLib {
     /// @notice Calculates maker amount
     /// @return Result Floored maker amount
     function getMakingAmount(uint256 orderMakerAmount, uint256 orderTakerAmount, uint256 swapTakerAmount) internal pure returns(uint256) {
