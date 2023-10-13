@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.19;
 
-/// @title A helper library for calculations related to order amounts
+/// @title The helper library to calculate linearly taker amount from maker amount and vice versa.
 library AmountCalculatorLib {
     /// @notice Calculates maker amount
     /// @return Result Floored maker amount

@@ -9,7 +9,7 @@ import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 import "../interfaces/IPostInteraction.sol";
 import "../OrderLib.sol";
 
-/// @title Extension that will allow to create limit order that sell ETH. ETH would need to be deposited to contract
+/// @title Extension that will allow to create limit order that sell ETH. ETH must be deposited into the contract.
 contract ETHOrders is IPostInteraction, OnlyWethReceiver {
     using SafeERC20 for IWETH;
     using OrderLib for IOrderMixin.Order;

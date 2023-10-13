@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../interfaces/IAmountGetter.sol";
 
 /// @title A helper that implements price decay over time from max to min
-/// @notice This contact is used in 1inch Fusion orders
+/// @notice The contract implements Dutch auction price calculation for 1inch limit orders, it is used by 1inch Fusion
 contract DutchAuctionCalculator is IAmountGetter {
     using Math for uint256;
 
