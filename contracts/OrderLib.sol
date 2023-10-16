@@ -8,7 +8,7 @@ import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 import "./interfaces/IOrderMixin.sol";
 import "./libraries/MakerTraitsLib.sol";
 import "./libraries/ExtensionLib.sol";
-import "./helpers/AmountCalculator.sol";
+import "./libraries/AmountCalculatorLib.sol";
 import "./interfaces/IAmountGetter.sol";
 
 /**
@@ -96,7 +96,7 @@ import "./interfaces/IAmountGetter.sol";
         bytes calldata data = extension.makingAmountData();
         if (data.length == 0) {
             // Linear proportion
-            return AmountCalculator.getMakingAmount(order.makingAmount, order.takingAmount, requestedTakingAmount);
+            return AmountCalculatorLib.getMakingAmount(order.makingAmount, order.takingAmount, requestedTakingAmount);
         }
         return IAmountGetter(address(bytes20(data))).getMakingAmount(
             order,
@@ -130,7 +130,7 @@ import "./interfaces/IAmountGetter.sol";
         bytes calldata data = extension.takingAmountData();
         if (data.length == 0) {
             // Linear proportion
-            return AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, requestedMakingAmount);
+            return AmountCalculatorLib.getTakingAmount(order.makingAmount, order.takingAmount, requestedMakingAmount);
         }
         return IAmountGetter(address(bytes20(data))).getTakingAmount(
             order,

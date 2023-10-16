@@ -6,6 +6,8 @@ import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
+/// @title The extension to unwrap WETH and do payout in ETH in limit order postInteraction
+/// @notice The feature was embedded into TakerTraits, so it is obsolete and will be removed
 contract WethUnwrapper is OnlyWethReceiver {
     using SafeERC20 for IWETH;
 
