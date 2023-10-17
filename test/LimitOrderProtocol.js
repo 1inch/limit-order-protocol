@@ -1559,6 +1559,27 @@ describe('LimitOrderProtocol', function () {
             await expect(fillTx).to.changeEtherBalance(addr, -3);
         });
 
+        it('should pass with takerAsset WETH and correct msg.value and unwrap flag is set', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 900,
+                takingAmount: 3,
+                maker: addr1.address,
+                makerTraits: buildMakerTraits({
+                    unwrapWeth: true,
+                }),
+            });
+
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+            const fillTx = swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 4 });
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [900, -900]);
+            await expect(fillTx).to.changeEtherBalance(addr, -3);
+            await expect(fillTx).to.changeEtherBalance(addr1, 3);
+        });
+
         it('should reverted with takerAsset non-WETH and msg.value greater than 0', async function () {
             const { dai, swap, chainId, usdc } = await loadFixture(deployContractsAndInit);
 
