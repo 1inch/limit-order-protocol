@@ -13,6 +13,7 @@ type TakerTraits is uint256;
  * 254 bit `_UNWRAP_WETH_FLAG`          - If set, the WETH will be unwrapped into ETH before sending to taker.
  * 253 bit `_SKIP_ORDER_PERMIT_FLAG`    - If set, the order skips maker's permit execution.
  * 252 bit `_USE_PERMIT2_FLAG`          - If set, the order uses the permit2 function for authorization.
+ * 251 bit `_ARGS_HAS_TARGET`           - Should be set when target address is passed. Target address is the one that will receive maker asset during the fill execution by default it's equal to msg.sender
  * The remaining bits are used to store the threshold amount (the maximum amount a taker agrees to give in exchange for a making amount).
  */
 library TakerTraitsLib {

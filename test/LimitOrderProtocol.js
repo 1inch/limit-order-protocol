@@ -388,6 +388,40 @@ describe('LimitOrderProtocol', function () {
         });
     });
 
+    describe('TakerTraits', function () {
+        const deployContractsAndInit = async function () {
+            const { dai, weth, swap, chainId } = await deploySwapTokens();
+            await initContracts(dai, weth, swap);
+            return { dai, weth, swap, chainId };
+        };
+
+        it('DAI => WETH, send WETH to address different from msg.sender when fill', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const otherAddress = addr2;
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 1800,
+                takingAmount: 1,
+                maker: addr1.address,
+            });
+
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+            const takerTraits = buildTakerTraits({
+                target: otherAddress.address,
+            });
+
+            const fillTx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+
+            await expect(fillTx).to.changeTokenBalance(dai, addr1, -1800);
+            await expect(fillTx).to.changeTokenBalance(weth, addr, -1);
+
+            // Pay out happened to otherAddress, specified in taker traits
+            await expect(fillTx).to.changeTokenBalance(dai, otherAddress, 1800);
+        });
+    });
+
     describe('Permit', function () {
         describe('Taker Permit', function () {
             const deployContractsAndInitPermit = async function () {
@@ -570,7 +604,7 @@ describe('LimitOrderProtocol', function () {
             });
         });
 
-        describe('maker permit', function () {
+        describe('Maker permit', function () {
             const deployContractsAndInitPermit = async function () {
                 const { dai, weth, swap, chainId } = await deploySwapTokens();
                 await initContracts(dai, weth, swap);
