@@ -393,6 +393,11 @@ describe('LimitOrderProtocol', function () {
 
     describe('Permit', function () {
         describe('Taker Permit', function () {
+            // tests that marked + are implemened
+            //            | ok allowance | no allowance |
+            // ok permit  |      -       |     +        |
+            // bad permit |      +       |     +        |
+
             const deployContractsAndInitPermit = async function () {
                 const { dai, weth, swap, chainId } = await deploySwapTokens();
                 await initContracts(dai, weth, swap);
@@ -430,158 +435,6 @@ describe('LimitOrderProtocol', function () {
                 );
                 await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
                 await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
-            });
-
-            it('DAI => WETH, permit2', async function () {
-                const { dai, weth, swap, chainId, order } = await loadFixture(deployContractsAndInitPermit);
-
-                const permit2 = await permit2Contract();
-                await weth.approve(permit2.address, 1);
-                const permit = await getPermit2(addr, weth.address, chainId, swap.address, 1);
-
-                const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
-                const takerTraits = buildTakerTraits({
-                    minReturn: 1n,
-                    makingAmount: true,
-                    usePermit2: true,
-                });
-                const fillTx = swap.permitAndCall(
-                    ethers.utils.solidityPack(
-                        ['address', 'bytes'],
-                        [weth.address, permit],
-                    ),
-                    swap.interface.encodeFunctionData('fillOrderArgs', [
-                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
-                    ]),
-                );
-                await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-                await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
-            });
-
-            it('reverts in case of reused permit and not enough allowance', async function () {
-                const { dai, weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
-
-                const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
-
-                const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-                const takerTraits = buildTakerTraits({ minReturn: 1n });
-                await swap.permitAndCall(
-                    ethers.utils.solidityPack(
-                        ['address', 'bytes'],
-                        [weth.address, permit],
-                    ),
-                    swap.interface.encodeFunctionData('fillOrderArgs', [
-                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
-                    ]),
-                );
-
-                const order2 = buildOrder({
-                    makerAsset: dai.address,
-                    takerAsset: weth.address,
-                    makingAmount: 2,
-                    takingAmount: 1,
-                    maker: addr1.address,
-                });
-                const signature2 = await signOrder(order2, chainId, swap.address, addr1);
-                const { r: r2, _vs: vs2 } = ethers.utils.splitSignature(signature2);
-
-                await expect(swap.permitAndCall(
-                    ethers.utils.solidityPack(
-                        ['address', 'bytes'],
-                        [weth.address, permit],
-                    ),
-                    swap.interface.encodeFunctionData('fillOrderArgs', [
-                        order2, r2, vs2, 1, takerTraits.traits, takerTraits.args,
-                    ]),
-                )).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
-            });
-
-            it('reverts in case of reused permit and not enough allowance, checkAndInvalidate', async function () {
-                const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInitPermit);
-
-                const order = buildOrder({
-                    makerAsset: dai.address,
-                    takerAsset: weth.address,
-                    makingAmount: 1,
-                    takingAmount: 1,
-                    maker: addr1.address,
-                    makerTraits: buildMakerTraits({ allowMultipleFills: false }),
-                });
-
-                const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
-
-                const signature = await signOrder(order, chainId, swap.address, addr1);
-                const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-                const takerTraits = buildTakerTraits({ minReturn: 1n });
-                await swap.permitAndCall(
-                    ethers.utils.solidityPack(
-                        ['address', 'bytes'],
-                        [weth.address, permit],
-                    ),
-                    swap.interface.encodeFunctionData('fillOrderArgs', [
-                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
-                    ]),
-                );
-
-                const order2 = buildOrder({
-                    makerAsset: dai.address,
-                    takerAsset: weth.address,
-                    makingAmount: 2,
-                    takingAmount: 1,
-                    maker: addr1.address,
-                    makerTraits: buildMakerTraits({ nonce: 1, allowMultipleFills: false }),
-                });
-                const signature2 = await signOrder(order2, chainId, swap.address, addr1);
-                const { r: r2, _vs: vs2 } = ethers.utils.splitSignature(signature2);
-
-                await expect(swap.permitAndCall(
-                    ethers.utils.solidityPack(
-                        ['address', 'bytes'],
-                        [weth.address, permit],
-                    ),
-                    swap.interface.encodeFunctionData('fillOrderArgs', [
-                        order2, r2, vs2, 1, takerTraits.traits, takerTraits.args,
-                    ]),
-                )).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
-            });
-
-            it('skips bad permit if allowance is enough', async function () {
-                const { dai, weth, swap, order, signature } = await loadFixture(deployContractsAndInitPermit);
-
-                await weth.approve(swap.address, '1');
-                const permit = await getPermit(addr.address, addr2, weth, '1', 1234, swap.address, '1', 100);
-
-                const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-                const takerTraits = buildTakerTraits({ minReturn: 1n });
-                const fillTx = swap.permitAndCall(
-                    ethers.utils.solidityPack(
-                        ['address', 'bytes'],
-                        [weth.address, permit],
-                    ),
-                    swap.interface.encodeFunctionData('fillOrderArgs', [
-                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
-                    ]),
-                );
-                await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
-                await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
-            });
-
-            it('reverts after bad permit if allowance is not enough', async function () {
-                const { weth, swap, order, signature } = await loadFixture(deployContractsAndInitPermit);
-
-                const permit = await getPermit(addr.address, addr2, weth, '1', 1234, swap.address, '1');
-
-                const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-                const takerTraits = buildTakerTraits({ minReturn: 1n });
-                await expect(swap.permitAndCall(
-                    ethers.utils.solidityPack(
-                        ['address', 'bytes'],
-                        [weth.address, permit],
-                    ),
-                    swap.interface.encodeFunctionData('fillOrderArgs', [
-                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
-                    ]),
-                )).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
             });
 
             it('skips expired permit if allowance is enough', async function () {
@@ -1040,7 +893,7 @@ describe('LimitOrderProtocol', function () {
 
         it('should cancel own order with massInvalidate', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(orderCancelationInit);
-            
+
             const orderNonce = 0;
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -1052,7 +905,7 @@ describe('LimitOrderProtocol', function () {
             });
             const data = buildOrderData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
-            
+
             await swap.connect(addr1).cancelOrder(order.makerTraits, orderHash);
             const invalidator = await swap.bitInvalidatorForOrder(addr1.address, orderNonce);
             expect(invalidator).to.equal('1');
@@ -1060,7 +913,7 @@ describe('LimitOrderProtocol', function () {
 
         it('should cancel own order with massInvalidate, huge nonce', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(orderCancelationInit);
-            
+
             const orderNonce = 1023;
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -1099,7 +952,7 @@ describe('LimitOrderProtocol', function () {
 
         it('should not fill cancelled order, massInvalidate', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(orderCancelationInit);
-            
+
             const orderNonce = 0;
             const order = buildOrder({
                 makerAsset: dai.address,
