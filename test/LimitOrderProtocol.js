@@ -1,7 +1,7 @@
 const hre = require('hardhat');
 const { ethers, tracer } = hre;
 const { expect, time, constants } = require('@1inch/solidity-utils');
-const { fillWithMakingAmount, unwrapWethTaker, buildMakerTraits, buildOrder, signOrder, buildOrderData, buildTakerTraits } = require('./helpers/orderUtils');
+const { fillWithMakingAmount, unwrapWethTaker, buildMakerTraits, buildMakerTraitsRFQ, buildOrder, signOrder, buildOrderData, buildTakerTraits } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, ether, findTrace, countAllItems } = require('./helpers/utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
@@ -901,7 +901,7 @@ describe('LimitOrderProtocol', function () {
                 makingAmount: 1,
                 takingAmount: 1,
                 maker: addr1.address,
-                makerTraits: buildMakerTraits({ nonce: orderNonce, allowMultipleFills: false }),
+                makerTraits: buildMakerTraitsRFQ({ nonce: orderNonce }),
             });
             const data = buildOrderData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
@@ -921,7 +921,7 @@ describe('LimitOrderProtocol', function () {
                 makingAmount: 1,
                 takingAmount: 1,
                 maker: addr1.address,
-                makerTraits: buildMakerTraits({ nonce: orderNonce, allowMultipleFills: false }),
+                makerTraits: buildMakerTraitsRFQ({ nonce: orderNonce }),
             });
             const data = buildOrderData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
@@ -960,7 +960,7 @@ describe('LimitOrderProtocol', function () {
                 makingAmount: 1,
                 takingAmount: 1,
                 maker: addr1.address,
-                makerTraits: buildMakerTraits({ nonce: orderNonce, allowMultipleFills: false }),
+                makerTraits: buildMakerTraitsRFQ({ nonce: orderNonce }),
             });
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, _vs: vs } = ethers.utils.splitSignature(signature);
