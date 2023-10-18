@@ -144,7 +144,7 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: 1,
                     takingAmount: 1,
                     maker: addr1.address,
-                    makerTraits: buildMakerTraits({ nonce }),
+                    makerTraits: buildMakerTraitsRFQ({ nonce }),
                 });
 
                 const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
