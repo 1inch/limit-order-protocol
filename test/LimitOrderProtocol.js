@@ -1021,6 +1021,21 @@ describe('LimitOrderProtocol', function () {
             expect(await swap.remainingInvalidatorForOrder(addr1.address, '0x0000000000000000000000000000000000000000000000000000000000000001')).to.equal('0');
         });
 
+        it('can simulate order cancelation', async function () {
+            // TODO: prepare more representative test in 'wip' section - illustrate cases when SimulationResults args is different from 0x
+            const { swap, order } = await loadFixture(orderCancelationInit);
+
+            const calldata = swap.interface.encodeFunctionData('cancelOrder', [
+                order.makerTraits,
+                '0x0000000000000000000000000000000000000000000000000000000000000001',
+            ]);
+
+            const cancelationSimulate = swap.simulate(addr1.address, calldata);
+            await expect(cancelationSimulate)
+                .to.be.revertedWithCustomError(swap, 'SimulationResults')
+                .withArgs(true, '0x');
+        });
+
         it('should cancel several orders by hash', async function () {
             const { swap, order } = await loadFixture(orderCancelationInit);
 
@@ -1039,8 +1054,7 @@ describe('LimitOrderProtocol', function () {
             expect(await swap.remainingInvalidatorForOrder(addr1.address, secondOrderFakeHash)).to.equal('0');
         });
 
-        it('rawRemainingInvalidatorForOrder returns method works', async function (){
-
+        it('rawRemainingInvalidatorForOrder returns method works', async function () {
             const { swap, order } = await loadFixture(orderCancelationInit);
             const orderFakeHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
 
