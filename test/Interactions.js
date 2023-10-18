@@ -144,8 +144,8 @@ describe('Interactions', function () {
                     ],
                     [
                         weth.interface.encodeFunctionData('transferFrom', [addr.address, matcher.address, ether('0.025')]),
-                        dai.interface.encodeFunctionData('approve', [swap.address, ether('0.025')]),
-                        weth.interface.encodeFunctionData('transfer', [addr.address, ether('25')]),
+                        weth.interface.encodeFunctionData('approve', [swap.address, ether('0.025')]),
+                        dai.interface.encodeFunctionData('transfer', [addr.address, ether('25')]),
                     ],
                 ],
             ).substring(2);
