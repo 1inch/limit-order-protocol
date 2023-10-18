@@ -1021,6 +1021,24 @@ describe('LimitOrderProtocol', function () {
             expect(await swap.remainingInvalidatorForOrder(addr1.address, '0x0000000000000000000000000000000000000000000000000000000000000001')).to.equal('0');
         });
 
+        it('should cancel several orders by hash', async function () {
+            const { swap, order } = await loadFixture(orderCancelationInit);
+
+            const firstOrder = order;
+            const secondOrder = order;
+
+            const firstOrderFakeHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+            const secondOrderFakeHash = '0x0000000000000000000000000000000000000000000000000000000000000002';
+
+            await swap.connect(addr1).cancelOrders(
+                [firstOrder.makerTraits, secondOrder.makerTraits],
+                [firstOrderFakeHash, secondOrderFakeHash],
+            );
+
+            expect(await swap.remainingInvalidatorForOrder(addr1.address, firstOrderFakeHash)).to.equal('0');
+            expect(await swap.remainingInvalidatorForOrder(addr1.address, secondOrderFakeHash)).to.equal('0');
+        });
+
         it('should not fill cancelled order', async function () {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
             const signature = await signOrder(order, chainId, swap.address, addr1);
