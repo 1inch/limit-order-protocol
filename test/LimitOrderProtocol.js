@@ -1021,8 +1021,8 @@ describe('LimitOrderProtocol', function () {
             expect(await swap.remainingInvalidatorForOrder(addr1.address, '0x0000000000000000000000000000000000000000000000000000000000000001')).to.equal('0');
         });
 
+        // TODO: fix simulate test
         it('can simulate order cancelation', async function () {
-            // TODO: prepare more representative test in 'wip' section - illustrate cases when SimulationResults args is different from 0x
             const { swap, order } = await loadFixture(orderCancelationInit);
 
             const calldata = swap.interface.encodeFunctionData('cancelOrder', [
