@@ -21,29 +21,28 @@ contract RecursiveMatcher is ITakerInteraction {
         bytes32 vs,
         uint256 amount,
         TakerTraits takerTraits,
-        bytes calldata interaction
+        bytes calldata args
     ) external {
-        orderMixin.fillOrderTo(
+        orderMixin.fillOrderArgs(
             order,
             r,
             vs,
             amount,
             takerTraits,
-            address(this),
-            interaction
+            args
         );
     }
 
     function takerInteraction(
         IOrderMixin.Order calldata /* order */,
-        bytes32 /* orderHash */,
         bytes calldata /* extension */,
+        bytes32 /* orderHash */,
         address /* taker */,
         uint256 /* makingAmount */,
         uint256 /* takingAmount */,
         uint256 /* remainingMakingAmount */,
         bytes calldata extraData
-    ) external returns(uint256 offeredTakingAmount) {
+    ) external {
         if(extraData[0] & _FINALIZE_INTERACTION != 0x0) {
             (
                 address[] memory targets,
@@ -59,10 +58,9 @@ contract RecursiveMatcher is ITakerInteraction {
         } else {
             // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory reason) = msg.sender.call(
-                abi.encodePacked(IOrderMixin.fillOrderTo.selector, extraData[1:])
+                abi.encodePacked(IOrderMixin.fillOrderArgs.selector, extraData[1:])
             );
             if (!success) revert FailedExternalCall(reason);
         }
-        return 0;
     }
 }

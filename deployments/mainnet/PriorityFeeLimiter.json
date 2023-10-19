@@ -1,0 +1,59 @@
+{
+  "address": "0x5E92d4021e49f9A2967b4EA1d20213B3A1c7c912",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "isPriorityFeeValid",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x1d1ffe931a812a2af71af25b841f63ed6e2a24ee2cdf79eed1e4a2bd64d95c2c",
+  "receipt": {
+    "to": null,
+    "from": "0x11799622F4D98A24514011E8527B969f7488eF47",
+    "contractAddress": "0x5E92d4021e49f9A2967b4EA1d20213B3A1c7c912",
+    "transactionIndex": 117,
+    "gasUsed": "101367",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x263d3939a79ce71ca11bc2429e003caa0d454342999049de735ae0af77f132c3",
+    "transactionHash": "0x1d1ffe931a812a2af71af25b841f63ed6e2a24ee2cdf79eed1e4a2bd64d95c2c",
+    "logs": [],
+    "blockNumber": 18311797,
+    "cumulativeGasUsed": "11544912",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "6e7c6f92a69228f0d66327ee7f30987a",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.19+commit.7dd6d404\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"isPriorityFeeValid\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"title\":\"A helper contract for executing boolean functions on arbitrary target call results\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"isPriorityFeeValid()\":{\"notice\":\"Validates priority fee according to the spec https://snapshot.org/#/1inch.eth/proposal/0xa040c60050147a0f67042ae024673e92e813b5d2c0f748abf70ddfa1ed107cbe For blocks with baseFee <10.6 gwei \\u2013 the priorityFee is capped at 70% of the baseFee. For blocks with baseFee between 10.6 gwei and 104.1 gwei \\u2013 the priorityFee is capped at 50% of the baseFee. For blocks with baseFee >104.1 gwei \\u2013 priorityFee is capped at 65% of the block\\u2019s baseFee.\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/helpers/PrioirityFeeLimiter.sol\":\"PriorityFeeLimiter\"},\"evmVersion\":\"paris\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":1000000},\"remappings\":[],\"viaIR\":true},\"sources\":{\"contracts/helpers/PrioirityFeeLimiter.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n\\npragma solidity 0.8.19;\\n\\n/// @title A helper contract for executing boolean functions on arbitrary target call results\\ncontract PriorityFeeLimiter {\\n    /// @notice Validates priority fee according to the spec\\n    /// https://snapshot.org/#/1inch.eth/proposal/0xa040c60050147a0f67042ae024673e92e813b5d2c0f748abf70ddfa1ed107cbe\\n    /// For blocks with baseFee <10.6 gwei \\u2013 the priorityFee is capped at 70% of the baseFee.\\n    /// For blocks with baseFee between 10.6 gwei and 104.1 gwei \\u2013 the priorityFee is capped at 50% of the baseFee.\\n    /// For blocks with baseFee >104.1 gwei \\u2013 priorityFee is capped at 65% of the block\\u2019s baseFee.\\n    function isPriorityFeeValid() public view returns(bool) {\\n        unchecked {\\n            uint256 baseFee = block.basefee;\\n            uint256 priorityFee = tx.gasprice - baseFee;\\n\\n            if (baseFee < 10.6 gwei) {\\n                return priorityFee * 100 <= baseFee * 70;\\n            } else if (baseFee < 104.1 gwei) {\\n                return priorityFee * 2 <= baseFee;\\n            } else {\\n                return priorityFee * 100 <= baseFee * 65;\\n            }\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0xec368259e09381c211267f2e735a08a7229efe350c6040bd12553caa40ed3dec\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x608080604052346100155760de908161001b8239f35b600080fdfe6080806040526004361015601257600080fd5b600090813560e01c630202470814602857600080fd5b34606357817ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc360112606357602090605d6067565b15158152f35b5080fd5b483a03640277cf2a0048106000146085576064604648029102111590565b64183cd7f100481015609b57489060011b111590565b606460414802910211159056fea2646970667358221220fe767365ecbf40522ecd1de1cb05111223125fde69ba80a98aa04be6f0c80f4b64736f6c63430008130033",
+  "deployedBytecode": "0x6080806040526004361015601257600080fd5b600090813560e01c630202470814602857600080fd5b34606357817ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc360112606357602090605d6067565b15158152f35b5080fd5b483a03640277cf2a0048106000146085576064604648029102111590565b64183cd7f100481015609b57489060011b111590565b606460414802910211159056fea2646970667358221220fe767365ecbf40522ecd1de1cb05111223125fde69ba80a98aa04be6f0c80f4b64736f6c63430008130033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "title": "A helper contract for executing boolean functions on arbitrary target call results",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "isPriorityFeeValid()": {
+        "notice": "Validates priority fee according to the spec https://snapshot.org/#/1inch.eth/proposal/0xa040c60050147a0f67042ae024673e92e813b5d2c0f748abf70ddfa1ed107cbe For blocks with baseFee <10.6 gwei – the priorityFee is capped at 70% of the baseFee. For blocks with baseFee between 10.6 gwei and 104.1 gwei – the priorityFee is capped at 50% of the baseFee. For blocks with baseFee >104.1 gwei – priorityFee is capped at 65% of the block’s baseFee."
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": null
+  }
+}

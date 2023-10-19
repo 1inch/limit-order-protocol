@@ -4,33 +4,63 @@ pragma solidity 0.8.19;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-
+import "../interfaces/IOrderMixin.sol";
+import "../interfaces/IAmountGetter.sol";
 
 /// @title A helper contract for interactions with https://docs.chain.link
-contract ChainlinkCalculator {
+contract ChainlinkCalculator is IAmountGetter {
     using SafeCast for int256;
 
     error DifferentOracleDecimals();
 
     uint256 private constant _SPREAD_DENOMINATOR = 1e9;
-    uint256 private constant _INVERSE_MASK = 1 << 255;
 
-    /// @notice Calculates price of token relative to oracle unit (ETH or USD)
-    /// @param inverseAndSpread concatenated inverse flag and spread.
-    /// Lowest 254 bits specify spread amount. Spread is scaled by 1e9, i.e. 101% = 1.01e9, 99% = 0.99e9.
-    /// Highest bit is set when oracle price should be inverted,
-    /// e.g. for DAI-ETH oracle, inverse=false means that we request DAI price in ETH
-    /// and inverse=true means that we request ETH price in DAI
-    /// @return Amount * spread * oracle price
-    function singlePrice(AggregatorV3Interface oracle, uint256 inverseAndSpread, uint256 amount) external view returns(uint256) {
+    function getMakingAmount(
+        IOrderMixin.Order calldata /* order */,
+        bytes calldata /* extension */,
+        bytes32 /* orderHash */,
+        address /* taker */,
+        uint256 takingAmount,
+        uint256 /* remainingMakingAmount */,
+        bytes calldata extraData
+    ) external view returns (uint256) {
+        (
+            AggregatorV3Interface oracle,
+            uint256 spread
+        ) = abi.decode(extraData, (AggregatorV3Interface, uint256));
+
+        /// @notice Calculates price of token relative to oracle unit (ETH or USD)
+        /// Lowest 254 bits specify spread amount. Spread is scaled by 1e9, i.e. 101% = 1.01e9, 99% = 0.99e9.
+        /// Highest bit is set when oracle price should be inverted,
+        /// e.g. for DAI-ETH oracle, inverse=false means that we request DAI price in ETH
+        /// and inverse=true means that we request ETH price in DAI
+        /// @return Amount * spread * oracle price
         (, int256 latestAnswer,,,) = oracle.latestRoundData();
-        bool inverse = inverseAndSpread & _INVERSE_MASK > 0;
-        uint256 spread = inverseAndSpread & (~_INVERSE_MASK);
-        if (inverse) {
-            return amount * spread * (10 ** oracle.decimals()) / latestAnswer.toUint256() / _SPREAD_DENOMINATOR;
-        } else {
-            return amount * spread * latestAnswer.toUint256() / (10 ** oracle.decimals()) / _SPREAD_DENOMINATOR;
-        }
+        return takingAmount * spread * latestAnswer.toUint256() / (10 ** oracle.decimals()) / _SPREAD_DENOMINATOR;
+    }
+
+    function getTakingAmount(
+        IOrderMixin.Order calldata /* order */,
+        bytes calldata /* extension */,
+        bytes32 /* orderHash */,
+        address /* taker */,
+        uint256 makingAmount,
+        uint256 /* remainingMakingAmount */,
+        bytes calldata extraData
+    ) external view returns (uint256) {
+        (
+            AggregatorV3Interface oracle,
+            uint256 spread
+        ) = abi.decode(extraData, (AggregatorV3Interface, uint256));
+
+        /// @notice Calculates price of token relative to oracle unit (ETH or USD)
+        /// Lowest 254 bits specify spread amount. Spread is scaled by 1e9, i.e. 101% = 1.01e9, 99% = 0.99e9.
+        /// Highest bit is set when oracle price should be inverted,
+        /// e.g. for DAI-ETH oracle, inverse=false means that we request DAI price in ETH
+        /// and inverse=true means that we request ETH price in DAI
+        /// @return Amount * spread * oracle price
+        (, int256 latestAnswer,,,) = oracle.latestRoundData();
+        return makingAmount * spread * (10 ** oracle.decimals()) / latestAnswer.toUint256() / _SPREAD_DENOMINATOR;
     }
 
     /// @notice Calculates price of token A relative to token B. Note that order is important

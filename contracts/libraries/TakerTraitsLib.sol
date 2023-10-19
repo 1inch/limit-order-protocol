@@ -20,12 +20,26 @@ library TakerTraitsLib {
     uint256 private constant _UNWRAP_WETH_FLAG = 1 << 254;
     uint256 private constant _SKIP_ORDER_PERMIT_FLAG = 1 << 253;
     uint256 private constant _USE_PERMIT2_FLAG = 1 << 252;
-    uint256 private constant _AMOUNT_MASK = ~(
-        _MAKER_AMOUNT_FLAG |
-        _UNWRAP_WETH_FLAG |
-        _SKIP_ORDER_PERMIT_FLAG |
-        _USE_PERMIT2_FLAG
-    );
+    uint256 private constant _ARGS_HAS_TARGET = 1 << 251;
+
+    uint256 private constant _ARGS_EXTENSION_LENGTH_OFFSET = 224;
+    uint256 private constant _ARGS_EXTENSION_LENGTH_MASK = 0xffffff;
+    uint256 private constant _ARGS_INTERACTION_LENGTH_OFFSET = 200;
+    uint256 private constant _ARGS_INTERACTION_LENGTH_MASK = 0xffffff;
+
+    uint256 private constant _AMOUNT_MASK = 0x000000000000000000ffffffffffffffffffffffffffffffffffffffffffffff;
+
+    function argsHasTarget(TakerTraits takerTraits) internal pure returns (bool) {
+        return (TakerTraits.unwrap(takerTraits) & _ARGS_HAS_TARGET) != 0;
+    }
+
+    function argsExtensionLength(TakerTraits takerTraits) internal pure returns (uint256) {
+        return (TakerTraits.unwrap(takerTraits) >> _ARGS_EXTENSION_LENGTH_OFFSET) & _ARGS_EXTENSION_LENGTH_MASK;
+    }
+
+    function argsInteractionLength(TakerTraits takerTraits) internal pure returns (uint256) {
+        return (TakerTraits.unwrap(takerTraits) >> _ARGS_INTERACTION_LENGTH_OFFSET) & _ARGS_INTERACTION_LENGTH_MASK;
+    }
 
     /**
      * @notice Checks if the taking amount should be calculated based on making amount.

@@ -1,7 +1,7 @@
-const { expect, trim0x } = require('@1inch/solidity-utils');
+const { expect } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
-const { fillWithMakingAmount, signOrder, buildOrder } = require('./helpers/orderUtils');
-const { cutLastArg, ether, setn } = require('./helpers/utils');
+const { ether } = require('./helpers/utils');
+const { signOrder, buildOrder, buildTakerTraits } = require('./helpers/orderUtils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 
@@ -11,18 +11,6 @@ describe('ChainLinkExample', function () {
     before(async function () {
         [addr, addr1] = await ethers.getSigners();
     });
-
-    function buildInverseWithSpread (inverse, spread) {
-        return setn(spread, 255, inverse).toString();
-    }
-
-    function buildSinglePriceGetter (chainlink, oracle, inverse, spread, amount = '0') {
-        return chainlink.address + trim0x(chainlink.interface.encodeFunctionData('singlePrice', [oracle.address, buildInverseWithSpread(inverse, spread), amount]));
-    }
-
-    function buildDoublePriceGetter (chainlink, oracle1, oracle2, spread, amount = '0') {
-        return chainlink.address + trim0x(chainlink.interface.encodeFunctionData('doublePrice', [oracle1.address, oracle2.address, buildInverseWithSpread(false, spread), '0', amount]));
-    }
 
     async function deployContractsAndInit () {
         const { dai, weth, inch, swap, chainId } = await deploySwapTokens();
@@ -67,8 +55,8 @@ describe('ChainLinkExample', function () {
                 maker: addr1.address,
             },
             {
-                makingAmountGetter: cutLastArg(buildSinglePriceGetter(chainlink, daiOracle, false, '990000000')), // maker offset is 0.99
-                takingAmountGetter: cutLastArg(buildSinglePriceGetter(chainlink, daiOracle, true, '1010000000')), // taker offset is 1.01
+                makingAmountData: ethers.utils.solidityPack(['address', 'uint256', 'uint256'], [chainlink.address, daiOracle.address, '990000000']), // maker offset is 0.99
+                takingAmountData: ethers.utils.solidityPack(['address', 'uint256', 'uint256'], [chainlink.address, daiOracle.address, '1010000000']), // taker offset is 1.01
             },
         );
 
@@ -76,9 +64,14 @@ describe('ChainLinkExample', function () {
 
         const { r, _vs: vs } = ethers.utils.splitSignature(signature);
         // taking threshold = 4000 + 1% + eps
-        const filltx = swap.fillOrderExt(order, r, vs, ether('1'), fillWithMakingAmount(ether('4040.01')), order.extension);
-        await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [ether('-4040'), ether('4040')]);
-        await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [ether('1'), ether('-1')]);
+        const takerTraits = buildTakerTraits({
+            makingAmount: true,
+            extension: order.extension,
+            minReturn: ether('4040.01'),
+        });
+        const fillTx = swap.fillOrderArgs(order, r, vs, ether('1'), takerTraits.traits, takerTraits.args);
+        await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [ether('-4040'), ether('4040')]);
+        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [ether('1'), ether('-1')]);
     });
 
     it('dai -> 1inch stop loss order', async function () {
@@ -88,7 +81,7 @@ describe('ChainLinkExample', function () {
         const takingAmount = ether('631');
         const priceCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
             chainlink.address,
-            chainlink.interface.encodeFunctionData('doublePrice', [inchOracle.address, daiOracle.address, buildInverseWithSpread(false, '1000000000'), '0', ether('1')]),
+            chainlink.interface.encodeFunctionData('doublePrice', [inchOracle.address, daiOracle.address, '1000000000', '0', ether('1')]),
         ]);
 
         const order = buildOrder(
@@ -106,9 +99,14 @@ describe('ChainLinkExample', function () {
 
         const { r, _vs: vs } = ethers.utils.splitSignature(signature);
         // taking threshold = exact taker amount + eps
-        const filltx = swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount.add(ether('0.01'))), order.extension);
-        await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount]);
-        await expect(filltx).to.changeTokenBalances(inch, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
+        const takerTraits = buildTakerTraits({
+            makingAmount: true,
+            extension: order.extension,
+            minReturn: takingAmount.add(ether('0.01')),
+        });
+        const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
+        await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount]);
+        await expect(fillTx).to.changeTokenBalances(inch, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
     });
 
     it('dai -> 1inch stop loss order predicate is invalid', async function () {
@@ -116,7 +114,7 @@ describe('ChainLinkExample', function () {
 
         const makingAmount = ether('100');
         const takingAmount = ether('631');
-        const priceCall = buildDoublePriceGetter(chainlink, inchOracle, daiOracle, '1000000000', ether('1'));
+        const priceCall = chainlink.interface.encodeFunctionData('doublePrice', [inchOracle.address, daiOracle.address, '1000000000', '0', ether('1')]);
 
         const order = buildOrder(
             {
@@ -133,8 +131,13 @@ describe('ChainLinkExample', function () {
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+        const takerTraits = buildTakerTraits({
+            makingAmount: true,
+            extension: order.extension,
+            minReturn: takingAmount.add(ether('0.01')),
+        });
         await expect(
-            swap.fillOrderExt(order, r, vs, fillWithMakingAmount(makingAmount), takingAmount.add(ether('0.01')), order.extension), // taking threshold = exact taker amount + eps
+            swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args), // taking threshold = exact taker amount + eps
         ).to.be.revertedWithCustomError(swap, 'PredicateIsNotTrue');
     });
 
@@ -163,8 +166,13 @@ describe('ChainLinkExample', function () {
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-        const filltx = swap.fillOrderExt(order, r, vs, makingAmount, fillWithMakingAmount(takingAmount), order.extension);
-        await expect(filltx).to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount]);
-        await expect(filltx).to.changeTokenBalances(weth, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
+        const takerTraits = buildTakerTraits({
+            makingAmount: true,
+            extension: order.extension,
+            minReturn: takingAmount,
+        });
+        const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
+        await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount]);
+        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
     });
 });

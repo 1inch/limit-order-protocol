@@ -12,7 +12,6 @@ type MakerTraits is uint256;
  * High bits are used for flags
  * 255 bit `NO_PARTIAL_FILLS_FLAG`          - if set, the order does not allow partial fills
  * 254 bit `ALLOW_MULTIPLE_FILLS_FLAG`      - if set, the order permits multiple fills
- * 253 bit `NO_IMPROVE_RATE_FLAG`           - if set, the order does not allow taker interaction to improve rate
  * 252 bit `PRE_INTERACTION_CALL_FLAG`      - if set, the order requires pre-interaction call
  * 251 bit `POST_INTERACTION_CALL_FLAG`     - if set, the order requires post-interaction call
  * 250 bit `NEED_CHECK_EPOCH_MANAGER_FLAG`  - if set, the order requires to check the epoch manager
@@ -38,7 +37,6 @@ library MakerTraitsLib {
 
     uint256 private constant _NO_PARTIAL_FILLS_FLAG = 1 << 255;
     uint256 private constant _ALLOW_MULTIPLE_FILLS_FLAG = 1 << 254;
-    uint256 private constant _NO_IMPROVE_RATE_FLAG = 1 << 253;
     uint256 private constant _PRE_INTERACTION_CALL_FLAG = 1 << 252;
     uint256 private constant _POST_INTERACTION_CALL_FLAG = 1 << 251;
     uint256 private constant _NEED_CHECK_EPOCH_MANAGER_FLAG = 1 << 250;
@@ -106,15 +104,6 @@ library MakerTraitsLib {
     }
 
     /**
-     * @notice Checks if the order allows taker interaction to improve rate.
-     * @param makerTraits The traits of the maker.
-     * @return result A boolean indicating whether the order allows to improve rate.
-     */
-    function allowImproveRateViaInteraction(MakerTraits makerTraits) internal pure returns (bool) {
-        return (MakerTraits.unwrap(makerTraits) & _NO_IMPROVE_RATE_FLAG) == 0;
-    }
-
-    /**
      * @notice Checks if the maker needs pre-interaction call.
      * @param makerTraits The traits of the maker.
      * @return result A boolean indicating whether the maker needs a pre-interaction call.
@@ -146,7 +135,7 @@ library MakerTraitsLib {
       * @notice Determines if an order should use the bit invalidator or remaining amount validator.
       * @dev The bit invalidator can be used if the order does not allow partial or multiple fills.
       * @param makerTraits The traits of the maker, determining their preferences for the order.
-      * @return result A boolean indicating whether the bit invalidator should be used. 
+      * @return result A boolean indicating whether the bit invalidator should be used.
       * True if the order requires the use of the bit invalidator.
       */
     function useBitInvalidator(MakerTraits makerTraits) internal pure returns (bool) {
