@@ -9,15 +9,15 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deploy } = deployments;
     const { deployer } = await getNamedAccounts();
 
-    const seriesEpochManager = await deploy('SeriesEpochManager', {
+    const seriesNonceManager = await deploy('SeriesNonceManager', {
         from: deployer,
     });
 
-    console.log('SeriesEpochManager deployed to:', seriesEpochManager.address);
+    console.log('SeriesNonceManager deployed to:', seriesNonceManager.address);
 
     if (await getChainId() !== '31337') {
         await hre.run('verify:verify', {
-            address: seriesEpochManager.address,
+            address: seriesNonceManager.address,
         });
     }
 
