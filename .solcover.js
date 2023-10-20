@@ -22,5 +22,5 @@ module.exports = {
                 "jml[jl] VcTOcl jml",
         },
     },
-    skipFiles: ['mocks', 'tests', 'interfaces'],
+    skipFiles: ['mocks', 'tests', 'interfaces', 'helpers/SeriesNonceManager.sol'],
 }
