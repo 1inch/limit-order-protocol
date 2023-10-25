@@ -13,7 +13,7 @@ Limit order protocol v4
         - [Runtime exchange rate](#runtime-exchange-rate)
         - [Predicates](#predicates)
         - [Interactions](#interactions)
-- [Fill an order](#fill-an-order)
+- [Filling an order](#filling-an-order)
     - [How to fill an order](#how-to-fill-an-order)
     - [Fill settings](#fill-settings)
 - [Cancelling an order](#cancelling-an-order)
@@ -837,40 +837,33 @@ To fill an order, a taker should call one of the functions defined in the `IOrde
 
 The full list is as follows:
 
-- `fillOrder` - fills a simple order without extensions.
-- `fillOrderExt` - allows the specification of extensions used for the order.
-- `fillOrderTo` - allows the specification of the maker's funds destination instead of `msg.sender`.
-- `fillOrderToExt` - allows the specification of the maker's funds destination and extensions used for the order.
-- `fillOrderToWithPermit` - allows the specification of the maker's funds destination and calls permit before filling the order.
-- `fillContractOrder` - uses contract-based signatures.
-- `fillContractOrderWithPermit` - uses contract-based signatures and the taker's permit.
-- `fillContractOrderExt` - uses contract-based signatures, the taker's permit, and allows the specification of the order's extensions.
+The full list is as follows:
 
-All the functions have a similar signature. Here are examples showing the possible arguments and their descriptions:
+- `fillOrder` - fills a simple order without extensions, taker interaction, and changing target.
+- `fillOrderArgs` - allows the specification of extensions taker interaction used for the order and maker asset target specification.
+- `fillContractOrder` - the same as `fillOrder`, but uses contract-based signatures.
+- `fillContractOrderArgs` - the same as `fillOrderArgs`, but uses contract-based signatures .
+
+All the functions have a similar signature. The difference between functions with and without args  is that args calldata can be omitted to save gas. Here are examples showing the possible arguments and their descriptions:
 
 ```solidity
 // Fill from EOA
-function fillOrderToExt(
+function fillOrderArgs(
         IOrderMixin.Order calldata order,
         bytes32 r,
         bytes32 vs,
         uint256 amount,
         TakerTraits takerTraits,
-        address target,
-        bytes calldata interaction,
-        bytes calldata extension
-    ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
+        bytes calldata args,
+    ) public payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash)
 
 // Fill from smart contract
-function fillContractOrderExt(
+function fillContractOrderArgs(
         IOrderMixin.Order calldata order,
         bytes calldata signature,
         uint256 amount,
         TakerTraits takerTraits,
-        address target,
-        bytes calldata interaction,
-        bytes calldata permit,
-        bytes calldata extension
+        bytes calldata args,
     ) public returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash)
 ```
 
@@ -883,9 +876,7 @@ function fillContractOrderExt(
 | amount | `uint256` | The amount to fill the order, which can be treated as the maker or taker amount, depending on fill settings. If the amount is greater than the remaining amount to fill, the fill will be executed only for the remaining amount. When partial fills are not allowed, the fill will be reverted if the amount does not equal the order making amount. The fill will also be reverted if calculated making or taking amounts are equal to zero. |
 | takerTraits | `TakerTraits` (uint256) | The taker’s setting for the order fill. See [Fill settings](#fill-settings) for details. |
 | target | `address` | The recipient address for maker assets transfer. |
-| interaction | `bytes calldata` | The taker interaction to execute during the fill. See [Interactions](#interactions) section for details. |
-| extension | `bytes calldata` | The order’s extension calldata. The extension’s keccak256 hash has to be equal to the 160-lower bit of order’s salt. |
-| permit | `bytes calldata` | The taker’s permit for the taker assets transfer. |
+| args | `bytes calldata` | The calldata with order extension, taker interaction to execute during the fill, and target for maker assets transfer if needed. For an extension keccak256 hash has to be equal to the 160-lower bit of order’s salt. |
 
 The return values are:
 
@@ -895,17 +886,32 @@ The return values are:
 | takingAmount | `uint256` | The actual amount the taker received |
 | orderHash | `bytes32` | The hash of the order |
 
+The `args` calldata has flexible structure which is defined by `TakerTraits` and contains:
+
+| Parameter | Size | Comment |
+| --- | --- | --- |
+| target | 20 bytes | The address to transfer maker funds to. |
+| extension | variable length | The order’s extension calldata. The extension’s keccak256 hash has to be equal to the 160-lower bit of order’s salt. See [Order extensions](#order-extensions) section for details|
+| takerInteraction | variable length | The taker interaction to execute during the fill. See [Interactions](#interactions) section for details. |
+
+The parameters in the calldata are packed sequentially according to the `TakerTraits` settings: `ARGS_HAS_TARGET`, `ARGS_EXTENSION_LENGTH`, `ARGS_INTERACTION_LENGTH`
+
 ## Fill settings
 
 The `takerTraits` argument provides a number of options for the taker to choose from during each fill. These options are stored as bit flags and numbers compacted in a `uint256` number. The bit flags in `takerTraits` are arranged in descending order of significance, with the highest bit first, starting from zero.
 
-| Option name | Bit position | Description |
-| --- | --- | --- |
-| MAKER_AMOUNT_FLAG | 255 bit | If set, the protocol implies that the passed amount is the making amount, and the taking amount will be calculated based on the making amount. Otherwise, the passed amount is the taking amount, and the making amount is calculated based on the taking amount. The amount is calculated with AmountCalculator if getters are not set, or with getters provided with an extension by the maker. |
-| UNWRAP_WETH_FLAG | 254 bit | If set, the WETH will be unwrapped into ETH before sending to the taker's target address. |
-| SKIP_ORDER_PERMIT_FLAG | 253 bit | If set, the order skips the maker's permit application. It can be useful to skip the maker's permit application if the permit was already applied during recursive fill. |
-| USE_PERMIT2_FLAG | 252 bit | If set, the order uses the [Uniswap Permit 2](https://github.com/Uniswap/permit2). |
-| THRESHOLD_AMOUNT | 0-251 bit (uint252) | The maximum amount a taker agrees to give in exchange for a making amount. If the calculated taker amount is less than the threshold, then the transaction will be reverted. A zero (0) threshold skips the check. The evaluated equation is<br/>$$  threshold ≤ amount*{takingAmount \over makingAmount} $$ |
+
+
+| Option name | Bit position | Size, bits | Description |
+| --- | --- | --- | --- |
+| MAKER_AMOUNT_FLAG | 255 bit | 1 | If set, the protocol implies that the passed amount is the making amount, and the taking amount will be calculated based on the making amount. Otherwise, the passed amount is the taking amount, and the making amount is calculated based on the taking amount. The amount is calculated with AmountCalculator if getters are not set, or with getters provided with an extension by the maker. |
+| UNWRAP_WETH_FLAG | 254 bit | 1 | If set, the WETH will be unwrapped into ETH before sending to the taker's target address. |
+| SKIP_ORDER_PERMIT_FLAG | 253 bit | 1 | If set, the order skips the maker's permit application. It can be useful to skip the maker's permit application if the permit was already applied during recursive fill. |
+| USE_PERMIT2_FLAG | 252 bit | 1 | If set, the order uses the [Uniswap Permit 2](https://github.com/Uniswap/permit2). |
+| ARGS_HAS_TARGET | 251 bit | 1 | If set, then first 20 bytes of args are treated as target address for maker’s funds transfer |
+| ARGS_EXTENSION_LENGTH | 224-247 | 24 | Extension calldata coded in args argument length |
+| ARGS_INTERACTION_LENGTH | 200-223 | 24 | Taker’s interaction calldata coded in args argument length |
+| THRESHOLD | 0-184 | 184 | The maximum amount a taker agrees to give in exchange for a making amount. If the calculated taker amount is less than the threshold, then the transaction will be reverted. A zero (0) threshold skips the check. The evaluated equation is<br/>$$  threshold ≤ amount*{takingAmount \over makingAmount} $$ |
 
 # Cancelling an order
 
