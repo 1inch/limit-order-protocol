@@ -920,23 +920,24 @@ There are several ways to cancel an order:
 
 Manual methods require sending a cancel transaction, which requires spending gas.
 
-- **Cancel by hash:** The order can be cancelled by directly calling the `cancelOrder` function and passing the `orderHash` and `makerTraits` of the order.
+- **Cancel by hash or nonce:** The order can be cancelled by directly calling the `cancelOrder` function and passing the `orderHash` and `makerTraits` of the order.
 
     > **Note**: Orders are cancelled using different invalidators depending on the maker traits flags `ALLOW_MULTIPLE_FILLS` and `NO_PARTIAL_FILL`. Passing wrong traits may result in the call having no effect, and the order will not be cancelled.
     > 
 
     If partial or multiple fills are not allowed then the protocol uses `BitInvalidator` for cancelling an order, and `RemainingInvalidator` otherwise.
+    Thus, if an order uses `BitInvalidator` it will be cancelled by nonce provided in `makerTraits` argument, and if it uses `RemainingInvalidator` it will be cancelled by provided `orderHash`.
     The cancelled order fill attempts will be reverted with a `BitInvalidatedOrder` error if an order uses `BitInvalidator`, or with an `InvalidatedOrder` error otherwise.
 
-- **Cancel by nonce:** the order is cancelled by changing the order nonce. This method can be used for mass order cancellation. Each order can have a series and nonces specified. They are defined as:
+- **Cancel by epoch:** the order is cancelled by changing the owner's current epoch. This method can be used for mass order cancellation. Each order can have a series and epochs specified. They are defined as:
     - **series** - specifies the application that issued the order
-    - **nonce** - specifies the order’s generation
+    - **epoch** - specifies the order’s generation
 
-    At the same time, each maker has a unique nonce set for each series, which can be incremented up to 255 units. When the order’s flag `NEED_CHECK_EPOCH_MANAGER` is set, the protocol checks if the maker’s nonce matches the order’s nonce and reverts with a `WrongSeriesNonce` error if it doesn’t. This allows for mass cancellation. For example, if a maker issued several orders with his actual nonce for a specific series, and later maker’s nonce was increased for that series, the order’s nonce doesn’t equal the maker nonce anymore and the orders cannot be filled.
+    At the same time, each maker has a unique nonce set for each series, which can be incremented up to 255 units. When the order’s flag `NEED_CHECK_EPOCH_MANAGER` is set, the protocol checks if the maker’s epoch matches the order’s epoch and reverts with a `WrongSeriesNonce` error if it doesn’t. This allows for mass cancellation. For example, if a maker issued several orders with his actual epoch for a specific series, and later maker’s epoch was increased for that series, the order’s epoch doesn’t equal the maker epoch anymore and the orders cannot be filled.
 
-    > **Note:** To use nonce cancellation, the flag `NEED_CHECK_EPOCH_MANAGER` must be set, and partial and multiple fills should be allowed. Otherwise, any order fill attempt will be reverted with an `EpochManagerAndBitInvalidatorsAreIncompatible` error.
+    > **Note:** To use epoch cancellation, the flag `NEED_CHECK_EPOCH_MANAGER` must be set, and partial and multiple fills should be allowed. Otherwise, any order fill attempt will be reverted with an `EpochManagerAndBitInvalidatorsAreIncompatible` error.
     > 
 
-    At the start, each maker has a nonce equal to zero for all series. To update the maker's nonce, they should call either `increaseEpoch` or `advanceEpoch`. The former increases the nonce by 1 unit, while the latter can increase it by any amount up to 256 units.
+    At the start, each maker has an epoch equal to zero for all series. To update the maker's epoch, they should call either `increaseEpoch` or `advanceEpoch`. The former increases the epoch by 1 unit, while the latter can increase it by any amount up to 256 units.
 
-    This concept also allows for the preparation of a sequence of orders with an increasing nonce and increase nonce under some condition to make the following orders valid. For example, there are two orders with nonces 0 and 1, correspondingly. And the maker sets up post-interaction that increases his actual nonce by 1 when the order is filled. In this case, at the start, the maker has an actual nonce equal to zero, and anybody can fill the first order, but not the second order. However, when the first order is filled, the post-interaction changes the actual maker's nonce to 1, and the second order becomes valid.
+    This concept also allows for the preparation of a sequence of orders with an increasing epoch and increase epoch under some condition to make the following orders valid. For example, there are two orders with epochs 0 and 1, correspondingly. And the maker sets up post-interaction that increases his actual epoch by 1 when the order is filled. In this case, at the start, the maker has an actual epoch equal to zero, and anybody can fill the first order, but not the second order. However, when the first order is filled, the post-interaction changes the actual maker's epoch to 1, and the second order becomes valid.

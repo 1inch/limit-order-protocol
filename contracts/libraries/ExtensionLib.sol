@@ -104,6 +104,7 @@ library ExtensionLib {
      * @return calldata Bytes representing the extra suffix data.
      */
     function customData(bytes calldata extension) internal pure returns(bytes calldata) {
+        if (extension.length < 0x20) return msg.data[:0];
         uint256 offsets = uint256(bytes32(extension));
         unchecked {
             return extension[0x20 + (offsets >> 224):];
