@@ -837,8 +837,6 @@ To fill an order, a taker should call one of the functions defined in the `IOrde
 
 The full list is as follows:
 
-The full list is as follows:
-
 - `fillOrder` - fills a simple order without extensions, taker interaction, and changing target.
 - `fillOrderArgs` - allows the specification of extensions taker interaction used for the order and maker asset target specification.
 - `fillContractOrder` - the same as `fillOrder`, but uses contract-based signatures.
