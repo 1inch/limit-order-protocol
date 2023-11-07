@@ -458,7 +458,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
 
     /**
       * @notice Processes the taker interaction arguments.
-      * @dev The function will revert if the taker permit is invalid.
       * @param takerTraits The taker preferences for the order.
       * @param args The taker interaction arguments.
       * @return target The address to which the order is filled.
