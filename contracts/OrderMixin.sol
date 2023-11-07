@@ -244,7 +244,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes calldata extension,
         bytes calldata interaction
     ) private returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        // Check signature and apply order permit only on the first fill
+        // Check signature only on the first fill
         orderHash = order.hash(_domainSeparatorV4());
         uint256 remainingMakingAmount = _checkRemainingMakingAmount(order, orderHash);
         if (remainingMakingAmount == order.makingAmount) {
