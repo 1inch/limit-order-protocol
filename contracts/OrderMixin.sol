@@ -491,7 +491,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         uint256 interactionLength = takerTraits.argsInteractionLength();
         if (interactionLength > 0) {
             interaction = args[:interactionLength];
-            args = args[interactionLength:];
         } else {
             interaction = msg.data[:0];
         }
