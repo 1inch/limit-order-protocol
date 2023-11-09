@@ -244,7 +244,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         bytes calldata extension,
         bytes calldata interaction
     ) private returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash) {
-        // Check signature and apply order permit only on the first fill
+        // Check signature only on the first fill
         orderHash = order.hash(_domainSeparatorV4());
         uint256 remainingMakingAmount = _checkRemainingMakingAmount(order, orderHash);
         if (remainingMakingAmount == order.makingAmount) {
@@ -458,7 +458,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
 
     /**
       * @notice Processes the taker interaction arguments.
-      * @dev The function will revert if the taker permit is invalid.
       * @param takerTraits The taker preferences for the order.
       * @param args The taker interaction arguments.
       * @return target The address to which the order is filled.
@@ -492,7 +491,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         uint256 interactionLength = takerTraits.argsInteractionLength();
         if (interactionLength > 0) {
             interaction = args[:interactionLength];
-            args = args[interactionLength:];
         } else {
             interaction = msg.data[:0];
         }
