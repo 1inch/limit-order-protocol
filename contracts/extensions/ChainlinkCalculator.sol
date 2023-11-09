@@ -12,8 +12,10 @@ contract ChainlinkCalculator is IAmountGetter {
     using SafeCast for int256;
 
     error DifferentOracleDecimals();
+    error StaleOraclePrice();
 
     uint256 private constant _SPREAD_DENOMINATOR = 1e9;
+    uint256 private constant _ORACLE_TTL = 4 hours;
 
     function getMakingAmount(
         IOrderMixin.Order calldata /* order */,
@@ -35,7 +37,8 @@ contract ChainlinkCalculator is IAmountGetter {
         /// e.g. for DAI-ETH oracle, inverse=false means that we request DAI price in ETH
         /// and inverse=true means that we request ETH price in DAI
         /// @return Amount * spread * oracle price
-        (, int256 latestAnswer,,,) = oracle.latestRoundData();
+        (, int256 latestAnswer,, uint256 updatedAt,) = oracle.latestRoundData();
+        if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
         return takingAmount * spread * latestAnswer.toUint256() / (10 ** oracle.decimals()) / _SPREAD_DENOMINATOR;
     }
 
@@ -59,7 +62,8 @@ contract ChainlinkCalculator is IAmountGetter {
         /// e.g. for DAI-ETH oracle, inverse=false means that we request DAI price in ETH
         /// and inverse=true means that we request ETH price in DAI
         /// @return Amount * spread * oracle price
-        (, int256 latestAnswer,,,) = oracle.latestRoundData();
+        (, int256 latestAnswer,, uint256 updatedAt,) = oracle.latestRoundData();
+        if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
         return makingAmount * spread * (10 ** oracle.decimals()) / latestAnswer.toUint256() / _SPREAD_DENOMINATOR;
     }
 
@@ -68,8 +72,11 @@ contract ChainlinkCalculator is IAmountGetter {
     function doublePrice(AggregatorV3Interface oracle1, AggregatorV3Interface oracle2, uint256 spread, int256 decimalsScale, uint256 amount) external view returns(uint256 result) {
         if (oracle1.decimals() != oracle2.decimals()) revert DifferentOracleDecimals();
 
-        (, int256 latestAnswer1,,,) = oracle1.latestRoundData();
-        result = amount * spread * latestAnswer1.toUint256();
+        {
+            (, int256 latestAnswer1,, uint256 updatedAt,) = oracle1.latestRoundData();
+            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
+            result = amount * spread * latestAnswer1.toUint256();
+        }
 
         if (decimalsScale > 0) {
             result *= 10 ** decimalsScale.toUint256();
@@ -77,7 +84,10 @@ contract ChainlinkCalculator is IAmountGetter {
             result /= 10 ** (-decimalsScale).toUint256();
         }
 
-        (, int256 latestAnswer2,,,) = oracle2.latestRoundData();
-        result /= latestAnswer2.toUint256() * _SPREAD_DENOMINATOR;
+        {
+            (, int256 latestAnswer2,, uint256 updatedAt,) = oracle2.latestRoundData();
+            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
+            result /= latestAnswer2.toUint256() * _SPREAD_DENOMINATOR;
+        }
     }
 }
