@@ -464,7 +464,7 @@ describe('LimitOrderProtocol', function () {
                 const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
                 const deadline = (await time.latest()) - time.duration.weeks(1);
-                const permit = await getPermit(addr.address, addr1, weth, '1', chainId, swap.address, '1', deadline);
+                const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1', deadline);
 
                 const { r, _vs: vs } = ethers.utils.splitSignature(signature);
                 const takerTraits = buildTakerTraits({ minReturn: 1n });
