@@ -24,7 +24,7 @@
     "@matterlabs/hardhat-zksync-deploy": "1.0.0",
     "@matterlabs/hardhat-zksync-solc": "1.0.0",
     "@matterlabs/hardhat-zksync-verify": "0.2.0",
-    "@metamask/eth-sig-util": "5.1.0",
+    "@metamask/eth-sig-util": "7.0.1",
     "@nomicfoundation/hardhat-chai-matchers": "2.0.2",
     "@nomicfoundation/hardhat-network-helpers": "1.0.9",
     "@nomicfoundation/hardhat-verify": "1.1.1",
