@@ -3,7 +3,7 @@ const { parseUnits } = require('ethers');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { expect } = require('@1inch/solidity-utils');
 const { ether } = require('./helpers/utils');
-const { buildMakerTraits, buildOrder, signOrder, buildTakerTraits } = require('./helpers/orderUtils');
+const { buildMakerTraits, buildOrder, signOrder, buildTakerTraits, compactSignature } = require('./helpers/orderUtils');
 const { deploySwapTokens, deployRangeAmountCalculator } = require('./helpers/fixtures');
 
 describe('RangeLimitOrders', function () {
@@ -18,7 +18,7 @@ describe('RangeLimitOrders', function () {
         const tokens = { weth, dai, usdc };
 
         for (const token of Object.values(tokens)) {
-            const metadata = ('decimals' in token) ? token : await ethers.getContractAt('IERC20Metadata', token.address);
+            const metadata = ('decimals' in token) ? token : await ethers.getContractAt('IERC20Metadata', await token.getAddress());
             const tokenDecimals = await metadata.decimals();
             token.parseAmount = (value) => parseUnits(value, tokenDecimals);
         }
@@ -27,20 +27,20 @@ describe('RangeLimitOrders', function () {
     };
 
     async function initContracts (taker, maker, dai, weth, usdc, swap) {
-        const e6 = (value) => ether(value).div(1000000000000n);
+        const e6 = (value) => ether(value) / 1000000000000n;
 
-        await dai.mint(maker.address, ether('1000000'));
-        await dai.mint(taker.address, ether('1000000'));
+        await dai.mint(maker, ether('1000000'));
+        await dai.mint(taker, ether('1000000'));
         await weth.deposit({ value: ether('100') });
         await weth.connect(maker).deposit({ value: ether('100') });
-        await dai.approve(swap.address, ether('1000000'));
-        await dai.connect(maker).approve(swap.address, ether('1000000'));
-        await weth.approve(swap.address, ether('100'));
-        await weth.connect(maker).approve(swap.address, ether('100'));
-        await usdc.mint(maker.address, e6('1000000000000'));
-        await usdc.mint(taker.address, e6('1000000000000'));
-        await usdc.approve(swap.address, e6('1000000000000'));
-        await usdc.connect(maker).approve(swap.address, e6('1000000000000'));
+        await dai.approve(swap, ether('1000000'));
+        await dai.connect(maker).approve(swap, ether('1000000'));
+        await weth.approve(swap, ether('100'));
+        await weth.connect(maker).approve(swap, ether('100'));
+        await usdc.mint(maker, e6('1000000000000'));
+        await usdc.mint(taker, e6('1000000000000'));
+        await usdc.approve(swap, e6('1000000000000'));
+        await usdc.connect(maker).approve(swap, e6('1000000000000'));
     };
 
     async function createOrder ({
@@ -57,24 +57,23 @@ describe('RangeLimitOrders', function () {
         const startPrice = takerAsset.parseAmount('3000');
         const endPrice = takerAsset.parseAmount('4000');
         const order = buildOrder({
-            makerAsset: makerAsset.address,
-            takerAsset: takerAsset.address,
+            makerAsset: await makerAsset.getAddress(),
+            takerAsset: await takerAsset.getAddress(),
             makingAmount,
             takingAmount,
             maker: maker.address,
             makerTraits: buildMakerTraits({ allowMultipleFills: true }),
         }, {
-            makingAmountData: ethers.utils.solidityPack(
+            makingAmountData: ethers.solidityPacked(
                 ['address', 'uint256', 'uint256'],
-                [rangeAmountCalculator.address, startPrice, endPrice],
+                [await rangeAmountCalculator.getAddress(), startPrice, endPrice],
             ),
-            takingAmountData: ethers.utils.solidityPack(
+            takingAmountData: ethers.solidityPacked(
                 ['address', 'uint256', 'uint256'],
-                [rangeAmountCalculator.address, startPrice, endPrice],
+                [await rangeAmountCalculator.getAddress(), startPrice, endPrice],
             ),
         });
-        const signature = await signOrder(order, chainId, swap.address, maker);
-        const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+        const { r, vs } = compactSignature(await signOrder(order, chainId, await swap.getAddress(), maker));
         return { order, r, vs, startPrice, endPrice, makingAmount, takingAmount };
     }
 
@@ -119,11 +118,11 @@ describe('RangeLimitOrders', function () {
         await expect(fillOrder)
             .to.changeTokenBalances(takerAsset, [maker.address, taker.address], [
                 takerAsset.parseAmount(fillParams.firstFill.takingAmount),
-                -BigInt(takerAsset.parseAmount(fillParams.firstFill.takingAmount)),
+                -takerAsset.parseAmount(fillParams.firstFill.takingAmount),
             ]);
         await expect(fillOrder)
             .to.changeTokenBalances(makerAsset, [maker.address, taker.address], [
-                -BigInt(rangeAmount1),
+                -rangeAmount1,
                 rangeAmount1,
             ]);
 
@@ -145,16 +144,16 @@ describe('RangeLimitOrders', function () {
             endPrice,
             makingAmount,
             takerAsset.parseAmount(fillParams.secondFill.takingAmount),
-            makingAmount.sub(rangeAmount1),
+            makingAmount - rangeAmount1,
         );
         await expect(fillOrder)
             .to.changeTokenBalances(takerAsset, [maker.address, taker.address], [
                 takerAsset.parseAmount(fillParams.secondFill.takingAmount),
-                -BigInt(takerAsset.parseAmount(fillParams.secondFill.takingAmount)),
+                -takerAsset.parseAmount(fillParams.secondFill.takingAmount),
             ]);
         await expect(fillOrder)
             .to.changeTokenBalances(makerAsset, [maker.address, taker.address], [
-                -BigInt(rangeAmount2),
+                -rangeAmount2,
                 rangeAmount2,
             ]);
     };
@@ -201,11 +200,11 @@ describe('RangeLimitOrders', function () {
         await expect(fillOrder)
             .to.changeTokenBalances(takerAsset, [maker.address, taker.address], [
                 rangeAmount1,
-                -BigInt(rangeAmount1),
+                -rangeAmount1,
             ]);
         await expect(fillOrder)
             .to.changeTokenBalances(makerAsset, [maker.address, taker.address], [
-                -BigInt(makerAsset.parseAmount(fillParams.firstFill.makingAmount)),
+                -makerAsset.parseAmount(fillParams.firstFill.makingAmount),
                 makerAsset.parseAmount(fillParams.firstFill.makingAmount),
             ]);
 
@@ -228,16 +227,16 @@ describe('RangeLimitOrders', function () {
             endPrice,
             makingAmount,
             makerAsset.parseAmount(fillParams.secondFill.makingAmount),
-            makingAmount.sub(makerAsset.parseAmount(fillParams.firstFill.makingAmount)),
+            makingAmount - makerAsset.parseAmount(fillParams.firstFill.makingAmount),
         );
         await expect(fillOrder)
             .to.changeTokenBalances(takerAsset, [maker.address, taker.address], [
                 rangeAmount2,
-                -BigInt(rangeAmount2),
+                -rangeAmount2,
             ]);
         await expect(fillOrder)
             .to.changeTokenBalances(makerAsset, [maker.address, taker.address], [
-                -BigInt(makerAsset.parseAmount(fillParams.secondFill.makingAmount)),
+                -makerAsset.parseAmount(fillParams.secondFill.makingAmount),
                 makerAsset.parseAmount(fillParams.secondFill.makingAmount),
             ]);
     };
