@@ -40,9 +40,9 @@ const defaultDeadline = '18446744073709551615';
 async function getPermit (owner, wallet, token, tokenVersion, chainId, spender, value, deadline = defaultDeadline) {
     const nonce = await token.nonces(owner);
     const name = await token.name();
-    const data = buildData(owner, name, tokenVersion, chainId, token.address, spender, nonce, value, deadline);
-    const signature = await wallet._signTypedData(data.domain, data.types, data.value);
-    const { v, r, s } = ethers.utils.splitSignature(signature);
+    const data = buildData(owner, name, tokenVersion, chainId, await token.getAddress(), spender, nonce, value, deadline);
+    const signature = await wallet.signTypedData(data.domain, data.types, data.value);
+    const { v, r, s } = ethers.Signature.from(signature);
     const permitCall = token.interface.encodeFunctionData('permit', [owner, spender, value, deadline, v, r, s]);
     return cutSelector(permitCall);
 }
