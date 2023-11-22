@@ -7,7 +7,7 @@ const { joinStaticCalls, ether } = require('../helpers/utils');
 
 describe.skip('LimitOrderProtocol usage example', function () {
     let addr, addr1, addr2;
-    const abiCoder = ethers.utils.defaultAbiCoder;
+    const abiCoder = ethers.AbiCoder.defaultAbiCoder();
 
     before(async function () {
         [addr, addr1, addr2] = await ethers.getSigners();

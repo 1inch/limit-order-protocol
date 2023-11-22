@@ -1,4 +1,4 @@
-const { utils } = require('ethers');
+const { parseUnits } = require('ethers');
 
 function calculateGasUsed (trace, address) {
     // Count gas used by all calls to our contract
@@ -79,7 +79,7 @@ function joinStaticCalls (dataArray) {
 }
 
 function ether (num) {
-    return utils.parseUnits(num);
+    return parseUnits(num);
 }
 
 function setn (num, bit, value) {

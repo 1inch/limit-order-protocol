@@ -1,5 +1,5 @@
 const { ethers } = require('hardhat');
-const { parseUnits } = require('ethers/lib/utils.js');
+const { parseUnits } = require('ethers');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { expect } = require('@1inch/solidity-utils');
 const { ether } = require('./helpers/utils');

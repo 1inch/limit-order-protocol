@@ -7,7 +7,7 @@ const { signOrder, buildOrder, buildMakerTraits, buildTakerTraits } = require('.
 
 describe('Interactions', function () {
     let addr, addr1;
-    const abiCoder = ethers.utils.defaultAbiCoder;
+    const abiCoder = ethers.AbiCoder.defaultAbiCoder();
 
     before(async function () {
         [addr, addr1] = await ethers.getSigners();

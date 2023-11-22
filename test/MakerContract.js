@@ -6,7 +6,7 @@ const { ether } = require('./helpers/utils');
 const { deploySwap, deployUSDC, deployUSDT } = require('./helpers/fixtures');
 
 describe('MakerContract', function () {
-    const abiCoder = ethers.utils.defaultAbiCoder;
+    const abiCoder = ethers.AbiCoder.defaultAbiCoder();
     let addr;
 
     before(async function () {
