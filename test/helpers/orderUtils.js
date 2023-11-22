@@ -254,7 +254,7 @@ function buildOrderData (chainId, verifyingContract, order) {
     };
 }
 
-async function compactSignature (signature) {
+function compactSignature (signature) {
     const sig = ethers.Signature.from(signature);
     const vs = ethers.toBeHex(BigInt(sig.s) | (BigInt(sig.yParity) << 255n));
     return {
