@@ -66,7 +66,7 @@ function buildTakerTraits ({
             (BigInt(trim0x(extension).length / 2) << TakerTraitsConstants._ARGS_EXTENSION_LENGTH_OFFSET) |
             (BigInt(trim0x(interaction).length / 2) << TakerTraitsConstants._ARGS_INTERACTION_LENGTH_OFFSET)
         ),
-        args: ethers.utils.solidityPack(
+        args: ethers.solidityPacked(
             ['bytes', 'bytes', 'bytes'],
             [target, extension, interaction],
         ),
@@ -254,9 +254,18 @@ function buildOrderData (chainId, verifyingContract, order) {
     };
 }
 
+async function compactSignature (signature) {
+    const sig = ethers.Signature.from(signature);
+    const vs = ethers.toBeHex(BigInt(sig.s) | (BigInt(sig.yParity) << 255n));
+    return {
+        r: sig.r,
+        vs,
+    };
+}
+
 async function signOrder (order, chainId, target, wallet) {
     const orderData = buildOrderData(chainId, target, order);
-    return await wallet._signTypedData(orderData.domain, orderData.types, orderData.value);
+    return await wallet.signTypedData(orderData.domain, orderData.types, orderData.value);
 }
 
 function fillWithMakingAmount (amount) {
@@ -279,6 +288,7 @@ module.exports = {
     buildOrder,
     buildOrderRFQ,
     buildOrderData,
+    compactSignature,
     signOrder,
     fillWithMakingAmount,
     unwrapWethTaker,
