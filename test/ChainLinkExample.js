@@ -61,7 +61,7 @@ describe('ChainLinkExample', function () {
         );
 
         const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
-        const { r, vs } = await compactSignature(signature);
+        const { r, vs } = compactSignature(signature);
         // taking threshold = 4000 + 1% + eps
         const takerTraits = buildTakerTraits({
             makingAmount: true,
@@ -95,7 +95,7 @@ describe('ChainLinkExample', function () {
             },
         );
         const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
-        const { r, vs } = await compactSignature(signature);
+        const { r, vs } = compactSignature(signature);
         // taking threshold = exact taker amount + eps
         const takerTraits = buildTakerTraits({
             makingAmount: true,
@@ -127,7 +127,7 @@ describe('ChainLinkExample', function () {
             },
         );
         const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
-        const { r, vs } = await compactSignature(signature);
+        const { r, vs } = compactSignature(signature);
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
@@ -161,7 +161,7 @@ describe('ChainLinkExample', function () {
             },
         );
         const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
-        const { r, vs } = await compactSignature(signature);
+        const { r, vs } = compactSignature(signature);
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
