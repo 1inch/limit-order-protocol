@@ -38,7 +38,7 @@ contract ChainlinkCalculator is IAmountGetter {
         /// and inverse=true means that we request ETH price in DAI
         /// @return Amount * spread * oracle price
         (, int256 latestAnswer,, uint256 updatedAt,) = oracle.latestRoundData();
-        if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
+        if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice(); // solhint-disable-line not-rely-on-time
         return takingAmount * spread * latestAnswer.toUint256() / (10 ** oracle.decimals()) / _SPREAD_DENOMINATOR;
     }
 
@@ -63,7 +63,7 @@ contract ChainlinkCalculator is IAmountGetter {
         /// and inverse=true means that we request ETH price in DAI
         /// @return Amount * spread * oracle price
         (, int256 latestAnswer,, uint256 updatedAt,) = oracle.latestRoundData();
-        if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
+        if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice(); // solhint-disable-line not-rely-on-time
         return makingAmount * spread * (10 ** oracle.decimals()) / latestAnswer.toUint256() / _SPREAD_DENOMINATOR;
     }
 
@@ -74,7 +74,7 @@ contract ChainlinkCalculator is IAmountGetter {
 
         {
             (, int256 latestAnswer1,, uint256 updatedAt,) = oracle1.latestRoundData();
-            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
+            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice(); // solhint-disable-line not-rely-on-time
             result = amount * spread * latestAnswer1.toUint256();
         }
 
@@ -86,7 +86,7 @@ contract ChainlinkCalculator is IAmountGetter {
 
         {
             (, int256 latestAnswer2,, uint256 updatedAt,) = oracle2.latestRoundData();
-            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
+            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice(); // solhint-disable-line not-rely-on-time
             result /= latestAnswer2.toUint256() * _SPREAD_DENOMINATOR;
         }
     }
