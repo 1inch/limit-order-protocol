@@ -1,8 +1,7 @@
 require('@matterlabs/hardhat-zksync-deploy');
 require('@matterlabs/hardhat-zksync-solc');
 require('@matterlabs/hardhat-zksync-verify');
-require('@nomiclabs/hardhat-ethers');
-require('@nomiclabs/hardhat-etherscan');
+require('@nomicfoundation/hardhat-verify');
 require('@nomicfoundation/hardhat-chai-matchers');
 require('solidity-coverage');
 require('hardhat-dependency-compiler');
@@ -45,7 +44,7 @@ module.exports = {
         ],
     },
     zksolc: {
-        version: '1.3.10',
+        version: '1.3.17',
         compilerSource: 'binary',
         settings: {},
     },
