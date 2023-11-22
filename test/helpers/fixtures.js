@@ -50,14 +50,14 @@ async function deployUSDT () {
 
 async function deploySeriesEpochManager () {
     const SeriesEpochManager = await ethers.getContractFactory('SeriesEpochManager');
-    const seriesEpochManager = await SeriesEpochManager.waitForDeployment();
+    const seriesEpochManager = await SeriesEpochManager.deploy();
     await seriesEpochManager.waitForDeployment();
     return { seriesEpochManager };
 };
 
 async function deployRangeAmountCalculator () {
     const RangeAmountCalculator = await ethers.getContractFactory('RangeAmountCalculator');
-    const rangeAmountCalculator = await RangeAmountCalculator.waitForDeployment();
+    const rangeAmountCalculator = await RangeAmountCalculator.deploy();
     await rangeAmountCalculator.waitForDeployment();
     return { rangeAmountCalculator };
 };
