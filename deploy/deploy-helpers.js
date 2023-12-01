@@ -9,6 +9,18 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deploy } = deployments;
     const { deployer } = await getNamedAccounts();
 
+    const seriesNonceManager = await deploy('SeriesNonceManager', {
+        from: deployer,
+    });
+
+    console.log('SeriesNonceManager deployed to:', seriesNonceManager.address);
+
+    if (await getChainId() !== '31337') {
+        await hre.run('verify:verify', {
+            address: seriesNonceManager.address,
+        });
+    }
+
     const callsSimulator = await deploy('CallsSimulator', {
         from: deployer,
     });
