@@ -1,6 +1,6 @@
 const hre = require('hardhat');
 const { ethers, tracer } = hre;
-const { expect, time, constants } = require('@1inch/solidity-utils');
+const { expect, time, constants, getPermit2, permit2Contract } = require('@1inch/solidity-utils');
 const { fillWithMakingAmount, unwrapWethTaker, buildMakerTraits, buildMakerTraitsRFQ, buildOrder, signOrder, buildOrderData, buildTakerTraits } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, ether, findTrace, countAllItems } = require('./helpers/utils');
@@ -566,6 +566,54 @@ describe('LimitOrderProtocol', function () {
                     extension: order.extension,
                 });
                 const fillTx = swap.connect(addr1).fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+                await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            });
+        });
+    });
+
+    describe('Permit2', function () {
+        describe('Taker Permit', function () {
+            // TODO: Consider refactoring to use only one fixture in all tests
+            const deployContractsAndInitPermit = async function () {
+                const { dai, weth, swap, chainId } = await deploySwapTokens();
+                await initContracts(dai, weth, swap);
+
+                const order = buildOrder({
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    maker: addr1.address,
+                });
+                await weth.approve(swap.address, '0');
+                const signature = await signOrder(order, chainId, swap.address, addr1);
+
+                return { dai, weth, swap, chainId, order, signature };
+            };
+
+            it('DAI => WETH, permit2', async function () {
+                const { dai, weth, swap, chainId, order } = await loadFixture(deployContractsAndInitPermit);
+
+                const permit2 = await permit2Contract();
+                await weth.approve(permit2.address, 1);
+                const permit = await getPermit2(addr, weth.address, chainId, swap.address, 1);
+
+                const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+                const takerTraits = buildTakerTraits({
+                    minReturn: 1n,
+                    makingAmount: true,
+                    usePermit2: true,
+                });
+                const fillTx = swap.permitAndCall(
+                    ethers.utils.solidityPack(
+                        ['address', 'bytes'],
+                        [weth.address, permit],
+                    ),
+                    swap.interface.encodeFunctionData('fillOrderArgs', [
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                    ]),
+                );
                 await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
                 await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
             });
