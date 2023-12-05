@@ -47,7 +47,7 @@ describe('PriorityFeeLimiter', function () {
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
-            minReturn: order.takingAmount,
+            threshold: order.takingAmount,
         });
 
         return { dai, weth, swap, order, r, vs, takerTraits };
