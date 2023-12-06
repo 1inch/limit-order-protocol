@@ -58,10 +58,10 @@ function buildTakerTraits ({
     target = '0x',
     extension = '0x',
     interaction = '0x',
-    minReturn = 0n,
+    threshold = 0n,
 } = {}) {
     return {
-        traits: BigInt(minReturn) | (
+        traits: BigInt(threshold) | (
             (makingAmount ? TakerTraitsConstants._MAKER_AMOUNT_FLAG : 0n) |
             (unwrapWeth ? TakerTraitsConstants._UNWRAP_WETH_FLAG : 0n) |
             (skipMakerPermit ? TakerTraitsConstants._SKIP_ORDER_PERMIT_FLAG : 0n) |
