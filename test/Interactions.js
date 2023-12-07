@@ -368,7 +368,7 @@ describe('Interactions', function () {
             const { dai, weth, swap, chainId } = await initContracts();
 
             const OrderIdInvalidator = await ethers.getContractFactory('OrderIdInvalidator');
-            const orderIdInvalidator = await OrderIdInvalidator.deploy(await swap.getAddress());
+            const orderIdInvalidator = await OrderIdInvalidator.deploy(swap);
             await orderIdInvalidator.waitForDeployment();
 
             return { dai, weth, swap, chainId, orderIdInvalidator };
