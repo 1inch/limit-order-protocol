@@ -1361,19 +1361,18 @@ describe('LimitOrderProtocol', function () {
             expect(await swap.remainingInvalidatorForOrder(addr1.address, '0x0000000000000000000000000000000000000000000000000000000000000001')).to.equal('0');
         });
 
-        // TODO: fix simulate test
-        it('can simulate order cancelation', async function () {
+        it('can simulate the failure of bitsInvalidateForOrder', async function () {
             const { swap, order } = await loadFixture(orderCancelationInit);
 
-            const calldata = swap.interface.encodeFunctionData('cancelOrder', [
+            const calldata = swap.interface.encodeFunctionData('bitsInvalidateForOrder', [
                 order.makerTraits,
-                '0x0000000000000000000000000000000000000000000000000000000000000001',
+                0,
             ]);
 
-            const cancelationSimulate = swap.simulate(addr1.address, calldata);
+            const cancelationSimulate = swap.simulate(swap.address, calldata);
             await expect(cancelationSimulate)
                 .to.be.revertedWithCustomError(swap, 'SimulationResults')
-                .withArgs(true, '0x');
+                .withArgs(false, swap.interface.getSighash('OrderIsNotSuitableForMassInvalidation'));
         });
 
         it('should cancel several orders by hash', async function () {
