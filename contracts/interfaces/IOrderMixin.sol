@@ -81,7 +81,7 @@ interface IOrderMixin {
     /**
      * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
      * @param orderHash Hash of the order
-     * @return remainingRaw Remaining amount of the order plus 1 if order was partially filled, otherwise 0
+     * @return remainingRaw Inverse of the remaining amount of the order if order was filled at least once, otherwise 0
      */
     function rawRemainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 remainingRaw);
 
