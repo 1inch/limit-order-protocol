@@ -123,7 +123,7 @@ describe('MeasureGas', function () {
         });
 
         const orderHash = await swap.hashOrder(order);
-        const tx = await swap.cancelOrder(order.makerTraits, orderHash); ;
+        const tx = await swap.cancelOrder(orderHash); ;
         console.log(`invalidate order gasUsed: ${(await tx.wait()).gasUsed}`);
     });
 });

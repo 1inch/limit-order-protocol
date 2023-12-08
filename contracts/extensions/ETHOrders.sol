@@ -92,9 +92,9 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
     /**
      * @notice Sets ordersMakersBalances to 0, refunds ETH and does standard order cancellation on Limit Order Protocol.
      */
-    function cancelOrder(MakerTraits makerTraits, bytes32 orderHash) external {
+    function cancelOrder(bytes32 orderHash) external {
         if (ordersMakersBalances[orderHash].maker != msg.sender) revert InvalidOrder();
-        IOrderMixin(_limitOrderProtocol).cancelOrder(makerTraits, orderHash);
+        IOrderMixin(_limitOrderProtocol).cancelOrder(orderHash);
         uint256 refundETHAmount = ordersMakersBalances[orderHash].balance;
         ordersMakersBalances[orderHash].balance = 0;
         _WETH.safeWithdrawTo(refundETHAmount, msg.sender);

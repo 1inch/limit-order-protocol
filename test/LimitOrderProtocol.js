@@ -751,7 +751,7 @@ describe('LimitOrderProtocol', function () {
             await expect(fillTx).to.changeTokenBalances(weth, [addr, ethOrders, addr1], [ether('0.2'), ether('-0.2'), '0']);
 
             /// Cancel order
-            const canceltx = ethOrders.connect(addr1).cancelOrder(order.makerTraits, orderHash);
+            const canceltx = ethOrders.connect(addr1).cancelOrder(orderHash);
             await expect(canceltx).to.changeTokenBalance(weth, ethOrders, ether('-0.1'));
             await expect(canceltx).to.changeEtherBalance(addr1, ether('0.1'));
 
@@ -879,7 +879,7 @@ describe('LimitOrderProtocol', function () {
             const data = buildOrderData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
 
-            await swap.connect(addr1).cancelOrder(order.makerTraits, orderHash);
+            await swap.connect(addr1).cancelOrder(orderHash);
 
             expect(await swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.equal('0');
         });
@@ -923,53 +923,31 @@ describe('LimitOrderProtocol', function () {
             const { swap, chainId, order } = await loadFixture(orderCancelationInit);
             const data = buildOrderData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
-            await swap.connect(addr1).cancelOrder(order.makerTraits, orderHash);
+            await swap.connect(addr1).cancelOrder(orderHash);
             expect(await swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.equal('0');
         });
 
-        it('should cancel own order with massInvalidate', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(orderCancelationInit);
-
+        it('should cancel own order with invalidateBit', async function () {
+            const { swap } = await loadFixture(orderCancelationInit);
             const orderNonce = 0;
-            const order = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
-                makingAmount: 1,
-                takingAmount: 1,
-                maker: addr1.address,
-                makerTraits: buildMakerTraitsRFQ({ nonce: orderNonce }),
-            });
-            const data = buildOrderData(chainId, swap.address, order);
-            const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
-
-            await swap.connect(addr1).cancelOrder(order.makerTraits, orderHash);
+            const makerTraits = buildMakerTraitsRFQ({ nonce: orderNonce });
+            await swap.connect(addr1).invalidateBit(makerTraits);
             const invalidator = await swap.bitInvalidatorForOrder(addr1.address, orderNonce);
             expect(invalidator).to.equal('1');
         });
 
-        it('should cancel own order with massInvalidate, huge nonce', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(orderCancelationInit);
-
+        it('should cancel own order with invalidateBit, huge nonce', async function () {
+            const { swap } = await loadFixture(orderCancelationInit);
             const orderNonce = 1023;
-            const order = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
-                makingAmount: 1,
-                takingAmount: 1,
-                maker: addr1.address,
-                makerTraits: buildMakerTraitsRFQ({ nonce: orderNonce }),
-            });
-            const data = buildOrderData(chainId, swap.address, order);
-            const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
-
-            await swap.connect(addr1).cancelOrder(order.makerTraits, orderHash);
+            const makerTraits = buildMakerTraitsRFQ({ nonce: orderNonce });
+            await swap.connect(addr1).invalidateBit(makerTraits);
             const invalidator = await swap.bitInvalidatorForOrder(addr1.address, orderNonce);
             expect(invalidator).to.equal(1n << 255n);
         });
 
         it('should cancel any hash', async function () {
-            const { swap, order } = await loadFixture(orderCancelationInit);
-            await swap.connect(addr1).cancelOrder(order.makerTraits, '0x0000000000000000000000000000000000000000000000000000000000000001');
+            const { swap } = await loadFixture(orderCancelationInit);
+            await swap.connect(addr1).cancelOrder('0x0000000000000000000000000000000000000000000000000000000000000001');
             expect(await swap.remainingInvalidatorForOrder(addr1.address, '0x0000000000000000000000000000000000000000000000000000000000000001')).to.equal('0');
         });
 
@@ -980,13 +958,13 @@ describe('LimitOrderProtocol', function () {
             const data = buildOrderData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
 
-            await swap.connect(addr1).cancelOrder(order.makerTraits, orderHash);
+            await swap.connect(addr1).cancelOrder(orderHash);
 
             await expect(swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1)))
                 .to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
         });
 
-        it('should not fill cancelled order, massInvalidate', async function () {
+        it('should not fill cancelled order, invalidateBit', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(orderCancelationInit);
 
             const orderNonce = 0;
@@ -1000,10 +978,8 @@ describe('LimitOrderProtocol', function () {
             });
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-            const data = buildOrderData(chainId, swap.address, order);
-            const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
 
-            await swap.connect(addr1).cancelOrder(order.makerTraits, orderHash);
+            await swap.connect(addr1).invalidateBit(order.makerTraits);
 
             await expect(swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1)))
                 .to.be.revertedWithCustomError(swap, 'BitInvalidatedOrder');

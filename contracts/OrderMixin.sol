@@ -97,31 +97,33 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     /**
      * @notice See {IOrderMixin-cancelOrder}.
      */
-    function cancelOrder(MakerTraits makerTraits, bytes32 orderHash) public {
-        if (makerTraits.useBitInvalidator()) {
-            _bitInvalidator[msg.sender].massInvalidate(makerTraits.nonceOrEpoch(), 0);
-        } else {
-            _remainingInvalidator[msg.sender][orderHash] = RemainingInvalidatorLib.fullyFilled();
-        }
+    function cancelOrder(bytes32 orderHash) public {
+        _remainingInvalidator[msg.sender][orderHash] = RemainingInvalidatorLib.fullyFilled();
         emit OrderCancelled(orderHash);
     }
 
     /**
      * @notice See {IOrderMixin-cancelOrders}.
      */
-    function cancelOrders(MakerTraits[] calldata makerTraits, bytes32[] calldata orderHashes) external {
-        if (makerTraits.length != orderHashes.length) revert MismatchArraysLengths();
+    function cancelOrders(bytes32[] calldata orderHashes) external {
         unchecked {
-            for (uint256 i = 0; i < makerTraits.length; i++) {
-                cancelOrder(makerTraits[i], orderHashes[i]);
+            for (uint256 i = 0; i < orderHashes.length; i++) {
+                cancelOrder(orderHashes[i]);
             }
         }
     }
 
     /**
-     * @notice See {IOrderMixin-bitsInvalidateForOrder}.
+     * @notice See {IOrderMixin-invalidateBit}.
      */
-    function bitsInvalidateForOrder(MakerTraits makerTraits, uint256 additionalMask) external {
+    function invalidateBit(MakerTraits makerTraits) external {
+        invalidateBits(makerTraits, 0);
+    }
+
+    /**
+     * @notice See {IOrderMixin-invalidateBits}.
+     */
+    function invalidateBits(MakerTraits makerTraits, uint256 additionalMask) public {
         if (!makerTraits.useBitInvalidator()) revert OrderIsNotSuitableForMassInvalidation();
         _bitInvalidator[msg.sender].massInvalidate(makerTraits.nonceOrEpoch(), additionalMask);
     }

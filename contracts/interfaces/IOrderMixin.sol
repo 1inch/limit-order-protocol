@@ -87,24 +87,28 @@ interface IOrderMixin {
 
     /**
      * @notice Cancels order's quote
-     * @param makerTraits Order makerTraits
      * @param orderHash Hash of the order to cancel
      */
-    function cancelOrder(MakerTraits makerTraits, bytes32 orderHash) external;
+    function cancelOrder(bytes32 orderHash) external;
 
     /**
      * @notice Cancels orders' quotes
-     * @param makerTraits Orders makerTraits
      * @param orderHashes Hashes of the orders to cancel
      */
-    function cancelOrders(MakerTraits[] calldata makerTraits, bytes32[] calldata orderHashes) external;
+    function cancelOrders(bytes32[] calldata orderHashes) external;
+
+    /**
+     * @notice Cancels quote of the maker (works for bit-invalidating orders only)
+     * @param makerTraits Order makerTraits
+     */
+    function invalidateBit(MakerTraits makerTraits) external;
 
     /**
      * @notice Cancels all quotes of the maker (works for bit-invalidating orders only)
      * @param makerTraits Order makerTraits
      * @param additionalMask Additional bitmask to invalidate orders
      */
-    function bitsInvalidateForOrder(MakerTraits makerTraits, uint256 additionalMask) external;
+    function invalidateBits(MakerTraits makerTraits, uint256 additionalMask) external;
 
     /**
      * @notice Returns order hash, hashed with limit order protocol contract EIP712
