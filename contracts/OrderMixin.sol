@@ -47,7 +47,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      * @notice See {IOrderMixin-permitAndCall}.
      */
     function permitAndCall(bytes calldata permit, bytes calldata action) external {
-        IERC20(address(bytes20(permit))).tryPermit(msg.sender, address(this), permit[20:]);
+        IERC20(address(bytes20(permit))).tryPermit(permit[20:]);
         // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             let ptr := mload(0x40)
