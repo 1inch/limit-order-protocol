@@ -17,7 +17,7 @@ contract OrderIdInvalidator is IPreInteraction {
     /// @notice Limit order protocol address.
     address private immutable _limitOrderProtocol;
     /// @notice Stores corresponding maker orders ids and hashes.
-    mapping(address => mapping(uint32 => bytes32)) private _ordersIdsHashes;
+    mapping(address maker => mapping(uint32 orderId => bytes32 orderHash)) private _ordersIdsHashes;
 
     /// @notice Only limit order protocol can call this contract.
     modifier onlyLimitOrderProtocol() {

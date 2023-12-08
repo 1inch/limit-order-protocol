@@ -31,7 +31,7 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
     address private immutable _limitOrderProtocol;
     IWETH private immutable _WETH; // solhint-disable-line var-name-mixedcase
     /// @notice Makers and their uint96 ETH balances in single mapping.
-    mapping(bytes32 => ETHOrder) public ordersMakersBalances;
+    mapping(bytes32 orderHash => ETHOrder data) public ordersMakersBalances;
 
     event ETHDeposited(bytes32 orderHash, uint256 amount);
     event ETHOrderCancelled(bytes32 orderHash, uint256 amount);

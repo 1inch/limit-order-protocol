@@ -16,7 +16,7 @@ library BitInvalidatorLib {
     error BitInvalidatedOrder();
 
     struct Data {
-        mapping(uint256 => uint256) _raw;
+        mapping(uint256 slotIndex => uint256 slotData) _raw;
     }
 
     /**
