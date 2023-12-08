@@ -46,10 +46,6 @@ const TakerTraitsConstants = {
     _ARGS_INTERACTION_LENGTH_MASK: 0xffffff,
 };
 
-// TODO: reaname minReturn to threshold
-// if makingAmount flag set to false, it works as minReturn (in making asset)
-// if makingAmount flag set true, it works as maxSpent (in taking asset)
-// TODO: also adjust description.md
 function buildTakerTraits ({
     makingAmount = false,
     unwrapWeth = false,
