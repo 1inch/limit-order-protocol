@@ -34,7 +34,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     using RemainingInvalidatorLib for RemainingInvalidator;
 
     uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
-    address private constant _PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
 
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     mapping(address => BitInvalidatorLib.Data) private _bitInvalidator;
