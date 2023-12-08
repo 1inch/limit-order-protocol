@@ -2035,7 +2035,28 @@ describe('LimitOrderProtocol', function () {
             await expect(fillTx).to.changeEtherBalance(addr1, 3);
         });
 
-        it('should reverted with takerAsset non-WETH and msg.value greater than 0', async function () {
+        it('should revert with takerAsset WETH, unwrap flag is set and receiver unable to receive ETH', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 900,
+                takingAmount: 3,
+                maker: addr1.address,
+                makerTraits: buildMakerTraits({
+                    unwrapWeth: true,
+                }),
+                receiver: swap.address,
+            });
+
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+            await expect(
+                swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 4 },
+                )).to.be.revertedWithCustomError(swap, 'ETHTransferFailed');
+        });
+
+        it('should be reverted with takerAsset non-WETH and msg.value greater than 0', async function () {
             const { dai, swap, chainId, usdc } = await loadFixture(deployContractsAndInit);
 
             await usdc.mint(addr.address, '1000000');
@@ -2052,6 +2073,30 @@ describe('LimitOrderProtocol', function () {
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             await expect(swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(900), { value: 1 }))
                 .to.be.revertedWithCustomError(swap, 'InvalidMsgValue');
+        });
+
+        it('should revert with takerAsset WETH, unwrap flag is set and taker unable to receive excessive ETH', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const TakerContract = await ethers.getContractFactory('TakerContract');
+            const taker = await TakerContract.deploy(swap.address);
+            await taker.deployed();
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 900,
+                takingAmount: 3,
+                maker: addr1.address,
+                makerTraits: buildMakerTraits({
+                    unwrapWeth: true,
+                }),
+            });
+
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+            await expect(
+                taker.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 4 },
+                )).to.be.revertedWithCustomError(swap, 'ETHTransferFailed');
         });
     });
 });
