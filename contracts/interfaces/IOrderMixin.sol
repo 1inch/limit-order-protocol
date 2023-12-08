@@ -57,6 +57,13 @@ interface IOrderMixin {
     );
 
     /**
+     * @notice Executes a permit and then calls a specified action using delegatecall.
+     * @param permit The permit data, including the token address, permit parameters and permit signature.
+     * @param action The action data to be executed using delegatecall.
+     */
+    function permitAndCall(bytes calldata permit, bytes calldata action) external;
+
+    /**
      * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
      * @param maker Maker address
      * @param slot Slot number to return bitmask for
