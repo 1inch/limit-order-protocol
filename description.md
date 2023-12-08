@@ -476,7 +476,7 @@ The limit order protocol offers several helper functions for creating conditions
         | calldata |  |  |
         | --- | --- | --- |
         | 1-64 bytes | 65-320 bytes | 321-448 bytes |
-        | calldata (predicate1) | calldata (predicate2) | calldata (predicate2) |
+        | calldata (predicate1) | calldata (predicate2) | calldata (predicate3) |
 
         | offsets (uint256) |  |  |  |
         | --- | --- | --- | --- |
