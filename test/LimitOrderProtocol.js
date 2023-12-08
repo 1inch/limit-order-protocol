@@ -80,6 +80,38 @@ describe('LimitOrderProtocol', function () {
                 .to.be.revertedWithCustomError(swap, 'TakingAmountTooHigh');
         });
 
+        it('should not fill above threshold, making amount > remaining making amount', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 2,
+                takingAmount: 2,
+                maker: addr1.address,
+            });
+
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+            await expect(swap.fillOrder(order, r, vs, 3, fillWithMakingAmount(1)))
+                .to.be.revertedWithCustomError(swap, 'TakingAmountTooHigh');
+        });
+
+        it('should not fill below threshold, making amount > remaining making amount', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 2,
+                takingAmount: 2,
+                maker: addr1.address,
+            });
+
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+            await expect(swap.fillOrder(order, r, vs, 3, 4))
+                .to.be.revertedWithCustomError(swap, 'MakingAmountTooLow');
+        });
+
         it('should not fill below threshold', async function () {
             const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
