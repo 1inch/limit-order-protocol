@@ -33,8 +33,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     using BitInvalidatorLib for BitInvalidatorLib.Data;
     using RemainingInvalidatorLib for RemainingInvalidator;
 
-    uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
-
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
     mapping(address maker => BitInvalidatorLib.Data data) private _bitInvalidator;
     mapping(address maker => mapping(bytes32 orderHash => RemainingInvalidator remaining)) private _remainingInvalidator;
@@ -406,14 +404,14 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             if (msg.value > takingAmount) {
                 unchecked {
                     // solhint-disable-next-line avoid-low-level-calls
-                    (bool success, ) = msg.sender.call{value: msg.value - takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
+                    (bool success, ) = msg.sender.call{value: msg.value - takingAmount}("");
                     if (!success) revert Errors.ETHTransferFailed();
                 }
             }
 
             if (order.makerTraits.unwrapWeth()) {
                 // solhint-disable-next-line avoid-low-level-calls
-                (bool success, ) = order.getReceiver().call{value: takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
+                (bool success, ) = order.getReceiver().call{value: takingAmount}("");
                 if (!success) revert Errors.ETHTransferFailed();
             } else {
                 _WETH.safeDeposit(takingAmount);
