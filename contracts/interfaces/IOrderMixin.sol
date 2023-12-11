@@ -49,11 +49,23 @@ interface IOrderMixin {
     );
 
     /**
-     * @notice Emitted when order gets filled
+     * @notice Emitted when order without `useBitInvalidator` gets cancelled
      * @param orderHash Hash of the order
      */
     event OrderCancelled(
         bytes32 orderHash
+    );
+
+    /**
+     * @notice Emitted when order with `useBitInvalidator` gets cancelled
+     * @param maker Maker address
+     * @param slotIndex Slot index that was updated
+     * @param slotValue New slot value
+     */
+    event BitInvalidatorUpdated(
+        address indexed maker,
+        uint256 slotIndex,
+        uint256 slotValue
     );
 
     /**

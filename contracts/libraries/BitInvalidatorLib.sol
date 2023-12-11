@@ -51,10 +51,12 @@ library BitInvalidatorLib {
      * @param self The data structure.
      * @param nonce The nonce identifying the slot.
      * @param additionalMask A mask of bits to be invalidated.
+     * @return result Resulting validity status of entities in the slot as a uint256.
      */
-    function massInvalidate(Data storage self, uint256 nonce, uint256 additionalMask) internal {
+    function massInvalidate(Data storage self, uint256 nonce, uint256 additionalMask) internal returns(uint256 result) {
         uint256 invalidatorSlot = nonce >> 8;
         uint256 invalidatorBits = (1 << (nonce & 0xff)) | additionalMask;
-        self._raw[invalidatorSlot] |= invalidatorBits;
+        result = self._raw[invalidatorSlot] | invalidatorBits;
+        self._raw[invalidatorSlot] = result;
     }
 }

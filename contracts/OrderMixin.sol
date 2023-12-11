@@ -97,11 +97,12 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      */
     function cancelOrder(MakerTraits makerTraits, bytes32 orderHash) public {
         if (makerTraits.useBitInvalidator()) {
-            _bitInvalidator[msg.sender].massInvalidate(makerTraits.nonceOrEpoch(), 0);
+            uint256 invalidator = _bitInvalidator[msg.sender].massInvalidate(makerTraits.nonceOrEpoch(), 0);
+            emit BitInvalidatorUpdated(msg.sender, makerTraits.nonceOrEpoch() >> 8, invalidator);
         } else {
             _remainingInvalidator[msg.sender][orderHash] = RemainingInvalidatorLib.fullyFilled();
+            emit OrderCancelled(orderHash);
         }
-        emit OrderCancelled(orderHash);
     }
 
     /**
@@ -121,7 +122,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      */
     function bitsInvalidateForOrder(MakerTraits makerTraits, uint256 additionalMask) external {
         if (!makerTraits.useBitInvalidator()) revert OrderIsNotSuitableForMassInvalidation();
-        _bitInvalidator[msg.sender].massInvalidate(makerTraits.nonceOrEpoch(), additionalMask);
+        uint256 invalidator = _bitInvalidator[msg.sender].massInvalidate(makerTraits.nonceOrEpoch(), additionalMask);
+        emit BitInvalidatorUpdated(msg.sender, makerTraits.nonceOrEpoch() >> 8, invalidator);
     }
 
      /**
