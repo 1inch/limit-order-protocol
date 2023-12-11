@@ -16,6 +16,16 @@ contract ChainlinkCalculator is IAmountGetter {
 
     uint256 private constant _SPREAD_DENOMINATOR = 1e9;
     uint256 private constant _ORACLE_TTL = 4 hours;
+    bytes1 private constant _INVERSE_FLAG = 0x80;
+    bytes1 private constant _DOUBLE_PRICE_FLAG = 0x40;
+
+    /// @notice Calculates price of token A relative to token B. Note that order is important
+    /// @return result Token A relative price times amount
+    function doublePrice(AggregatorV3Interface oracle1, AggregatorV3Interface oracle2, int256 decimalsScale, uint256 amount) external view returns(uint256 result) {
+        if (oracle1.decimals() != oracle2.decimals()) revert DifferentOracleDecimals();
+
+        return _doublePrice(oracle1, oracle2, decimalsScale, amount);
+    }
 
     function getMakingAmount(
         IOrderMixin.Order calldata /* order */,
@@ -26,20 +36,7 @@ contract ChainlinkCalculator is IAmountGetter {
         uint256 /* remainingMakingAmount */,
         bytes calldata extraData
     ) external view returns (uint256) {
-        (
-            AggregatorV3Interface oracle,
-            uint256 spread
-        ) = abi.decode(extraData, (AggregatorV3Interface, uint256));
-
-        /// @notice Calculates price of token relative to oracle unit (ETH or USD)
-        /// Lowest 254 bits specify spread amount. Spread is scaled by 1e9, i.e. 101% = 1.01e9, 99% = 0.99e9.
-        /// Highest bit is set when oracle price should be inverted,
-        /// e.g. for DAI-ETH oracle, inverse=false means that we request DAI price in ETH
-        /// and inverse=true means that we request ETH price in DAI
-        /// @return Amount * spread * oracle price
-        (, int256 latestAnswer,, uint256 updatedAt,) = oracle.latestRoundData();
-        if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
-        return takingAmount * spread * latestAnswer.toUint256() / (10 ** oracle.decimals()) / _SPREAD_DENOMINATOR;
+        return _getSpreadedAmount(takingAmount, extraData);
     }
 
     function getTakingAmount(
@@ -51,31 +48,44 @@ contract ChainlinkCalculator is IAmountGetter {
         uint256 /* remainingMakingAmount */,
         bytes calldata extraData
     ) external view returns (uint256) {
-        (
-            AggregatorV3Interface oracle,
-            uint256 spread
-        ) = abi.decode(extraData, (AggregatorV3Interface, uint256));
-
-        /// @notice Calculates price of token relative to oracle unit (ETH or USD)
-        /// Lowest 254 bits specify spread amount. Spread is scaled by 1e9, i.e. 101% = 1.01e9, 99% = 0.99e9.
-        /// Highest bit is set when oracle price should be inverted,
-        /// e.g. for DAI-ETH oracle, inverse=false means that we request DAI price in ETH
-        /// and inverse=true means that we request ETH price in DAI
-        /// @return Amount * spread * oracle price
-        (, int256 latestAnswer,, uint256 updatedAt,) = oracle.latestRoundData();
-        if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
-        return makingAmount * spread * (10 ** oracle.decimals()) / latestAnswer.toUint256() / _SPREAD_DENOMINATOR;
+        return _getSpreadedAmount(makingAmount, extraData);
     }
 
-    /// @notice Calculates price of token A relative to token B. Note that order is important
-    /// @return result Token A relative price times amount
-    function doublePrice(AggregatorV3Interface oracle1, AggregatorV3Interface oracle2, uint256 spread, int256 decimalsScale, uint256 amount) external view returns(uint256 result) {
-        if (oracle1.decimals() != oracle2.decimals()) revert DifferentOracleDecimals();
+    /// @notice Calculates price of token relative to oracle unit (ETH or USD)
+    /// The first byte of the blob contain inverse and useDoublePrice flags,
+    /// The inverse flag is set when oracle price should be inverted,
+    /// e.g. for DAI-ETH oracle, inverse=false means that we request DAI price in ETH
+    /// and inverse=true means that we request ETH price in DAI
+    /// The useDoublePrice flag is set when needs price for two custom tokens (other than ETH or USD)
+    /// @return Amount * spread * oracle price
+    function _getSpreadedAmount(uint256 amount, bytes calldata blob) internal view returns(uint256) {
+        bytes1 flags = bytes1(blob[:1]);
+        bool inverse = flags & _INVERSE_FLAG > 0;
+        bool useDoublePrice = flags & _DOUBLE_PRICE_FLAG > 0;
+        if (!useDoublePrice) {
+            AggregatorV3Interface oracle = AggregatorV3Interface(address(bytes20(blob[1:21])));
+            uint256 spread = uint256(bytes32(blob[21:53]));
+            (, int256 latestAnswer,, uint256 updatedAt,) = oracle.latestRoundData();
+            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice(); // solhint-disable-line not-rely-on-time
+            if (inverse) {
+                return spread * amount * (10 ** oracle.decimals()) / latestAnswer.toUint256() / _SPREAD_DENOMINATOR;
+            } else {
+                return spread * amount * latestAnswer.toUint256() / (10 ** oracle.decimals()) / _SPREAD_DENOMINATOR;
+            }
+        } else {
+            AggregatorV3Interface oracle1 = AggregatorV3Interface(address(bytes20(blob[1:21])));
+            AggregatorV3Interface oracle2 = AggregatorV3Interface(address(bytes20(blob[21:41])));
+            int256 decimalsScale = int256(uint256(bytes32(blob[41:73])));
+            uint256 spread = uint256(bytes32(blob[73:105]));
+            return _doublePrice(oracle1, oracle2, decimalsScale, spread * amount) / _SPREAD_DENOMINATOR;
+        }
+    }
 
+    function _doublePrice(AggregatorV3Interface oracle1, AggregatorV3Interface oracle2, int256 decimalsScale, uint256 amount) internal view returns(uint256 result) {
         {
             (, int256 latestAnswer1,, uint256 updatedAt,) = oracle1.latestRoundData();
-            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
-            result = amount * spread * latestAnswer1.toUint256();
+            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice(); // solhint-disable-line not-rely-on-time
+            result = amount * latestAnswer1.toUint256();
         }
 
         if (decimalsScale > 0) {
@@ -86,8 +96,8 @@ contract ChainlinkCalculator is IAmountGetter {
 
         {
             (, int256 latestAnswer2,, uint256 updatedAt,) = oracle2.latestRoundData();
-            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
-            result /= latestAnswer2.toUint256() * _SPREAD_DENOMINATOR;
+            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice(); // solhint-disable-line not-rely-on-time
+            result /= latestAnswer2.toUint256();
         }
     }
 }
