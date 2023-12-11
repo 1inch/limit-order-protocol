@@ -49,12 +49,31 @@ interface IOrderMixin {
     );
 
     /**
-     * @notice Emitted when order gets filled
+     * @notice Emitted when order without `useBitInvalidator` gets cancelled
      * @param orderHash Hash of the order
      */
     event OrderCancelled(
         bytes32 orderHash
     );
+
+    /**
+     * @notice Emitted when order with `useBitInvalidator` gets cancelled
+     * @param maker Maker address
+     * @param slotIndex Slot index that was updated
+     * @param slotValue New slot value
+     */
+    event BitInvalidatorUpdated(
+        address indexed maker,
+        uint256 slotIndex,
+        uint256 slotValue
+    );
+
+    /**
+     * @notice Executes a permit and then calls a specified action using delegatecall.
+     * @param permit The permit data, including the token address, permit parameters and permit signature.
+     * @param action The action data to be executed using delegatecall.
+     */
+    function permitAndCall(bytes calldata permit, bytes calldata action) external;
 
     /**
      * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
@@ -74,7 +93,7 @@ interface IOrderMixin {
     /**
      * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
      * @param orderHash Hash of the order
-     * @return remainingRaw Remaining amount of the order plus 1 if order was partially filled, otherwise 0
+     * @return remainingRaw Inverse of the remaining amount of the order if order was filled at least once, otherwise 0
      */
     function rawRemainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 remainingRaw);
 
