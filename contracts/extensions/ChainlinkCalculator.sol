@@ -68,7 +68,8 @@ contract ChainlinkCalculator is IAmountGetter {
             AggregatorV3Interface oracle = AggregatorV3Interface(address(bytes20(blob[1:21])));
             uint256 spread = uint256(bytes32(blob[21:53]));
             (, int256 latestAnswer,, uint256 updatedAt,) = oracle.latestRoundData();
-            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice(); // solhint-disable-line not-rely-on-time
+            // solhint-disable-next-line not-rely-on-time
+            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
             if (flags & _INVERSE_FLAG == _INVERSE_FLAG) {
                 return spread * amount * (10 ** oracle.decimals()) / latestAnswer.toUint256() / _SPREAD_DENOMINATOR;
             } else {
