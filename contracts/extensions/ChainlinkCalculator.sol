@@ -58,24 +58,22 @@ contract ChainlinkCalculator is IAmountGetter {
     /// @return Amount * spread * oracle price
     function _getSpreadedAmount(uint256 amount, bytes calldata blob) internal view returns(uint256) {
         bytes1 flags = bytes1(blob[:1]);
-        bool inverse = flags & _INVERSE_FLAG == _INVERSE_FLAG;
-        bool useDoublePrice = flags & _DOUBLE_PRICE_FLAG == _DOUBLE_PRICE_FLAG;
-        if (!useDoublePrice) {
-            AggregatorV3Interface oracle = AggregatorV3Interface(address(bytes20(blob[1:21])));
-            uint256 spread = uint256(bytes32(blob[21:53]));
-            (, int256 latestAnswer,, uint256 updatedAt,) = oracle.latestRoundData();
-            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice(); // solhint-disable-line not-rely-on-time
-            if (inverse) {
-                return spread * amount * (10 ** oracle.decimals()) / latestAnswer.toUint256() / _SPREAD_DENOMINATOR;
-            } else {
-                return spread * amount * latestAnswer.toUint256() / (10 ** oracle.decimals()) / _SPREAD_DENOMINATOR;
-            }
-        } else {
+        if (flags & _DOUBLE_PRICE_FLAG == _DOUBLE_PRICE_FLAG) {
             AggregatorV3Interface oracle1 = AggregatorV3Interface(address(bytes20(blob[1:21])));
             AggregatorV3Interface oracle2 = AggregatorV3Interface(address(bytes20(blob[21:41])));
             int256 decimalsScale = int256(uint256(bytes32(blob[41:73])));
             uint256 spread = uint256(bytes32(blob[73:105]));
             return _doublePrice(oracle1, oracle2, decimalsScale, spread * amount) / _SPREAD_DENOMINATOR;
+        } else {
+            AggregatorV3Interface oracle = AggregatorV3Interface(address(bytes20(blob[1:21])));
+            uint256 spread = uint256(bytes32(blob[21:53]));
+            (, int256 latestAnswer,, uint256 updatedAt,) = oracle.latestRoundData();
+            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice(); // solhint-disable-line not-rely-on-time
+            if (flags & _INVERSE_FLAG == _INVERSE_FLAG) {
+                return spread * amount * (10 ** oracle.decimals()) / latestAnswer.toUint256() / _SPREAD_DENOMINATOR;
+            } else {
+                return spread * amount * latestAnswer.toUint256() / (10 ** oracle.decimals()) / _SPREAD_DENOMINATOR;
+            }
         }
     }
 
@@ -83,9 +81,10 @@ contract ChainlinkCalculator is IAmountGetter {
         if (oracle1.decimals() != oracle2.decimals()) revert DifferentOracleDecimals();
 
         {
-            (, int256 latestAnswer1,, uint256 updatedAt,) = oracle1.latestRoundData();
-            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice(); // solhint-disable-line not-rely-on-time
-            result = amount * latestAnswer1.toUint256();
+            (, int256 latestAnswer,, uint256 updatedAt,) = oracle1.latestRoundData();
+            // solhint-disable-next-line not-rely-on-time
+            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
+            result = amount * latestAnswer.toUint256();
         }
 
         if (decimalsScale > 0) {
@@ -95,9 +94,10 @@ contract ChainlinkCalculator is IAmountGetter {
         }
 
         {
-            (, int256 latestAnswer2,, uint256 updatedAt,) = oracle2.latestRoundData();
-            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice(); // solhint-disable-line not-rely-on-time
-            result /= latestAnswer2.toUint256();
+            (, int256 latestAnswer,, uint256 updatedAt,) = oracle2.latestRoundData();
+            // solhint-disable-next-line not-rely-on-time
+            if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice();
+            result /= latestAnswer.toUint256();
         }
     }
 }
