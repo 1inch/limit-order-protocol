@@ -155,7 +155,7 @@ describe('ChainLinkExample', function () {
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
-            minReturn: takingAmount.toBigInt() * takingSpread / 1000000000n + (ether('0.01')).toBigInt(),
+            minReturn: takingAmount.toBigInt() * takingSpread / 1000000000n + ether('0.01').toBigInt(),
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         const realTakingAmount = makingAmount.toBigInt() * // <-- makingAmount * spread / 1e9 * inchPrice / daiPrice
@@ -198,7 +198,7 @@ describe('ChainLinkExample', function () {
         // taking threshold = 1 eth + 1% + eps
         const takerTraits = buildTakerTraits({
             extension: order.extension,
-            minReturn: makingAmount * makingSpread / 1000000000n + (ether('0.01')).toBigInt(),
+            minReturn: makingAmount * makingSpread / 1000000000n + ether('0.01').toBigInt(),
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, takingAmount, takerTraits.traits, takerTraits.args);
         const realMakingAmount = takingAmount * // <-- takingAmount * spread / 1e9 * daiPrice / inchPrice
