@@ -53,11 +53,17 @@ describe('LimitOrderProtocol', function () {
         permits.taker.signature = { r, vs };
 
         // Maker permit
+        const deadline = (await time.latest()) + time.duration.weeks(1);
         const permit = withTarget(
             weth.address,
-            await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1'),
+            await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1', deadline),
+        );
+        const permit2 = withTarget(
+            weth.address,
+            await getPermit2(addr, weth.address, chainId, swap.address, 1, false, constants.MAX_UINT48, deadline),
         );
         permits.maker.permit = permit;
+        permits.maker.permit2 = permit2;
         permits.maker.order = buildOrder(
             {
                 makerAsset: weth.address,
@@ -70,10 +76,28 @@ describe('LimitOrderProtocol', function () {
                 permit,
             },
         );
-        const { r: r1, _vs: vs1 } = ethers.utils.splitSignature(await signOrder(permits.maker.order, chainId, swap.address, addr));
-        permits.maker.signature = { r: r1, vs: vs1 };
 
-        return { tokens, contracts, chainId, orderLibFactory, permits };
+        permits.maker.orderPermit2 = buildOrder(
+            {
+                makerAsset: weth.address,
+                takerAsset: dai.address,
+                makingAmount: 1,
+                takingAmount: 1,
+                maker: addr.address,
+                makerTraits: buildMakerTraits({ usePermit2: true }),
+            },
+            {
+                permit: permit2,
+            },
+        );
+        contracts.permit2Contract = await permit2Contract();
+        await weth.approve(contracts.permit2Contract.address, 1);
+        const { r: r1, _vs: vs1 } = ethers.utils.splitSignature(await signOrder(permits.maker.order, chainId, swap.address, addr));
+        const { r: r2, _vs: vs2 } = ethers.utils.splitSignature(await signOrder(permits.maker.orderPermit2, chainId, swap.address, addr));
+        permits.maker.signature = { r: r1, vs: vs1 };
+        permits.maker.signaturePermit2 = { r: r2, vs: vs2 };
+
+        return { tokens, contracts, chainId, orderLibFactory, permits, deadline };
     };
 
     describe('wip', function () {
@@ -153,7 +177,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, contracts.swap.address, addr1));
             await expect(contracts.swap.fillOrder(order, r, vs, 3, 4))
-                .to.be.revertedWithCustomError(swap, 'MakingAmountTooLow');
+                .to.be.revertedWithCustomError(contracts.swap, 'MakingAmountTooLow');
         });
 
         it('should not fill below threshold', async function () {
@@ -586,11 +610,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             it('skips expired permit if allowance is enough', async function () {
-                const { tokens, contracts, permits } = await loadFixture(deployContractsAndInit);
+                const { tokens, contracts, permits, deadline } = await loadFixture(deployContractsAndInit);
                 const { r, vs } = permits.maker.signature;
-                const deadline = (await time.latest()) + time.duration.weeks(1);
 
-                tokens.weth.approve(contracts.swap.address, '1');
                 await time.increaseTo(deadline + 1);
 
                 const takerTraits = buildTakerTraits({
@@ -598,16 +620,16 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: true,
                     extension: permits.maker.order.extension,
                 });
-                const fillTx = contracts.swap.connect(addr1).fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                const fillTx = contracts.swap.connect(addr1).fillOrderArgs(permits.maker.order, r, vs, 1, takerTraits.traits, takerTraits.args);
                 await expect(fillTx).to.changeTokenBalances(tokens.dai, [addr, addr1], [1, -1]);
                 await expect(fillTx).to.changeTokenBalances(tokens.weth, [addr, addr1], [-1, 1]);
             });
 
             it('rejects expired permit when allowance is not enough', async function () {
-                const { contracts, permits } = await loadFixture(deployContractsAndInit);
+                const { tokens, contracts, permits, deadline } = await loadFixture(deployContractsAndInit);
                 const { r, vs } = permits.maker.signature;
-                const deadline = (await time.latest()) + time.duration.weeks(1);
 
+                await tokens.weth.approve(contracts.swap.address, '0');
                 await time.increaseTo(deadline + 1);
 
                 const takerTraits = buildTakerTraits({
@@ -648,8 +670,6 @@ describe('LimitOrderProtocol', function () {
                 const { tokens, contracts, chainId, permits } = await loadFixture(deployContractsAndInit);
                 const { r, vs } = permits.taker.signature;
 
-                const permit2 = await permit2Contract();
-                await tokens.weth.approve(permit2.address, 1);
                 const permit = await getPermit2(addr, tokens.weth.address, chainId, contracts.swap.address, 1);
 
                 const takerTraits = buildTakerTraits({
@@ -672,24 +692,20 @@ describe('LimitOrderProtocol', function () {
             });
 
             it('Skips expired permit if allowance is enough', async function () {
-                const { tokens, contracts, chainId, permits } = await loadFixture(deployContractsAndInit);
+                const { tokens, contracts, chainId, permits, deadline } = await loadFixture(deployContractsAndInit);
                 const { r, vs } = permits.taker.signature;
-
-                const permit2 = await permit2Contract();
-                await tokens.weth.approve(permit2.address, 1);
 
                 const permit = await getPermit2(addr, tokens.weth.address, chainId, contracts.swap.address, 1);
                 const tx = {
                     from: addr.address,
-                    to: permit2.address,
+                    to: contracts.permit2Contract.address,
                     data: ethers.utils.hexConcat([
-                        permit2.interface.getSighash('permit'),
+                        contracts.permit2Contract.interface.getSighash('permit'),
                         permit,
                     ]),
                 };
                 await addr.sendTransaction(tx);
 
-                const deadline = BigNumber.from((await time.latest()) - time.duration.weeks(1));
                 const permitExpired = await getPermit2(addr, tokens.weth.address, chainId, contracts.swap.address, 1, false, constants.MAX_UINT48, deadline);
 
                 const takerTraits = buildTakerTraits({
@@ -697,7 +713,7 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: true,
                     usePermit2: true,
                 });
-                const fillTx = swap.permitAndCall(
+                const fillTx = contracts.swap.permitAndCall(
                     ethers.utils.solidityPack(
                         ['address', 'bytes'],
                         [tokens.weth.address, permitExpired],
@@ -714,8 +730,6 @@ describe('LimitOrderProtocol', function () {
                 const { tokens, contracts, chainId, permits } = await loadFixture(deployContractsAndInit);
                 const { r, vs } = permits.taker.signature;
 
-                const permit2 = await permit2Contract();
-                await tokens.weth.approve(permit2.address, 1);
                 const deadline = BigNumber.from((await time.latest()) - time.duration.weeks(1));
                 const permit = await getPermit2(addr, tokens.weth.address, chainId, contracts.swap.address, 1, false, constants.MAX_UINT48, deadline);
 
@@ -752,8 +766,6 @@ describe('LimitOrderProtocol', function () {
                     },
                 );
 
-                const permit2 = await permit2Contract();
-                await tokens.weth.approve(permit2.address, 1);
                 const permit = await getPermit2(addr, tokens.weth.address, chainId, contracts.swap.address, 1);
 
                 const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, contracts.swap.address, addr1));
@@ -782,30 +794,28 @@ describe('LimitOrderProtocol', function () {
             // bad permit |      +       |     +        |
             it('Maker permit works', async function () {
                 const { tokens, contracts, permits } = await loadFixture(deployContractsAndInit);
-                const { r, vs } = permits.maker.signature;
+                const { r, vs } = permits.maker.signaturePermit2;
 
                 const takerTraits = buildTakerTraits({
                     threshold: 1n,
                     makingAmount: true,
-                    extension: permits.make.order.extension,
+                    extension: permits.maker.orderPermit2.extension,
                 });
-                const fillTx = contracts.swap.connect(addr1).fillOrderArgs(permits.make.order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                const fillTx = contracts.swap.connect(addr1).fillOrderArgs(permits.maker.orderPermit2, r, vs, 1, takerTraits.traits, takerTraits.args);
                 await expect(fillTx).to.changeTokenBalances(tokens.dai, [addr, addr1], [1, -1]);
                 await expect(fillTx).to.changeTokenBalances(tokens.weth, [addr, addr1], [-1, 1]);
             });
 
             it('Skips expired permit if allowance is enough', async function () {
-                const { tokens, contracts, chainId, permits } = await loadFixture(deployContractsAndInit);
-                const { r, vs } = permits.maker.signature;
-                const permit2 = await permit2Contract();
-                const deadline = (await time.latest()) + time.duration.weeks(1);
+                const { tokens, contracts, chainId, permits, deadline } = await loadFixture(deployContractsAndInit);
+                const { r, vs } = permits.maker.signaturePermit2;
 
                 const permit = await getPermit2(addr, tokens.weth.address, chainId, contracts.swap.address, 1);
                 const tx = {
                     from: addr.address,
-                    to: permit2.address,
+                    to: contracts.permit2Contract.address,
                     data: ethers.utils.hexConcat([
-                        permit2.interface.getSighash('permit'),
+                        contracts.permit2Contract.interface.getSighash('permit'),
                         permit,
                     ]),
                 };
@@ -816,33 +826,31 @@ describe('LimitOrderProtocol', function () {
                 const takerTraits = buildTakerTraits({
                     threshold: 1n,
                     makingAmount: true,
-                    extension: permits.maker.order.extension,
+                    extension: permits.maker.orderPermit2.extension,
                 });
-                const fillTx = contracts.swap.connect(addr1).fillOrderArgs(permits.maker.order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                const fillTx = contracts.swap.connect(addr1).fillOrderArgs(permits.maker.orderPermit2, r, vs, 1, takerTraits.traits, takerTraits.args);
                 await expect(fillTx).to.changeTokenBalances(tokens.dai, [addr, addr1], [1, -1]);
                 await expect(fillTx).to.changeTokenBalances(tokens.weth, [addr, addr1], [-1, 1]);
             });
 
             it('Fails with expired permit if allowance is not enough', async function () {
-                const { contracts, permit } = await loadFixture(deployContractsAndInit);
-                const { r, vs } = permits.maker.signature;
-                const deadline = (await time.latest()) + time.duration.weeks(1);
+                const { contracts, permits, deadline } = await loadFixture(deployContractsAndInit);
+                const { r, vs } = permits.maker.signaturePermit2;
 
                 await time.increaseTo(deadline + 1);
 
                 const takerTraits = buildTakerTraits({
                     threshold: 1n,
                     makingAmount: true,
-                    extension: permits.maker.order.extension,
+                    extension: permits.maker.orderPermit2.extension,
                 });
                 await expect(contracts.swap.connect(addr1).fillOrderArgs(
-                    permits.maker.order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                    permits.maker.orderPermit2, r, vs, 1, takerTraits.traits, takerTraits.args,
                 )).to.be.revertedWithCustomError(contracts.swap, 'SafeTransferFromFailed');
             });
 
             it('Fails with unexpected makerAssetSuffix', async function () {
-                const { tokens, contracts, chainId } = await loadFixture(deployContractsAndInit);
-                const deadline = (await time.latest()) + time.duration.weeks(1);
+                const { tokens, contracts, chainId, deadline } = await loadFixture(deployContractsAndInit);
                 const permit = withTarget(
                     tokens.weth.address,
                     await getPermit2(addr, tokens.weth.address, chainId, contracts.swap.address, 1, false, constants.MAX_UINT48, deadline),
