@@ -67,7 +67,7 @@ describe('ChainLinkExample', function () {
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
-            minReturn: ether('4040.01'),
+            threshold: ether('4040.01'),
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, ether('1'), takerTraits.traits, takerTraits.args);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [ether('-4040'), ether('4040')]);
@@ -102,7 +102,7 @@ describe('ChainLinkExample', function () {
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
-            minReturn: takingAmount.add(ether('0.01')),
+            threshold: takingAmount.add(ether('0.01')),
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount]);
@@ -134,7 +134,7 @@ describe('ChainLinkExample', function () {
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
-            minReturn: takingAmount.add(ether('0.01')),
+            threshold: takingAmount.add(ether('0.01')),
         });
         await expect(
             swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args), // taking threshold = exact taker amount + eps
@@ -169,7 +169,7 @@ describe('ChainLinkExample', function () {
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
-            minReturn: takingAmount,
+            threshold: takingAmount,
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount]);
