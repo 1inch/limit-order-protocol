@@ -22,8 +22,6 @@ contract ChainlinkCalculator is IAmountGetter {
     /// @notice Calculates price of token A relative to token B. Note that order is important
     /// @return result Token A relative price times amount
     function doublePrice(AggregatorV3Interface oracle1, AggregatorV3Interface oracle2, int256 decimalsScale, uint256 amount) external view returns(uint256 result) {
-        if (oracle1.decimals() != oracle2.decimals()) revert DifferentOracleDecimals();
-
         return _doublePrice(oracle1, oracle2, decimalsScale, amount);
     }
 
@@ -60,8 +58,8 @@ contract ChainlinkCalculator is IAmountGetter {
     /// @return Amount * spread * oracle price
     function _getSpreadedAmount(uint256 amount, bytes calldata blob) internal view returns(uint256) {
         bytes1 flags = bytes1(blob[:1]);
-        bool inverse = flags & _INVERSE_FLAG > 0;
-        bool useDoublePrice = flags & _DOUBLE_PRICE_FLAG > 0;
+        bool inverse = flags & _INVERSE_FLAG == _INVERSE_FLAG;
+        bool useDoublePrice = flags & _DOUBLE_PRICE_FLAG == _DOUBLE_PRICE_FLAG;
         if (!useDoublePrice) {
             AggregatorV3Interface oracle = AggregatorV3Interface(address(bytes20(blob[1:21])));
             uint256 spread = uint256(bytes32(blob[21:53]));
@@ -82,6 +80,8 @@ contract ChainlinkCalculator is IAmountGetter {
     }
 
     function _doublePrice(AggregatorV3Interface oracle1, AggregatorV3Interface oracle2, int256 decimalsScale, uint256 amount) internal view returns(uint256 result) {
+        if (oracle1.decimals() != oracle2.decimals()) revert DifferentOracleDecimals();
+
         {
             (, int256 latestAnswer1,, uint256 updatedAt,) = oracle1.latestRoundData();
             if (updatedAt + _ORACLE_TTL < block.timestamp) revert StaleOraclePrice(); // solhint-disable-line not-rely-on-time
