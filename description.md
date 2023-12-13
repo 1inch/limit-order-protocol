@@ -909,7 +909,7 @@ The `takerTraits` argument provides a number of options for the taker to choose 
 | ARGS_HAS_TARGET | 251 bit | 1 | If set, then first 20 bytes of args are treated as target address for maker’s funds transfer |
 | ARGS_EXTENSION_LENGTH | 224-247 | 24 | Extension calldata coded in args argument length |
 | ARGS_INTERACTION_LENGTH | 200-223 | 24 | Taker’s interaction calldata coded in args argument length |
-| THRESHOLD | 0-184 | 184 | The maximum amount a taker agrees to give in exchange for a making amount. If the calculated taker amount is less than the threshold, then the transaction will be reverted. A zero (0) threshold skips the check. The evaluated equation is<br/>$$  threshold ≤ amount*{takingAmount \over makingAmount} $$ |
+| THRESHOLD | 0-184 | 184 | Depending on the MAKER_AMOUNT_FLAG, this can be the maximum amount the taker agrees to give in exchange for the making amount (flag is 1) or the minimum amount the taker agrees to receive (flag is 0). If the calculated taker amount does not satisfy the threshold, then the transaction will be reverted. A zero (0) threshold skips the check. To pass the check the equation should be evaluated to `true`.<br/>For flag = 1<br/>$$  threshold ≥ amount*{takingAmount \over makingAmount} $$<br/>For flag = 0<br/>$$  threshold ≤ amount*{makingAmount \over takingAmount } $$ |
 
 # Cancelling an order
 
