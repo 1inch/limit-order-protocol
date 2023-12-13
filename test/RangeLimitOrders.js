@@ -98,7 +98,7 @@ describe('RangeLimitOrders', function () {
 
         // first fill order
         const takerTraits = buildTakerTraits({
-            minReturn: makerAsset.parseAmount(fillParams.firstFill.thresholdAmount),
+            threshold: makerAsset.parseAmount(fillParams.firstFill.thresholdAmount),
             extension: order.extension,
         });
         let fillOrder = swap.fillOrderArgs(
@@ -129,7 +129,7 @@ describe('RangeLimitOrders', function () {
 
         // second fill order
         const secondTakerTraits = buildTakerTraits({
-            minReturn: makerAsset.parseAmount(fillParams.secondFill.thresholdAmount),
+            threshold: makerAsset.parseAmount(fillParams.secondFill.thresholdAmount),
             extension: order.extension,
         });
         fillOrder = swap.fillOrderArgs(
@@ -179,7 +179,7 @@ describe('RangeLimitOrders', function () {
 
         // first fill order
         const takerTraits = buildTakerTraits({
-            minReturn: takerAsset.parseAmount(fillParams.firstFill.thresholdAmount),
+            threshold: takerAsset.parseAmount(fillParams.firstFill.thresholdAmount),
             makingAmount: true,
             extension: order.extension,
         });
@@ -211,7 +211,7 @@ describe('RangeLimitOrders', function () {
 
         // second fill order
         const secondTakerTraits = buildTakerTraits({
-            minReturn: takerAsset.parseAmount(fillParams.secondFill.thresholdAmount),
+            threshold: takerAsset.parseAmount(fillParams.secondFill.thresholdAmount),
             makingAmount: true,
             extension: order.extension,
         });

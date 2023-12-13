@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "../interfaces/IOrderMixin.sol";
 import "../interfaces/IAmountGetter.sol";
 
+// solhint-disable not-rely-on-time
+
 /// @title A helper contract for interactions with https://docs.chain.link
 contract ChainlinkCalculator is IAmountGetter {
     using SafeCast for int256;
@@ -102,3 +104,5 @@ contract ChainlinkCalculator is IAmountGetter {
         }
     }
 }
+
+// solhint-enable not-rely-on-time

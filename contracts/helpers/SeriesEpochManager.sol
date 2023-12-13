@@ -5,7 +5,7 @@ pragma solidity 0.8.19;
 /// @title A helper contract to manage nonce with the series
 contract SeriesEpochManager {
     error AdvanceEpochFailed();
-    event EpochIncreased(address indexed maker, uint256 series, uint256 newNonce);
+    event EpochIncreased(address indexed maker, uint256 series, uint256 newEpoch);
 
     // {
     //    1: {
@@ -18,7 +18,7 @@ contract SeriesEpochManager {
     //    },
     //    ...
     // }
-    mapping(uint256 => uint256) private _epochs;
+    mapping(uint256 seriesId => uint256 epoch) private _epochs;
 
     /// @notice Returns nonce for `maker` and `series`
     function epoch(address maker, uint96 series) public view returns(uint256) {
@@ -35,15 +35,15 @@ contract SeriesEpochManager {
         if (amount == 0 || amount > 255) revert AdvanceEpochFailed();
         unchecked {
             uint256 key = uint160(msg.sender) | (uint256(series) << 160);
-            uint256 newNonce = _epochs[key] + amount;
-            _epochs[key] = newNonce;
-            emit EpochIncreased(msg.sender, series, newNonce);
+            uint256 newEpoch = _epochs[key] + amount;
+            _epochs[key] = newEpoch;
+            emit EpochIncreased(msg.sender, series, newEpoch);
         }
     }
 
-    /// @notice Checks if `maker` has specified `makerNonce` for `series`
-    /// @return Result True if `maker` has specified nonce. Otherwise, false
-    function epochEquals(address maker, uint256 series, uint256 makerNonce) public view returns(bool) {
-        return _epochs[uint160(maker) | (uint256(series) << 160)] == makerNonce;
+    /// @notice Checks if `maker` has specified `makerEpoch` for `series`
+    /// @return Result True if `maker` has specified epoch. Otherwise, false
+    function epochEquals(address maker, uint256 series, uint256 makerEpoch) public view returns(bool) {
+        return _epochs[uint160(maker) | (uint256(series) << 160)] == makerEpoch;
     }
 }

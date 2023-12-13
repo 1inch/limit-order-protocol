@@ -1,11 +1,12 @@
 const hre = require('hardhat');
 const { ethers, tracer } = hre;
-const { expect, time, constants } = require('@1inch/solidity-utils');
+const { expect, time, constants, getPermit2, permit2Contract } = require('@1inch/solidity-utils');
 const { fillWithMakingAmount, unwrapWethTaker, buildMakerTraits, buildMakerTraitsRFQ, buildOrder, signOrder, buildOrderData, buildTakerTraits } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, ether, findTrace, countAllItems } = require('./helpers/utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens, deployArbitraryPredicate } = require('./helpers/fixtures');
+const { BigNumber } = require('ethers');
 
 describe('LimitOrderProtocol', function () {
     let addr, addr1, addr2;
@@ -77,6 +78,38 @@ describe('LimitOrderProtocol', function () {
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             await expect(swap.fillOrder(order, r, vs, 2, fillWithMakingAmount(1)))
                 .to.be.revertedWithCustomError(swap, 'TakingAmountTooHigh');
+        });
+
+        it('should not fill above threshold, making amount > remaining making amount', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 2,
+                takingAmount: 2,
+                maker: addr1.address,
+            });
+
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+            await expect(swap.fillOrder(order, r, vs, 3, fillWithMakingAmount(1)))
+                .to.be.revertedWithCustomError(swap, 'TakingAmountTooHigh');
+        });
+
+        it('should not fill below threshold, making amount > remaining making amount', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 2,
+                takingAmount: 2,
+                maker: addr1.address,
+            });
+
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+            await expect(swap.fillOrder(order, r, vs, 3, 4))
+                .to.be.revertedWithCustomError(swap, 'MakingAmountTooLow');
         });
 
         it('should not fill below threshold', async function () {
@@ -290,7 +323,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const takerTraits = buildTakerTraits({
-                minReturn: 10n,
+                threshold: 10n,
                 makingAmount: true,
                 extension: order.extension,
             });
@@ -391,6 +424,40 @@ describe('LimitOrderProtocol', function () {
         });
     });
 
+    describe('TakerTraits', function () {
+        const deployContractsAndInit = async function () {
+            const { dai, weth, swap, chainId } = await deploySwapTokens();
+            await initContracts(dai, weth, swap);
+            return { dai, weth, swap, chainId };
+        };
+
+        it('DAI => WETH, send WETH to address different from msg.sender when fill', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const otherAddress = addr2;
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 1800,
+                takingAmount: 1,
+                maker: addr1.address,
+            });
+
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+            const takerTraits = buildTakerTraits({
+                target: otherAddress.address,
+            });
+
+            const fillTx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+
+            await expect(fillTx).to.changeTokenBalance(dai, addr1, -1800);
+            await expect(fillTx).to.changeTokenBalance(weth, addr, -1);
+
+            // Pay out happened to otherAddress, specified in taker traits
+            await expect(fillTx).to.changeTokenBalance(dai, otherAddress, 1800);
+        });
+    });
+
     describe('Permit', function () {
         describe('Taker Permit', function () {
             // tests that marked + are implemened
@@ -415,13 +482,13 @@ describe('LimitOrderProtocol', function () {
                 return { dai, weth, swap, chainId, order, signature };
             };
 
-            it('DAI => WETH', async function () {
+            it('DAI => WETH, no allowance', async function () {
                 const { dai, weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
                 const { r, _vs: vs } = ethers.utils.splitSignature(signature);
                 const takerTraits = buildTakerTraits({
-                    minReturn: 1n,
+                    threshold: 1n,
                     makingAmount: true,
                 });
                 const fillTx = swap.permitAndCall(
@@ -445,7 +512,7 @@ describe('LimitOrderProtocol', function () {
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1', deadline);
 
                 const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-                const takerTraits = buildTakerTraits({ minReturn: 1n });
+                const takerTraits = buildTakerTraits({ threshold: 1n });
 
                 const fillTx = swap.permitAndCall(
                     ethers.utils.solidityPack(
@@ -467,7 +534,7 @@ describe('LimitOrderProtocol', function () {
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1', deadline);
 
                 const { r, _vs: vs } = ethers.utils.splitSignature(signature);
-                const takerTraits = buildTakerTraits({ minReturn: 1n });
+                const takerTraits = buildTakerTraits({ threshold: 1n });
                 await expect(swap.permitAndCall(
                     ethers.utils.solidityPack(
                         ['address', 'bytes'],
@@ -514,11 +581,11 @@ describe('LimitOrderProtocol', function () {
                 return { dai, weth, swap, order, r, vs, permit, deadline };
             };
 
-            it('maker permit works', async function () {
+            it('Maker permit works, no allowance', async function () {
                 const { dai, weth, swap, order, r, vs } = await loadFixture(deployContractsAndInitPermit);
 
                 const takerTraits = buildTakerTraits({
-                    minReturn: 1n,
+                    threshold: 1n,
                     makingAmount: true,
                     extension: order.extension,
                 });
@@ -534,7 +601,7 @@ describe('LimitOrderProtocol', function () {
                 await time.increaseTo(deadline + 1);
 
                 const takerTraits = buildTakerTraits({
-                    minReturn: 1n,
+                    threshold: 1n,
                     makingAmount: true,
                     extension: order.extension,
                 });
@@ -549,7 +616,7 @@ describe('LimitOrderProtocol', function () {
                 await time.increaseTo(deadline + 1);
 
                 const takerTraits = buildTakerTraits({
-                    minReturn: 1n,
+                    threshold: 1n,
                     makingAmount: true,
                     extension: order.extension,
                 });
@@ -563,13 +630,289 @@ describe('LimitOrderProtocol', function () {
 
                 await addr1.sendTransaction({ to: weth.address, data: '0xd505accf' + permit.substring(42) });
                 const takerTraits = buildTakerTraits({
-                    minReturn: 0n,
+                    threshold: 0n,
                     skipMakerPermit: true,
                     extension: order.extension,
                 });
                 const fillTx = swap.connect(addr1).fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
                 await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
                 await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            });
+        });
+    });
+
+    describe('Permit2', function () {
+        describe('Taker Permit', function () {
+            // tests that marked + are implemened
+            //            | ok allowance | no allowance |
+            // ok permit  |      -       |     +        |
+            // bad permit |      +       |     +        |
+            // TODO: Consider refactoring to use only one fixture in all tests
+            const deployContractsAndInitPermit = async function () {
+                const { dai, weth, swap, chainId } = await deploySwapTokens();
+                await initContracts(dai, weth, swap);
+
+                const order = buildOrder({
+                    makerAsset: dai.address,
+                    takerAsset: weth.address,
+                    makingAmount: 1,
+                    takingAmount: 1,
+                    maker: addr1.address,
+                });
+                await weth.approve(swap.address, '0');
+                const signature = await signOrder(order, chainId, swap.address, addr1);
+
+                return { dai, weth, swap, chainId, order, signature };
+            };
+
+            it('DAI => WETH, no allowance', async function () {
+                const { dai, weth, swap, chainId, order } = await loadFixture(deployContractsAndInitPermit);
+
+                const permit2 = await permit2Contract();
+                await weth.approve(permit2.address, 1);
+                const permit = await getPermit2(addr, weth.address, chainId, swap.address, 1);
+
+                const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+                const takerTraits = buildTakerTraits({
+                    threshold: 1n,
+                    makingAmount: true,
+                    usePermit2: true,
+                });
+                const fillTx = swap.permitAndCall(
+                    ethers.utils.solidityPack(
+                        ['address', 'bytes'],
+                        [weth.address, permit],
+                    ),
+                    swap.interface.encodeFunctionData('fillOrderArgs', [
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                    ]),
+                );
+                await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+                await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            });
+
+            it('Skips expired permit if allowance is enough', async function () {
+                const { dai, weth, swap, chainId, order } = await loadFixture(deployContractsAndInitPermit);
+
+                const permit2 = await permit2Contract();
+                await weth.approve(permit2.address, 1);
+
+                const permit = await getPermit2(addr, weth.address, chainId, swap.address, 1);
+                const tx = {
+                    from: addr.address,
+                    to: permit2.address,
+                    data: ethers.utils.hexConcat([
+                        permit2.interface.getSighash('permit'),
+                        permit,
+                    ]),
+                };
+                await addr.sendTransaction(tx);
+
+                const deadline = BigNumber.from((await time.latest()) - time.duration.weeks(1));
+                const permitExpired = await getPermit2(addr, weth.address, chainId, swap.address, 1, false, constants.MAX_UINT48, deadline);
+
+                const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+                const takerTraits = buildTakerTraits({
+                    threshold: 1n,
+                    makingAmount: true,
+                    usePermit2: true,
+                });
+                const fillTx = swap.permitAndCall(
+                    ethers.utils.solidityPack(
+                        ['address', 'bytes'],
+                        [weth.address, permitExpired],
+                    ),
+                    swap.interface.encodeFunctionData('fillOrderArgs', [
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                    ]),
+                );
+                await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+                await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            });
+
+            it('Fails with expired permit if allowance is not enough', async function () {
+                const { weth, swap, chainId, order } = await loadFixture(deployContractsAndInitPermit);
+
+                const permit2 = await permit2Contract();
+                await weth.approve(permit2.address, 1);
+                const deadline = BigNumber.from((await time.latest()) - time.duration.weeks(1));
+                const permit = await getPermit2(addr, weth.address, chainId, swap.address, 1, false, constants.MAX_UINT48, deadline);
+
+                const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+                const takerTraits = buildTakerTraits({
+                    threshold: 1n,
+                    makingAmount: true,
+                    usePermit2: true,
+                });
+                await expect(swap.permitAndCall(
+                    ethers.utils.solidityPack(
+                        ['address', 'bytes'],
+                        [weth.address, permit],
+                    ),
+                    swap.interface.encodeFunctionData('fillOrderArgs', [
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                    ]),
+                )).to.be.revertedWithCustomError(swap, 'SafeTransferFromFailed');
+            });
+
+            it('Fails with unexpected takerAssetSuffix', async function () {
+                const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInitPermit);
+
+                const order = buildOrder(
+                    {
+                        makerAsset: dai.address,
+                        takerAsset: weth.address,
+                        makingAmount: 1,
+                        takingAmount: 1,
+                        maker: addr1.address,
+                        makerTraits: buildMakerTraits({ }),
+                    },
+                    {
+                        takerAssetSuffix: weth.address,
+                    },
+                );
+
+                const permit2 = await permit2Contract();
+                await weth.approve(permit2.address, 1);
+                const permit = await getPermit2(addr, weth.address, chainId, swap.address, 1);
+
+                const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+                const takerTraits = buildTakerTraits({
+                    threshold: 1n,
+                    makingAmount: true,
+                    usePermit2: true,
+                    extension: order.extension,
+                });
+                await expect(swap.permitAndCall(
+                    ethers.utils.solidityPack(
+                        ['address', 'bytes'],
+                        [weth.address, permit],
+                    ),
+                    swap.interface.encodeFunctionData('fillOrderArgs', [
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                    ]),
+                )).to.be.revertedWithCustomError(swap, 'InvalidPermit2Transfer');
+            });
+        });
+
+        describe('Maker Permit', function () {
+            // tests that marked + are implemened
+            //            | ok allowance | no allowance |
+            // ok permit  |      -       |     +        |
+            // bad permit |      +       |     +        |
+            const deployContractsAndInitPermit = async function () {
+                const { dai, weth, swap, chainId } = await deploySwapTokens();
+                await initContracts(dai, weth, swap);
+
+                const deadline = (await time.latest()) + time.duration.weeks(1);
+                const permit = withTarget(
+                    weth.address,
+                    await getPermit2(addr, weth.address, chainId, swap.address, 1, false, constants.MAX_UINT48, deadline),
+                );
+
+                weth.approve(swap.address, 0);
+                const permit2 = await permit2Contract();
+                await weth.approve(permit2.address, 1);
+
+                const order = buildOrder(
+                    {
+                        makerAsset: weth.address,
+                        takerAsset: dai.address,
+                        makingAmount: 1,
+                        takingAmount: 1,
+                        maker: addr.address,
+                        makerTraits: buildMakerTraits({ usePermit2: true }),
+                    },
+                    {
+                        permit,
+                    },
+                );
+
+                const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr));
+                return { dai, weth, swap, chainId, order, r, vs, permit, deadline, permit2 };
+            };
+
+            it('Maker permit works', async function () {
+                const { dai, weth, swap, order, r, vs } = await loadFixture(deployContractsAndInitPermit);
+
+                const takerTraits = buildTakerTraits({
+                    threshold: 1n,
+                    makingAmount: true,
+                    extension: order.extension,
+                });
+                const fillTx = swap.connect(addr1).fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+                await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            });
+
+            it('Skips expired permit if allowance is enough', async function () {
+                const { dai, weth, swap, chainId, order, r, vs, deadline, permit2 } = await loadFixture(deployContractsAndInitPermit);
+
+                const permit = await getPermit2(addr, weth.address, chainId, swap.address, 1);
+                const tx = {
+                    from: addr.address,
+                    to: permit2.address,
+                    data: ethers.utils.hexConcat([
+                        permit2.interface.getSighash('permit'),
+                        permit,
+                    ]),
+                };
+                await addr.sendTransaction(tx);
+
+                await time.increaseTo(deadline + 1);
+
+                const takerTraits = buildTakerTraits({
+                    threshold: 1n,
+                    makingAmount: true,
+                    extension: order.extension,
+                });
+                const fillTx = swap.connect(addr1).fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
+                await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
+                await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
+            });
+
+            it('Fails with expired permit if allowance is not enough', async function () {
+                const { swap, order, r, vs, deadline } = await loadFixture(deployContractsAndInitPermit);
+
+                await time.increaseTo(deadline + 1);
+
+                const takerTraits = buildTakerTraits({
+                    threshold: 1n,
+                    makingAmount: true,
+                    extension: order.extension,
+                });
+                await expect(swap.connect(addr1).fillOrderArgs(
+                    order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                )).to.be.revertedWithCustomError(swap, 'SafeTransferFromFailed');
+            });
+
+            it('Fails with unexpected makerAssetSuffix', async function () {
+                const { dai, weth, swap, chainId, permit } = await loadFixture(deployContractsAndInitPermit);
+
+                const order = buildOrder(
+                    {
+                        makerAsset: weth.address,
+                        takerAsset: dai.address,
+                        makingAmount: 1,
+                        takingAmount: 1,
+                        maker: addr.address,
+                        makerTraits: buildMakerTraits({ usePermit2: true }),
+                    },
+                    {
+                        permit,
+                        makerAssetSuffix: weth.address,
+                    },
+                );
+                const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr));
+
+                const takerTraits = buildTakerTraits({
+                    threshold: 1n,
+                    makingAmount: true,
+                    extension: order.extension,
+                });
+                await expect(swap.connect(addr1).fillOrderArgs(
+                    order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                )).to.be.revertedWithCustomError(swap, 'InvalidPermit2Transfer');
             });
         });
     });
@@ -697,7 +1040,7 @@ describe('LimitOrderProtocol', function () {
 
             /// Partial fill
             const takerTraits1 = buildTakerTraits({
-                minReturn: ether('0.2'),
+                threshold: ether('0.2'),
                 extension: order.extension,
             });
             const fillTx1 = swap.fillContractOrderArgs(order, signature, ether('200'), takerTraits1.traits, takerTraits1.args);
@@ -706,7 +1049,7 @@ describe('LimitOrderProtocol', function () {
 
             /// Remaining fill
             const takerTraits2 = buildTakerTraits({
-                minReturn: ether('0.1'),
+                threshold: ether('0.1'),
                 extension: order.extension,
             });
             const fillTx2 = swap.fillContractOrderArgs(order, signature, ether('100'), takerTraits2.traits, takerTraits2.args);
@@ -743,7 +1086,7 @@ describe('LimitOrderProtocol', function () {
 
             /// Partial fill
             const fillTakerTraits = buildTakerTraits({
-                minReturn: ether('0.2'),
+                threshold: ether('0.2'),
                 extension: order.extension,
             });
             const fillTx = swap.fillContractOrderArgs(order, signature, ether('200'), fillTakerTraits.traits, fillTakerTraits.args);
@@ -757,7 +1100,7 @@ describe('LimitOrderProtocol', function () {
 
             /// Remaining fill failure
             const takerTraits = buildTakerTraits({
-                minReturn: ether('0.1'),
+                threshold: ether('0.1'),
                 extension: order.extension,
             });
             await expect(swap.fillContractOrderArgs(order, signature, ether('100'), takerTraits.traits, takerTraits.args))
@@ -820,6 +1163,51 @@ describe('LimitOrderProtocol', function () {
 
             await expect(ethOrders.connect(addr1).ethOrderDeposit(order, order.extension.slice(0, -6), { value: ether('0.3') }))
                 .to.be.revertedWithCustomError(orderLibFactory, 'InvalidExtensionHash');
+        });
+
+        it('Invalid signature', async function () {
+            const { dai, weth, swap, chainId, ethOrders } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder(
+                {
+                    maker: ethOrders.address,
+                    receiver: addr1.address,
+                    makerAsset: weth.address,
+                    takerAsset: dai.address,
+                    makingAmount: ether('0.3'),
+                    takingAmount: ether('300'),
+                },
+                {
+                    postInteraction: ethOrders.address,
+                },
+            );
+            const orderHash = await swap.hashOrder(order);
+
+            const deposittx = ethOrders.connect(addr1).ethOrderDeposit(order, order.extension, { value: ether('0.3') });
+            await expect(deposittx).to.changeEtherBalance(addr1, ether('-0.3'));
+            await expect(deposittx).to.changeTokenBalance(weth, ethOrders, ether('0.3'));
+
+            let orderMakerBalance = await ethOrders.ordersMakersBalances(orderHash);
+            expect(orderMakerBalance.balance).to.equal(ether('0.3'));
+            expect(orderMakerBalance.maker).to.equal(addr1.address);
+
+            const ethOrdersBatch = await ethOrders.ethOrdersBatch([orderHash]);
+            expect(ethOrdersBatch[0].balance).to.equal(ether('0.3'));
+            expect(ethOrdersBatch[0].maker).to.equal(addr1.address);
+
+            const signature = await signOrder(order, chainId, swap.address, addr);
+
+            const takerTraits1 = buildTakerTraits({
+                threshold: ether('0.2'),
+                extension: order.extension,
+            });
+            await expect(
+                swap.fillContractOrderArgs(order, signature, ether('200'), takerTraits1.traits, takerTraits1.args),
+            ).to.be.revertedWithCustomError(swap, 'BadSignature');
+
+            orderMakerBalance = await ethOrders.ordersMakersBalances(orderHash);
+            expect(orderMakerBalance.balance).to.equal(ether('0.3'));
+            expect(orderMakerBalance.maker).to.equal(addr1.address);
         });
     });
 
@@ -971,6 +1359,64 @@ describe('LimitOrderProtocol', function () {
             const { swap, order } = await loadFixture(orderCancelationInit);
             await swap.connect(addr1).cancelOrder(order.makerTraits, '0x0000000000000000000000000000000000000000000000000000000000000001');
             expect(await swap.remainingInvalidatorForOrder(addr1.address, '0x0000000000000000000000000000000000000000000000000000000000000001')).to.equal('0');
+        });
+
+        it('can simulate the failure of bitsInvalidateForOrder', async function () {
+            const { swap, order } = await loadFixture(orderCancelationInit);
+
+            const calldata = swap.interface.encodeFunctionData('bitsInvalidateForOrder', [
+                order.makerTraits,
+                0,
+            ]);
+
+            const cancelationSimulate = swap.simulate(swap.address, calldata);
+            await expect(cancelationSimulate)
+                .to.be.revertedWithCustomError(swap, 'SimulationResults')
+                .withArgs(false, swap.interface.getSighash('OrderIsNotSuitableForMassInvalidation'));
+        });
+
+        it('should cancel several orders by hash', async function () {
+            const { swap, order } = await loadFixture(orderCancelationInit);
+
+            const firstOrder = order;
+            const secondOrder = order;
+
+            const firstOrderFakeHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+            const secondOrderFakeHash = '0x0000000000000000000000000000000000000000000000000000000000000002';
+
+            await swap.connect(addr1).cancelOrders(
+                [firstOrder.makerTraits, secondOrder.makerTraits],
+                [firstOrderFakeHash, secondOrderFakeHash],
+            );
+
+            expect(await swap.remainingInvalidatorForOrder(addr1.address, firstOrderFakeHash)).to.equal('0');
+            expect(await swap.remainingInvalidatorForOrder(addr1.address, secondOrderFakeHash)).to.equal('0');
+        });
+
+        it('should revert when cancel several orders by hash and mismathed number of traits', async function () {
+            const { swap, order } = await loadFixture(orderCancelationInit);
+
+            const firstOrder = order;
+
+            const firstOrderFakeHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+            const secondOrderFakeHash = '0x0000000000000000000000000000000000000000000000000000000000000002';
+
+            await expect(swap.connect(addr1).cancelOrders(
+                [firstOrder.makerTraits],
+                [firstOrderFakeHash, secondOrderFakeHash],
+            )).to.be.revertedWithCustomError(swap, 'MismatchArraysLengths');
+        });
+
+        it('rawRemainingInvalidatorForOrder returns method works', async function () {
+            const { swap, order } = await loadFixture(orderCancelationInit);
+            const orderFakeHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
+
+            expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderFakeHash)).to.equal('0');
+
+            await swap.connect(addr1).cancelOrder(order.makerTraits, orderFakeHash);
+
+            const minusOne = '0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF';
+            expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderFakeHash)).to.equal(minusOne);
         });
 
         it('should not fill cancelled order', async function () {
@@ -1127,7 +1573,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const takerTraits = buildTakerTraits({
-                minReturn: 1n,
+                threshold: 1n,
                 extension: order.extension,
             });
             const fillTx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
@@ -1159,7 +1605,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const takerTraits = buildTakerTraits({
-                minReturn: 1n,
+                threshold: 1n,
                 extension: order.extension,
             });
             await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
@@ -1194,7 +1640,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const takerTraits = buildTakerTraits({
-                minReturn: 1n,
+                threshold: 1n,
                 extension: order.extension,
             });
             const fillTx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
@@ -1230,7 +1676,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const takerTraits = buildTakerTraits({
-                minReturn: 1n,
+                threshold: 1n,
                 extension: order.extension,
             });
             await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
@@ -1265,7 +1711,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const takerTraits = buildTakerTraits({
-                minReturn: 1n,
+                threshold: 1n,
                 extension: order.extension,
             });
             const fillTx = swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
@@ -1301,7 +1747,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const takerTraits = buildTakerTraits({
-                minReturn: 1n,
+                threshold: 1n,
                 extension: order.extension,
             });
             await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
@@ -1332,7 +1778,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const takerTraits = buildTakerTraits({
-                minReturn: 1n,
+                threshold: 1n,
             });
             await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
                 .to.be.revertedWithCustomError(orderLibFactory, 'MissingOrderExtension');
@@ -1362,7 +1808,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const takerTraits = buildTakerTraits({
-                minReturn: 1n,
+                threshold: 1n,
                 extension: order.extension + '0011223344',
             });
             await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
@@ -1384,7 +1830,7 @@ describe('LimitOrderProtocol', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const takerTraits = buildTakerTraits({
-                minReturn: 1n,
+                threshold: 1n,
                 extension: '0xabacabac',
             });
             await expect(swap.fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args))
@@ -1568,7 +2014,49 @@ describe('LimitOrderProtocol', function () {
             await expect(fillTx).to.changeEtherBalance(addr, -3);
         });
 
-        it('should reverted with takerAsset non-WETH and msg.value greater than 0', async function () {
+        it('should pass with takerAsset WETH and correct msg.value and unwrap flag is set', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 900,
+                takingAmount: 3,
+                maker: addr1.address,
+                makerTraits: buildMakerTraits({
+                    unwrapWeth: true,
+                }),
+            });
+
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+            const fillTx = swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 4 });
+            await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [900, -900]);
+            await expect(fillTx).to.changeEtherBalance(addr, -3);
+            await expect(fillTx).to.changeEtherBalance(addr1, 3);
+        });
+
+        it('should revert with takerAsset WETH, unwrap flag is set and receiver unable to receive ETH', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 900,
+                takingAmount: 3,
+                maker: addr1.address,
+                makerTraits: buildMakerTraits({
+                    unwrapWeth: true,
+                }),
+                receiver: swap.address,
+            });
+
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+            await expect(
+                swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 4 },
+                )).to.be.revertedWithCustomError(swap, 'ETHTransferFailed');
+        });
+
+        it('should be reverted with takerAsset non-WETH and msg.value greater than 0', async function () {
             const { dai, swap, chainId, usdc } = await loadFixture(deployContractsAndInit);
 
             await usdc.mint(addr.address, '1000000');
@@ -1585,6 +2073,30 @@ describe('LimitOrderProtocol', function () {
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             await expect(swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(900), { value: 1 }))
                 .to.be.revertedWithCustomError(swap, 'InvalidMsgValue');
+        });
+
+        it('should revert with takerAsset WETH, unwrap flag is set and taker unable to receive excessive ETH', async function () {
+            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+
+            const TakerContract = await ethers.getContractFactory('TakerContract');
+            const taker = await TakerContract.deploy(swap.address);
+            await taker.deployed();
+
+            const order = buildOrder({
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: 900,
+                takingAmount: 3,
+                maker: addr1.address,
+                makerTraits: buildMakerTraits({
+                    unwrapWeth: true,
+                }),
+            });
+
+            const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
+            await expect(
+                taker.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 4 },
+                )).to.be.revertedWithCustomError(swap, 'ETHTransferFailed');
         });
     });
 });

@@ -116,9 +116,9 @@ library ExtensionLib {
      * @dev The first 32 bytes of an extension calldata contain offsets to the end of each field within the calldata.
      * @param extension The calldata from which the field is to be retrieved.
      * @param field The specific dynamic field to retrieve from the extension.
-     * @return result A bytes calldata representing the requested field.
+     * @return calldata Bytes representing the requested field.
      */
-    function _get(bytes calldata extension, DynamicField field) private pure returns(bytes calldata result) {
+    function _get(bytes calldata extension, DynamicField field) private pure returns(bytes calldata) {
         if (extension.length < 0x20) return msg.data[:0];
 
         Offsets offsets;
