@@ -12,6 +12,7 @@ type MakerTraits is uint256;
  * High bits are used for flags
  * 255 bit `NO_PARTIAL_FILLS_FLAG`          - if set, the order does not allow partial fills
  * 254 bit `ALLOW_MULTIPLE_FILLS_FLAG`      - if set, the order permits multiple fills
+ * 253 bit                                  - unused
  * 252 bit `PRE_INTERACTION_CALL_FLAG`      - if set, the order requires pre-interaction call
  * 251 bit `POST_INTERACTION_CALL_FLAG`     - if set, the order requires post-interaction call
  * 250 bit `NEED_CHECK_EPOCH_MANAGER_FLAG`  - if set, the order requires to check the epoch manager
