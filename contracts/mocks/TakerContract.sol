@@ -6,7 +6,7 @@ import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { TakerTraits } from "../libraries/TakerTraitsLib.sol";
 
 contract TakerContract {
-    IOrderMixin private _swap;
+    IOrderMixin private immutable _swap;
 
     constructor(IOrderMixin swap) {
         _swap = swap;
