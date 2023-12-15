@@ -535,7 +535,9 @@ describe('LimitOrderProtocol', function () {
                         ['address', 'bytes'],
                         [weth.address, permit],
                     ),
-                    swap.interface.encodeFunctionData('fillOrderArgs', [order, r, vs, 1, takerTraits.traits, takerTraits.args]),
+                    swap.interface.encodeFunctionData('fillOrderArgs', [
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                    ]),
                 );
                 await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
                 await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
@@ -556,7 +558,9 @@ describe('LimitOrderProtocol', function () {
                         ['address', 'bytes'],
                         [weth.address, permit],
                     ),
-                    swap.interface.encodeFunctionData('fillOrderArgs', [order, r, vs, 1, takerTraits.traits, takerTraits.args]),
+                    swap.interface.encodeFunctionData('fillOrderArgs', [
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                    ]),
                 );
                 await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
                 await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
@@ -577,7 +581,9 @@ describe('LimitOrderProtocol', function () {
                         ['address', 'bytes'],
                         [weth.address, permit],
                     ),
-                    swap.interface.encodeFunctionData('fillOrderArgs', [order, r, vs, 1, takerTraits.traits, takerTraits.args]),
+                    swap.interface.encodeFunctionData('fillOrderArgs', [
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                    ]),
                 )).to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
             });
         });
@@ -634,7 +640,9 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: true,
                     extension: order.extension,
                 });
-                await expect(swap.connect(addr1).fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args)).to.be.revertedWithCustomError(swap, 'TransferFromMakerToTakerFailed');
+                await expect(swap.connect(addr1).fillOrderArgs(
+                    order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                )).to.be.revertedWithCustomError(swap, 'TransferFromMakerToTakerFailed');
             });
 
             it('skips order permit flag', async function () {
@@ -680,7 +688,9 @@ describe('LimitOrderProtocol', function () {
                         ['address', 'bytes'],
                         [weth.address, permit],
                     ),
-                    swap.interface.encodeFunctionData('fillOrderArgs', [order, r, vs, 1, takerTraits.traits, takerTraits.args]),
+                    swap.interface.encodeFunctionData('fillOrderArgs', [
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                    ]),
                 );
                 await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
                 await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
@@ -714,7 +724,9 @@ describe('LimitOrderProtocol', function () {
                         ['address', 'bytes'],
                         [weth.address, permitExpired],
                     ),
-                    swap.interface.encodeFunctionData('fillOrderArgs', [order, r, vs, 1, takerTraits.traits, takerTraits.args]),
+                    swap.interface.encodeFunctionData('fillOrderArgs', [
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                    ]),
                 );
                 await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
                 await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
@@ -738,7 +750,9 @@ describe('LimitOrderProtocol', function () {
                         ['address', 'bytes'],
                         [weth.address, permit],
                     ),
-                    swap.interface.encodeFunctionData('fillOrderArgs', [order, r, vs, 1, takerTraits.traits, takerTraits.args]),
+                    swap.interface.encodeFunctionData('fillOrderArgs', [
+                        order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                    ]),
                 )).to.be.revertedWithCustomError(swap, 'SafeTransferFromFailed');
             });
 
@@ -840,7 +854,9 @@ describe('LimitOrderProtocol', function () {
                     makingAmount: true,
                     extension: order.extension,
                 });
-                await expect(swap.connect(addr1).fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args)).to.be.revertedWithCustomError(swap, 'SafeTransferFromFailed');
+                await expect(swap.connect(addr1).fillOrderArgs(
+                    order, r, vs, 1, takerTraits.traits, takerTraits.args,
+                )).to.be.revertedWithCustomError(swap, 'SafeTransferFromFailed');
             });
 
             it('Fails with unexpected makerAssetSuffix', async function () {
