@@ -15,7 +15,11 @@ describe('LimitOrderProtocol', function () {
         [addr, addr1, addr2] = await ethers.getSigners();
     });
 
-    async function initContracts (dai, weth, swap) {
+    async function deployContractsAndInit () {
+        const { dai, weth, usdc, swap, chainId } = await deploySwapTokens();
+        const tokens = { dai, weth, usdc };
+        const contracts = { swap };
+
         await dai.mint(addr1.address, ether('1000000'));
         await dai.mint(addr.address, ether('1000000'));
         await weth.deposit({ value: ether('100') });
@@ -24,24 +28,85 @@ describe('LimitOrderProtocol', function () {
         await dai.connect(addr1).approve(swap.address, ether('1000000'));
         await weth.approve(swap.address, ether('100'));
         await weth.connect(addr1).approve(swap.address, ether('100'));
+
+        const ETHOrders = await ethers.getContractFactory('ETHOrders');
+        contracts.ethOrders = await ETHOrders.deploy(weth.address, swap.address);
+        await contracts.ethOrders.deployed();
+        const orderLibFactory = await ethers.getContractFactory('OrderLib');
+
+        const { arbitraryPredicate } = await deployArbitraryPredicate();
+        contracts.arbitraryPredicate = arbitraryPredicate;
+
+        const permits = { taker: {}, maker: {} };
+        // Taker permit
+        permits.taker.order = buildOrder({
+            makerAsset: dai.address,
+            takerAsset: weth.address,
+            makingAmount: 1,
+            takingAmount: 1,
+            maker: addr1.address,
+        });
+        const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(permits.taker.order, chainId, swap.address, addr1));
+        permits.taker.signature = { r, vs };
+
+        // Maker permit
+        const deadline = (await time.latest()) + time.duration.weeks(1);
+        const permit = withTarget(
+            weth.address,
+            await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1', deadline),
+        );
+        const permit2 = withTarget(
+            weth.address,
+            await getPermit2(addr, weth.address, chainId, swap.address, 1, false, constants.MAX_UINT48, deadline),
+        );
+        permits.maker.permit = permit;
+        permits.maker.permit2 = permit2;
+        permits.maker.order = buildOrder(
+            {
+                makerAsset: weth.address,
+                takerAsset: dai.address,
+                makingAmount: 1,
+                takingAmount: 1,
+                maker: addr.address,
+            },
+            {
+                permit,
+            },
+        );
+
+        permits.maker.orderPermit2 = buildOrder(
+            {
+                makerAsset: weth.address,
+                takerAsset: dai.address,
+                makingAmount: 1,
+                takingAmount: 1,
+                maker: addr.address,
+                makerTraits: buildMakerTraits({ usePermit2: true }),
+            },
+            {
+                permit: permit2,
+            },
+        );
+        contracts.permit2Contract = await permit2Contract();
+        await weth.approve(contracts.permit2Contract.address, 1);
+        const { r: r1, _vs: vs1 } = ethers.utils.splitSignature(await signOrder(permits.maker.order, chainId, swap.address, addr));
+        const { r: r2, _vs: vs2 } = ethers.utils.splitSignature(await signOrder(permits.maker.orderPermit2, chainId, swap.address, addr));
+        permits.maker.signature = { r: r1, vs: vs1 };
+        permits.maker.signaturePermit2 = { r: r2, vs: vs2 };
+
+        return { tokens, contracts, chainId, orderLibFactory, permits, deadline };
     };
 
     describe('wip', function () {
-        const deployContractsAndInit = async function () {
-            const { dai, weth, swap, chainId } = await deploySwapTokens();
-            await initContracts(dai, weth, swap);
-            return { dai, weth, swap, chainId };
-        };
-
         it('transferFrom', async function () {
-            const { dai } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai } } = await loadFixture(deployContractsAndInit);
 
             await dai.connect(addr1).approve(addr.address, '2');
             await dai.transferFrom(addr1.address, addr.address, '1');
         });
 
         it('should not swap with bad signature', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -65,7 +130,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should not fill above threshold', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -81,7 +146,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should not fill above threshold, making amount > remaining making amount', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -97,7 +162,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should not fill below threshold, making amount > remaining making amount', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -113,7 +178,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should not fill below threshold', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -129,7 +194,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should fill without checks with threshold == 0', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -150,7 +215,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should fail when amount is zero', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -166,7 +231,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should swap fully based on signature', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 1 DAI => 1 WETH
             // Swap:  1 DAI => 1 WETH
 
@@ -194,7 +259,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should swap half based on signature', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 2 DAI => 2 WETH
             // Swap:  1 DAI => 1 WETH
 
@@ -219,7 +284,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should floor maker amount', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 2 DAI => 10 WETH
             // Swap:  9 WETH <= 1 DAI
 
@@ -238,7 +303,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should fail on floor maker amount = 0', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 2 DAI => 10 WETH
             // Swap:  4 WETH <= 0 DAI
 
@@ -256,7 +321,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should ceil taker amount', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 10 DAI => 2 WETH
             // Swap:  4 DAI => 1 WETH
 
@@ -275,7 +340,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should unwrap weth', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 10 DAI => 2 WETH
             // Swap:  4 DAI => 1 WETH
 
@@ -297,7 +362,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('ERC721Proxy should work', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const ERC721Proxy = await ethers.getContractFactory('ERC721Proxy');
             const erc721proxy = await ERC721Proxy.deploy(swap.address);
@@ -334,14 +399,8 @@ describe('LimitOrderProtocol', function () {
     });
 
     describe('MakerTraits', function () {
-        const deployContractsAndInit = async function () {
-            const { dai, weth, swap, chainId } = await deploySwapTokens();
-            await initContracts(dai, weth, swap);
-            return { dai, weth, swap, chainId };
-        };
-
         it('disallow multiple fills', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 10 DAI => 2 WETH
             // Swap:  4 DAI => 1 WETH
 
@@ -364,7 +423,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('need epoch manager, success', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 10 DAI => 2 WETH
             // Swap:  4 DAI => 1 WETH
 
@@ -384,7 +443,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('need epoch manager, fail', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 10 DAI => 2 WETH
             // Swap:  4 DAI => 1 WETH
 
@@ -403,7 +462,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('unwrap weth for maker', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
             // Order: 10 DAI => 2 WETH
             // Swap:  10 DAI => 2 ETH
 
@@ -425,14 +484,8 @@ describe('LimitOrderProtocol', function () {
     });
 
     describe('TakerTraits', function () {
-        const deployContractsAndInit = async function () {
-            const { dai, weth, swap, chainId } = await deploySwapTokens();
-            await initContracts(dai, weth, swap);
-            return { dai, weth, swap, chainId };
-        };
-
         it('DAI => WETH, send WETH to address different from msg.sender when fill', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const otherAddress = addr2;
             const order = buildOrder({
@@ -465,32 +518,18 @@ describe('LimitOrderProtocol', function () {
             // ok permit  |      -       |     +        |
             // bad permit |      +       |     +        |
 
-            const deployContractsAndInitPermit = async function () {
-                const { dai, weth, swap, chainId } = await deploySwapTokens();
-                await initContracts(dai, weth, swap);
-
-                const order = buildOrder({
-                    makerAsset: dai.address,
-                    takerAsset: weth.address,
-                    makingAmount: 1,
-                    takingAmount: 1,
-                    maker: addr1.address,
-                });
-                await weth.approve(swap.address, '0');
-                const signature = await signOrder(order, chainId, swap.address, addr1);
-
-                return { dai, weth, swap, chainId, order, signature };
-            };
-
             it('DAI => WETH, no allowance', async function () {
-                const { dai, weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
+                const {
+                    tokens: { dai, weth }, contracts: { swap }, chainId, permits: { taker: { order, signature: { r, vs } } },
+                } = await loadFixture(deployContractsAndInit);
 
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1');
-                const { r, _vs: vs } = ethers.utils.splitSignature(signature);
                 const takerTraits = buildTakerTraits({
                     threshold: 1n,
                     makingAmount: true,
                 });
+
+                await weth.approve(swap.address, '0');
                 const fillTx = swap.permitAndCall(
                     ethers.utils.solidityPack(
                         ['address', 'bytes'],
@@ -505,13 +544,13 @@ describe('LimitOrderProtocol', function () {
             });
 
             it('skips expired permit if allowance is enough', async function () {
-                const { dai, weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
+                const {
+                    tokens: { dai, weth }, contracts: { swap }, chainId, permits: { taker: { order, signature: { r, vs } } },
+                } = await loadFixture(deployContractsAndInit);
 
-                await weth.approve(swap.address, '1');
                 const deadline = (await time.latest()) - time.duration.weeks(1);
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1', deadline);
 
-                const { r, _vs: vs } = ethers.utils.splitSignature(signature);
                 const takerTraits = buildTakerTraits({ threshold: 1n });
 
                 const fillTx = swap.permitAndCall(
@@ -528,12 +567,14 @@ describe('LimitOrderProtocol', function () {
             });
 
             it('rejects expired permit when allowance is not enough', async function () {
-                const { weth, swap, chainId, order, signature } = await loadFixture(deployContractsAndInitPermit);
+                const {
+                    tokens: { weth }, contracts: { swap }, chainId, permits: { taker: { order, signature: { r, vs } } },
+                } = await loadFixture(deployContractsAndInit);
 
                 const deadline = (await time.latest()) - time.duration.weeks(1);
                 const permit = await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1', deadline);
 
-                const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+                await weth.approve(swap.address, '0');
                 const takerTraits = buildTakerTraits({ threshold: 1n });
                 await expect(swap.permitAndCall(
                     ethers.utils.solidityPack(
@@ -552,52 +593,28 @@ describe('LimitOrderProtocol', function () {
             //            | ok allowance | no allowance |
             // ok permit  |      -       |     +        |
             // bad permit |      +       |     +        |
-            const deployContractsAndInitPermit = async function () {
-                const { dai, weth, swap, chainId } = await deploySwapTokens();
-                await initContracts(dai, weth, swap);
-
-                const deadline = (await time.latest()) + time.duration.weeks(1);
-                const permit = withTarget(
-                    weth.address,
-                    await getPermit(addr.address, addr, weth, '1', chainId, swap.address, '1', deadline),
-                );
-
-                weth.approve(swap.address, '0');
-
-                const order = buildOrder(
-                    {
-                        makerAsset: weth.address,
-                        takerAsset: dai.address,
-                        makingAmount: 1,
-                        takingAmount: 1,
-                        maker: addr.address,
-                    },
-                    {
-                        permit,
-                    },
-                );
-
-                const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr));
-                return { dai, weth, swap, order, r, vs, permit, deadline };
-            };
 
             it('Maker permit works, no allowance', async function () {
-                const { dai, weth, swap, order, r, vs } = await loadFixture(deployContractsAndInitPermit);
+                const {
+                    tokens: { dai, weth }, contracts: { swap }, permits: { maker: { order, signature: { r, vs } } },
+                } = await loadFixture(deployContractsAndInit);
 
                 const takerTraits = buildTakerTraits({
                     threshold: 1n,
                     makingAmount: true,
                     extension: order.extension,
                 });
+                await weth.approve(swap.address, '0');
                 const fillTx = swap.connect(addr1).fillOrderArgs(order, r, vs, 1, takerTraits.traits, takerTraits.args);
                 await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
                 await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
             });
 
             it('skips expired permit if allowance is enough', async function () {
-                const { dai, weth, swap, order, r, vs, deadline } = await loadFixture(deployContractsAndInitPermit);
+                const {
+                    tokens: { dai, weth }, contracts: { swap }, permits: { maker: { order, signature: { r, vs } } }, deadline,
+                } = await loadFixture(deployContractsAndInit);
 
-                weth.approve(swap.address, '1');
                 await time.increaseTo(deadline + 1);
 
                 const takerTraits = buildTakerTraits({
@@ -611,8 +628,11 @@ describe('LimitOrderProtocol', function () {
             });
 
             it('rejects expired permit when allowance is not enough', async function () {
-                const { swap, order, r, vs, deadline } = await loadFixture(deployContractsAndInitPermit);
+                const {
+                    tokens: { weth }, contracts: { swap }, permits: { maker: { order, signature: { r, vs } } }, deadline,
+                } = await loadFixture(deployContractsAndInit);
 
+                await weth.approve(swap.address, '0');
                 await time.increaseTo(deadline + 1);
 
                 const takerTraits = buildTakerTraits({
@@ -626,8 +646,11 @@ describe('LimitOrderProtocol', function () {
             });
 
             it('skips order permit flag', async function () {
-                const { dai, weth, swap, order, r, vs, permit } = await loadFixture(deployContractsAndInitPermit);
+                const {
+                    tokens: { dai, weth }, contracts: { swap }, permits: { maker: { order, signature: { r, vs }, permit } },
+                } = await loadFixture(deployContractsAndInit);
 
+                await weth.approve(swap.address, '0');
                 await addr1.sendTransaction({ to: weth.address, data: '0xd505accf' + permit.substring(42) });
                 const takerTraits = buildTakerTraits({
                     threshold: 0n,
@@ -647,37 +670,19 @@ describe('LimitOrderProtocol', function () {
             //            | ok allowance | no allowance |
             // ok permit  |      -       |     +        |
             // bad permit |      +       |     +        |
-            // TODO: Consider refactoring to use only one fixture in all tests
-            const deployContractsAndInitPermit = async function () {
-                const { dai, weth, swap, chainId } = await deploySwapTokens();
-                await initContracts(dai, weth, swap);
-
-                const order = buildOrder({
-                    makerAsset: dai.address,
-                    takerAsset: weth.address,
-                    makingAmount: 1,
-                    takingAmount: 1,
-                    maker: addr1.address,
-                });
-                await weth.approve(swap.address, '0');
-                const signature = await signOrder(order, chainId, swap.address, addr1);
-
-                return { dai, weth, swap, chainId, order, signature };
-            };
-
             it('DAI => WETH, no allowance', async function () {
-                const { dai, weth, swap, chainId, order } = await loadFixture(deployContractsAndInitPermit);
+                const {
+                    tokens: { dai, weth }, contracts: { swap }, chainId, permits: { taker: { order, signature: { r, vs } } },
+                } = await loadFixture(deployContractsAndInit);
 
-                const permit2 = await permit2Contract();
-                await weth.approve(permit2.address, 1);
                 const permit = await getPermit2(addr, weth.address, chainId, swap.address, 1);
 
-                const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
                 const takerTraits = buildTakerTraits({
                     threshold: 1n,
                     makingAmount: true,
                     usePermit2: true,
                 });
+                await weth.approve(swap.address, '0');
                 const fillTx = swap.permitAndCall(
                     ethers.utils.solidityPack(
                         ['address', 'bytes'],
@@ -692,26 +697,23 @@ describe('LimitOrderProtocol', function () {
             });
 
             it('Skips expired permit if allowance is enough', async function () {
-                const { dai, weth, swap, chainId, order } = await loadFixture(deployContractsAndInitPermit);
-
-                const permit2 = await permit2Contract();
-                await weth.approve(permit2.address, 1);
+                const {
+                    tokens: { dai, weth }, contracts: { swap, permit2Contract }, chainId, permits: { taker: { order, signature: { r, vs } } }, deadline,
+                } = await loadFixture(deployContractsAndInit);
 
                 const permit = await getPermit2(addr, weth.address, chainId, swap.address, 1);
                 const tx = {
                     from: addr.address,
-                    to: permit2.address,
+                    to: permit2Contract.address,
                     data: ethers.utils.hexConcat([
-                        permit2.interface.getSighash('permit'),
+                        permit2Contract.interface.getSighash('permit'),
                         permit,
                     ]),
                 };
                 await addr.sendTransaction(tx);
 
-                const deadline = BigNumber.from((await time.latest()) - time.duration.weeks(1));
                 const permitExpired = await getPermit2(addr, weth.address, chainId, swap.address, 1, false, constants.MAX_UINT48, deadline);
 
-                const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
                 const takerTraits = buildTakerTraits({
                     threshold: 1n,
                     makingAmount: true,
@@ -731,14 +733,13 @@ describe('LimitOrderProtocol', function () {
             });
 
             it('Fails with expired permit if allowance is not enough', async function () {
-                const { weth, swap, chainId, order } = await loadFixture(deployContractsAndInitPermit);
+                const {
+                    tokens: { weth }, contracts: { swap }, chainId, permits: { taker: { order, signature: { r, vs } } },
+                } = await loadFixture(deployContractsAndInit);
 
-                const permit2 = await permit2Contract();
-                await weth.approve(permit2.address, 1);
                 const deadline = BigNumber.from((await time.latest()) - time.duration.weeks(1));
                 const permit = await getPermit2(addr, weth.address, chainId, swap.address, 1, false, constants.MAX_UINT48, deadline);
 
-                const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
                 const takerTraits = buildTakerTraits({
                     threshold: 1n,
                     makingAmount: true,
@@ -756,7 +757,7 @@ describe('LimitOrderProtocol', function () {
             });
 
             it('Fails with unexpected takerAssetSuffix', async function () {
-                const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInitPermit);
+                const { tokens: { weth, dai }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
                 const order = buildOrder(
                     {
@@ -772,8 +773,6 @@ describe('LimitOrderProtocol', function () {
                     },
                 );
 
-                const permit2 = await permit2Contract();
-                await weth.approve(permit2.address, 1);
                 const permit = await getPermit2(addr, weth.address, chainId, swap.address, 1);
 
                 const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
@@ -800,40 +799,10 @@ describe('LimitOrderProtocol', function () {
             //            | ok allowance | no allowance |
             // ok permit  |      -       |     +        |
             // bad permit |      +       |     +        |
-            const deployContractsAndInitPermit = async function () {
-                const { dai, weth, swap, chainId } = await deploySwapTokens();
-                await initContracts(dai, weth, swap);
-
-                const deadline = (await time.latest()) + time.duration.weeks(1);
-                const permit = withTarget(
-                    weth.address,
-                    await getPermit2(addr, weth.address, chainId, swap.address, 1, false, constants.MAX_UINT48, deadline),
-                );
-
-                weth.approve(swap.address, 0);
-                const permit2 = await permit2Contract();
-                await weth.approve(permit2.address, 1);
-
-                const order = buildOrder(
-                    {
-                        makerAsset: weth.address,
-                        takerAsset: dai.address,
-                        makingAmount: 1,
-                        takingAmount: 1,
-                        maker: addr.address,
-                        makerTraits: buildMakerTraits({ usePermit2: true }),
-                    },
-                    {
-                        permit,
-                    },
-                );
-
-                const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr));
-                return { dai, weth, swap, chainId, order, r, vs, permit, deadline, permit2 };
-            };
-
             it('Maker permit works', async function () {
-                const { dai, weth, swap, order, r, vs } = await loadFixture(deployContractsAndInitPermit);
+                const {
+                    tokens: { dai, weth }, contracts: { swap }, permits: { maker: { orderPermit2: order, signaturePermit2: { r, vs } } },
+                } = await loadFixture(deployContractsAndInit);
 
                 const takerTraits = buildTakerTraits({
                     threshold: 1n,
@@ -846,14 +815,16 @@ describe('LimitOrderProtocol', function () {
             });
 
             it('Skips expired permit if allowance is enough', async function () {
-                const { dai, weth, swap, chainId, order, r, vs, deadline, permit2 } = await loadFixture(deployContractsAndInitPermit);
+                const {
+                    tokens: { dai, weth }, contracts: { swap, permit2Contract }, chainId, permits: { maker: { orderPermit2: order, signaturePermit2: { r, vs } } }, deadline,
+                } = await loadFixture(deployContractsAndInit);
 
                 const permit = await getPermit2(addr, weth.address, chainId, swap.address, 1);
                 const tx = {
                     from: addr.address,
-                    to: permit2.address,
+                    to: permit2Contract.address,
                     data: ethers.utils.hexConcat([
-                        permit2.interface.getSighash('permit'),
+                        permit2Contract.interface.getSighash('permit'),
                         permit,
                     ]),
                 };
@@ -872,7 +843,9 @@ describe('LimitOrderProtocol', function () {
             });
 
             it('Fails with expired permit if allowance is not enough', async function () {
-                const { swap, order, r, vs, deadline } = await loadFixture(deployContractsAndInitPermit);
+                const {
+                    contracts: { swap }, permits: { maker: { orderPermit2: order, signaturePermit2: { r, vs } } }, deadline,
+                } = await loadFixture(deployContractsAndInit);
 
                 await time.increaseTo(deadline + 1);
 
@@ -887,7 +860,11 @@ describe('LimitOrderProtocol', function () {
             });
 
             it('Fails with unexpected makerAssetSuffix', async function () {
-                const { dai, weth, swap, chainId, permit } = await loadFixture(deployContractsAndInitPermit);
+                const { tokens: { dai, weth }, contracts: { swap }, chainId, deadline } = await loadFixture(deployContractsAndInit);
+                const permit = withTarget(
+                    weth.address,
+                    await getPermit2(addr, weth.address, chainId, swap.address, 1, false, constants.MAX_UINT48, deadline),
+                );
 
                 const order = buildOrder(
                     {
@@ -918,14 +895,8 @@ describe('LimitOrderProtocol', function () {
     });
 
     describe('Amount Calculator', function () {
-        const deployContractsAndInit = async function () {
-            const { dai, weth, swap, chainId } = await deploySwapTokens();
-            await initContracts(dai, weth, swap);
-            return { dai, weth, swap, chainId };
-        };
-
         it('empty takingAmountData should work on full fill', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 maker: addr1.address,
@@ -943,7 +914,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('empty takingAmountData should revert on partial fill', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 maker: addr1.address,
@@ -960,7 +931,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('empty makingAmountData should revert on partial fill', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 maker: addr1.address,
@@ -977,7 +948,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('empty makingAmountData should work on full fill', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 maker: addr1.address,
@@ -996,18 +967,8 @@ describe('LimitOrderProtocol', function () {
     });
 
     describe('ETH Maker Orders', function () {
-        const deployContractsAndInit = async function () {
-            const { dai, weth, swap, chainId } = await deploySwapTokens();
-            await initContracts(dai, weth, swap);
-            const ETHOrders = await ethers.getContractFactory('ETHOrders');
-            const ethOrders = await ETHOrders.deploy(weth.address, swap.address);
-            await ethOrders.deployed();
-            const orderLibFactory = await ethers.getContractFactory('OrderLib');
-            return { dai, weth, swap, orderLibFactory, chainId, ethOrders };
-        };
-
         it('Partial fill', async function () {
-            const { dai, weth, swap, chainId, ethOrders } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap, ethOrders }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
                 {
@@ -1062,7 +1023,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('Partial fill -> cancel -> refund maker -> fail to fill', async function () {
-            const { dai, weth, swap, chainId, ethOrders } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap, ethOrders }, chainId } = await loadFixture(deployContractsAndInit);
             const order = buildOrder(
                 {
                     maker: ethOrders.address,
@@ -1108,7 +1069,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('Invalid order (missing post-interaction)', async function () {
-            const { dai, weth, ethOrders } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { ethOrders } } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 maker: ethOrders.address,
@@ -1124,7 +1085,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('Invalid extension (empty extension)', async function () {
-            const { dai, weth, orderLibFactory, ethOrders } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { ethOrders }, orderLibFactory } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
                 {
@@ -1145,7 +1106,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('Invalid extension (mismatched extension)', async function () {
-            const { dai, weth, orderLibFactory, ethOrders } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { ethOrders }, orderLibFactory } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
                 {
@@ -1166,7 +1127,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('Invalid signature', async function () {
-            const { dai, weth, swap, chainId, ethOrders } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { ethOrders, swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
                 {
@@ -1212,34 +1173,28 @@ describe('LimitOrderProtocol', function () {
     });
 
     describe('Remaining invalidator', function () {
-        const deployContractsAndInit = async function () {
-            const { dai, weth, swap, chainId } = await deploySwapTokens();
-            await initContracts(dai, weth, swap);
-            return { dai, weth, swap, chainId };
-        };
-
         const orderCancelationInit = async function () {
-            const { dai, weth, swap, chainId } = await deployContractsAndInit();
+            const { tokens, contracts, chainId } = await deployContractsAndInit();
             const order = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
+                makerAsset: tokens.dai.address,
+                takerAsset: tokens.weth.address,
                 makingAmount: 2,
                 takingAmount: 2,
                 maker: addr1.address,
                 makerTraits: buildMakerTraits({ allowMultipleFills: true }),
             });
-            return { dai, weth, swap, chainId, order };
+            return { tokens, contracts, chainId, order };
         };
 
         it('should revert for new order', async function () {
-            const { swap, chainId, order } = await loadFixture(orderCancelationInit);
+            const { contracts: { swap }, chainId, order } = await loadFixture(orderCancelationInit);
             const data = buildOrderData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
             await expect(swap.remainingInvalidatorForOrder(addr1.address, orderHash)).to.be.revertedWithCustomError(swap, 'RemainingInvalidatedOrder');
         });
 
         it('should return correct remaining for partially filled order', async function () {
-            const { swap, chainId, order } = await loadFixture(orderCancelationInit);
+            const { contracts: { swap }, chainId, order } = await loadFixture(orderCancelationInit);
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, _vs: vs } = ethers.utils.splitSignature(signature);
             const data = buildOrderData(chainId, swap.address, order);
@@ -1251,7 +1206,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should return zero remaining for filled order', async function () {
-            const { swap, chainId, order } = await loadFixture(orderCancelationInit);
+            const { contracts: { swap }, chainId, order } = await loadFixture(orderCancelationInit);
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, _vs: vs } = ethers.utils.splitSignature(signature);
             const data = buildOrderData(chainId, swap.address, order);
@@ -1263,7 +1218,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should return zero remaining for cancelled order', async function () {
-            const { swap, chainId, order } = await loadFixture(orderCancelationInit);
+            const { contracts: { swap }, chainId, order } = await loadFixture(orderCancelationInit);
             const data = buildOrderData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
 
@@ -1274,41 +1229,35 @@ describe('LimitOrderProtocol', function () {
     });
 
     describe('Order Cancelation', function () {
-        const deployContractsAndInit = async function () {
-            const { dai, weth, swap, chainId } = await deploySwapTokens();
-            await initContracts(dai, weth, swap);
-            return { dai, weth, swap, chainId };
-        };
-
         const orderCancelationInit = async function () {
-            const { dai, weth, swap, chainId } = await deployContractsAndInit();
+            const { tokens, contracts, chainId } = await deployContractsAndInit();
             const order = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
+                makerAsset: tokens.dai.address,
+                takerAsset: tokens.weth.address,
                 makingAmount: 1,
                 takingAmount: 1,
                 maker: addr1.address,
                 makerTraits: buildMakerTraits({ allowMultipleFills: true }),
             });
-            return { dai, weth, swap, chainId, order };
+            return { tokens, contracts, chainId, order };
         };
 
         const orderWithEpochInit = async function () {
-            const { dai, weth, swap, chainId } = await deployContractsAndInit();
+            const { tokens, contracts, chainId } = await deployContractsAndInit();
             const order = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
+                makerAsset: tokens.dai.address,
+                takerAsset: tokens.weth.address,
                 makingAmount: 2,
                 takingAmount: 2,
                 maker: addr1.address,
                 makerTraits: buildMakerTraits({ allowMultipleFills: true, shouldCheckEpoch: true, nonce: 0, series: 1 }),
             });
-            return { dai, weth, swap, chainId, order };
+            return { tokens, contracts, chainId, order };
         };
 
         // TODO: it could be canceled with another makerTraits, 1n << ALLOW_MUTIPLE_FILLS_FLAG (254n) for example
         it('should cancel own order', async function () {
-            const { swap, chainId, order } = await loadFixture(orderCancelationInit);
+            const { contracts: { swap }, chainId, order } = await loadFixture(orderCancelationInit);
             const data = buildOrderData(chainId, swap.address, order);
             const orderHash = ethers.utils._TypedDataEncoder.hash(data.domain, data.types, data.value);
             await swap.connect(addr1).cancelOrder(order.makerTraits, orderHash);
@@ -1316,7 +1265,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should cancel own order with massInvalidate', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(orderCancelationInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const orderNonce = 0;
             const order = buildOrder({
@@ -1336,7 +1285,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should cancel own order with massInvalidate, huge nonce', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(orderCancelationInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const orderNonce = 1023;
             const order = buildOrder({
@@ -1356,13 +1305,13 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should cancel any hash', async function () {
-            const { swap, order } = await loadFixture(orderCancelationInit);
+            const { contracts: { swap }, order } = await loadFixture(orderCancelationInit);
             await swap.connect(addr1).cancelOrder(order.makerTraits, '0x0000000000000000000000000000000000000000000000000000000000000001');
             expect(await swap.remainingInvalidatorForOrder(addr1.address, '0x0000000000000000000000000000000000000000000000000000000000000001')).to.equal('0');
         });
 
         it('can simulate the failure of bitsInvalidateForOrder', async function () {
-            const { swap, order } = await loadFixture(orderCancelationInit);
+            const { contracts: { swap }, order } = await loadFixture(orderCancelationInit);
 
             const calldata = swap.interface.encodeFunctionData('bitsInvalidateForOrder', [
                 order.makerTraits,
@@ -1376,7 +1325,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should cancel several orders by hash', async function () {
-            const { swap, order } = await loadFixture(orderCancelationInit);
+            const { contracts: { swap }, order } = await loadFixture(orderCancelationInit);
 
             const firstOrder = order;
             const secondOrder = order;
@@ -1394,7 +1343,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should revert when cancel several orders by hash and mismathed number of traits', async function () {
-            const { swap, order } = await loadFixture(orderCancelationInit);
+            const { contracts: { swap }, order } = await loadFixture(orderCancelationInit);
 
             const firstOrder = order;
 
@@ -1408,7 +1357,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('rawRemainingInvalidatorForOrder returns method works', async function () {
-            const { swap, order } = await loadFixture(orderCancelationInit);
+            const { contracts: { swap }, order } = await loadFixture(orderCancelationInit);
             const orderFakeHash = '0x0000000000000000000000000000000000000000000000000000000000000001';
 
             expect(await swap.rawRemainingInvalidatorForOrder(addr1.address, orderFakeHash)).to.equal('0');
@@ -1420,7 +1369,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should not fill cancelled order', async function () {
-            const { swap, chainId, order } = await loadFixture(orderCancelationInit);
+            const { contracts: { swap }, chainId, order } = await loadFixture(orderCancelationInit);
             const signature = await signOrder(order, chainId, swap.address, addr1);
             const { r, _vs: vs } = ethers.utils.splitSignature(signature);
             const data = buildOrderData(chainId, swap.address, order);
@@ -1433,7 +1382,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should not fill cancelled order, massInvalidate', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(orderCancelationInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(orderCancelationInit);
 
             const orderNonce = 0;
             const order = buildOrder({
@@ -1456,7 +1405,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('epoch change, order should fail', async function () {
-            const { swap, chainId, order } = await loadFixture(orderWithEpochInit);
+            const { contracts: { swap }, chainId, order } = await loadFixture(orderWithEpochInit);
 
             await swap.connect(addr1).increaseEpoch(1);
 
@@ -1466,7 +1415,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('epoch change should not affect other addresses', async function () {
-            const { dai, weth, swap, chainId, order } = await loadFixture(orderWithEpochInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId, order } = await loadFixture(orderWithEpochInit);
 
             await swap.connect(addr2).increaseEpoch(1);
 
@@ -1477,7 +1426,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('epoch change, partially filled order should fail', async function () {
-            const { dai, weth, swap, chainId, order } = await loadFixture(orderWithEpochInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId, order } = await loadFixture(orderWithEpochInit);
 
             const { r, _vs: vs } = ethers.utils.splitSignature(await signOrder(order, chainId, swap.address, addr1));
             const fillTx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
@@ -1491,21 +1440,15 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('advance nonce', async function () {
-            const { swap } = await loadFixture(deployContractsAndInit);
+            const { contracts: { swap } } = await loadFixture(deployContractsAndInit);
             await swap.increaseEpoch(0);
             expect(await swap.epoch(addr.address, 0)).to.equal('1');
         });
     });
 
     describe('Private Orders', function () {
-        const deployContractsAndInit = async function () {
-            const { dai, weth, swap, chainId } = await deploySwapTokens();
-            await initContracts(dai, weth, swap);
-            return { dai, weth, swap, chainId };
-        };
-
         it('should fill with correct taker', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -1523,7 +1466,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should not fill with incorrect taker', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -1541,16 +1484,8 @@ describe('LimitOrderProtocol', function () {
     });
 
     describe('Predicate', function () {
-        const deployContractsAndInit = async function () {
-            const { dai, weth, swap, chainId } = await deploySwapTokens();
-            const { arbitraryPredicate } = await deployArbitraryPredicate();
-            await initContracts(dai, weth, swap);
-            const orderLibFactory = await ethers.getContractFactory('OrderLib');
-            return { dai, weth, swap, chainId, arbitraryPredicate, orderLibFactory };
-        };
-
         it('arbitrary call predicate should pass', async function () {
-            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap, arbitraryPredicate }, chainId } = await loadFixture(deployContractsAndInit);
 
             const arbitraryCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
                 arbitraryPredicate.address,
@@ -1582,7 +1517,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('arbitrary call predicate should fail', async function () {
-            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap, arbitraryPredicate }, chainId } = await loadFixture(deployContractsAndInit);
 
             const arbitraryCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
                 arbitraryPredicate.address,
@@ -1613,7 +1548,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('`or` should pass', async function () {
-            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap, arbitraryPredicate }, chainId } = await loadFixture(deployContractsAndInit);
 
             const arbitraryCallPredicate = swap.interface.encodeFunctionData('arbitraryStaticCall', [
                 arbitraryPredicate.address,
@@ -1649,7 +1584,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('`or` should fail', async function () {
-            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap, arbitraryPredicate }, chainId } = await loadFixture(deployContractsAndInit);
 
             const arbitraryCallPredicate = swap.interface.encodeFunctionData('arbitraryStaticCall', [
                 arbitraryPredicate.address,
@@ -1684,7 +1619,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('`and` should pass', async function () {
-            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap, arbitraryPredicate }, chainId } = await loadFixture(deployContractsAndInit);
 
             const arbitraryCallPredicate = swap.interface.encodeFunctionData('arbitraryStaticCall', [
                 arbitraryPredicate.address,
@@ -1720,7 +1655,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('`and` should fail', async function () {
-            const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap, arbitraryPredicate }, chainId } = await loadFixture(deployContractsAndInit);
 
             const arbitraryCallPredicate = swap.interface.encodeFunctionData('arbitraryStaticCall', [
                 arbitraryPredicate.address,
@@ -1755,7 +1690,9 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should fail with invalid extension (empty extension)', async function () {
-            const { dai, weth, swap, orderLibFactory, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+            const {
+                tokens: { dai, weth }, contracts: { swap, arbitraryPredicate }, chainId, orderLibFactory,
+            } = await loadFixture(deployContractsAndInit);
 
             const arbitraryCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
                 arbitraryPredicate.address,
@@ -1785,7 +1722,9 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should fail with invalid extension (mismatched extension)', async function () {
-            const { dai, weth, swap, orderLibFactory, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
+            const {
+                tokens: { dai, weth }, contracts: { swap, arbitraryPredicate }, chainId, orderLibFactory,
+            } = await loadFixture(deployContractsAndInit);
 
             const arbitraryCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
                 arbitraryPredicate.address,
@@ -1816,7 +1755,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should fail with invalid extension (unexpected extension)', async function () {
-            const { dai, weth, swap, orderLibFactory, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId, orderLibFactory } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
                 {
@@ -1839,14 +1778,8 @@ describe('LimitOrderProtocol', function () {
     });
 
     describe('Expiration', function () {
-        const deployContractsAndInit = async function () {
-            const { dai, weth, swap, chainId } = await deploySwapTokens();
-            await initContracts(dai, weth, swap);
-            return { dai, weth, swap, chainId };
-        };
-
         it('should fill when not expired', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -1864,7 +1797,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should not fill when expired', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -1881,7 +1814,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should not partially fill when expired', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -1898,7 +1831,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should not fill partially filled order after expiration', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -1921,7 +1854,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should fill partially if not enough coins (taker)', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -1938,7 +1871,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should fill partially if not enough coins (maker)', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -1956,14 +1889,8 @@ describe('LimitOrderProtocol', function () {
     });
 
     describe('ETH fill', function () {
-        const deployContractsAndInit = async function () {
-            const { dai, weth, swap, chainId, usdc } = await deploySwapTokens();
-            await initContracts(dai, weth, swap);
-            return { dai, weth, swap, chainId, usdc };
-        };
-
         it('should fill with ETH', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -1981,7 +1908,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should revert with takerAsset WETH and not enough msg.value', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -1997,7 +1924,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should pass with takerAsset WETH and correct msg.value', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -2015,7 +1942,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should pass with takerAsset WETH and correct msg.value and unwrap flag is set', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -2036,7 +1963,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should revert with takerAsset WETH, unwrap flag is set and receiver unable to receive ETH', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder({
                 makerAsset: dai.address,
@@ -2057,7 +1984,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should be reverted with takerAsset non-WETH and msg.value greater than 0', async function () {
-            const { dai, swap, chainId, usdc } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, usdc }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             await usdc.mint(addr.address, '1000000');
             await usdc.approve(swap.address, '1000000');
@@ -2076,7 +2003,7 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('should revert with takerAsset WETH, unwrap flag is set and taker unable to receive excessive ETH', async function () {
-            const { dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
             const TakerContract = await ethers.getContractFactory('TakerContract');
             const taker = await TakerContract.deploy(swap.address);
