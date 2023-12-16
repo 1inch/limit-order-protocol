@@ -5,6 +5,20 @@ const { signOrder, buildOrder, buildTakerTraits } = require('./helpers/orderUtil
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 
+function buildSinglePriceCalldata ({ chainlinkCalcAddress, oracleAddress, spread, inverse = false }) {
+    return ethers.utils.solidityPack(
+        ['address', 'bytes1', 'address', 'uint256'],
+        [chainlinkCalcAddress, inverse ? 0x80 : 0, oracleAddress, spread],
+    );
+}
+
+function buildDoublePriceCalldata ({ chainlinkCalcAddress, oracleAddress1, oracleAddress2, decimalsScale, spread }) {
+    return ethers.utils.solidityPack(
+        ['address', 'bytes1', 'address', 'address', 'int256', 'uint256'],
+        [chainlinkCalcAddress, 0x40, oracleAddress1, oracleAddress2, decimalsScale, spread],
+    );
+}
+
 describe('ChainLinkExample', function () {
     let addr, addr1;
 
@@ -45,6 +59,8 @@ describe('ChainLinkExample', function () {
     it('eth -> dai chainlink+eps order', async function () {
         const { dai, weth, swap, chainId, chainlink, daiOracle } = await loadFixture(deployContractsAndInit);
 
+        const chainlinkCalcAddress = chainlink.address;
+        const oracleAddress = daiOracle.address;
         // chainlink rate is 1 eth = 4000 dai
         const order = buildOrder(
             {
@@ -55,23 +71,141 @@ describe('ChainLinkExample', function () {
                 maker: addr1.address,
             },
             {
-                makingAmountData: ethers.utils.solidityPack(['address', 'uint256', 'uint256'], [chainlink.address, daiOracle.address, '990000000']), // maker offset is 0.99
-                takingAmountData: ethers.utils.solidityPack(['address', 'uint256', 'uint256'], [chainlink.address, daiOracle.address, '1010000000']), // taker offset is 1.01
+                makingAmountData: buildSinglePriceCalldata({ chainlinkCalcAddress, oracleAddress, spread: '990000000' }), // maker offset is 0.99
+                takingAmountData: buildSinglePriceCalldata({ chainlinkCalcAddress, oracleAddress, spread: '1010000000', inverse: true }), // taker offset is 1.01
             },
         );
-
         const signature = await signOrder(order, chainId, swap.address, addr1);
 
         const { r, _vs: vs } = ethers.utils.splitSignature(signature);
         // taking threshold = 4000 + 1% + eps
         const takerTraits = buildTakerTraits({
+            extension: order.extension,
+            threshold: ether('0.99'),
+        });
+        const fillTx = swap.fillOrderArgs(order, r, vs, ether('4000'), takerTraits.traits, takerTraits.args);
+        await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [ether('-4000'), ether('4000')]);
+        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [ether('0.99'), ether('-0.99')]);
+    });
+
+    it('dai -> eth chainlink+eps order', async function () {
+        const { dai, weth, swap, chainId, chainlink, daiOracle } = await loadFixture(deployContractsAndInit);
+
+        const chainlinkCalcAddress = chainlink.address;
+        const oracleAddress = daiOracle.address;
+        // chainlink rate is 1 eth = 4000 dai
+        const order = buildOrder(
+            {
+                makerAsset: dai.address,
+                takerAsset: weth.address,
+                makingAmount: ether('4000').toString(),
+                takingAmount: ether('1').toString(),
+                maker: addr1.address,
+            },
+            {
+                makingAmountData: buildSinglePriceCalldata({ chainlinkCalcAddress, oracleAddress, spread: '990000000', inverse: true }), // maker offset is 0.99
+                takingAmountData: buildSinglePriceCalldata({ chainlinkCalcAddress, oracleAddress, spread: '1010000000' }), // taker offset is 1.01
+            },
+        );
+        const signature = await signOrder(order, chainId, swap.address, addr1);
+
+        const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+        // taking threshold = 1 eth + 1% + eps
+        const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
-            minReturn: ether('4040.01'),
+            threshold: ether('1.01'),
         });
-        const fillTx = swap.fillOrderArgs(order, r, vs, ether('1'), takerTraits.traits, takerTraits.args);
-        await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [ether('-4040'), ether('4040')]);
-        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [ether('1'), ether('-1')]);
+        const fillTx = swap.fillOrderArgs(order, r, vs, ether('4000'), takerTraits.traits, takerTraits.args);
+        await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [ether('4000'), ether('-4000')]);
+        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [ether('-1.01'), ether('1.01')]);
+    });
+
+    it('dai -> 1inch chainlink+eps order (check takingAmountData)', async function () {
+        const { dai, inch, swap, chainId, chainlink, daiOracle, inchOracle } = await loadFixture(deployContractsAndInit);
+
+        const chainlinkCalcAddress = chainlink.address;
+        const oracleAddress1 = inchOracle.address;
+        const oracleAddress2 = daiOracle.address;
+        const makingAmount = ether('100');
+        const takingAmount = ether('632');
+        const decimalsScale = '0';
+        const takingSpread = 1010000000n; // taker offset is 1.01
+        const order = buildOrder(
+            {
+                makerAsset: inch.address,
+                takerAsset: dai.address,
+                makingAmount,
+                takingAmount,
+                maker: addr1.address,
+            },
+            {
+                makingAmountData: buildDoublePriceCalldata(
+                    { chainlinkCalcAddress, oracleAddress1: oracleAddress2, oracleAddress2: oracleAddress1, decimalsScale, spread: '990000000' }, // maker offset is 0.99
+                ),
+                takingAmountData: buildDoublePriceCalldata(
+                    { chainlinkCalcAddress, oracleAddress1, oracleAddress2, decimalsScale, spread: takingSpread.toString() },
+                ),
+            },
+        );
+        const signature = await signOrder(order, chainId, swap.address, addr1);
+
+        const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+        // taking threshold = 1 eth + 1% + eps
+        const takerTraits = buildTakerTraits({
+            makingAmount: true,
+            extension: order.extension,
+            threshold: takingAmount.toBigInt() * takingSpread / 1000000000n + ether('0.01').toBigInt(),
+        });
+        const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
+        const realTakingAmount = makingAmount.toBigInt() * // <-- makingAmount * spread / 1e9 * inchPrice / daiPrice
+            takingSpread / 1000000000n *
+            BigInt((await inchOracle.latestRoundData())[1]) / BigInt((await daiOracle.latestRoundData())[1]);
+        await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [-realTakingAmount, realTakingAmount]);
+        await expect(fillTx).to.changeTokenBalances(inch, [addr, addr1], [makingAmount, makingAmount.mul(-1)]);
+    });
+
+    it('dai -> 1inch chainlink+eps order (check makingAmountData)', async function () {
+        const { dai, inch, swap, chainId, chainlink, daiOracle, inchOracle } = await loadFixture(deployContractsAndInit);
+
+        const chainlinkCalcAddress = chainlink.address;
+        const oracleAddress1 = inchOracle.address;
+        const oracleAddress2 = daiOracle.address;
+        const makingAmount = ether('100').toBigInt();
+        const takingAmount = ether('632').toBigInt();
+        const decimalsScale = 0n;
+        const makingSpread = 990000000n; // maker offset is 0.99
+        const order = buildOrder(
+            {
+                makerAsset: inch.address,
+                takerAsset: dai.address,
+                makingAmount,
+                takingAmount,
+                maker: addr1.address,
+            },
+            {
+                makingAmountData: buildDoublePriceCalldata(
+                    { chainlinkCalcAddress, oracleAddress1: oracleAddress2, oracleAddress2: oracleAddress1, decimalsScale, spread: makingSpread },
+                ),
+                takingAmountData: buildDoublePriceCalldata(
+                    { chainlinkCalcAddress, oracleAddress1, oracleAddress2, decimalsScale, spread: 1010000000n }, // taker offset is 1.01
+                ),
+            },
+        );
+        const signature = await signOrder(order, chainId, swap.address, addr1);
+
+        const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+        // taking threshold = 1 eth + 1% + eps
+        const takerTraits = buildTakerTraits({
+            extension: order.extension,
+            threshold: makingAmount * makingSpread / 1000000000n + ether('0.01').toBigInt(),
+        });
+        const fillTx = swap.fillOrderArgs(order, r, vs, takingAmount, takerTraits.traits, takerTraits.args);
+        const realMakingAmount = takingAmount * // <-- takingAmount * spread / 1e9 * daiPrice / inchPrice
+            makingSpread / 1000000000n *
+            BigInt((await daiOracle.latestRoundData())[1]) / BigInt((await inchOracle.latestRoundData())[1]);
+        await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [-takingAmount, takingAmount]);
+        await expect(fillTx).to.changeTokenBalances(inch, [addr, addr1], [realMakingAmount, -realMakingAmount]);
     });
 
     it('dai -> 1inch stop loss order', async function () {
@@ -81,7 +215,7 @@ describe('ChainLinkExample', function () {
         const takingAmount = ether('631');
         const priceCall = swap.interface.encodeFunctionData('arbitraryStaticCall', [
             chainlink.address,
-            chainlink.interface.encodeFunctionData('doublePrice', [inchOracle.address, daiOracle.address, '1000000000', '0', ether('1')]),
+            chainlink.interface.encodeFunctionData('doublePrice', [inchOracle.address, daiOracle.address, '0', ether('1')]),
         ]);
 
         const order = buildOrder(
@@ -102,7 +236,7 @@ describe('ChainLinkExample', function () {
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
-            minReturn: takingAmount.add(ether('0.01')),
+            threshold: takingAmount.add(ether('0.01')),
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount]);
@@ -114,7 +248,7 @@ describe('ChainLinkExample', function () {
 
         const makingAmount = ether('100');
         const takingAmount = ether('631');
-        const priceCall = chainlink.interface.encodeFunctionData('doublePrice', [inchOracle.address, daiOracle.address, '1000000000', '0', ether('1')]);
+        const priceCall = chainlink.interface.encodeFunctionData('doublePrice', [inchOracle.address, daiOracle.address, '0', ether('1')]);
 
         const order = buildOrder(
             {
@@ -134,7 +268,7 @@ describe('ChainLinkExample', function () {
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
-            minReturn: takingAmount.add(ether('0.01')),
+            threshold: takingAmount.add(ether('0.01')),
         });
         await expect(
             swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args), // taking threshold = exact taker amount + eps
@@ -169,7 +303,7 @@ describe('ChainLinkExample', function () {
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
-            minReturn: takingAmount,
+            threshold: takingAmount,
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [takingAmount.mul(-1), takingAmount]);

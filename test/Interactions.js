@@ -80,7 +80,7 @@ describe('Interactions', function () {
             const takerTraits = buildTakerTraits({
                 interaction: matchingParams,
                 makingAmount: true,
-                minReturn: ether('100'),
+                threshold: ether('100'),
             });
             const interaction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderArgs', [
                 backOrder,
@@ -100,7 +100,7 @@ describe('Interactions', function () {
             const matcherTraits = buildTakerTraits({
                 interaction,
                 makingAmount: true,
-                minReturn: ether('0.1'),
+                threshold: ether('0.1'),
             });
             await matcher.matchOrders(swap.address, order, r, vs, ether('100'), matcherTraits.traits, matcherTraits.args);
 
@@ -154,7 +154,7 @@ describe('Interactions', function () {
             const takerTraits = buildTakerTraits({
                 interaction: matchingParams,
                 makingAmount: true,
-                minReturn: ether('0.015'),
+                threshold: ether('0.015'),
             });
             const interaction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderArgs', [
                 backOrder,
@@ -175,7 +175,7 @@ describe('Interactions', function () {
             const matcherTraits = buildTakerTraits({
                 interaction,
                 makingAmount: true,
-                minReturn: ether('0.01'),
+                threshold: ether('0.01'),
             });
             await matcher.matchOrders(swap.address, order, r, vs, ether('10'), matcherTraits.traits, matcherTraits.args);
 
@@ -237,7 +237,7 @@ describe('Interactions', function () {
             const internalTakerTraits = buildTakerTraits({
                 interaction: matchingParams,
                 makingAmount: true,
-                minReturn: ether('25'),
+                threshold: ether('25'),
             });
             const internalInteraction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderArgs', [
                 backOrder,
@@ -252,7 +252,7 @@ describe('Interactions', function () {
             const externalTakerTraits = buildTakerTraits({
                 interaction: internalInteraction,
                 makingAmount: true,
-                minReturn: ether('25'),
+                threshold: ether('25'),
             });
             const externalInteraction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderArgs', [
                 order2,
@@ -272,7 +272,7 @@ describe('Interactions', function () {
             const matcherTraits = buildTakerTraits({
                 interaction: externalInteraction,
                 makingAmount: true,
-                minReturn: ether('0.01'),
+                threshold: ether('0.01'),
             });
             await matcher.matchOrders(swap.address, order1, r, vs, ether('10'), matcherTraits.traits, matcherTraits.args);
 
@@ -321,7 +321,7 @@ describe('Interactions', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(signature);
             const takerTraits = buildTakerTraits({
-                minReturn: ether('0.1'),
+                threshold: ether('0.1'),
                 makingAmount: true,
                 extension: order.extension,
             });
@@ -354,7 +354,7 @@ describe('Interactions', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(signature);
             const takerTraits = buildTakerTraits({
-                minReturn: ether('0.1'),
+                threshold: ether('0.1'),
                 makingAmount: true,
                 extension: order.extension,
             });
@@ -400,7 +400,7 @@ describe('Interactions', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(signature);
             const takerTraits = buildTakerTraits({
-                minReturn: ether('0.1'),
+                threshold: ether('0.1'),
                 makingAmount: true,
                 extension: order.extension,
             });
@@ -412,7 +412,7 @@ describe('Interactions', function () {
             expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('50')));
 
             const takerTraits2 = buildTakerTraits({
-                minReturn: ether('0.1'),
+                threshold: ether('0.1'),
                 makingAmount: true,
                 extension: order.extension,
             });
@@ -467,7 +467,7 @@ describe('Interactions', function () {
 
             const { r, _vs: vs } = ethers.utils.splitSignature(signature);
             const takerTraits = buildTakerTraits({
-                minReturn: ether('0.1'),
+                threshold: ether('0.1'),
                 makingAmount: true,
                 extension: order.extension,
             });
@@ -480,7 +480,7 @@ describe('Interactions', function () {
 
             const { r: r2, _vs: vs2 } = ethers.utils.splitSignature(signaturePartial);
             const takerTraits2 = buildTakerTraits({
-                minReturn: ether('0.1'),
+                threshold: ether('0.1'),
                 makingAmount: true,
                 extension: order.extension,
             });

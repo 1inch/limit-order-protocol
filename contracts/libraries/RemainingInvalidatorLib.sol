@@ -8,8 +8,8 @@ type RemainingInvalidator is uint256;
  * @title RemainingInvalidatorLib
  * @notice The library provides a mechanism to invalidate order based on the remaining amount of the order.
  * @dev The remaining amount is used as a nonce to invalidate the order.
- * When order is created, the remaining invalidator is 0. When the order is filled, the remaining invalidator is type(uint256).max.
- * When order is filled partially, the remaining invalidator is the negation of the remaining amount. 
+ * When order is created, the remaining invalidator is 0.
+ * When order is filled, the remaining invalidator is the inverse of the remaining amount.
  */
 library RemainingInvalidatorLib {
 

@@ -68,7 +68,7 @@ describe('Dutch auction', function () {
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
-            minReturn: ether('0.08'),
+            threshold: ether('0.08'),
         });
         await swap.connect(addr1).fillOrderArgs(order, r, vs, ether('100'), takerTraits.traits, takerTraits.args);
 
@@ -86,7 +86,7 @@ describe('Dutch auction', function () {
         const { r, _vs: vs } = ethers.utils.splitSignature(signature);
         const takerTraits = buildTakerTraits({
             extension: order.extension,
-            minReturn: ether('100'),
+            threshold: ether('100'),
         });
         await swap.connect(addr1).fillOrderArgs(order, r, vs, ether('0.075'), takerTraits.traits, takerTraits.args);
 
@@ -103,7 +103,7 @@ describe('Dutch auction', function () {
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
-            minReturn: ether('0.1'),
+            threshold: ether('0.1'),
         });
         await swap.connect(addr1).fillOrderArgs(order, r, vs, ether('100'), takerTraits.traits, takerTraits.args);
 
@@ -119,7 +119,7 @@ describe('Dutch auction', function () {
         const { r, _vs: vs } = ethers.utils.splitSignature(signature);
         const takerTraits = buildTakerTraits({
             extension: order.extension,
-            minReturn: ether('100'),
+            threshold: ether('100'),
         });
         await swap.connect(addr1).fillOrderArgs(order, r, vs, ether('0.1'), takerTraits.traits, takerTraits.args);
 
@@ -138,7 +138,7 @@ describe('Dutch auction', function () {
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
-            minReturn: ether('0.05'),
+            threshold: ether('0.05'),
         });
         await swap.connect(addr1).fillOrderArgs(order, r, vs, ether('100'), takerTraits.traits, takerTraits.args);
 
@@ -156,7 +156,7 @@ describe('Dutch auction', function () {
         const { r, _vs: vs } = ethers.utils.splitSignature(signature);
         const takerTraits = buildTakerTraits({
             extension: order.extension,
-            minReturn: ether('100'),
+            threshold: ether('100'),
         });
         await swap.connect(addr1).fillOrderArgs(order, r, vs, ether('0.05'), takerTraits.traits, takerTraits.args);
 

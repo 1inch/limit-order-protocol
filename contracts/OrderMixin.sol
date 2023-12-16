@@ -33,19 +33,19 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
     using BitInvalidatorLib for BitInvalidatorLib.Data;
     using RemainingInvalidatorLib for RemainingInvalidator;
 
-    uint256 private constant _RAW_CALL_GAS_LIMIT = 5000;
-    address private constant _PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
-
     IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
-    mapping(address => BitInvalidatorLib.Data) private _bitInvalidator;
-    mapping(address => mapping(bytes32 => RemainingInvalidator)) private _remainingInvalidator;
+    mapping(address maker => BitInvalidatorLib.Data data) private _bitInvalidator;
+    mapping(address maker => mapping(bytes32 orderHash => RemainingInvalidator remaining)) private _remainingInvalidator;
 
     constructor(IWETH weth) OnlyWethReceiver(address(weth)) {
         _WETH = weth;
     }
 
+    /**
+     * @notice See {IOrderMixin-permitAndCall}.
+     */
     function permitAndCall(bytes calldata permit, bytes calldata action) external {
-        IERC20(address(bytes20(permit))).tryPermit(msg.sender, address(this), permit[20:]);
+        IERC20(address(bytes20(permit))).tryPermit(permit[20:]);
         // solhint-disable-next-line no-inline-assembly
         assembly ("memory-safe") {
             let ptr := mload(0x40)
@@ -97,11 +97,12 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      */
     function cancelOrder(MakerTraits makerTraits, bytes32 orderHash) public {
         if (makerTraits.useBitInvalidator()) {
-            _bitInvalidator[msg.sender].massInvalidate(makerTraits.nonceOrEpoch(), 0);
+            uint256 invalidator = _bitInvalidator[msg.sender].massInvalidate(makerTraits.nonceOrEpoch(), 0);
+            emit BitInvalidatorUpdated(msg.sender, makerTraits.nonceOrEpoch() >> 8, invalidator);
         } else {
             _remainingInvalidator[msg.sender][orderHash] = RemainingInvalidatorLib.fullyFilled();
+            emit OrderCancelled(orderHash);
         }
-        emit OrderCancelled(orderHash);
     }
 
     /**
@@ -121,7 +122,8 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
      */
     function bitsInvalidateForOrder(MakerTraits makerTraits, uint256 additionalMask) external {
         if (!makerTraits.useBitInvalidator()) revert OrderIsNotSuitableForMassInvalidation();
-        _bitInvalidator[msg.sender].massInvalidate(makerTraits.nonceOrEpoch(), additionalMask);
+        uint256 invalidator = _bitInvalidator[msg.sender].massInvalidate(makerTraits.nonceOrEpoch(), additionalMask);
+        emit BitInvalidatorUpdated(msg.sender, makerTraits.nonceOrEpoch() >> 8, invalidator);
     }
 
      /**
@@ -404,14 +406,14 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
             if (msg.value > takingAmount) {
                 unchecked {
                     // solhint-disable-next-line avoid-low-level-calls
-                    (bool success, ) = msg.sender.call{value: msg.value - takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
+                    (bool success, ) = msg.sender.call{value: msg.value - takingAmount}("");
                     if (!success) revert Errors.ETHTransferFailed();
                 }
             }
 
             if (order.makerTraits.unwrapWeth()) {
                 // solhint-disable-next-line avoid-low-level-calls
-                (bool success, ) = order.getReceiver().call{value: takingAmount, gas: _RAW_CALL_GAS_LIMIT}("");
+                (bool success, ) = order.getReceiver().call{value: takingAmount}("");
                 if (!success) revert Errors.ETHTransferFailed();
             } else {
                 _WETH.safeDeposit(takingAmount);
