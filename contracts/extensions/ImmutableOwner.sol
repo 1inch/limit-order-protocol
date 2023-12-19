@@ -6,14 +6,14 @@ pragma solidity 0.8.23;
 contract ImmutableOwner {
     error IOAccessDenied();
 
-    address public immutable immutableOwner;
+    address public immutable IMMUTABLE_OWNER;
 
     modifier onlyImmutableOwner {
-        if (msg.sender != immutableOwner) revert IOAccessDenied();
+        if (msg.sender != IMMUTABLE_OWNER) revert IOAccessDenied();
         _;
     }
 
     constructor(address _immutableOwner) {
-        immutableOwner = _immutableOwner;
+        IMMUTABLE_OWNER = _immutableOwner;
     }
 }

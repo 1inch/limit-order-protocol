@@ -8,10 +8,10 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV2V3Interface.sol";
 contract AggregatorMock is AggregatorV2V3Interface {
     error NoDataPresent();
 
-    int256 private immutable _answer;
+    int256 private immutable _ANSWER;
 
     constructor(int256 answer) {
-        _answer = answer;
+        _ANSWER = answer;
     }
 
     function decimals() external pure returns (uint8) {
@@ -53,11 +53,11 @@ contract AggregatorMock is AggregatorV2V3Interface {
         )
     {
         // solhint-disable-next-line not-rely-on-time
-        return (0, _answer, block.timestamp - 100, block.timestamp - 100, 0);
+        return (0, _ANSWER, block.timestamp - 100, block.timestamp - 100, 0);
     }
 
     function latestAnswer() public view returns (int256) {
-        return _answer;
+        return _ANSWER;
     }
 
     function latestTimestamp() public view returns (uint256) {

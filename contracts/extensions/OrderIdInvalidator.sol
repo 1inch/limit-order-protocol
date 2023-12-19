@@ -15,20 +15,20 @@ contract OrderIdInvalidator is IPreInteraction {
     error InvalidOrderHash();
 
     /// @notice Limit order protocol address.
-    address private immutable _limitOrderProtocol;
+    address private immutable _LIMIT_ORDER_PROTOCOL;
     /// @notice Stores corresponding maker orders ids and hashes.
     mapping(address maker => mapping(uint32 orderId => bytes32 orderHash)) private _ordersIdsHashes;
 
     /// @notice Only limit order protocol can call this contract.
     modifier onlyLimitOrderProtocol() {
-        if (msg.sender != _limitOrderProtocol) {
+        if (msg.sender != _LIMIT_ORDER_PROTOCOL) {
             revert AccessDenied();
         }
         _;
     }
 
     constructor(address limitOrderProtocol_) {
-        _limitOrderProtocol = limitOrderProtocol_;
+        _LIMIT_ORDER_PROTOCOL = limitOrderProtocol_;
     }
 
     function preInteraction(
