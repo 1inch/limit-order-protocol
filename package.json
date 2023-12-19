@@ -45,7 +45,7 @@
     "rimraf": "5.0.1",
     "solc": "0.8.19",
     "solhint": "3.4.1",
-    "solidity-coverage": "0.8.4",
+    "solidity-coverage": "0.8.5",
     "solidity-docgen": "0.5.17",
     "zksync-web3": "0.16.0",
     "zksync2-js": "0.2.2"

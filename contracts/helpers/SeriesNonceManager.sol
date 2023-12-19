@@ -18,7 +18,7 @@ contract SeriesNonceManager {
     //    },
     //    ...
     // }
-    mapping(uint256 => mapping(address => uint256)) public nonce;
+    mapping(uint256 series => mapping(address maker => uint256 nonce)) public nonce;
 
     /// @notice Advances nonce by one
     function increaseNonce(uint8 series) external {

@@ -476,7 +476,7 @@ The limit order protocol offers several helper functions for creating conditions
         | calldata |  |  |
         | --- | --- | --- |
         | 1-64 bytes | 65-320 bytes | 321-448 bytes |
-        | calldata (predicate1) | calldata (predicate2) | calldata (predicate2) |
+        | calldata (predicate1) | calldata (predicate2) | calldata (predicate3) |
 
         | offsets (uint256) |  |  |  |
         | --- | --- | --- | --- |
@@ -904,12 +904,12 @@ The `takerTraits` argument provides a number of options for the taker to choose 
 | --- | --- | --- | --- |
 | MAKER_AMOUNT_FLAG | 255 bit | 1 | If set, the protocol implies that the passed amount is the making amount, and the taking amount will be calculated based on the making amount. Otherwise, the passed amount is the taking amount, and the making amount is calculated based on the taking amount. The amount is calculated with AmountCalculator if getters are not set, or with getters provided with an extension by the maker. |
 | UNWRAP_WETH_FLAG | 254 bit | 1 | If set, the WETH will be unwrapped into ETH before sending to the taker's target address. |
-| SKIP_ORDER_PERMIT_FLAG | 253 bit | 1 | If set, the order skips the maker's permit application. It can be useful to skip the maker's permit application if the permit was already applied during recursive fill. |
+|  | 253 bit | 1 | Unused |
 | USE_PERMIT2_FLAG | 252 bit | 1 | If set, the order uses the [Uniswap Permit 2](https://github.com/Uniswap/permit2). |
 | ARGS_HAS_TARGET | 251 bit | 1 | If set, then first 20 bytes of args are treated as target address for maker’s funds transfer |
 | ARGS_EXTENSION_LENGTH | 224-247 | 24 | Extension calldata coded in args argument length |
 | ARGS_INTERACTION_LENGTH | 200-223 | 24 | Taker’s interaction calldata coded in args argument length |
-| THRESHOLD | 0-184 | 184 | The maximum amount a taker agrees to give in exchange for a making amount. If the calculated taker amount is less than the threshold, then the transaction will be reverted. A zero (0) threshold skips the check. The evaluated equation is<br/>$$  threshold ≤ amount*{takingAmount \over makingAmount} $$ |
+| THRESHOLD | 0-184 | 184 | Depending on the MAKER_AMOUNT_FLAG, this can be the maximum amount the taker agrees to give in exchange for the making amount (flag is 1) or the minimum amount the taker agrees to receive (flag is 0). If the calculated taker amount does not satisfy the threshold, then the transaction will be reverted. A zero (0) threshold skips the check. To pass the check the equation should be evaluated to `true`.<br/>For flag = 1<br/>$$  threshold ≥ amount*{takingAmount \over makingAmount} $$<br/>For flag = 0<br/>$$  threshold ≤ amount*{makingAmount \over takingAmount } $$ |
 
 # Cancelling an order
 
