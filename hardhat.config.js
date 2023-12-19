@@ -9,8 +9,9 @@ require('hardhat-deploy');
 require('hardhat-gas-reporter');
 require('hardhat-tracer');
 require('dotenv').config();
+const { Networks, getNetwork } = require('@1inch/solidity-utils/hardhat-setup');
 
-const { networks, etherscan } = require('./hardhat.networks');
+const { networks, etherscan } = (new Networks()).registerAll();
 
 module.exports = {
     etherscan,
@@ -18,12 +19,13 @@ module.exports = {
         enableAllOpcodes: true,
     },
     solidity: {
-        version: '0.8.19',
+        version: '0.8.23',
         settings: {
             optimizer: {
                 enabled: true,
                 runs: 1_000_000,
             },
+            evmVersion: networks[getNetwork()]?.hardfork || 'shanghai',
             viaIR: true,
         },
     },

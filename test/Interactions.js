@@ -287,8 +287,9 @@ describe('Interactions', function () {
         async function initContractsWithHashChecker () {
             const { dai, weth, swap, chainId } = await initContracts();
 
+            const [owner] = await ethers.getSigners();
             const HashChecker = await ethers.getContractFactory('HashChecker');
-            const hashChecker = await HashChecker.deploy(swap);
+            const hashChecker = await HashChecker.deploy(swap, owner);
             await hashChecker.waitForDeployment();
 
             return { dai, weth, swap, chainId, hashChecker };

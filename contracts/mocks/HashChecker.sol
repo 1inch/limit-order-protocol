@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IPreInteraction.sol";
@@ -15,7 +15,7 @@ contract HashChecker is IPreInteraction, Ownable {
     bytes32 public immutable limitOrderProtocolDomainSeparator;
     mapping(bytes32 => bool) public hashes;
 
-    constructor (address limitOrderProtocol) {
+    constructor (address limitOrderProtocol, address owner_) Ownable(owner_) {
         // solhint-disable-next-line avoid-low-level-calls
         (, bytes memory data) = limitOrderProtocol.call(abi.encodeWithSignature("DOMAIN_SEPARATOR()"));
         limitOrderProtocolDomainSeparator = abi.decode(data, (bytes32));
