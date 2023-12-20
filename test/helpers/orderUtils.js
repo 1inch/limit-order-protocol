@@ -1,6 +1,6 @@
 const { constants, trim0x } = require('@1inch/solidity-utils');
 const { assert } = require('chai');
-const { keccak256 } = require('ethers/lib/utils');
+const { keccak256 } = require('ethers');
 const { setn } = require('./utils');
 const { ethers } = require('hardhat');
 
@@ -66,7 +66,7 @@ function buildTakerTraits ({
             (BigInt(trim0x(extension).length / 2) << TakerTraitsConstants._ARGS_EXTENSION_LENGTH_OFFSET) |
             (BigInt(trim0x(interaction).length / 2) << TakerTraitsConstants._ARGS_INTERACTION_LENGTH_OFFSET)
         ),
-        args: ethers.utils.solidityPack(
+        args: ethers.solidityPacked(
             ['bytes', 'bytes', 'bytes'],
             [target, extension, interaction],
         ),
@@ -256,7 +256,7 @@ function buildOrderData (chainId, verifyingContract, order) {
 
 async function signOrder (order, chainId, target, wallet) {
     const orderData = buildOrderData(chainId, target, order);
-    return await wallet._signTypedData(orderData.domain, orderData.types, orderData.value);
+    return await wallet.signTypedData(orderData.domain, orderData.types, orderData.value);
 }
 
 function fillWithMakingAmount (amount) {

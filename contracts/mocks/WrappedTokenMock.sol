@@ -10,9 +10,6 @@ import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 contract WrappedTokenMock is ERC20Permit, Ownable, IWETH {
     error NotEnoughBalance();
 
-    event Deposit(address indexed dst, uint wad);
-    event Withdrawal(address indexed src, uint wad);
-
     // solhint-disable-next-line no-empty-blocks
     constructor(string memory name, string memory symbol) ERC20(name, symbol) ERC20Permit(name) {}
 

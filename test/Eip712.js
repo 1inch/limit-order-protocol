@@ -10,7 +10,7 @@ describe('LimitOrderProtocol', function () {
         expect(
             await swap.DOMAIN_SEPARATOR(),
         ).to.equal(
-            await domainSeparator(name, version, chainId, swap.address),
+            domainSeparator(name, version, chainId, await swap.getAddress()),
         );
     });
 });

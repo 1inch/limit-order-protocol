@@ -20,9 +20,9 @@ describe('RangeAmountCalculator', function () {
             const { rangeAmountCalculator } = await loadFixture(deployRangeAmountCalculator);
             const fillAmount = ether('10');
             const remainingMakerAmount = totalLiquidity;
-            const txn1 = await rangeAmountCalculator.populateTransaction.getRangeTakerAmount(priceEnd, priceStart, totalLiquidity, fillAmount, remainingMakerAmount);
+            const txn1 = await rangeAmountCalculator.getRangeTakerAmount.populateTransaction(priceEnd, priceStart, totalLiquidity, fillAmount, remainingMakerAmount);
             await expect(addr.sendTransaction(txn1)).to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
-            const txn2 = await rangeAmountCalculator.populateTransaction.getRangeTakerAmount(priceStart, priceStart, totalLiquidity, fillAmount, remainingMakerAmount);
+            const txn2 = await rangeAmountCalculator.getRangeTakerAmount.populateTransaction(priceStart, priceStart, totalLiquidity, fillAmount, remainingMakerAmount);
             await expect(addr.sendTransaction(txn2)).to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
         });
 
@@ -48,12 +48,12 @@ describe('RangeAmountCalculator', function () {
 
             const fillOrderFor = async (fillAmount) => {
                 const amount = await rangeAmountCalculator.getRangeTakerAmount(priceStart, priceEnd, totalLiquidity, fillAmount, remainingMakerAmount);
-                remainingMakerAmount = remainingMakerAmount.sub(fillAmount);
+                remainingMakerAmount = remainingMakerAmount - fillAmount;
                 return amount;
             };
 
             for (let i = 0; i < 10; i++) {
-                expect(await fillOrderFor(ether('1'))).to.equal(ether('3050').add(ether('100').mul(i)));
+                expect(await fillOrderFor(ether('1'))).to.equal(ether('3050') + ether('100') * BigInt(i));
             }
         });
     });
@@ -67,9 +67,9 @@ describe('RangeAmountCalculator', function () {
             const { rangeAmountCalculator } = await loadFixture(deployRangeAmountCalculator);
             const fillAmount = ether('10');
             const remainingMakerAmount = totalLiquidity;
-            const txn1 = await rangeAmountCalculator.populateTransaction.getRangeMakerAmount(priceEnd, priceStart, totalLiquidity, fillAmount, remainingMakerAmount);
+            const txn1 = await rangeAmountCalculator.getRangeMakerAmount.populateTransaction(priceEnd, priceStart, totalLiquidity, fillAmount, remainingMakerAmount);
             await expect(addr.sendTransaction(txn1)).to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
-            const txn2 = await rangeAmountCalculator.populateTransaction.getRangeMakerAmount(priceStart, priceStart, totalLiquidity, fillAmount, remainingMakerAmount);
+            const txn2 = await rangeAmountCalculator.getRangeMakerAmount.populateTransaction(priceStart, priceStart, totalLiquidity, fillAmount, remainingMakerAmount);
             await expect(addr.sendTransaction(txn2)).to.be.revertedWithCustomError(rangeAmountCalculator, 'IncorrectRange');
         });
 
@@ -95,12 +95,12 @@ describe('RangeAmountCalculator', function () {
 
             const fillOrderFor = async (fillAmount) => {
                 const amount = await rangeAmountCalculator.getRangeMakerAmount(priceStart, priceEnd, totalLiquidity, fillAmount, remainingMakerAmount);
-                remainingMakerAmount = remainingMakerAmount.sub(amount);
+                remainingMakerAmount = remainingMakerAmount - amount;
                 return amount;
             };
 
             for (let i = 0; i < 10; i++) {
-                expect(await fillOrderFor(ether('3050').add(ether('100').mul(i)))).to.equal(ether('1'));
+                expect(await fillOrderFor(ether('3050') + ether('100') * BigInt(i))).to.equal(ether('1'));
             }
         });
     });
