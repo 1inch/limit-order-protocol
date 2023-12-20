@@ -64,7 +64,7 @@ describe('Dutch auction', function () {
 
         await time.increaseTo(ts + 43200n); // 50% auction time
 
-        const { r, yParityAndS: vs } = ethers.Signature(signature);
+        const { r, yParityAndS: vs } = ethers.Signature.from(signature);
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
@@ -83,7 +83,7 @@ describe('Dutch auction', function () {
 
         await time.increaseTo(ts + 43200n); // 50% auction time
 
-        const { r, yParityAndS: vs } = ethers.Signature(signature);
+        const { r, yParityAndS: vs } = ethers.Signature.from(signature);
         const takerTraits = buildTakerTraits({
             extension: order.extension,
             threshold: ether('100'),
@@ -99,7 +99,7 @@ describe('Dutch auction', function () {
     it('swap with makingAmount 0% time passed', async function () {
         const { dai, weth, swap, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
-        const { r, yParityAndS: vs } = ethers.Signature(signature);
+        const { r, yParityAndS: vs } = ethers.Signature.from(signature);
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
@@ -116,7 +116,7 @@ describe('Dutch auction', function () {
     it('swap with takingAmount 0% time passed', async function () {
         const { dai, weth, swap, order, signature, makerDaiBefore, takerDaiBefore, makerWethBefore, takerWethBefore } = await loadFixture(deployAndBuildOrder);
 
-        const { r, yParityAndS: vs } = ethers.Signature(signature);
+        const { r, yParityAndS: vs } = ethers.Signature.from(signature);
         const takerTraits = buildTakerTraits({
             extension: order.extension,
             threshold: ether('100'),
@@ -134,7 +134,7 @@ describe('Dutch auction', function () {
 
         await time.increaseTo(ts + 86500n); // >100% auction time
 
-        const { r, yParityAndS: vs } = ethers.Signature(signature);
+        const { r, yParityAndS: vs } = ethers.Signature.from(signature);
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
@@ -153,7 +153,7 @@ describe('Dutch auction', function () {
 
         await time.increaseTo(ts + 86500n); // >100% auction time
 
-        const { r, yParityAndS: vs } = ethers.Signature(signature);
+        const { r, yParityAndS: vs } = ethers.Signature.from(signature);
         const takerTraits = buildTakerTraits({
             extension: order.extension,
             threshold: ether('100'),

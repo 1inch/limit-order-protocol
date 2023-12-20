@@ -42,7 +42,7 @@ describe('PriorityFeeLimiter', function () {
                 ]),
             },
         );
-        const { r, yParityAndS: vs } = ethers.Signature(await signOrder(order, chainId, await swap.getAddress(), addr1));
+        const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,

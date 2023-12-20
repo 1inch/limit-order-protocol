@@ -73,7 +73,7 @@ describe('RangeLimitOrders', function () {
                 [await rangeAmountCalculator.getAddress(), startPrice, endPrice],
             ),
         });
-        const { r, yParityAndS: vs } = ethers.Signature(await signOrder(order, chainId, await swap.getAddress(), maker));
+        const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), maker));
         return { order, r, vs, startPrice, endPrice, makingAmount, takingAmount };
     }
 
