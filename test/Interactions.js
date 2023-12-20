@@ -3,7 +3,7 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 const { ether } = require('./helpers/utils');
-const { signOrder, buildOrder, buildMakerTraits, buildTakerTraits, compactSignature } = require('./helpers/orderUtils');
+const { signOrder, buildOrder, buildMakerTraits, buildTakerTraits } = require('./helpers/orderUtils');
 
 describe('Interactions', function () {
     let addr, addr1;
@@ -76,7 +76,7 @@ describe('Interactions', function () {
                 ],
             ).substring(2);
 
-            const { r: backOrderR, vs: backOrderVs } = compactSignature(signatureBackOrder);
+            const { r: backOrderR, yParityAndS: backOrderVs } = ethers.Signature(signatureBackOrder);
             const takerTraits = buildTakerTraits({
                 interaction: matchingParams,
                 makingAmount: true,
@@ -96,7 +96,7 @@ describe('Interactions', function () {
             const addrdai = await dai.balanceOf(addr);
             const addr1dai = await dai.balanceOf(addr1);
 
-            const { r, vs } = compactSignature(signature);
+            const { r, yParityAndS: vs } = ethers.Signature(signature);
             const matcherTraits = buildTakerTraits({
                 interaction,
                 makingAmount: true,
@@ -150,7 +150,7 @@ describe('Interactions', function () {
                 ],
             ).substring(2);
 
-            const { r: backOrderR, vs: backOrderVs } = compactSignature(signatureBackOrder);
+            const { r: backOrderR, yParityAndS: backOrderVs } = ethers.Signature(signatureBackOrder);
             const takerTraits = buildTakerTraits({
                 interaction: matchingParams,
                 makingAmount: true,
@@ -171,7 +171,7 @@ describe('Interactions', function () {
             const addr1dai = await dai.balanceOf(addr1);
 
             await weth.approve(matcher, ether('0.025'));
-            const { r, vs } = compactSignature(signature);
+            const { r, yParityAndS: vs } = ethers.Signature(signature);
             const matcherTraits = buildTakerTraits({
                 interaction,
                 makingAmount: true,
@@ -233,7 +233,7 @@ describe('Interactions', function () {
                 ],
             ).substring(2);
 
-            const { r: backOrderR, vs: backOrderVs } = compactSignature(signatureBackOrder);
+            const { r: backOrderR, yParityAndS: backOrderVs } = ethers.Signature(signatureBackOrder);
             const internalTakerTraits = buildTakerTraits({
                 interaction: matchingParams,
                 makingAmount: true,
@@ -248,7 +248,7 @@ describe('Interactions', function () {
                 internalTakerTraits.args,
             ]).substring(10);
 
-            const { r: order2R, vs: order2Vs } = compactSignature(signature2);
+            const { r: order2R, yParityAndS: order2Vs } = ethers.Signature(signature2);
             const externalTakerTraits = buildTakerTraits({
                 interaction: internalInteraction,
                 makingAmount: true,
@@ -268,7 +268,7 @@ describe('Interactions', function () {
             const addrdai = await dai.balanceOf(addr);
             const addr1dai = await dai.balanceOf(addr1);
 
-            const { r, vs } = compactSignature(signature1);
+            const { r, yParityAndS: vs } = ethers.Signature(signature1);
             const matcherTraits = buildTakerTraits({
                 interaction: externalInteraction,
                 makingAmount: true,
@@ -319,7 +319,7 @@ describe('Interactions', function () {
 
             await hashChecker.setHashOrderStatus(order, true);
 
-            const { r, vs } = compactSignature(signature);
+            const { r, yParityAndS: vs } = ethers.Signature(signature);
             const takerTraits = buildTakerTraits({
                 threshold: ether('0.1'),
                 makingAmount: true,
@@ -352,7 +352,7 @@ describe('Interactions', function () {
 
             const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
 
-            const { r, vs } = compactSignature(signature);
+            const { r, yParityAndS: vs } = ethers.Signature(signature);
             const takerTraits = buildTakerTraits({
                 threshold: ether('0.1'),
                 makingAmount: true,
@@ -398,7 +398,7 @@ describe('Interactions', function () {
             const addrdai = await dai.balanceOf(addr);
             const addr1dai = await dai.balanceOf(addr1);
 
-            const { r, vs } = compactSignature(signature);
+            const { r, yParityAndS: vs } = ethers.Signature(signature);
             const takerTraits = buildTakerTraits({
                 threshold: ether('0.1'),
                 makingAmount: true,
@@ -465,7 +465,7 @@ describe('Interactions', function () {
             const addrdai = await dai.balanceOf(addr);
             const addr1dai = await dai.balanceOf(addr1);
 
-            const { r, vs } = compactSignature(signature);
+            const { r, yParityAndS: vs } = ethers.Signature(signature);
             const takerTraits = buildTakerTraits({
                 threshold: ether('0.1'),
                 makingAmount: true,
@@ -478,7 +478,7 @@ describe('Interactions', function () {
             expect(await dai.balanceOf(addr)).to.equal(addrdai - ether('50'));
             expect(await dai.balanceOf(addr1)).to.equal(addr1dai + ether('50'));
 
-            const { r: r2, vs: vs2 } = compactSignature(signaturePartial);
+            const { r: r2, yParityAndS: vs2 } = ethers.Signature(signaturePartial);
             const takerTraits2 = buildTakerTraits({
                 threshold: ether('0.1'),
                 makingAmount: true,
