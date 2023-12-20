@@ -254,15 +254,6 @@ function buildOrderData (chainId, verifyingContract, order) {
     };
 }
 
-function compactSignature (signature) {
-    const sig = ethers.Signature.from(signature);
-    const vs = ethers.toBeHex(BigInt(sig.s) | (BigInt(sig.yParity) << 255n));
-    return {
-        r: sig.r,
-        vs,
-    };
-}
-
 async function signOrder (order, chainId, target, wallet) {
     const orderData = buildOrderData(chainId, target, order);
     return await wallet.signTypedData(orderData.domain, orderData.types, orderData.value);
@@ -288,7 +279,6 @@ module.exports = {
     buildOrder,
     buildOrderRFQ,
     buildOrderData,
-    compactSignature,
     signOrder,
     fillWithMakingAmount,
     unwrapWethTaker,

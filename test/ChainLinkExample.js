@@ -1,7 +1,7 @@
 const { expect } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { ether } = require('./helpers/utils');
-const { signOrder, buildOrder, buildTakerTraits, compactSignature } = require('./helpers/orderUtils');
+const { signOrder, buildOrder, buildTakerTraits } = require('./helpers/orderUtils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ethers } = require('hardhat');
 
@@ -77,7 +77,7 @@ describe('ChainLinkExample', function () {
             },
         );
         const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
-        const { r, vs } = compactSignature(signature);
+        const { r, yParityAndS: vs } = ethers.Signature.from(signature);
         // taking threshold = 4000 + 1% + eps
         const takerTraits = buildTakerTraits({
             extension: order.extension,
@@ -108,7 +108,7 @@ describe('ChainLinkExample', function () {
             },
         );
         const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
-        const { r, vs } = compactSignature(signature);
+        const { r, yParityAndS: vs } = ethers.Signature.from(signature);
         // taking threshold = 1 eth + 1% + eps
         const takerTraits = buildTakerTraits({
             makingAmount: true,
@@ -148,7 +148,7 @@ describe('ChainLinkExample', function () {
             },
         );
         const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
-        const { r, vs } = compactSignature(signature);
+        const { r, yParityAndS: vs } = ethers.Signature.from(signature);
         // taking threshold = 1 eth + 1% + eps
         const takerTraits = buildTakerTraits({
             makingAmount: true,
@@ -191,7 +191,7 @@ describe('ChainLinkExample', function () {
             },
         );
         const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
-        const { r, vs } = compactSignature(signature);
+        const { r, yParityAndS: vs } = ethers.Signature.from(signature);
         // taking threshold = 1 eth + 1% + eps
         const takerTraits = buildTakerTraits({
             extension: order.extension,
@@ -227,7 +227,7 @@ describe('ChainLinkExample', function () {
             },
         );
         const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
-        const { r, vs } = compactSignature(signature);
+        const { r, yParityAndS: vs } = ethers.Signature.from(signature);
         // taking threshold = exact taker amount + eps
         const takerTraits = buildTakerTraits({
             makingAmount: true,
@@ -258,7 +258,7 @@ describe('ChainLinkExample', function () {
             },
         );
         const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
-        const { r, vs } = compactSignature(signature);
+        const { r, yParityAndS: vs } = ethers.Signature.from(signature);
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
@@ -292,7 +292,7 @@ describe('ChainLinkExample', function () {
             },
         );
         const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
-        const { r, vs } = compactSignature(signature);
+        const { r, yParityAndS: vs } = ethers.Signature.from(signature);
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,

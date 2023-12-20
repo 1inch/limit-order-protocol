@@ -1,7 +1,7 @@
 const { expect } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { ether } = require('./helpers/utils');
-const { signOrder, buildOrder, buildTakerTraits, compactSignature } = require('./helpers/orderUtils');
+const { signOrder, buildOrder, buildTakerTraits } = require('./helpers/orderUtils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const hre = require('hardhat');
 const { ethers, network } = hre;
@@ -42,7 +42,7 @@ describe('PriorityFeeLimiter', function () {
                 ]),
             },
         );
-        const { r, vs } = compactSignature(await signOrder(order, chainId, await swap.getAddress(), addr1));
+        const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
