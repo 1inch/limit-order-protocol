@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { TakerTraits } from "../libraries/TakerTraitsLib.sol";
 
 contract TakerContract {
-    IOrderMixin private immutable _swap;
+    IOrderMixin private immutable _SWAP;
 
     constructor(IOrderMixin swap) {
-        _swap = swap;
+        _SWAP = swap;
     }
 
     function fillOrder(
@@ -19,6 +19,6 @@ contract TakerContract {
         uint256 amount,
         TakerTraits takerTraits
     ) external payable {
-        _swap.fillOrder {value: msg.value} (order, r, vs, amount, takerTraits);
+        _SWAP.fillOrder {value: msg.value} (order, r, vs, amount, takerTraits);
     }
 }
