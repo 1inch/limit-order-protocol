@@ -7,7 +7,7 @@ const { signOrder, buildOrder, buildMakerTraits, buildTakerTraits } = require('.
 
 describe('Interactions', function () {
     let addr, addr1;
-    const abiCoder = ethers.utils.defaultAbiCoder;
+    const abiCoder = ethers.AbiCoder.defaultAbiCoder();
 
     before(async function () {
         [addr, addr1] = await ethers.getSigners();
@@ -16,15 +16,15 @@ describe('Interactions', function () {
     async function initContracts () {
         const { dai, weth, swap, chainId } = await deploySwapTokens();
 
-        await dai.mint(addr.address, ether('100'));
-        await dai.mint(addr1.address, ether('100'));
+        await dai.mint(addr, ether('100'));
+        await dai.mint(addr1, ether('100'));
         await weth.deposit({ value: ether('1') });
         await weth.connect(addr1).deposit({ value: ether('1') });
 
-        await dai.approve(swap.address, ether('100'));
-        await dai.connect(addr1).approve(swap.address, ether('100'));
-        await weth.approve(swap.address, ether('1'));
-        await weth.connect(addr1).approve(swap.address, ether('1'));
+        await dai.approve(swap, ether('100'));
+        await dai.connect(addr1).approve(swap, ether('100'));
+        await weth.approve(swap, ether('1'));
+        await weth.connect(addr1).approve(swap, ether('1'));
 
         return { dai, weth, swap, chainId };
     };
@@ -35,7 +35,7 @@ describe('Interactions', function () {
 
             const RecursiveMatcher = await ethers.getContractFactory('RecursiveMatcher');
             const matcher = await RecursiveMatcher.deploy();
-            await matcher.deployed();
+            await matcher.waitForDeployment();
 
             return { dai, weth, swap, chainId, matcher };
         }
@@ -44,45 +44,45 @@ describe('Interactions', function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContractsWithRecursiveMatcher);
 
             const order = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
+                makerAsset: await dai.getAddress(),
+                takerAsset: await weth.getAddress(),
                 makingAmount: ether('100'),
                 takingAmount: ether('0.1'),
                 maker: addr.address,
             });
 
             const backOrder = buildOrder({
-                makerAsset: weth.address,
-                takerAsset: dai.address,
+                makerAsset: await weth.getAddress(),
+                takerAsset: await dai.getAddress(),
                 makingAmount: ether('0.1'),
                 takingAmount: ether('100'),
                 maker: addr1.address,
             });
 
-            const signature = await signOrder(order, chainId, swap.address, addr);
-            const signatureBackOrder = await signOrder(backOrder, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, await swap.getAddress(), addr);
+            const signatureBackOrder = await signOrder(backOrder, chainId, await swap.getAddress(), addr1);
 
-            const matchingParams = matcher.address + '01' + abiCoder.encode(
+            const matchingParams = await matcher.getAddress() + '01' + abiCoder.encode(
                 ['address[]', 'bytes[]'],
                 [
                     [
-                        weth.address,
-                        dai.address,
+                        await weth.getAddress(),
+                        await dai.getAddress(),
                     ],
                     [
-                        weth.interface.encodeFunctionData('approve', [swap.address, ether('0.1')]),
-                        dai.interface.encodeFunctionData('approve', [swap.address, ether('100')]),
+                        weth.interface.encodeFunctionData('approve', [await swap.getAddress(), ether('0.1')]),
+                        dai.interface.encodeFunctionData('approve', [await swap.getAddress(), ether('100')]),
                     ],
                 ],
             ).substring(2);
 
-            const { r: backOrderR, _vs: backOrderVs } = ethers.utils.splitSignature(signatureBackOrder);
+            const { r: backOrderR, yParityAndS: backOrderVs } = ethers.Signature.from(signatureBackOrder);
             const takerTraits = buildTakerTraits({
                 interaction: matchingParams,
                 makingAmount: true,
                 threshold: ether('100'),
             });
-            const interaction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderArgs', [
+            const interaction = await matcher.getAddress() + '00' + swap.interface.encodeFunctionData('fillOrderArgs', [
                 backOrder,
                 backOrderR,
                 backOrderVs,
@@ -91,31 +91,31 @@ describe('Interactions', function () {
                 takerTraits.args,
             ]).substring(10);
 
-            const addrweth = await weth.balanceOf(addr.address);
-            const addr1weth = await weth.balanceOf(addr1.address);
-            const addrdai = await dai.balanceOf(addr.address);
-            const addr1dai = await dai.balanceOf(addr1.address);
+            const addrweth = await weth.balanceOf(addr);
+            const addr1weth = await weth.balanceOf(addr1);
+            const addrdai = await dai.balanceOf(addr);
+            const addr1dai = await dai.balanceOf(addr1);
 
-            const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+            const { r, yParityAndS: vs } = ethers.Signature.from(signature);
             const matcherTraits = buildTakerTraits({
                 interaction,
                 makingAmount: true,
                 threshold: ether('0.1'),
             });
-            await matcher.matchOrders(swap.address, order, r, vs, ether('100'), matcherTraits.traits, matcherTraits.args);
+            await matcher.matchOrders(await swap.getAddress(), order, r, vs, ether('100'), matcherTraits.traits, matcherTraits.args);
 
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.1')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.1')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('100')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('100')));
+            expect(await weth.balanceOf(addr)).to.equal(addrweth + ether('0.1'));
+            expect(await weth.balanceOf(addr1)).to.equal(addr1weth - ether('0.1'));
+            expect(await dai.balanceOf(addr)).to.equal(addrdai - ether('100'));
+            expect(await dai.balanceOf(addr1)).to.equal(addr1dai + ether('100'));
         });
 
         it('unidirectional recursive swap', async function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContractsWithRecursiveMatcher);
 
             const order = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
+                makerAsset: await dai.getAddress(),
+                takerAsset: await weth.getAddress(),
                 makingAmount: ether('10'),
                 takingAmount: ether('0.01'),
                 maker: addr1.address,
@@ -123,40 +123,40 @@ describe('Interactions', function () {
             });
 
             const backOrder = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
+                makerAsset: await dai.getAddress(),
+                takerAsset: await weth.getAddress(),
                 makingAmount: ether('15'),
                 takingAmount: ether('0.015'),
                 maker: addr1.address,
                 makerTraits: buildMakerTraits({ nonce: 0 }),
             });
 
-            const signature = await signOrder(order, chainId, swap.address, addr1);
-            const signatureBackOrder = await signOrder(backOrder, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
+            const signatureBackOrder = await signOrder(backOrder, chainId, await swap.getAddress(), addr1);
 
-            const matchingParams = matcher.address + '01' + abiCoder.encode(
+            const matchingParams = await matcher.getAddress() + '01' + abiCoder.encode(
                 ['address[]', 'bytes[]'],
                 [
                     [
-                        weth.address,
-                        weth.address,
-                        dai.address,
+                        await weth.getAddress(),
+                        await weth.getAddress(),
+                        await dai.getAddress(),
                     ],
                     [
-                        weth.interface.encodeFunctionData('transferFrom', [addr.address, matcher.address, ether('0.025')]),
-                        weth.interface.encodeFunctionData('approve', [swap.address, ether('0.025')]),
+                        weth.interface.encodeFunctionData('transferFrom', [addr.address, await matcher.getAddress(), ether('0.025')]),
+                        weth.interface.encodeFunctionData('approve', [await swap.getAddress(), ether('0.025')]),
                         dai.interface.encodeFunctionData('transfer', [addr.address, ether('25')]),
                     ],
                 ],
             ).substring(2);
 
-            const { r: backOrderR, _vs: backOrderVs } = ethers.utils.splitSignature(signatureBackOrder);
+            const { r: backOrderR, yParityAndS: backOrderVs } = ethers.Signature.from(signatureBackOrder);
             const takerTraits = buildTakerTraits({
                 interaction: matchingParams,
                 makingAmount: true,
                 threshold: ether('0.015'),
             });
-            const interaction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderArgs', [
+            const interaction = await matcher.getAddress() + '00' + swap.interface.encodeFunctionData('fillOrderArgs', [
                 backOrder,
                 backOrderR,
                 backOrderVs,
@@ -165,32 +165,32 @@ describe('Interactions', function () {
                 takerTraits.args,
             ]).substring(10);
 
-            const addrweth = await weth.balanceOf(addr.address);
-            const addr1weth = await weth.balanceOf(addr1.address);
-            const addrdai = await dai.balanceOf(addr.address);
-            const addr1dai = await dai.balanceOf(addr1.address);
+            const addrweth = await weth.balanceOf(addr);
+            const addr1weth = await weth.balanceOf(addr1);
+            const addrdai = await dai.balanceOf(addr);
+            const addr1dai = await dai.balanceOf(addr1);
 
-            await weth.approve(matcher.address, ether('0.025'));
-            const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+            await weth.approve(matcher, ether('0.025'));
+            const { r, yParityAndS: vs } = ethers.Signature.from(signature);
             const matcherTraits = buildTakerTraits({
                 interaction,
                 makingAmount: true,
                 threshold: ether('0.01'),
             });
-            await matcher.matchOrders(swap.address, order, r, vs, ether('10'), matcherTraits.traits, matcherTraits.args);
+            await matcher.matchOrders(await swap.getAddress(), order, r, vs, ether('10'), matcherTraits.traits, matcherTraits.args);
 
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.sub(ether('0.025')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.add(ether('0.025')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.add(ether('25')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.sub(ether('25')));
+            expect(await weth.balanceOf(addr)).to.equal(addrweth - ether('0.025'));
+            expect(await weth.balanceOf(addr1)).to.equal(addr1weth + ether('0.025'));
+            expect(await dai.balanceOf(addr)).to.equal(addrdai + ether('25'));
+            expect(await dai.balanceOf(addr1)).to.equal(addr1dai - ether('25'));
         });
 
         it('triple recursive swap', async function () {
             const { dai, weth, swap, chainId, matcher } = await loadFixture(initContractsWithRecursiveMatcher);
 
             const order1 = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
+                makerAsset: await dai.getAddress(),
+                takerAsset: await weth.getAddress(),
                 makingAmount: ether('10'),
                 takingAmount: ether('0.01'),
                 maker: addr1.address,
@@ -198,8 +198,8 @@ describe('Interactions', function () {
             });
 
             const order2 = buildOrder({
-                makerAsset: dai.address,
-                takerAsset: weth.address,
+                makerAsset: await dai.getAddress(),
+                takerAsset: await weth.getAddress(),
                 makingAmount: ether('15'),
                 takingAmount: ether('0.015'),
                 maker: addr1.address,
@@ -207,39 +207,39 @@ describe('Interactions', function () {
             });
 
             const backOrder = buildOrder({
-                makerAsset: weth.address,
-                takerAsset: dai.address,
+                makerAsset: await weth.getAddress(),
+                takerAsset: await dai.getAddress(),
                 makingAmount: ether('0.025'),
                 takingAmount: ether('25'),
                 maker: addr.address,
                 makerTraits: buildMakerTraits({ nonce: 0 }),
             });
 
-            const signature1 = await signOrder(order1, chainId, swap.address, addr1);
-            const signature2 = await signOrder(order2, chainId, swap.address, addr1);
-            const signatureBackOrder = await signOrder(backOrder, chainId, swap.address, addr);
+            const signature1 = await signOrder(order1, chainId, await swap.getAddress(), addr1);
+            const signature2 = await signOrder(order2, chainId, await swap.getAddress(), addr1);
+            const signatureBackOrder = await signOrder(backOrder, chainId, await swap.getAddress(), addr);
 
-            const matchingParams = matcher.address + '01' + abiCoder.encode(
+            const matchingParams = await matcher.getAddress() + '01' + abiCoder.encode(
                 ['address[]', 'bytes[]'],
                 [
                     [
-                        weth.address,
-                        dai.address,
+                        await weth.getAddress(),
+                        await dai.getAddress(),
                     ],
                     [
-                        weth.interface.encodeFunctionData('approve', [swap.address, ether('0.025')]),
-                        dai.interface.encodeFunctionData('approve', [swap.address, ether('25')]),
+                        weth.interface.encodeFunctionData('approve', [await swap.getAddress(), ether('0.025')]),
+                        dai.interface.encodeFunctionData('approve', [await swap.getAddress(), ether('25')]),
                     ],
                 ],
             ).substring(2);
 
-            const { r: backOrderR, _vs: backOrderVs } = ethers.utils.splitSignature(signatureBackOrder);
+            const { r: backOrderR, yParityAndS: backOrderVs } = ethers.Signature.from(signatureBackOrder);
             const internalTakerTraits = buildTakerTraits({
                 interaction: matchingParams,
                 makingAmount: true,
                 threshold: ether('25'),
             });
-            const internalInteraction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderArgs', [
+            const internalInteraction = await matcher.getAddress() + '00' + swap.interface.encodeFunctionData('fillOrderArgs', [
                 backOrder,
                 backOrderR,
                 backOrderVs,
@@ -248,13 +248,13 @@ describe('Interactions', function () {
                 internalTakerTraits.args,
             ]).substring(10);
 
-            const { r: order2R, _vs: order2Vs } = ethers.utils.splitSignature(signature2);
+            const { r: order2R, yParityAndS: order2Vs } = ethers.Signature.from(signature2);
             const externalTakerTraits = buildTakerTraits({
                 interaction: internalInteraction,
                 makingAmount: true,
                 threshold: ether('25'),
             });
-            const externalInteraction = matcher.address + '00' + swap.interface.encodeFunctionData('fillOrderArgs', [
+            const externalInteraction = await matcher.getAddress() + '00' + swap.interface.encodeFunctionData('fillOrderArgs', [
                 order2,
                 order2R,
                 order2Vs,
@@ -263,23 +263,23 @@ describe('Interactions', function () {
                 externalTakerTraits.args,
             ]).substring(10);
 
-            const addrweth = await weth.balanceOf(addr.address);
-            const addr1weth = await weth.balanceOf(addr1.address);
-            const addrdai = await dai.balanceOf(addr.address);
-            const addr1dai = await dai.balanceOf(addr1.address);
+            const addrweth = await weth.balanceOf(addr);
+            const addr1weth = await weth.balanceOf(addr1);
+            const addrdai = await dai.balanceOf(addr);
+            const addr1dai = await dai.balanceOf(addr1);
 
-            const { r, _vs: vs } = ethers.utils.splitSignature(signature1);
+            const { r, yParityAndS: vs } = ethers.Signature.from(signature1);
             const matcherTraits = buildTakerTraits({
                 interaction: externalInteraction,
                 makingAmount: true,
                 threshold: ether('0.01'),
             });
-            await matcher.matchOrders(swap.address, order1, r, vs, ether('10'), matcherTraits.traits, matcherTraits.args);
+            await matcher.matchOrders(await swap.getAddress(), order1, r, vs, ether('10'), matcherTraits.traits, matcherTraits.args);
 
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.sub(ether('0.025')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.add(ether('0.025')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.add(ether('25')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.sub(ether('25')));
+            expect(await weth.balanceOf(addr)).to.equal(addrweth - ether('0.025'));
+            expect(await weth.balanceOf(addr1)).to.equal(addr1weth + ether('0.025'));
+            expect(await dai.balanceOf(addr)).to.equal(addrdai + ether('25'));
+            expect(await dai.balanceOf(addr1)).to.equal(addr1dai - ether('25'));
         });
     });
 
@@ -287,9 +287,10 @@ describe('Interactions', function () {
         async function initContractsWithHashChecker () {
             const { dai, weth, swap, chainId } = await initContracts();
 
+            const [owner] = await ethers.getSigners();
             const HashChecker = await ethers.getContractFactory('HashChecker');
-            const hashChecker = await HashChecker.deploy(swap.address);
-            await hashChecker.deployed();
+            const hashChecker = await HashChecker.deploy(swap, owner);
+            await hashChecker.waitForDeployment();
 
             return { dai, weth, swap, chainId, hashChecker };
         }
@@ -299,27 +300,27 @@ describe('Interactions', function () {
 
             const order = buildOrder(
                 {
-                    makerAsset: dai.address,
-                    takerAsset: weth.address,
+                    makerAsset: await dai.getAddress(),
+                    takerAsset: await weth.getAddress(),
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr1.address,
                     makerTraits: buildMakerTraits(),
                 },
                 {
-                    preInteraction: hashChecker.address,
+                    preInteraction: await hashChecker.getAddress(),
                 },
             );
-            const signature = await signOrder(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
 
-            const makerDai = await dai.balanceOf(addr1.address);
-            const takerDai = await dai.balanceOf(addr.address);
-            const makerWeth = await weth.balanceOf(addr1.address);
-            const takerWeth = await weth.balanceOf(addr.address);
+            const makerDai = await dai.balanceOf(addr1);
+            const takerDai = await dai.balanceOf(addr);
+            const makerWeth = await weth.balanceOf(addr1);
+            const takerWeth = await weth.balanceOf(addr);
 
             await hashChecker.setHashOrderStatus(order, true);
 
-            const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+            const { r, yParityAndS: vs } = ethers.Signature.from(signature);
             const takerTraits = buildTakerTraits({
                 threshold: ether('0.1'),
                 makingAmount: true,
@@ -327,10 +328,10 @@ describe('Interactions', function () {
             });
             await swap.fillOrderArgs(order, r, vs, ether('100'), takerTraits.traits, takerTraits.args);
 
-            expect(await dai.balanceOf(addr1.address)).to.equal(makerDai.sub(ether('100')));
-            expect(await dai.balanceOf(addr.address)).to.equal(takerDai.add(ether('100')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(makerWeth.add(ether('0.1')));
-            expect(await weth.balanceOf(addr.address)).to.equal(takerWeth.sub(ether('0.1')));
+            expect(await dai.balanceOf(addr1)).to.equal(makerDai - ether('100'));
+            expect(await dai.balanceOf(addr)).to.equal(takerDai + ether('100'));
+            expect(await weth.balanceOf(addr1)).to.equal(makerWeth + ether('0.1'));
+            expect(await weth.balanceOf(addr)).to.equal(takerWeth - ether('0.1'));
         });
 
         it('should revert transaction when orderHash not equal target', async function () {
@@ -338,21 +339,21 @@ describe('Interactions', function () {
 
             const order = buildOrder(
                 {
-                    makerAsset: dai.address,
-                    takerAsset: weth.address,
+                    makerAsset: await dai.getAddress(),
+                    takerAsset: await weth.getAddress(),
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr1.address,
                     makerTraits: buildMakerTraits(),
                 },
                 {
-                    preInteraction: hashChecker.address,
+                    preInteraction: await hashChecker.getAddress(),
                 },
             );
 
-            const signature = await signOrder(order, chainId, swap.address, addr1);
+            const signature = await signOrder(order, chainId, await swap.getAddress(), addr1);
 
-            const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+            const { r, yParityAndS: vs } = ethers.Signature.from(signature);
             const takerTraits = buildTakerTraits({
                 threshold: ether('0.1'),
                 makingAmount: true,
@@ -368,8 +369,8 @@ describe('Interactions', function () {
             const { dai, weth, swap, chainId } = await initContracts();
 
             const OrderIdInvalidator = await ethers.getContractFactory('OrderIdInvalidator');
-            const orderIdInvalidator = await OrderIdInvalidator.deploy(swap.address);
-            await orderIdInvalidator.deployed();
+            const orderIdInvalidator = await OrderIdInvalidator.deploy(swap);
+            await orderIdInvalidator.waitForDeployment();
 
             return { dai, weth, swap, chainId, orderIdInvalidator };
         }
@@ -380,25 +381,25 @@ describe('Interactions', function () {
 
             const order = buildOrder(
                 {
-                    makerAsset: dai.address,
-                    takerAsset: weth.address,
+                    makerAsset: await dai.getAddress(),
+                    takerAsset: await weth.getAddress(),
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr.address,
                     makerTraits: buildMakerTraits({ allowMultipleFills: true }),
                 },
                 {
-                    preInteraction: orderIdInvalidator.address + orderId.toString(16).padStart(8, '0'),
+                    preInteraction: await orderIdInvalidator.getAddress() + orderId.toString(16).padStart(8, '0'),
                 },
             );
-            const signature = await signOrder(order, chainId, swap.address, addr);
+            const signature = await signOrder(order, chainId, await swap.getAddress(), addr);
 
-            const addrweth = await weth.balanceOf(addr.address);
-            const addr1weth = await weth.balanceOf(addr1.address);
-            const addrdai = await dai.balanceOf(addr.address);
-            const addr1dai = await dai.balanceOf(addr1.address);
+            const addrweth = await weth.balanceOf(addr);
+            const addr1weth = await weth.balanceOf(addr1);
+            const addrdai = await dai.balanceOf(addr);
+            const addr1dai = await dai.balanceOf(addr1);
 
-            const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+            const { r, yParityAndS: vs } = ethers.Signature.from(signature);
             const takerTraits = buildTakerTraits({
                 threshold: ether('0.1'),
                 makingAmount: true,
@@ -406,10 +407,10 @@ describe('Interactions', function () {
             });
             await swap.connect(addr1).fillOrderArgs(order, r, vs, ether('50'), takerTraits.traits, takerTraits.args);
 
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.05')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.05')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('50')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('50')));
+            expect(await weth.balanceOf(addr)).to.equal(addrweth + ether('0.05'));
+            expect(await weth.balanceOf(addr1)).to.equal(addr1weth - ether('0.05'));
+            expect(await dai.balanceOf(addr)).to.equal(addrdai - ether('50'));
+            expect(await dai.balanceOf(addr1)).to.equal(addr1dai + ether('50'));
 
             const takerTraits2 = buildTakerTraits({
                 threshold: ether('0.1'),
@@ -418,21 +419,21 @@ describe('Interactions', function () {
             });
             await swap.connect(addr1).fillOrderArgs(order, r, vs, ether('50'), takerTraits2.traits, takerTraits2.args);
 
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.1')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.1')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('100')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('100')));
+            expect(await weth.balanceOf(addr)).to.equal(addrweth + ether('0.1'));
+            expect(await weth.balanceOf(addr1)).to.equal(addr1weth - ether('0.1'));
+            expect(await dai.balanceOf(addr)).to.equal(addrdai - ether('100'));
+            expect(await dai.balanceOf(addr1)).to.equal(addr1dai + ether('100'));
         });
 
         it('should fail to execute order with same orderId, but with different orderHash', async function () {
             const { dai, weth, swap, chainId, orderIdInvalidator } = await loadFixture(initContractsWithIdInvalidator);
             const orderId = 13341n;
-            const preInteraction = orderIdInvalidator.address + orderId.toString(16).padStart(8, '0');
+            const preInteraction = await orderIdInvalidator.getAddress() + orderId.toString(16).padStart(8, '0');
 
             const order = buildOrder(
                 {
-                    makerAsset: dai.address,
-                    takerAsset: weth.address,
+                    makerAsset: await dai.getAddress(),
+                    takerAsset: await weth.getAddress(),
                     makingAmount: ether('100'),
                     takingAmount: ether('0.1'),
                     maker: addr.address,
@@ -445,8 +446,8 @@ describe('Interactions', function () {
 
             const partialOrder = buildOrder(
                 {
-                    makerAsset: dai.address,
-                    takerAsset: weth.address,
+                    makerAsset: await dai.getAddress(),
+                    takerAsset: await weth.getAddress(),
                     makingAmount: ether('50'),
                     takingAmount: ether('0.05'),
                     maker: addr.address,
@@ -457,15 +458,15 @@ describe('Interactions', function () {
                 },
             );
 
-            const signature = await signOrder(order, chainId, swap.address, addr);
-            const signaturePartial = await signOrder(partialOrder, chainId, swap.address, addr);
+            const signature = await signOrder(order, chainId, await swap.getAddress(), addr);
+            const signaturePartial = await signOrder(partialOrder, chainId, await swap.getAddress(), addr);
 
-            const addrweth = await weth.balanceOf(addr.address);
-            const addr1weth = await weth.balanceOf(addr1.address);
-            const addrdai = await dai.balanceOf(addr.address);
-            const addr1dai = await dai.balanceOf(addr1.address);
+            const addrweth = await weth.balanceOf(addr);
+            const addr1weth = await weth.balanceOf(addr1);
+            const addrdai = await dai.balanceOf(addr);
+            const addr1dai = await dai.balanceOf(addr1);
 
-            const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+            const { r, yParityAndS: vs } = ethers.Signature.from(signature);
             const takerTraits = buildTakerTraits({
                 threshold: ether('0.1'),
                 makingAmount: true,
@@ -473,12 +474,12 @@ describe('Interactions', function () {
             });
             await swap.connect(addr1).fillOrderArgs(order, r, vs, ether('50'), takerTraits.traits, takerTraits.args);
 
-            expect(await weth.balanceOf(addr.address)).to.equal(addrweth.add(ether('0.05')));
-            expect(await weth.balanceOf(addr1.address)).to.equal(addr1weth.sub(ether('0.05')));
-            expect(await dai.balanceOf(addr.address)).to.equal(addrdai.sub(ether('50')));
-            expect(await dai.balanceOf(addr1.address)).to.equal(addr1dai.add(ether('50')));
+            expect(await weth.balanceOf(addr)).to.equal(addrweth + ether('0.05'));
+            expect(await weth.balanceOf(addr1)).to.equal(addr1weth - ether('0.05'));
+            expect(await dai.balanceOf(addr)).to.equal(addrdai - ether('50'));
+            expect(await dai.balanceOf(addr1)).to.equal(addr1dai + ether('50'));
 
-            const { r: r2, _vs: vs2 } = ethers.utils.splitSignature(signaturePartial);
+            const { r: r2, yParityAndS: vs2 } = ethers.Signature.from(signaturePartial);
             const takerTraits2 = buildTakerTraits({
                 threshold: ether('0.1'),
                 makingAmount: true,

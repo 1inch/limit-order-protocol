@@ -13,7 +13,7 @@ describe('SeriesEpochManager', function () {
     it('Get nonce - should return zero by default', async function () {
         const { seriesEpochManager } = await loadFixture(deploySeriesEpochManager);
         const series = 0;
-        const nonce = await seriesEpochManager.epoch(addr.address, series);
+        const nonce = await seriesEpochManager.epoch(addr, series);
         expect(nonce).to.equal(0);
     });
 
@@ -22,8 +22,8 @@ describe('SeriesEpochManager', function () {
         const series0 = 0;
         const series1 = 1;
         await seriesEpochManager.advanceEpoch(series0, 2);
-        const nonceSeries0 = await seriesEpochManager.epoch(addr.address, series0);
-        const nonceSeries1 = await seriesEpochManager.epoch(addr.address, series1);
+        const nonceSeries0 = await seriesEpochManager.epoch(addr, series0);
+        const nonceSeries1 = await seriesEpochManager.epoch(addr, series1);
         expect(nonceSeries0).to.equal(2);
         expect(nonceSeries1).to.equal(0);
     });
@@ -37,19 +37,19 @@ describe('SeriesEpochManager', function () {
         const { seriesEpochManager } = await loadFixture(deploySeriesEpochManager);
         const series = 0;
         await seriesEpochManager.increaseEpoch(series);
-        expect(await seriesEpochManager.epoch(addr.address, series)).to.equal(1);
+        expect(await seriesEpochManager.epoch(addr, series)).to.equal(1);
     });
 
     it('Nonce equals - should return false when nonce does not match', async function () {
         const { seriesEpochManager } = await loadFixture(deploySeriesEpochManager);
         const series = 4;
-        expect(await seriesEpochManager.epochEquals(addr.address, series, 1)).to.be.false;
+        expect(await seriesEpochManager.epochEquals(addr, series, 1)).to.be.false;
     });
 
     it('Nonce equals - should return true when nonce matches', async function () {
         const { seriesEpochManager } = await loadFixture(deploySeriesEpochManager);
         const series = 4;
         await seriesEpochManager.increaseEpoch(series);
-        expect(await seriesEpochManager.epochEquals(addr.address, series, 1)).to.be.true;
+        expect(await seriesEpochManager.epochEquals(addr, series, 1)).to.be.true;
     });
 });

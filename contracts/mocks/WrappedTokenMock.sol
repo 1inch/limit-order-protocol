@@ -1,20 +1,17 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 
 /// @title Generic token for testing purposes with deposit/withdraw capabilities
 contract WrappedTokenMock is ERC20Permit, Ownable, IWETH {
     error NotEnoughBalance();
 
-    event Deposit(address indexed dst, uint wad);
-    event Withdrawal(address indexed src, uint wad);
-
     // solhint-disable-next-line no-empty-blocks
-    constructor(string memory name, string memory symbol) ERC20(name, symbol) ERC20Permit(name) {}
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) ERC20Permit(name) Ownable(msg.sender) {}
 
     // solhint-disable-next-line no-empty-blocks
     receive() external payable {
@@ -31,7 +28,7 @@ contract WrappedTokenMock is ERC20Permit, Ownable, IWETH {
         emit Deposit(msg.sender, msg.value);
     }
 
-    function withdraw(uint wad) public {
+    function withdraw(uint256 wad) public {
         if (balanceOf(msg.sender) < wad) revert NotEnoughBalance();
         _burn(msg.sender, wad);
         payable(msg.sender).transfer(wad);

@@ -13,7 +13,7 @@ describe('MakerContract', function () {
     async function deployAndInit () {
         const ExtensionMock = await ethers.getContractFactory('ExtensionMock');
         const extensionMock = await ExtensionMock.deploy();
-        await extensionMock.deployed();
+        await extensionMock.waitForDeployment();
         return { extensionMock };
     };
 

@@ -17,33 +17,32 @@ describe('PriorityFeeLimiter', function () {
     async function deployContractsAndInit () {
         const { dai, weth, swap, chainId } = await deploySwapTokens();
 
-        await dai.mint(addr.address, ether('2000'));
+        await dai.mint(addr, ether('2000'));
         await weth.connect(addr1).deposit({ value: ether('1') });
 
-        await dai.approve(swap.address, ether('2000'));
-        await weth.connect(addr1).approve(swap.address, ether('1'));
+        await dai.approve(swap, ether('2000'));
+        await weth.connect(addr1).approve(swap, ether('1'));
 
         const PriorityFeeLimiter = await ethers.getContractFactory('PriorityFeeLimiter');
         const priorityFeeLimiter = await PriorityFeeLimiter.deploy();
-        await priorityFeeLimiter.deployed();
+        await priorityFeeLimiter.waitForDeployment();
 
         const order = buildOrder(
             {
-                makerAsset: weth.address,
-                takerAsset: dai.address,
+                makerAsset: await weth.getAddress(),
+                takerAsset: await dai.getAddress(),
                 makingAmount: ether('1'),
                 takingAmount: ether('2000'),
                 maker: addr1.address,
             },
             {
                 predicate: swap.interface.encodeFunctionData('arbitraryStaticCall', [
-                    priorityFeeLimiter.address,
+                    await priorityFeeLimiter.getAddress(),
                     priorityFeeLimiter.interface.encodeFunctionData('isPriorityFeeValid'),
                 ]),
             },
         );
-        const signature = await signOrder(order, chainId, swap.address, addr1);
-        const { r, _vs: vs } = ethers.utils.splitSignature(signature);
+        const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
         const takerTraits = buildTakerTraits({
             makingAmount: true,
             extension: order.extension,
