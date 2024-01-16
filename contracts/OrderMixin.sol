@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
+import "@1inch/solidity-utils/contracts/PermitAndCall.sol";
 
 import "./helpers/PredicateHelper.sol";
 import "./helpers/SeriesEpochManager.sol";
@@ -22,7 +23,7 @@ import "./libraries/RemainingInvalidatorLib.sol";
 import "./OrderLib.sol";
 
 /// @title Limit Order mixin
-abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, PredicateHelper, SeriesEpochManager {
+abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, PredicateHelper, SeriesEpochManager, PermitAndCall {
     using SafeERC20 for IERC20;
     using SafeERC20 for IWETH;
     using OrderLib for IOrderMixin.Order;
@@ -39,27 +40,6 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
 
     constructor(IWETH weth) OnlyWethReceiver(address(weth)) {
         _WETH = weth;
-    }
-
-    /**
-     * @notice See {IOrderMixin-permitAndCall}.
-     */
-    function permitAndCall(bytes calldata permit, bytes calldata action) external {
-        IERC20(address(bytes20(permit))).tryPermit(permit[20:]);
-        // solhint-disable-next-line no-inline-assembly
-        assembly ("memory-safe") {
-            let ptr := mload(0x40)
-            calldatacopy(ptr, action.offset, action.length)
-            let success := delegatecall(gas(), address(), ptr, action.length, 0, 0)
-            returndatacopy(ptr, 0, returndatasize())
-            switch success
-            case 0 {
-                revert(ptr, returndatasize())
-            }
-            default {
-                return(ptr, returndatasize())
-            }
-        }
     }
 
     /**
