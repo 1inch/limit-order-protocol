@@ -43,7 +43,7 @@
     "hardhat-gas-reporter": "1.0.9",
     "hardhat-tracer": "2.7.0",
     "rimraf": "5.0.5",
-    "solc": "0.8.23",
+    "solc": "0.8.23-fixed",
     "solhint": "4.1.1",
     "solidity-coverage": "0.8.5",
     "solidity-docgen": "0.5.17",
