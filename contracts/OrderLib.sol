@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
@@ -8,25 +8,27 @@ import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 import "./interfaces/IOrderMixin.sol";
 import "./libraries/MakerTraitsLib.sol";
 import "./libraries/ExtensionLib.sol";
-import "./helpers/AmountCalculator.sol";
+import "./libraries/AmountCalculatorLib.sol";
+import "./interfaces/IAmountGetter.sol";
 
-/// @title OrderUtils
-/// @dev Library for common order functions.
-library OrderLib {
+/**
+ * @title OrderLib
+ * @dev The library provides common functionality for processing and manipulating limit orders.
+ * It provides functionality to calculate and verify order hashes, calculate trade amounts, and validate
+ * extension data associated with orders. The library also contains helper methods to get the receiver of
+ * an order and call getter functions.
+ */
+ library OrderLib {
     using AddressLib for Address;
     using MakerTraitsLib for MakerTraits;
     using ExtensionLib for bytes;
 
-    /// @dev Error for incorrect getter function called.
-    error WrongGetter();
-    /// @dev Error when the amount call fails.
-    error GetAmountCallFailed();
-    /// @dev Error for missing order extension.
+    /// @dev Error to be thrown when the extension data of an order is missing.
     error MissingOrderExtension();
-    /// @dev Error for unexpected order extension.
+    /// @dev Error to be thrown when the order has an unexpected extension.
     error UnexpectedOrderExtension();
-    /// @dev Error for invalid extension.
-    error ExtensionInvalid();
+    /// @dev Error to be thrown when the order extension hash is invalid.
+    error InvalidExtensionHash();
 
     /// @dev The typehash of the order struct.
     bytes32 constant internal _LIMIT_ORDER_TYPEHASH = keccak256(
@@ -45,10 +47,10 @@ library OrderLib {
     uint256 constant internal _DATA_HASH_SIZE = 0x120;
 
     /**
-      * @dev Calculates the hash of an order.
-      * @param order The order to hash.
-      * @param domainSeparator The EIP-712 domain separator to use.
-      * @return result The hash of the order.
+      * @notice Calculates the hash of an order.
+      * @param order The order to be hashed.
+      * @param domainSeparator The domain separator to be used for the EIP-712 hashing.
+      * @return result The keccak256 hash of the order data.
       */
     function hash(IOrderMixin.Order calldata order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes32 typehash = _LIMIT_ORDER_TYPEHASH;
@@ -64,19 +66,22 @@ library OrderLib {
     }
 
     /**
-      * @dev Gets the receiver address of an order.
+      * @notice Returns the receiver address for an order.
       * @param order The order.
-      * @return receiver The receiver address.
+      * @return receiver The address of the receiver, either explicitly defined in the order or the maker's address if not specified.
       */
-    function getReceiver(IOrderMixin.Order calldata order) internal pure returns(address) {
+    function getReceiver(IOrderMixin.Order calldata order) internal pure returns(address /*receiver*/) {
         address receiver = order.receiver.get();
         return receiver != address(0) ? receiver : order.maker.get();
     }
 
-    /** @dev Calculates the amount of the asset the maker receives in exchange for the asset they provide.
+    /**
+      * @notice Calculates the making amount based on the requested taking amount.
+      * @dev If getter is specified in the extension data, the getter is called to calculate the making amount,
+      * otherwise the making amount is calculated linearly.
       * @param order The order.
       * @param extension The extension data associated with the order.
-      * @param requestedTakingAmount The amount of the asset the taker wants to take.
+      * @param requestedTakingAmount The amount the taker wants to take.
       * @param remainingMakingAmount The remaining amount of the asset left to fill.
       * @param orderHash The hash of the order.
       * @return makingAmount The amount of the asset the maker receives.
@@ -88,20 +93,30 @@ library OrderLib {
         uint256 remainingMakingAmount,
         bytes32 orderHash
     ) internal view returns(uint256) {
-        bytes calldata getter = extension.makingAmountGetter();
-        if (getter.length == 0) {
+        bytes calldata data = extension.makingAmountData();
+        if (data.length == 0) {
             // Linear proportion
-            return AmountCalculator.getMakingAmount(order.makingAmount, order.takingAmount, requestedTakingAmount);
+            return AmountCalculatorLib.getMakingAmount(order.makingAmount, order.takingAmount, requestedTakingAmount);
         }
-        return _callGetter(getter, requestedTakingAmount, remainingMakingAmount, orderHash);
+        return IAmountGetter(address(bytes20(data))).getMakingAmount(
+            order,
+            extension,
+            orderHash,
+            msg.sender,
+            requestedTakingAmount,
+            remainingMakingAmount,
+            data[20:]
+        );
     }
 
-
     /**
+      * @notice Calculates the taking amount based on the requested making amount.
+      * @dev If getter is specified in the extension data, the getter is called to calculate the taking amount,
+      * otherwise the taking amount is calculated linearly.
       * @param order The order.
       * @param extension The extension data associated with the order.
-      * @param requestedMakingAmount The amount of the asset the maker wants to receive.
-      * @param remainingMakingAmount The remaining amount of the asset left to fill.
+      * @param requestedMakingAmount The amount the maker wants to receive.
+      * @param remainingMakingAmount The remaining amount of the asset left to be filled.
       * @param orderHash The hash of the order.
       * @return takingAmount The amount of the asset the taker takes.
       */
@@ -112,47 +127,37 @@ library OrderLib {
         uint256 remainingMakingAmount,
         bytes32 orderHash
     ) internal view returns(uint256) {
-        bytes calldata getter = extension.takingAmountGetter();
-        if (getter.length == 0) {
+        bytes calldata data = extension.takingAmountData();
+        if (data.length == 0) {
             // Linear proportion
-            return AmountCalculator.getTakingAmount(order.makingAmount, order.takingAmount, requestedMakingAmount);
+            return AmountCalculatorLib.getTakingAmount(order.makingAmount, order.takingAmount, requestedMakingAmount);
         }
-        return _callGetter(getter, requestedMakingAmount, remainingMakingAmount, orderHash);
+        return IAmountGetter(address(bytes20(data))).getTakingAmount(
+            order,
+            extension,
+            orderHash,
+            msg.sender,
+            requestedMakingAmount,
+            remainingMakingAmount,
+            data[20:]
+        );
     }
 
     /**
-      * @dev Internal function that calls a getter function to calculate an amount for a trade.
-      * @param getter The address of the getter function.
-      * @param requestedAmount The amount requested by the taker.
-      * @param remainingMakingAmount The remaining amount of the asset left to fill.
-      * @param orderHash The hash of the order.
-      * @return amount The calculated amount.
-      */
-    function _callGetter(
-        bytes calldata getter,
-        uint256 requestedAmount,
-        uint256 remainingMakingAmount,
-        bytes32 orderHash
-    ) private view returns(uint256) {
-        if (getter.length < 20) revert WrongGetter();
-
-        (bool success, bytes memory result) = address(bytes20(getter)).staticcall(abi.encodePacked(getter[20:], requestedAmount, remainingMakingAmount, orderHash));
-        if (!success || result.length != 32) revert GetAmountCallFailed();
-        return abi.decode(result, (uint256));
-    }
-
-    /**
-      * @dev Validates the extension associated with an order. Reverts if invalid.
+      * @dev Validates the extension associated with an order.
       * @param order The order to validate against.
       * @param extension The extension associated with the order.
+      * @return valid True if the extension is valid, false otherwise.
+      * @return errorSelector The error selector if the extension is invalid, 0x00000000 otherwise.
       */
-    function validateExtension(IOrderMixin.Order calldata order, bytes calldata extension) internal pure {
+    function isValidExtension(IOrderMixin.Order calldata order, bytes calldata extension) internal pure returns(bool, bytes4) {
         if (order.makerTraits.hasExtension()) {
-            if (extension.length == 0) revert MissingOrderExtension();
+            if (extension.length == 0) return (false, MissingOrderExtension.selector);
             // Lowest 160 bits of the order salt must be equal to the lowest 160 bits of the extension hash
-            if (uint256(keccak256(extension)) & type(uint160).max != order.salt & type(uint160).max) revert ExtensionInvalid();
+            if (uint256(keccak256(extension)) & type(uint160).max != order.salt & type(uint160).max) return (false, InvalidExtensionHash.selector);
         } else {
-            if (extension.length > 0) revert UnexpectedOrderExtension();
+            if (extension.length > 0) return (false, UnexpectedOrderExtension.selector);
         }
+        return (true, 0x00000000);
     }
 }

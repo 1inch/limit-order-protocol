@@ -1,8 +1,8 @@
 const { constants, trim0x } = require('@1inch/solidity-utils');
 const { assert } = require('chai');
-const { ethers } = require('ethers');
-const { keccak256 } = require('ethers/lib/utils');
+const { keccak256 } = require('ethers');
 const { setn } = require('./utils');
+const { ethers } = require('hardhat');
 
 const Order = [
     { name: 'salt', type: 'uint256' },
@@ -26,7 +26,6 @@ const version = '4';
 
 const _NO_PARTIAL_FILLS_FLAG = 255n;
 const _ALLOW_MULTIPLE_FILLS_FLAG = 254n;
-const _NO_PRICE_IMPROVEMENT_FLAG = 253n;
 const _NEED_PREINTERACTION_FLAG = 252n;
 const _NEED_POSTINTERACTION_FLAG = 251n;
 const _NEED_EPOCH_CHECK_FLAG = 250n;
@@ -34,13 +33,52 @@ const _HAS_EXTENSION_FLAG = 249n;
 const _USE_PERMIT2_FLAG = 248n;
 const _UNWRAP_WETH_FLAG = 247n;
 
+const TakerTraitsConstants = {
+    _MAKER_AMOUNT_FLAG: 1n << 255n,
+    _UNWRAP_WETH_FLAG: 1n << 254n,
+    _SKIP_ORDER_PERMIT_FLAG: 1n << 253n,
+    _USE_PERMIT2_FLAG: 1n << 252n,
+    _ARGS_HAS_TARGET: 1n << 251n,
+
+    _ARGS_EXTENSION_LENGTH_OFFSET: 224n,
+    _ARGS_EXTENSION_LENGTH_MASK: 0xffffff,
+    _ARGS_INTERACTION_LENGTH_OFFSET: 200n,
+    _ARGS_INTERACTION_LENGTH_MASK: 0xffffff,
+};
+
+function buildTakerTraits ({
+    makingAmount = false,
+    unwrapWeth = false,
+    skipMakerPermit = false,
+    usePermit2 = false,
+    target = '0x',
+    extension = '0x',
+    interaction = '0x',
+    threshold = 0n,
+} = {}) {
+    return {
+        traits: BigInt(threshold) | (
+            (makingAmount ? TakerTraitsConstants._MAKER_AMOUNT_FLAG : 0n) |
+            (unwrapWeth ? TakerTraitsConstants._UNWRAP_WETH_FLAG : 0n) |
+            (skipMakerPermit ? TakerTraitsConstants._SKIP_ORDER_PERMIT_FLAG : 0n) |
+            (usePermit2 ? TakerTraitsConstants._USE_PERMIT2_FLAG : 0n) |
+            (trim0x(target).length > 0 ? TakerTraitsConstants._ARGS_HAS_TARGET : 0n) |
+            (BigInt(trim0x(extension).length / 2) << TakerTraitsConstants._ARGS_EXTENSION_LENGTH_OFFSET) |
+            (BigInt(trim0x(interaction).length / 2) << TakerTraitsConstants._ARGS_INTERACTION_LENGTH_OFFSET)
+        ),
+        args: ethers.solidityPacked(
+            ['bytes', 'bytes', 'bytes'],
+            [target, extension, interaction],
+        ),
+    };
+}
+
 function buildMakerTraitsRFQ ({
     allowedSender = constants.ZERO_ADDRESS,
     shouldCheckEpoch = false,
     allowPartialFill = true,
-    allowPriceImprovement = true,
-    allowMultipleFills = false,
     usePermit2 = false,
+    unwrapWeth = false,
     expiry = 0,
     nonce = 0,
     series = 0,
@@ -49,9 +87,9 @@ function buildMakerTraitsRFQ ({
         allowedSender,
         shouldCheckEpoch,
         allowPartialFill,
-        allowPriceImprovement,
-        allowMultipleFills,
+        allowMultipleFills: false,
         usePermit2,
+        unwrapWeth,
         expiry,
         nonce,
         series,
@@ -62,7 +100,6 @@ function buildMakerTraits ({
     allowedSender = constants.ZERO_ADDRESS,
     shouldCheckEpoch = false,
     allowPartialFill = true,
-    allowPriceImprovement = true,
     allowMultipleFills = true,
     usePermit2 = false,
     unwrapWeth = false,
@@ -82,7 +119,6 @@ function buildMakerTraits ({
         setn(0n, _UNWRAP_WETH_FLAG, unwrapWeth) |
         setn(0n, _ALLOW_MULTIPLE_FILLS_FLAG, allowMultipleFills) |
         setn(0n, _NO_PARTIAL_FILLS_FLAG, !allowPartialFill) |
-        setn(0n, _NO_PRICE_IMPROVEMENT_FLAG, !allowPriceImprovement) |
         setn(0n, _NEED_EPOCH_CHECK_FLAG, shouldCheckEpoch) |
         setn(0n, _USE_PERMIT2_FLAG, usePermit2)
     ).toString(16).padStart(64, '0');
@@ -101,8 +137,8 @@ function buildOrderRFQ (
     {
         makerAssetSuffix = '0x',
         takerAssetSuffix = '0x',
-        makingAmountGetter = '0x',
-        takingAmountGetter = '0x',
+        makingAmountData = '0x',
+        takingAmountData = '0x',
         predicate = '0x',
         permit = '0x',
         preInteraction = '0x',
@@ -111,7 +147,6 @@ function buildOrderRFQ (
 ) {
     makerTraits = '0x' + setn(BigInt(makerTraits), _ALLOW_MULTIPLE_FILLS_FLAG, false).toString(16).padStart(64, '0');
     makerTraits = '0x' + setn(BigInt(makerTraits), _NO_PARTIAL_FILLS_FLAG, false).toString(16).padStart(64, '0');
-    makerTraits = '0x' + setn(BigInt(makerTraits), _NO_PRICE_IMPROVEMENT_FLAG, false).toString(16).padStart(64, '0');
     makerTraits = '0x' + setn(BigInt(makerTraits), _NEED_EPOCH_CHECK_FLAG, false).toString(16).padStart(64, '0');
 
     return buildOrder(
@@ -127,8 +162,8 @@ function buildOrderRFQ (
         {
             makerAssetSuffix,
             takerAssetSuffix,
-            makingAmountGetter,
-            takingAmountGetter,
+            makingAmountData,
+            takingAmountData,
             predicate,
             permit,
             preInteraction,
@@ -150,26 +185,27 @@ function buildOrder (
     {
         makerAssetSuffix = '0x',
         takerAssetSuffix = '0x',
-        makingAmountGetter = '0x',
-        takingAmountGetter = '0x',
+        makingAmountData = '0x',
+        takingAmountData = '0x',
         predicate = '0x',
         permit = '0x',
         preInteraction = '0x',
         postInteraction = '0x',
+        customData = '0x',
     } = {},
 ) {
     const allInteractions = [
         makerAssetSuffix,
         takerAssetSuffix,
-        makingAmountGetter,
-        takingAmountGetter,
+        makingAmountData,
+        takingAmountData,
         predicate,
         permit,
         preInteraction,
         postInteraction,
     ];
 
-    const allInteractionsConcat = allInteractions.map(trim0x).join('');
+    const allInteractionsConcat = allInteractions.map(trim0x).join('') + trim0x(customData);
 
     // https://stackoverflow.com/a/55261098/440168
     const cumulativeSum = (sum => value => { sum += value; return sum; })(0);
@@ -220,38 +256,30 @@ function buildOrderData (chainId, verifyingContract, order) {
 
 async function signOrder (order, chainId, target, wallet) {
     const orderData = buildOrderData(chainId, target, order);
-    return await wallet._signTypedData(orderData.domain, orderData.types, orderData.value);
-}
-
-function compactSignature (signature) {
-    const sig = ethers.utils.splitSignature(signature);
-    return {
-        r: sig.r,
-        vs: sig._vs,
-    };
+    return await wallet.signTypedData(orderData.domain, orderData.types, orderData.value);
 }
 
 function fillWithMakingAmount (amount) {
-    return setn(amount, 255, true).toString();
+    return BigInt(amount) | BigInt(buildTakerTraits({ makingAmount: true }).traits);
 }
 
 function unwrapWethTaker (amount) {
-    return setn(amount, 254, true).toString();
+    return BigInt(amount) | BigInt(buildTakerTraits({ unwrapWeth: true }).traits);
 }
 
 function skipMakerPermit (amount) {
-    return setn(amount, 253, true).toString();
+    return BigInt(amount) | BigInt(buildTakerTraits({ skipMakerPermit: true }).traits);
 }
 
 module.exports = {
     ABIOrder,
+    buildTakerTraits,
     buildMakerTraits,
     buildMakerTraitsRFQ,
     buildOrder,
     buildOrderRFQ,
     buildOrderData,
     signOrder,
-    compactSignature,
     fillWithMakingAmount,
     unwrapWethTaker,
     skipMakerPermit,

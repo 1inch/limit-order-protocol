@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
-import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
 
 import "../interfaces/IPostInteraction.sol";
 import "../OrderLib.sol";
 
-/// @title ETH limit orders contract
+/// @title Extension that will allow to create limit order that sell ETH. ETH must be deposited into the contract.
 contract ETHOrders is IPostInteraction, OnlyWethReceiver {
     using SafeERC20 for IWETH;
     using OrderLib for IOrderMixin.Order;
@@ -28,24 +27,24 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
         uint96 balance;
     }
 
-    address private immutable _limitOrderProtocol;
-    IWETH private immutable _WETH; // solhint-disable-line var-name-mixedcase
+    address private immutable _LIMIT_ORDER_PROTOCOL;
+    IWETH private immutable _WETH;
     /// @notice Makers and their uint96 ETH balances in single mapping.
-    mapping(bytes32 => ETHOrder) public ordersMakersBalances;
+    mapping(bytes32 orderHash => ETHOrder data) public ordersMakersBalances;
 
     event ETHDeposited(bytes32 orderHash, uint256 amount);
     event ETHOrderCancelled(bytes32 orderHash, uint256 amount);
 
     /// @notice Only limit order protocol can call this contract.
     modifier onlyLimitOrderProtocol() {
-        if (msg.sender != _limitOrderProtocol) revert AccessDenied();
+        if (msg.sender != _LIMIT_ORDER_PROTOCOL) revert AccessDenied();
 
         _;
     }
 
     constructor(IWETH weth, address limitOrderProtocol) OnlyWethReceiver(address(weth)) {
         _WETH = weth;
-        _limitOrderProtocol = limitOrderProtocol;
+        _LIMIT_ORDER_PROTOCOL = limitOrderProtocol;
         _WETH.approve(limitOrderProtocol, type(uint256).max);
     }
 
@@ -64,13 +63,22 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
      */
     function ethOrderDeposit(IOrderMixin.Order calldata order, bytes calldata extension) external payable returns(bytes32 orderHash) {
         if (!order.makerTraits.needPostInteractionCall()) revert InvalidOrder();
-        order.validateExtension(extension);
+        {
+            (bool valid, bytes4 validationResult) = order.isValidExtension(extension);
+            if (!valid) {
+                // solhint-disable-next-line no-inline-assembly
+                assembly ("memory-safe") {
+                    mstore(0, validationResult)
+                    revert(0, 4)
+                }
+            }
+        }
         if (order.maker.get() != address(this)) revert AccessDenied();
         if (order.getReceiver() != msg.sender) revert AccessDenied();
         if (order.makingAmount != msg.value) revert InvalidOrder();
         bytes calldata interaction = extension.postInteractionTargetAndData();
         if (interaction.length != 20 || address(bytes20(interaction)) != address(this)) revert InvalidOrder();
-        orderHash = IOrderMixin(_limitOrderProtocol).hashOrder(order);
+        orderHash = IOrderMixin(_LIMIT_ORDER_PROTOCOL).hashOrder(order);
         if (ordersMakersBalances[orderHash].maker != address(0)) revert ExistingOrder();
         ordersMakersBalances[orderHash] = ETHOrder({
             maker: msg.sender,
@@ -85,7 +93,7 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
      */
     function cancelOrder(MakerTraits makerTraits, bytes32 orderHash) external {
         if (ordersMakersBalances[orderHash].maker != msg.sender) revert InvalidOrder();
-        IOrderMixin(_limitOrderProtocol).cancelOrder(makerTraits, orderHash);
+        IOrderMixin(_LIMIT_ORDER_PROTOCOL).cancelOrder(makerTraits, orderHash);
         uint256 refundETHAmount = ordersMakersBalances[orderHash].balance;
         ordersMakersBalances[orderHash].balance = 0;
         _WETH.safeWithdrawTo(refundETHAmount, msg.sender);
@@ -111,6 +119,7 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
      */
     function postInteraction(
         IOrderMixin.Order calldata /*order*/,
+        bytes calldata /* extension */,
         bytes32 orderHash,
         address /*taker*/,
         uint256 makingAmount,

@@ -3,7 +3,7 @@ const { ethers } = hre;
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const { ether } = require('./helpers/utils');
-const { fillWithMakingAmount, signOrder, buildOrder, compactSignature, buildMakerTraits } = require('./helpers/orderUtils');
+const { fillWithMakingAmount, signOrder, buildOrder, buildMakerTraits } = require('./helpers/orderUtils');
 
 describe('MeasureGas', function () {
     before(async function () {
@@ -11,14 +11,14 @@ describe('MeasureGas', function () {
     });
 
     const initContracts = async function (addrs, dai, weth, swap) {
-        await dai.mint(addrs[1].address, ether('1000000'));
-        await dai.mint(addrs[0].address, ether('1000000'));
+        await dai.mint(addrs[1], ether('1000000'));
+        await dai.mint(addrs[0], ether('1000000'));
         await weth.deposit({ value: ether('100') });
         await weth.connect(addrs[1]).deposit({ value: ether('100') });
-        await dai.approve(swap.address, ether('1000000'));
-        await dai.connect(addrs[1]).approve(swap.address, ether('1000000'));
-        await weth.approve(swap.address, ether('100'));
-        await weth.connect(addrs[1]).approve(swap.address, ether('100'));
+        await dai.approve(swap, ether('1000000'));
+        await dai.connect(addrs[1]).approve(swap, ether('1000000'));
+        await weth.approve(swap, ether('100'));
+        await weth.connect(addrs[1]).approve(swap, ether('100'));
     };
 
     const deployContractsAndInit = async function () {
@@ -32,14 +32,14 @@ describe('MeasureGas', function () {
         const { addrs, dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
         const order = buildOrder({
-            makerAsset: dai.address,
-            takerAsset: weth.address,
+            makerAsset: await dai.getAddress(),
+            takerAsset: await weth.getAddress(),
             makingAmount: 1,
             takingAmount: 1,
             maker: addrs[1].address,
         });
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addrs[1]));
+        const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addrs[1]));
         const tx = await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
         console.log(`swap without predicates gasUsed: ${(await tx.wait()).gasUsed}`);
     });
@@ -48,14 +48,14 @@ describe('MeasureGas', function () {
         const { addrs, dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
         const order = buildOrder({
-            makerAsset: dai.address,
-            takerAsset: weth.address,
+            makerAsset: await dai.getAddress(),
+            takerAsset: await weth.getAddress(),
             makingAmount: 2,
             takingAmount: 2,
             maker: addrs[1].address,
         });
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addrs[1]));
+        const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addrs[1]));
         const tx = await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
         console.log(`swap partial fill without predicates gasUsed: ${(await tx.wait()).gasUsed}`);
     });
@@ -64,15 +64,15 @@ describe('MeasureGas', function () {
         const { addrs, dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
         const order = buildOrder({
-            makerAsset: dai.address,
-            takerAsset: weth.address,
+            makerAsset: await dai.getAddress(),
+            takerAsset: await weth.getAddress(),
             makingAmount: 1,
             takingAmount: 1,
             maker: addrs[1].address,
             makerTraits: buildMakerTraits({ nonce: 1 }),
         });
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addrs[1]));
+        const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addrs[1]));
         const tx = await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
         console.log(`swap with predicate nonce gasUsed: ${(await tx.wait()).gasUsed}`);
     });
@@ -81,15 +81,15 @@ describe('MeasureGas', function () {
         const { addrs, dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
         const order = buildOrder({
-            makerAsset: dai.address,
-            takerAsset: weth.address,
+            makerAsset: await dai.getAddress(),
+            takerAsset: await weth.getAddress(),
             makingAmount: 1,
             takingAmount: 1,
             maker: addrs[1].address,
             makerTraits: buildMakerTraits({ expiry: 0xff00000000 }),
         });
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addrs[1]));
+        const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addrs[1]));
         const tx = await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
         console.log(`swap with predicate expiry gasUsed: ${(await tx.wait()).gasUsed}`);
     });
@@ -98,15 +98,15 @@ describe('MeasureGas', function () {
         const { addrs, dai, weth, swap, chainId } = await loadFixture(deployContractsAndInit);
 
         const order = buildOrder({
-            makerAsset: dai.address,
-            takerAsset: weth.address,
+            makerAsset: await dai.getAddress(),
+            takerAsset: await weth.getAddress(),
             makingAmount: 1,
             takingAmount: 1,
             maker: addrs[1].address,
             makerTraits: buildMakerTraits({ nonce: 1, expiry: 0xff00000000 }),
         });
 
-        const { r, vs } = compactSignature(await signOrder(order, chainId, swap.address, addrs[1]));
+        const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addrs[1]));
         const tx = await swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
         console.log(`swap with predicate nonce and expiry gasUsed: ${(await tx.wait()).gasUsed}`);
     });
@@ -115,8 +115,8 @@ describe('MeasureGas', function () {
         const { addrs, dai, weth, swap } = await loadFixture(deployContractsAndInit);
 
         const order = buildOrder({
-            makerAsset: dai.address,
-            takerAsset: weth.address,
+            makerAsset: await dai.getAddress(),
+            takerAsset: await weth.getAddress(),
             makingAmount: 1,
             takingAmount: 1,
             maker: addrs[1].address,

@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
+import "../interfaces/IOrderMixin.sol";
+import "../interfaces/IAmountGetter.sol";
 
 /**
  * A range limit order is a strategy used to sell an asset within a specified price range.
@@ -20,8 +22,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
  * y = ----------------------- * x + priceStart
  *           totalAmount
  */
-contract RangeAmountCalculator {
-
+contract RangeAmountCalculator is IAmountGetter {
     error IncorrectRange();
 
     modifier correctPrices(uint256 priceStart, uint256 priceEnd) {
@@ -29,14 +30,46 @@ contract RangeAmountCalculator {
         _;
     }
 
+    function getTakingAmount(
+        IOrderMixin.Order calldata order,
+        bytes calldata /* extension */,
+        bytes32 /* orderHash */,
+        address /* taker */,
+        uint256 makingAmount,
+        uint256 remainingMakingAmount,
+        bytes calldata extraData
+    ) external pure returns (uint256) {
+        (
+            uint256 priceStart,
+            uint256 priceEnd
+        ) = abi.decode(extraData, (uint256, uint256));
+        return getRangeTakerAmount(priceStart, priceEnd, order.makingAmount, makingAmount, remainingMakingAmount);
+    }
+
+    function getMakingAmount(
+        IOrderMixin.Order calldata order,
+        bytes calldata /* extension */,
+        bytes32 /* orderHash */,
+        address /* taker */,
+        uint256 takingAmount,
+        uint256 remainingMakingAmount,
+        bytes calldata extraData
+    ) external pure returns (uint256) {
+        (
+            uint256 priceStart,
+            uint256 priceEnd
+        ) = abi.decode(extraData, (uint256, uint256));
+        return getRangeMakerAmount(priceStart, priceEnd, order.makingAmount, takingAmount, remainingMakingAmount);
+    }
+
     function getRangeTakerAmount(
         uint256 priceStart,
         uint256 priceEnd,
-        uint256 totalAmount,
-        uint256 fillAmount,
+        uint256 orderMakingAmount,
+        uint256 makingAmount,
         uint256 remainingMakingAmount
     ) public correctPrices(priceStart, priceEnd) pure returns(uint256) {
-        uint256 alreadyFilledMakingAmount = totalAmount - remainingMakingAmount;
+        uint256 alreadyFilledMakingAmount = orderMakingAmount - remainingMakingAmount;
         /**
          * rangeTakerAmount = (
          *       f(makerAmountFilled) + f(makerAmountFilled + fillAmount)
@@ -45,22 +78,22 @@ contract RangeAmountCalculator {
          *  scaling to 1e18 happens to have better price accuracy
          */
         return (
-            (priceEnd - priceStart) * (2 * alreadyFilledMakingAmount + fillAmount) / totalAmount +
+            (priceEnd - priceStart) * (2 * alreadyFilledMakingAmount + makingAmount) / orderMakingAmount +
             2 * priceStart
-        ) * fillAmount / 2e18;
+        ) * makingAmount / 2e18;
     }
 
     function getRangeMakerAmount(
         uint256 priceStart,
         uint256 priceEnd,
-        uint256 totalLiquidity,
+        uint256 orderMakingAmount,
         uint256 takingAmount,
         uint256 remainingMakingAmount
     ) public correctPrices(priceStart, priceEnd) pure returns(uint256) {
-        uint256 alreadyFilledMakingAmount = totalLiquidity - remainingMakingAmount;
+        uint256 alreadyFilledMakingAmount = orderMakingAmount - remainingMakingAmount;
         uint256 b = priceStart;
-        uint256 k = (priceEnd - priceStart) * 1e18 / totalLiquidity;
-        uint256 bDivK = priceStart * totalLiquidity / (priceEnd - priceStart);
+        uint256 k = (priceEnd - priceStart) * 1e18 / orderMakingAmount;
+        uint256 bDivK = priceStart * orderMakingAmount / (priceEnd - priceStart);
         return (Math.sqrt(
             (
                 b * bDivK +

@@ -1,8 +1,7 @@
 require('@matterlabs/hardhat-zksync-deploy');
 require('@matterlabs/hardhat-zksync-solc');
 require('@matterlabs/hardhat-zksync-verify');
-require('@nomiclabs/hardhat-ethers');
-require('@nomiclabs/hardhat-etherscan');
+require('@nomicfoundation/hardhat-verify');
 require('@nomicfoundation/hardhat-chai-matchers');
 require('solidity-coverage');
 require('hardhat-dependency-compiler');
@@ -10,8 +9,9 @@ require('hardhat-deploy');
 require('hardhat-gas-reporter');
 require('hardhat-tracer');
 require('dotenv').config();
+const { Networks, getNetwork } = require('@1inch/solidity-utils/hardhat-setup');
 
-const { networks, etherscan } = require('./hardhat.networks');
+const { networks, etherscan } = (new Networks()).registerAll();
 
 module.exports = {
     etherscan,
@@ -19,12 +19,13 @@ module.exports = {
         enableAllOpcodes: true,
     },
     solidity: {
-        version: '0.8.19',
+        version: '0.8.23',
         settings: {
             optimizer: {
                 enabled: true,
-                runs: 100,
+                runs: 1_000_000,
             },
+            evmVersion: networks[getNetwork()]?.hardfork || 'shanghai',
             viaIR: true,
         },
     },
@@ -45,7 +46,7 @@ module.exports = {
         ],
     },
     zksolc: {
-        version: '1.3.10',
+        version: '1.3.17',
         compilerSource: 'binary',
         settings: {},
     },

@@ -1,4 +1,4 @@
-const { utils } = require('ethers');
+const { parseUnits } = require('ethers');
 
 function calculateGasUsed (trace, address) {
     // Count gas used by all calls to our contract
@@ -66,10 +66,6 @@ function getSelector (data) {
     return data.substring(0, hexPrefix.length + 8);
 }
 
-function cutLastArg (data, padding = 0) {
-    return data.substring(0, data.length - 64 - padding);
-}
-
 function joinStaticCalls (dataArray) {
     const trimmed = dataArray.map(trim0x);
     const cumulativeSum = (sum => value => { sum += value; return sum; })(0);
@@ -83,7 +79,7 @@ function joinStaticCalls (dataArray) {
 }
 
 function ether (num) {
-    return utils.parseUnits(num);
+    return parseUnits(num);
 }
 
 function setn (num, bit, value) {
@@ -99,7 +95,6 @@ module.exports = {
     price,
     ether,
     cutSelector,
-    cutLastArg,
     getSelector,
     setn,
     trim0x,

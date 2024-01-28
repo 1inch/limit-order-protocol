@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../interfaces/IPreInteraction.sol";
@@ -12,22 +12,23 @@ contract HashChecker is IPreInteraction, Ownable {
 
     error IncorrectOrderHash();
 
-    bytes32 public immutable limitOrderProtocolDomainSeparator;
+    bytes32 public immutable LIMIT_ORDER_PROTOCOL_DOMAIN_SEPARATOR;
     mapping(bytes32 => bool) public hashes;
 
-    constructor (address limitOrderProtocol) {
+    constructor (address limitOrderProtocol, address owner_) Ownable(owner_) {
         // solhint-disable-next-line avoid-low-level-calls
         (, bytes memory data) = limitOrderProtocol.call(abi.encodeWithSignature("DOMAIN_SEPARATOR()"));
-        limitOrderProtocolDomainSeparator = abi.decode(data, (bytes32));
+        LIMIT_ORDER_PROTOCOL_DOMAIN_SEPARATOR = abi.decode(data, (bytes32));
     }
 
     function setHashOrderStatus(IOrderMixin.Order calldata order, bool status) external onlyOwner {
-        bytes32 orderHash = order.hash(limitOrderProtocolDomainSeparator);
+        bytes32 orderHash = order.hash(LIMIT_ORDER_PROTOCOL_DOMAIN_SEPARATOR);
         hashes[orderHash] = status;
     }
 
     function preInteraction(
         IOrderMixin.Order calldata order,
+        bytes calldata extension,
         bytes32 orderHash,
         address taker,
         uint256 makingAmount,
@@ -40,6 +41,7 @@ contract HashChecker is IPreInteraction, Ownable {
         if (extraData.length != 0) {
             IPreInteraction(address(bytes20(extraData))).preInteraction(
                 order,
+                extension,
                 orderHash,
                 taker,
                 makingAmount,

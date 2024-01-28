@@ -19,11 +19,11 @@ contract MakerContract is IERC1271, EIP712Alien, ERC20 {
     error BadPrice();
     error MalformedSignature();
 
-    address immutable public protocol;
-    IERC20 immutable public token0;
-    IERC20 immutable public token1;
-    uint256 immutable public fee;
-    uint256 immutable public fee2;
+    address immutable public PROTOCOL;
+    IERC20 immutable public TOKEN0;
+    IERC20 immutable public TOKEN1;
+    uint256 immutable public FEE;
+    uint256 immutable public FEE2;
 
     constructor(
         address _protocol,
@@ -36,11 +36,11 @@ contract MakerContract is IERC1271, EIP712Alien, ERC20 {
         EIP712Alien(_protocol, "1inch Limit Order Protocol", "4")
         ERC20(name, symbol)
     {
-        protocol = _protocol;
-        token0 = _token0;
-        token1 = _token1;
-        fee = _fee;
-        fee2 = 2e18 * _fee / (1e18 + _fee);
+        PROTOCOL = _protocol;
+        TOKEN0 = _token0;
+        TOKEN1 = _token1;
+        FEE = _fee;
+        FEE2 = 2e18 * _fee / (1e18 + _fee);
         _token0.approve(_protocol, type(uint256).max);
         _token1.approve(_protocol, type(uint256).max);
     }
@@ -54,9 +54,9 @@ contract MakerContract is IERC1271, EIP712Alien, ERC20 {
     }
 
     function depositFor(IERC20 token, uint256 amount, address to) public {
-        if (token != token0 && token != token1) revert NotAllowedToken();
+        if (token != TOKEN0 && token != TOKEN1) revert NotAllowedToken();
 
-        _mint(to, amount * fee2 / 1e18);
+        _mint(to, amount * FEE2 / 1e18);
         token.safeTransferFrom(msg.sender, address(this), amount);
     }
 
@@ -65,10 +65,10 @@ contract MakerContract is IERC1271, EIP712Alien, ERC20 {
     }
 
     function withdrawFor(IERC20 token, uint256 amount, address to) public {
-        if (token != token0 && token != token1) revert NotAllowedToken();
+        if (token != TOKEN0 && token != TOKEN1) revert NotAllowedToken();
 
         _burn(msg.sender, amount);
-        token.safeTransfer(to, amount * fee2 / 1e18);
+        token.safeTransfer(to, amount * FEE2 / 1e18);
     }
 
     function isValidSignature(bytes32 hash, bytes calldata signature) external view override returns(bytes4) {
@@ -81,11 +81,11 @@ contract MakerContract is IERC1271, EIP712Alien, ERC20 {
 
         if (
             (
-                (order.makerAsset.get() != address(token0) || order.takerAsset.get() != address(token1)) &&
-                (order.makerAsset.get() != address(token1) || order.takerAsset.get() != address(token0))
+                (order.makerAsset.get() != address(TOKEN0) || order.takerAsset.get() != address(TOKEN1)) &&
+                (order.makerAsset.get() != address(TOKEN1) || order.takerAsset.get() != address(TOKEN0))
             ) ||
             order.makerTraits.hasExtension() ||
-            order.makingAmount * fee > order.takingAmount * 1e18 ||
+            order.makingAmount * FEE > order.takingAmount * 1e18 ||
             order.hash(_domainSeparatorV4()) != hash
         ) revert BadPrice();
 

@@ -1,5 +1,10 @@
 const hre = require('hardhat');
-const { getChainId } = hre;
+const { getChainId, network } = hre;
+
+const wethByNetwork = {
+    hardhat: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    mainnet: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+};
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
     console.log('running deploy script');
@@ -10,6 +15,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
     const limitOrderProtocol = await deploy('LimitOrderProtocol', {
         from: deployer,
+        args: [wethByNetwork[network.name]],
     });
 
     console.log('LimitOrderProtocol deployed to:', limitOrderProtocol.address);
@@ -17,6 +23,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     if (await getChainId() !== '31337') {
         await hre.run('verify:verify', {
             address: limitOrderProtocol.address,
+            constructorArguments: [wethByNetwork[network.name]],
         });
     }
 };
