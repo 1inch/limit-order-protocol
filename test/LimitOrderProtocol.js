@@ -2019,7 +2019,7 @@ describe('LimitOrderProtocol', function () {
         });
     });
 
-    describe('Pause', function() {
+    describe('Pause', function () {
         it('Paused contract should not work', async function () {
             const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
@@ -2035,7 +2035,7 @@ describe('LimitOrderProtocol', function () {
             });
 
             const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
-            await expect(swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1))).to.be.revertedWithCustomError(swap, 'EnforcedPause')
+            await expect(swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1))).to.be.revertedWithCustomError(swap, 'EnforcedPause');
         });
     });
 });
