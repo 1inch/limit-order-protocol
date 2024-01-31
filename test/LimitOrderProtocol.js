@@ -2037,5 +2037,18 @@ describe('LimitOrderProtocol', function () {
             const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
             await expect(swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1))).to.be.revertedWithCustomError(swap, 'EnforcedPause');
         });
+
+        it('pause and unpause can only be called by owner', async function () {
+            const { contracts: { swap } } = await loadFixture(deployContractsAndInit);
+            await expect(swap.connect(addr2).pause()).to.be.revertedWithCustomError(swap, 'OwnableUnauthorizedAccount', addr2.address);
+            await expect(swap.connect(addr2).unpause()).to.be.revertedWithCustomError(swap, 'OwnableUnauthorizedAccount', addr2.address);
+        });
+
+        it('unpause should work', async function () {
+            const { contracts: { swap } } = await loadFixture(deployContractsAndInit);
+            await swap.pause();
+            await swap.unpause();
+            expect(await swap.paused()).to.be.false;
+        });
     });
 });
