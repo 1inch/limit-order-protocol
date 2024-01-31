@@ -2018,4 +2018,24 @@ describe('LimitOrderProtocol', function () {
                 )).to.be.revertedWithCustomError(swap, 'ETHTransferFailed');
         });
     });
+
+    describe('Pause', function() {
+        it('Paused contract should not work', async function () {
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
+
+            await swap.pause();
+
+            const order = buildOrder({
+                makerAsset: await dai.getAddress(),
+                takerAsset: await weth.getAddress(),
+                makingAmount: 1,
+                takingAmount: 1,
+                maker: addr1.address,
+                makerTraits: buildMakerTraits(),
+            });
+
+            const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
+            await expect(swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1))).to.be.revertedWithCustomError(swap, 'EnforcedPause')
+        });
+    });
 });
