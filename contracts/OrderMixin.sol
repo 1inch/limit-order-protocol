@@ -5,6 +5,8 @@ pragma solidity 0.8.23;
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
+
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
@@ -23,7 +25,7 @@ import "./libraries/RemainingInvalidatorLib.sol";
 import "./OrderLib.sol";
 
 /// @title Limit Order mixin
-abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, PredicateHelper, SeriesEpochManager, PermitAndCall {
+abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper, SeriesEpochManager, Pausable, OnlyWethReceiver, PermitAndCall {
     using SafeERC20 for IERC20;
     using SafeERC20 for IWETH;
     using OrderLib for IOrderMixin.Order;
@@ -267,7 +269,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, OnlyWethReceiver, Predicate
         address target,
         bytes calldata extension,
         bytes calldata interaction
-    ) private returns(uint256 makingAmount, uint256 takingAmount) {
+    ) private whenNotPaused() returns(uint256 makingAmount, uint256 takingAmount) {
         // Validate order
         {
             (bool valid, bytes4 validationResult) = order.isValidExtension(extension);

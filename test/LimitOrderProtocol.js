@@ -252,7 +252,7 @@ describe('LimitOrderProtocol', function () {
                 if (hre.__SOLIDITY_COVERAGE_RUNNING === undefined) {
                     const trace = findTrace(tracer, 'CALL', await swap.getAddress());
                     const opcodes = trace.children.map(item => item.opcode);
-                    expect(countAllItems(opcodes)).to.deep.equal({ STATICCALL: 1, CALL: 2, SLOAD: 1, SSTORE: 1, LOG1: 1, MSTORE: 29, MLOAD: 10, SHA3: 5 });
+                    expect(countAllItems(opcodes)).to.deep.equal({ STATICCALL: 1, CALL: 2, SLOAD: 2, SSTORE: 1, LOG1: 1, MSTORE: 29, MLOAD: 10, SHA3: 5 });
                 }
             }
         });
@@ -278,7 +278,7 @@ describe('LimitOrderProtocol', function () {
             if (hre.__SOLIDITY_COVERAGE_RUNNING === undefined) {
                 const trace = findTrace(tracer, 'CALL', await swap.getAddress());
                 const opcodes = trace.children.map(item => item.opcode);
-                expect(countAllItems(opcodes)).to.deep.equal({ STATICCALL: 1, CALL: 2, SLOAD: 1, SSTORE: 1, LOG1: 1, MSTORE: 31, MLOAD: 10, SHA3: 6 });
+                expect(countAllItems(opcodes)).to.deep.equal({ STATICCALL: 1, CALL: 2, SLOAD: 2, SSTORE: 1, LOG1: 1, MSTORE: 31, MLOAD: 10, SHA3: 6 });
             }
         });
 
@@ -2016,6 +2016,39 @@ describe('LimitOrderProtocol', function () {
             await expect(
                 taker.fillOrder(order, r, vs, 900, fillWithMakingAmount(3), { value: 4 },
                 )).to.be.revertedWithCustomError(swap, 'ETHTransferFailed');
+        });
+    });
+
+    describe('Pause', function () {
+        it('Paused contract should not work', async function () {
+            const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
+
+            await swap.pause();
+
+            const order = buildOrder({
+                makerAsset: await dai.getAddress(),
+                takerAsset: await weth.getAddress(),
+                makingAmount: 1,
+                takingAmount: 1,
+                maker: addr1.address,
+                makerTraits: buildMakerTraits(),
+            });
+
+            const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
+            await expect(swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1))).to.be.revertedWithCustomError(swap, 'EnforcedPause');
+        });
+
+        it('pause and unpause can only be called by owner', async function () {
+            const { contracts: { swap } } = await loadFixture(deployContractsAndInit);
+            await expect(swap.connect(addr2).pause()).to.be.revertedWithCustomError(swap, 'OwnableUnauthorizedAccount', addr2.address);
+            await expect(swap.connect(addr2).unpause()).to.be.revertedWithCustomError(swap, 'OwnableUnauthorizedAccount', addr2.address);
+        });
+
+        it('unpause should work', async function () {
+            const { contracts: { swap } } = await loadFixture(deployContractsAndInit);
+            await swap.pause();
+            await swap.unpause();
+            expect(await swap.paused()).to.be.false;
         });
     });
 });
