@@ -1,25 +1,34 @@
 const hre = require('hardhat');
 const { getChainId } = hre;
+const { deployAndGetContract } = require('@1inch/solidity-utils');
 
-module.exports = async ({ getNamedAccounts, deployments }) => {
-    console.log('running deploy script');
+module.exports = async ({ deployments, getNamedAccounts }) => {
+    const networkName = hre.network.name;
+    console.log(`running ${networkName} deploy script`);
     const chainId = await getChainId();
     console.log('network id ', chainId);
+    if (
+        networkName in hre.config.networks[networkName] &&
+        chainId !== hre.config.networks[networkName].chainId.toString()
+    ) {
+        console.log(`network chain id: ${hre.config.networks[networkName].chainId}, your chain id ${chainId}`);
+        console.log('skipping wrong chain id deployment');
+        return;
+    }
 
-    const { deploy } = deployments;
     const { deployer } = await getNamedAccounts();
 
-    const feeTaker = await deploy('FeeTaker', {
-        from: deployer,
+    const constructorArgs = [];
+    const contractName = 'FeeTaker';
+    const deploymentName = 'FeeTakerDeployment';
+
+    await deployAndGetContract({
+        contractName,
+        constructorArgs,
+        deployments,
+        deployer,
+        deploymentName,
     });
-
-    console.log('FeeTaker deployed to:', feeTaker.address);
-
-    if (chainId !== '31337') {
-        await hre.run('verify:verify', {
-            address: feeTaker.address,
-        });
-    }
 };
 
 module.exports.skip = async () => true;
