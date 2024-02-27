@@ -20,14 +20,12 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
 
     const constructorArgs = [];
     const contractName = 'FeeTaker';
-    const deploymentName = 'FeeTakerDeployment';
 
     await deployAndGetContract({
         contractName,
         constructorArgs,
         deployments,
         deployer,
-        deploymentName,
     });
 };
 

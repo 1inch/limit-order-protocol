@@ -44,6 +44,8 @@ contract FeeTaker is IPostInteraction {
             SafeERC20.safeTransfer(IERC20(order.takerAsset.get()), feeRecipient, fee);
         }
 
-        SafeERC20.safeTransfer(IERC20(order.takerAsset.get()), receiver, takingAmount - fee);
+        unchecked {
+            SafeERC20.safeTransfer(IERC20(order.takerAsset.get()), receiver, takingAmount - fee);
+        }
     }
 }
