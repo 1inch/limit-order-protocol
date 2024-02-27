@@ -11,6 +11,7 @@ import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
 
 contract FeeTaker is IPostInteraction {
     using AddressLib for Address;
+    using SafeERC20 for IERC20;
 
     uint256 internal constant _FEE_BASE = 1e7;
 
@@ -41,11 +42,11 @@ contract FeeTaker is IPostInteraction {
         }
 
         if (fee > 0) {
-            SafeERC20.safeTransfer(IERC20(order.takerAsset.get()), feeRecipient, fee);
+            IERC20(order.takerAsset.get()).safeTransfer(feeRecipient, fee);
         }
 
         unchecked {
-            SafeERC20.safeTransfer(IERC20(order.takerAsset.get()), receiver, takingAmount - fee);
+            IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - fee);
         }
     }
 }
