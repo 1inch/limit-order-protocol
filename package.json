@@ -45,7 +45,7 @@
     "rimraf": "5.0.5",
     "solc": "0.8.23-fixed",
     "solhint": "4.1.1",
-    "solidity-coverage": "0.8.5",
+    "solidity-coverage": "0.8.7",
     "solidity-docgen": "0.5.17",
     "zksync-ethers": "6.0.0"
   },
