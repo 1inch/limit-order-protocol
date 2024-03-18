@@ -80,7 +80,7 @@ You can find 1inch limit order protocol deployments here:
 
 You can find audit reports on etherscan and in the separate [audit repository](https://github.com/1inch/1inch-audits/tree/master/Limit%20Order%20Protocol).
 
-### Utils library (Limit Orders Protocol v3)
+### Utils library (Limit Orders Protocol v4)
 Plenty of utils that helps create & sign orders are available in our typescript utils library:
 
 - [1inch Limit Order Utils](https://github.com/1inch/limit-order-protocol-utils)
