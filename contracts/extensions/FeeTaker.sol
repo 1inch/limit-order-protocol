@@ -10,18 +10,29 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
+import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 
 contract FeeTaker is IPostInteraction, Ownable {
     using AddressLib for Address;
     using SafeERC20 for IERC20;
     using UniERC20 for IERC20;
+    using MakerTraitsLib for MakerTraits;
 
+    /**
+     * @dev The caller is not the limit order protocol contract.
+     */
     error OnlyLimitOrderProtocol();
+
+    /**
+     * @dev Eth transfer failed. The target fallback may have reverted.
+     */
+    error EthTransferFailed();
 
     /// @dev Allows fees in range [1e-5, 0.65536]
     uint256 internal constant _FEE_BASE = 1e5;
 
     address private immutable _LIMIT_ORDER_PROTOCOL;
+    address private immutable _WETH;
 
     /// @dev Modifier to check if the caller is the limit order protocol contract.
     modifier onlyLimitOrderProtocol {
@@ -33,9 +44,15 @@ contract FeeTaker is IPostInteraction, Ownable {
      * @notice Initializes the contract.
      * @param limitOrderProtocol The limit order protocol contract.
      */
-    constructor(address limitOrderProtocol, address owner) Ownable(owner) {
+    constructor(address limitOrderProtocol, address weth, address owner) Ownable(owner) {
         _LIMIT_ORDER_PROTOCOL = limitOrderProtocol;
+        _WETH = weth;
     }
+
+    /**
+     * @notice Fallback function to receive ETH.
+     */
+    receive() external payable {}
 
     /**
      * @notice See {IPostInteraction-postInteraction}.
@@ -63,12 +80,22 @@ contract FeeTaker is IPostInteraction, Ownable {
             receiver = address(bytes20(extraData[22:42]));
         }
 
-        if (fee > 0) {
-            IERC20(order.takerAsset.get()).safeTransfer(feeRecipient, fee);
-        }
+        bool isEth = order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth();
 
-        unchecked {
-            IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - fee);
+        if (isEth) {
+            if (fee > 0) {
+                _sendEth(feeRecipient, fee);
+            }
+            unchecked {
+                _sendEth(receiver, takingAmount - fee);
+            }
+        } else {
+            if (fee > 0) {
+                IERC20(order.takerAsset.get()).safeTransfer(feeRecipient, fee);
+            }
+            unchecked {
+                IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - fee);
+            }
         }
     }
 
@@ -79,5 +106,12 @@ contract FeeTaker is IPostInteraction, Ownable {
      */
     function rescueFunds(IERC20 token, uint256 amount) external onlyOwner {
         token.uniTransfer(payable(msg.sender), amount);
+    }
+
+    function _sendEth(address target, uint256 amount) private {
+        (bool success, ) = target.call{value: amount}("");
+        if (!success) {
+            revert EthTransferFailed();
+        }
     }
 }
