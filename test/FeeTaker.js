@@ -197,7 +197,6 @@ describe('FeeTaker', function () {
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
         await expect(fillTx).to.changeTokenBalance(weth, addr, -takingAmount);
         await expect(fillTx).to.changeEtherBalances([addr1, addr2], [takingAmount - feeCalculated, feeCalculated]);
-
     });
 
     it('should charge fee in eth and send the rest to the maker receiver', async function () {
