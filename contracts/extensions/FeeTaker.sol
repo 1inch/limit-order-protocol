@@ -4,16 +4,37 @@ pragma solidity 0.8.23;
 
 import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 import { SafeERC20 } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
+import { UniERC20 } from "@1inch/solidity-utils/contracts/libraries/UniERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
 
-contract FeeTaker is IPostInteraction {
+contract FeeTaker is IPostInteraction, Ownable {
     using AddressLib for Address;
     using SafeERC20 for IERC20;
+    using UniERC20 for IERC20;
+
+    error OnlyLimitOrderProtocol();
 
     uint256 internal constant _FEE_BASE = 1e7;
+
+    address private immutable _LIMIT_ORDER_PROTOCOL;
+
+    /// @dev Modifier to check if the caller is the limit order protocol contract.
+    modifier onlyLimitOrderProtocol {
+        if (msg.sender != _LIMIT_ORDER_PROTOCOL) revert OnlyLimitOrderProtocol();
+        _;
+    }
+
+    /**
+     * @notice Initializes the contract.
+     * @param limitOrderProtocol The limit order protocol contract.
+     */
+    constructor(address limitOrderProtocol, address owner) Ownable(owner) {
+        _LIMIT_ORDER_PROTOCOL = limitOrderProtocol;
+    }
 
     /**
      * @notice See {IPostInteraction-postInteraction}.
@@ -32,7 +53,7 @@ contract FeeTaker is IPostInteraction {
         uint256 takingAmount,
         uint256 /* remainingMakingAmount */,
         bytes calldata extraData
-    ) external {
+    ) external onlyLimitOrderProtocol {
         uint256 fee = takingAmount * uint256(uint24(bytes3(extraData))) / _FEE_BASE;
         address feeRecipient = address(bytes20(extraData[3:23]));
 
@@ -48,5 +69,14 @@ contract FeeTaker is IPostInteraction {
         unchecked {
             IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - fee);
         }
+    }
+
+    /**
+     * @notice Retrieves funds accidently sent directly to the contract address
+     * @param token ERC20 token to retrieve
+     * @param amount amount to retrieve
+     */
+    function rescueFunds(IERC20 token, uint256 amount) external onlyOwner {
+        token.uniTransfer(payable(msg.sender), amount);
     }
 }

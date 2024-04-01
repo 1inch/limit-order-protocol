@@ -30,7 +30,7 @@ describe('FeeTaker', function () {
         await inch.connect(addr1).approve(swap, ether('1000000'));
 
         const FeeTaker = await ethers.getContractFactory('FeeTaker');
-        const feeTaker = await FeeTaker.deploy();
+        const feeTaker = await FeeTaker.deploy(swap, addr);
 
         return { dai, weth, inch, swap, chainId, feeTaker };
     };
