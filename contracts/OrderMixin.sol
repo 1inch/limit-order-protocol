@@ -36,7 +36,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper, SeriesEpoc
     using BitInvalidatorLib for BitInvalidatorLib.Data;
     using RemainingInvalidatorLib for RemainingInvalidator;
 
-    IWETH private immutable _WETH;  // solhint-disable-line var-name-mixedcase
+    IWETH private immutable _WETH;
     mapping(address maker => BitInvalidatorLib.Data data) private _bitInvalidator;
     mapping(address maker => mapping(bytes32 orderHash => RemainingInvalidator remaining)) private _remainingInvalidator;
 
