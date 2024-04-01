@@ -18,7 +18,8 @@ contract FeeTaker is IPostInteraction, Ownable {
 
     error OnlyLimitOrderProtocol();
 
-    uint256 internal constant _FEE_BASE = 1e7;
+    /// @dev Allows fees in range [1e-5, 0.65536]
+    uint256 internal constant _FEE_BASE = 1e5;
 
     address private immutable _LIMIT_ORDER_PROTOCOL;
 
@@ -40,7 +41,7 @@ contract FeeTaker is IPostInteraction, Ownable {
      * @notice See {IPostInteraction-postInteraction}.
      * @dev Takes the fee in taking tokens and transfers the rest to the maker.
      * `extraData` consists of:
-     * 3 bytes — fee percentage (in 1e7)
+     * 2 bytes — fee percentage (in 1e5)
      * 20 bytes — fee recipient
      * 20 bytes — receiver of taking tokens (optional, if not set, maker is used)
      */
@@ -54,12 +55,12 @@ contract FeeTaker is IPostInteraction, Ownable {
         uint256 /* remainingMakingAmount */,
         bytes calldata extraData
     ) external onlyLimitOrderProtocol {
-        uint256 fee = takingAmount * uint256(uint24(bytes3(extraData))) / _FEE_BASE;
-        address feeRecipient = address(bytes20(extraData[3:23]));
+        uint256 fee = takingAmount * uint256(uint16(bytes2(extraData))) / _FEE_BASE;
+        address feeRecipient = address(bytes20(extraData[2:22]));
 
         address receiver = order.maker.get();
-        if (extraData.length > 23) {
-            receiver = address(bytes20(extraData[23:43]));
+        if (extraData.length > 22) {
+            receiver = address(bytes20(extraData[22:42]));
         }
 
         if (fee > 0) {

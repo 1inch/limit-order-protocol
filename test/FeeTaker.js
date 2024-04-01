@@ -53,7 +53,7 @@ describe('FeeTaker', function () {
                 takingAmount,
             },
             {
-                postInteraction: await feeTaker.getAddress() + trim0x(ethers.solidityPacked(['uint24', 'address'], [fee, feeRecipient])),
+                postInteraction: await feeTaker.getAddress() + trim0x(ethers.solidityPacked(['uint16', 'address'], [fee, feeRecipient])),
             },
         );
 
@@ -86,7 +86,7 @@ describe('FeeTaker', function () {
             },
             {
                 postInteraction: await feeTaker.getAddress() +
-                    trim0x(ethers.solidityPacked(['uint24', 'address', 'address'], [fee, feeRecipient, makerReceiver])),
+                    trim0x(ethers.solidityPacked(['uint16', 'address', 'address'], [fee, feeRecipient, makerReceiver])),
             },
         );
 
@@ -104,8 +104,8 @@ describe('FeeTaker', function () {
 
         const makingAmount = ether('300');
         const takingAmount = ether('0.3');
-        const fee = BigInt(1e6);
-        const feeCalculated = takingAmount * fee / BigInt(1e7);
+        const fee = BigInt(1e4);
+        const feeCalculated = takingAmount * fee / BigInt(1e5);
         const feeRecipient = addr2.address;
 
         const order = buildOrder(
@@ -118,7 +118,7 @@ describe('FeeTaker', function () {
                 takingAmount,
             },
             {
-                postInteraction: await feeTaker.getAddress() + trim0x(ethers.solidityPacked(['uint24', 'address'], [fee, feeRecipient])),
+                postInteraction: await feeTaker.getAddress() + trim0x(ethers.solidityPacked(['uint16', 'address'], [fee, feeRecipient])),
             },
         );
 
@@ -136,8 +136,8 @@ describe('FeeTaker', function () {
 
         const makingAmount = ether('300');
         const takingAmount = ether('0.3');
-        const fee = BigInt(1e6);
-        const feeCalculated = takingAmount * fee / BigInt(1e7);
+        const fee = BigInt(1e4);
+        const feeCalculated = takingAmount * fee / BigInt(1e5);
         const feeRecipient = addr2.address;
         const makerReceiver = addr3.address;
 
@@ -152,7 +152,7 @@ describe('FeeTaker', function () {
             },
             {
                 postInteraction: await feeTaker.getAddress() +
-                    trim0x(ethers.solidityPacked(['uint24', 'address', 'address'], [fee, feeRecipient, makerReceiver])),
+                    trim0x(ethers.solidityPacked(['uint16', 'address', 'address'], [fee, feeRecipient, makerReceiver])),
             },
         );
 
