@@ -9,6 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
 
+/// @title Helper contract that adds feature of collecting fee in takerAsset
 contract FeeTaker is IPostInteraction {
     using AddressLib for Address;
     using SafeERC20 for IERC20;
