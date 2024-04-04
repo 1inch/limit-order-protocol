@@ -12,6 +12,7 @@ import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 
+/// @title Helper contract that adds feature of collecting fee in takerAsset
 contract FeeTaker is IPostInteraction, Ownable {
     using AddressLib for Address;
     using SafeERC20 for IERC20;
