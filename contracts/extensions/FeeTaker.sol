@@ -29,7 +29,7 @@ contract FeeTaker is IPostInteraction, Ownable {
      */
     error EthTransferFailed();
 
-    /// @dev Allows fees in range [1e-5, 0.65536]
+    /// @dev Allows fees in range [1e-5, 0.65535]
     uint256 internal constant _FEE_BASE = 1e5;
 
     address private immutable _LIMIT_ORDER_PROTOCOL;
