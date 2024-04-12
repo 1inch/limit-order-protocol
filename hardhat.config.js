@@ -46,7 +46,7 @@ module.exports = {
         ],
     },
     zksolc: {
-        version: '1.3.22',
+        version: '1.4.0',
         compilerSource: 'binary',
         settings: {},
     },
