@@ -1,4 +1,5 @@
 const hre = require('hardhat');
+const { ethers } = hre;
 const { getChainId } = hre;
 
 const WETH = {
@@ -20,7 +21,7 @@ const ROUTER_V6_ADDR = '0x111111125421ca6dc452d289314280a0f8842a65';
 
 const FEE_TAKER_SALT = ethers.keccak256(ethers.toUtf8Bytes('FeeTaker'));
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 module.exports = async ({ deployments, getNamedAccounts }) => {
     const networkName = hre.network.name;
