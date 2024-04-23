@@ -196,7 +196,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper, SeriesEpoc
         bytes calldata signature,
         uint256 amount,
         TakerTraits takerTraits
-    ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
+    ) external payable returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
         return _fillContractOrder(order, signature, amount, takerTraits, msg.sender, msg.data[:0], msg.data[:0]);
     }
 
@@ -209,7 +209,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper, SeriesEpoc
         uint256 amount,
         TakerTraits takerTraits,
         bytes calldata args
-    ) external returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
+    ) external payable returns(uint256 /* makingAmount */, uint256 /* takingAmount */, bytes32 /* orderHash */) {
         (
             address target,
             bytes calldata extension,
