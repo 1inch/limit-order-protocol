@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IPermit2 {
+interface IPermit2WitnessTransferFrom {
     struct TokenPermissions {
         // ERC20 token address
         address token;

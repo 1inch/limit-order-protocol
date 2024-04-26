@@ -4,7 +4,7 @@ pragma solidity 0.8.23;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "../interfaces/IPermit2.sol";
+import "../interfaces/IPermit2WitnessTransferFrom.sol";
 import "./ImmutableOwner.sol";
 
 /* solhint-disable func-name-mixedcase */
@@ -19,7 +19,7 @@ contract Permit2WitnessProxy is ImmutableOwner {
     string private constant _WITNESS_TYPE_STRING =
 		"Witness witness)TokenPermissions(address token,uint256 amount)Witness(bytes32 salt)";
 
-    IPermit2 private constant _PERMIT2 = IPermit2(0x000000000022D473030F116dDEE9F6B43aC78BA3);
+    IPermit2WitnessTransferFrom private constant _PERMIT2 = IPermit2WitnessTransferFrom(0x000000000022D473030F116dDEE9F6B43aC78BA3);
 
     constructor(address _immutableOwner) ImmutableOwner(_immutableOwner) {
         if (Permit2WitnessProxy.func_801zDya.selector != IERC20.transferFrom.selector) revert Permit2WitnessProxyBadSelector();
@@ -31,13 +31,13 @@ contract Permit2WitnessProxy is ImmutableOwner {
         address from,
         address to,
         uint256 amount,
-        IPermit2.PermitTransferFrom calldata permit,
+        IPermit2WitnessTransferFrom.PermitTransferFrom calldata permit,
         bytes32 witness,
         bytes calldata sig
     ) external onlyImmutableOwner {
         _PERMIT2.permitWitnessTransferFrom(
             permit,
-            IPermit2.SignatureTransferDetails({
+            IPermit2WitnessTransferFrom.SignatureTransferDetails({
                 to: to,
                 requestedAmount: amount
             }),
