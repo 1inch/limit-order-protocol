@@ -8,6 +8,8 @@ const { ethers } = hre;
 
 describe('WitnessProxyExample', function () {
     let addr, addr1;
+    const abiCoder = ethers.AbiCoder.defaultAbiCoder();
+    const WITNESS_TYPEHASH = '0x098c829387d2da3edcf4fde88d652acd561e4ef68a7d2c7d5ff4d3aad8c92615';
 
     before(async function () {
         [addr, addr1] = await ethers.getSigners();
@@ -53,13 +55,17 @@ describe('WitnessProxyExample', function () {
 
         const sig = ethers.Signature.from(await addr1.signTypedData(data.domain, data.types, data.values));
 
-        const makerAssetSuffix = '0x' + permit2WitnessProxy.interface.encodeFunctionData('func_20glDB1', [
+        const makerAssetSuffix = '0x' + permit2WitnessProxy.interface.encodeFunctionData('func_801zDya', [
             constants.ZERO_ADDRESS, constants.ZERO_ADDRESS, 0,
-            permit.permitted.token,
-            permit.permitted.amount,
-            permit.nonce,
-            permit.deadline,
-            witness.witness.salt,
+            {
+                permitted: {
+                    token: permit.permitted.token,
+                    amount: permit.permitted.amount,
+                },
+                nonce: permit.nonce,
+                deadline: permit.deadline,
+            },
+            ethers.keccak256(abiCoder.encode(['bytes32', 'bytes32'], [WITNESS_TYPEHASH, witness.witness.salt])),
             sig.compactSerialized,
         ]).substring(202);
 
