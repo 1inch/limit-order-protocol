@@ -1,6 +1,6 @@
 {
   "name": "@1inch/limit-order-protocol-contract",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "description": "1inch Limit Order Protocol",
   "repository": {
     "type": "git",
@@ -29,6 +29,7 @@
     "@nomicfoundation/hardhat-network-helpers": "1.0.10",
     "@nomicfoundation/hardhat-verify": "2.0.3",
     "@nomicfoundation/hardhat-ethers": "3.0.5",
+    "@uniswap/permit2-sdk": "1.2.0",
     "chai": "4.4.0",
     "dotenv": "16.3.1",
     "eslint": "8.56.0",
