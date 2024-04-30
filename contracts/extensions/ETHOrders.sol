@@ -3,7 +3,7 @@
 pragma solidity 0.8.23;
 
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
-import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
+import "@1inch/solidity-utils/contracts/mixins/OnlyWethReceiver.sol";
 
 import "../interfaces/IPostInteraction.sol";
 import "../OrderLib.sol";
