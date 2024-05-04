@@ -28,7 +28,7 @@ function findTrace (tracer, opcode, address) {
     ).slice(-1)[0].top;
 }
 
-// TODO: refactor to get sigle trace as input
+// TODO: refactor to get single trace as input
 /// const allTraces = flattenTree([trace]);
 const flattenTree = arr => arr.flatMap(item => [item, ...flattenTree(item.children || [])]);
 
