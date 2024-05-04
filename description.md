@@ -116,7 +116,7 @@ Below is the example of order calldata
 
 # maker address
 00000000 00000000 00000000 70997970 c51812dc 3a010c7d 01b50e0d 17dc79c8 
-# reciever address
+# receiver address
 00000000 00000000 00000000 3c44cddd b6a900fa 2b585dd2 99e03d12 fa4293bc
 # maker token address (DAI)
 00000000 00000000 00000000 6B175474 E89094C4 4Da98b95 4EedeAC4 95271d0F 
