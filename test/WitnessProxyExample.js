@@ -1,7 +1,7 @@
 const { constants, permit2Contract } = require('@1inch/solidity-utils');
 const { SignatureTransfer, PERMIT2_ADDRESS } = require('@uniswap/permit2-sdk');
 const { ether } = require('./helpers/utils');
-const { signOrder, buildOrder, buildTakerTraits } = require('./helpers/orderUtils');
+const { signOrder, buildOrder, buildTakerTraits, buildMakerTraitsRFQ } = require('./helpers/orderUtils');
 const { deploySwapTokens } = require('./helpers/fixtures');
 const hre = require('hardhat');
 const { ethers } = hre;
@@ -71,11 +71,12 @@ describe('WitnessProxyExample', function () {
 
         const order = buildOrder(
             {
+                maker: addr1.address,
                 makerAsset: await permit2WitnessProxy.getAddress(),
                 takerAsset: await dai.getAddress(),
                 makingAmount: ether('1'),
                 takingAmount: ether('2000'),
-                maker: addr1.address,
+                makerTraits: buildMakerTraitsRFQ(),
             },
             {
                 makerAssetSuffix,
