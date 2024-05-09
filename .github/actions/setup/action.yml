@@ -5,7 +5,7 @@ runs:
   steps:
     - uses: actions/setup-node@v3
       with:
-        node-version: 16
+        node-version: 20
 
     - run: npm install -g yarn
       shell: bash

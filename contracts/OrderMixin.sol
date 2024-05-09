@@ -9,8 +9,8 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 
 import "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
-import "@1inch/solidity-utils/contracts/OnlyWethReceiver.sol";
-import "@1inch/solidity-utils/contracts/PermitAndCall.sol";
+import "@1inch/solidity-utils/contracts/mixins/OnlyWethReceiver.sol";
+import "@1inch/solidity-utils/contracts/mixins/PermitAndCall.sol";
 
 import "./helpers/PredicateHelper.sol";
 import "./helpers/SeriesEpochManager.sol";
