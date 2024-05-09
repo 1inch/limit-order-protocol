@@ -185,7 +185,7 @@ interface IOrderMixin {
         bytes calldata signature,
         uint256 amount,
         TakerTraits takerTraits
-    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
+    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 
     /**
      * @notice Same as `fillContractOrder` but allows to specify arguments that are used by the taker.
@@ -206,5 +206,5 @@ interface IOrderMixin {
         uint256 amount,
         TakerTraits takerTraits,
         bytes calldata args
-    ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
+    ) external payable returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
 }

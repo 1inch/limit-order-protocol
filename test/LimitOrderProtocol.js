@@ -1,13 +1,14 @@
 const hre = require('hardhat');
 const { ethers, tracer } = hre;
 const { expect, time, constants, getPermit2, permit2Contract } = require('@1inch/solidity-utils');
-const { fillWithMakingAmount, unwrapWethTaker, buildMakerTraits, buildMakerTraitsRFQ, buildOrder, signOrder, buildOrderData, buildTakerTraits } = require('./helpers/orderUtils');
+const { ABIOrder, fillWithMakingAmount, unwrapWethTaker, buildMakerTraits, buildMakerTraitsRFQ, buildOrder, signOrder, buildOrderData, buildTakerTraits } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, ether, findTrace, countAllItems } = require('./helpers/utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens, deployArbitraryPredicate } = require('./helpers/fixtures');
 
 describe('LimitOrderProtocol', function () {
+    const abiCoder = ethers.AbiCoder.defaultAbiCoder();
     let addr, addr1, addr2;
 
     before(async function () {
@@ -1162,6 +1163,97 @@ describe('LimitOrderProtocol', function () {
             orderMakerBalance = await ethOrders.ordersMakersBalances(orderHash);
             expect(orderMakerBalance.balance).to.equal(ether('0.3'));
             expect(orderMakerBalance.maker).to.equal(addr1.address);
+        });
+    });
+
+    describe('ETH Taker Orders', function () {
+        async function deployContractsAndInitWithOrder () {
+            const { tokens, contracts, chainId } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder({
+                makerAsset: await tokens.dai.getAddress(),
+                takerAsset: await tokens.weth.getAddress(),
+                makingAmount: 2,
+                takingAmount: 10,
+                maker: addr1.address,
+            });
+            const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await contracts.swap.getAddress(), addr1));
+            const takerTraits = buildTakerTraits({ threshold: 1n });
+
+            return { tokens, contracts, data: { order, r, vs, takerTraits } };
+        }
+
+        async function deployContractsAndInitWithContractOrder () {
+            const { tokens, contracts } = await loadFixture(deployContractsAndInit);
+
+            const MakerContract = await ethers.getContractFactory('MakerContract');
+            contracts.maker = await MakerContract.deploy(contracts.swap, tokens.dai, tokens.weth, 0, 'MakerContract DAI-WETH', 'MKR');
+            contracts.maker.waitForDeployment();
+            await tokens.dai.mint(contracts.maker, '1000000000');
+            await tokens.dai.approve(contracts.swap, '1000000000');
+            const order = buildOrder({
+                maker: await contracts.maker.getAddress(),
+                makerAsset: await tokens.dai.getAddress(),
+                takerAsset: await tokens.weth.getAddress(),
+                makingAmount: 2,
+                takingAmount: 10,
+            });
+            const signature = abiCoder.encode([ABIOrder], [order]);
+            const takerTraits = buildTakerTraits({ threshold: 1n });
+
+            return { tokens, contracts, data: { order, signature, takerTraits } };
+        }
+
+        it('fillOrder', async function () {
+            const {
+                tokens: { dai, weth },
+                contracts: { swap },
+                data: { order, r, vs },
+            } = await loadFixture(deployContractsAndInitWithOrder);
+
+            const fillTx = await swap.fillOrder(order, r, vs, 10, 1, { value: order.takingAmount });
+            await expect(fillTx).to.changeTokenBalances(dai, [addr1, addr], [-2, 2]);
+            await expect(fillTx).to.changeTokenBalance(weth, addr1, 10);
+            await expect(fillTx).to.changeEtherBalance(addr, -10, { includeFee: false });
+        });
+
+        it('fillOrderArgs', async function () {
+            const {
+                tokens: { dai, weth },
+                contracts: { swap },
+                data: { order, r, vs, takerTraits },
+            } = await loadFixture(deployContractsAndInitWithOrder);
+
+            const fillTx = await swap.fillOrderArgs(order, r, vs, 10, takerTraits.traits, takerTraits.args, { value: order.takingAmount });
+            await expect(fillTx).to.changeTokenBalances(dai, [addr1, addr], [-2, 2]);
+            await expect(fillTx).to.changeTokenBalance(weth, addr1, 10);
+            await expect(fillTx).to.changeEtherBalance(addr, -10, { includeFee: false });
+        });
+
+        it('fillContractOrder', async function () {
+            const {
+                tokens: { dai, weth },
+                contracts: { swap, maker },
+                data: { order, signature },
+            } = await loadFixture(deployContractsAndInitWithContractOrder);
+
+            const fillTx = await swap.fillContractOrder(order, signature, 9, 1, { value: order.takingAmount });
+            await expect(fillTx).to.changeTokenBalances(dai, [maker, addr], [-1, 1]);
+            await expect(fillTx).to.changeTokenBalance(weth, maker, 9);
+            await expect(fillTx).to.changeEtherBalance(addr, -9, { includeFee: false });
+        });
+
+        it('fillContractOrderArgs', async function () {
+            const {
+                tokens: { dai, weth },
+                contracts: { swap, maker },
+                data: { order, signature, takerTraits },
+            } = await loadFixture(deployContractsAndInitWithContractOrder);
+
+            const fillTx = await swap.fillContractOrderArgs(order, signature, 9, takerTraits.traits, takerTraits.args, { value: order.takingAmount });
+            await expect(fillTx).to.changeTokenBalances(dai, [maker, addr], [-1, 1]);
+            await expect(fillTx).to.changeTokenBalance(weth, maker, 9);
+            await expect(fillTx).to.changeEtherBalance(addr, -9, { includeFee: false });
         });
     });
 
