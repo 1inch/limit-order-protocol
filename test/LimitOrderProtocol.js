@@ -2086,6 +2086,42 @@ describe('LimitOrderProtocol', function () {
                 .to.be.revertedWithCustomError(swap, 'InvalidMsgValue');
         });
 
+        it('should be reverted if takerAsset does not contain code', async function () {
+            const { tokens: { dai }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
+
+            await dai.mint(addr, '1000000');
+
+            const order = buildOrder({
+                makerAsset: await dai.getAddress(),
+                takerAsset: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+                makingAmount: 900,
+                takingAmount: 900,
+                maker: addr1.address,
+            });
+
+            const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
+            await expect(swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(900)))
+                .to.be.revertedWithCustomError(swap, 'TransferFromTakerToMakerFailed');
+        });
+
+        it('should be reverted if makerAsset does not contain code', async function () {
+            const { tokens: { usdc }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
+
+            await usdc.approve(swap, '1000000');
+
+            const order = buildOrder({
+                makerAsset: '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',
+                takerAsset: await usdc.getAddress(),
+                makingAmount: 900,
+                takingAmount: 900,
+                maker: addr1.address,
+            });
+
+            const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
+            await expect(swap.fillOrder(order, r, vs, 900, fillWithMakingAmount(900)))
+                .to.be.revertedWithCustomError(swap, 'TransferFromMakerToTakerFailed');
+        });
+
         it('should revert with takerAsset WETH, unwrap flag is set and taker unable to receive excessive ETH', async function () {
             const { tokens: { dai, weth }, contracts: { swap }, chainId } = await loadFixture(deployContractsAndInit);
 
