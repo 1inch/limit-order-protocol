@@ -518,7 +518,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper, SeriesEpoc
                 calldatacopy(add(data, 0x64), suffix.offset, suffix.length)
             }
             let status := call(gas(), asset, 0, data, add(0x64, suffix.length), 0x0, 0x20)
-            success := and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1))))
+            success := and(and(status, or(iszero(returndatasize()), and(gt(returndatasize(), 31), eq(mload(0), 1)))), gt(extcodesize(asset), 0))
         }
     }
 }
