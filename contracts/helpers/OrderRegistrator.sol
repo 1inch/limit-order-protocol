@@ -5,15 +5,12 @@ pragma solidity 0.8.23;
 import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 import { ECDSA } from "@1inch/solidity-utils/contracts/libraries/ECDSA.sol";
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
+import { IOrderRegistrator } from "../interfaces/IOrderRegistrator.sol";
 import { OrderLib } from "../OrderLib.sol";
 
-contract OrderRegistrator {
+contract OrderRegistrator is IOrderRegistrator {
     using AddressLib for Address;
     using OrderLib for IOrderMixin.Order;
-
-    error BadSignature();
-
-    event OrderRegistered(IOrderMixin.Order order, bytes extension, bytes signature);
 
     IOrderMixin private immutable _LIMIT_ORDER_PROTOCOL;
 
