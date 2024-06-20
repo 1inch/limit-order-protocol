@@ -6,14 +6,13 @@ import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/
 import { GnosisSafeStorage } from "@gnosis.pm/safe-contracts/contracts/examples/libraries/GnosisSafeStorage.sol";
 import { GnosisSafe } from "@gnosis.pm/safe-contracts/contracts/GnosisSafe.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IOrderRegistrator } from "../interfaces/IOrderRegistrator.sol";
 
 contract SafeOrderBuilder is GnosisSafeStorage {
     error StaleOraclePrice();
 
-    bytes32 private constant SAFE_MSG_TYPEHASH = keccak256("SafeMessage(bytes message)");
+    bytes32 private constant _SAFE_MSG_TYPEHASH = keccak256("SafeMessage(bytes message)");
 
     IOrderMixin private immutable _LIMIT_ORDER_PROTOCOL;
     IOrderRegistrator private immutable _ORDER_REGISTRATOR;
@@ -61,7 +60,7 @@ contract SafeOrderBuilder is GnosisSafeStorage {
     /// @param message Message that should be hashed
     /// @return Message hash.
     function _getMessageHash(bytes memory message) private view returns (bytes32) {
-        bytes32 safeMessageHash = keccak256(abi.encode(SAFE_MSG_TYPEHASH, keccak256(message)));
+        bytes32 safeMessageHash = keccak256(abi.encode(_SAFE_MSG_TYPEHASH, keccak256(message)));
         return keccak256(abi.encodePacked(bytes1(0x19), bytes1(0x01), GnosisSafe(payable(address(this))).domainSeparator(), safeMessageHash));
     }
 }
