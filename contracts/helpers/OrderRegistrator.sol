@@ -32,7 +32,7 @@ contract OrderRegistrator is IOrderRegistrator {
         }
 
         // Validate signature
-        if(!ECDSA.recoverOrIsValidSignature(order.maker.get(), _LIMIT_ORDER_PROTOCOL.hashOrder(order), signature)) revert BadSignature();
+        if(!ECDSA.recoverOrIsValidSignature(order.maker.get(), _LIMIT_ORDER_PROTOCOL.hashOrder(order), signature)) revert IOrderMixin.BadSignature();
 
         emit OrderRegistered(order, extension, signature);
     }
