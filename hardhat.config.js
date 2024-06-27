@@ -44,7 +44,6 @@ module.exports = {
             '@1inch/solidity-utils/contracts/mocks/TokenCustomDecimalsMock.sol',
             '@1inch/solidity-utils/contracts/mocks/TokenMock.sol',
             '@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol',
-            '@gnosis.pm/safe-contracts/contracts/handler/CompatibilityFallbackHandler.sol',
         ],
     },
     zksolc: {
