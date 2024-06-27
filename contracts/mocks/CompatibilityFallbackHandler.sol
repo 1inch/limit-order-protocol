@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: LGPL-3.0-only
-pragma solidity >=0.7.0 <0.9.0;
+pragma solidity ^0.8.0;
 
 // This mock is needed because gnosis CompatibilityFallbackHandler.sol does not compile with modern solidity version
 // isValidSignature changes argument types location from memory to calldata which is not allowed
@@ -15,12 +15,12 @@ contract CompatibilityFallbackHandler is DefaultCallbackHandler, ISignatureValid
     //keccak256(
     //    "SafeMessage(bytes message)"
     //);
-    bytes32 private constant SAFE_MSG_TYPEHASH = 0x60b3cbf8b4a223d68d641b3b6ddf9a298e7f33710cf3d3a9d1146b5a6150fbca;
+    bytes32 private constant _SAFE_MSG_TYPEHASH = 0x60b3cbf8b4a223d68d641b3b6ddf9a298e7f33710cf3d3a9d1146b5a6150fbca;
 
-    bytes4 internal constant SIMULATE_SELECTOR = bytes4(keccak256("simulate(address,bytes)"));
+    bytes4 internal constant _SIMULATE_SELECTOR = bytes4(keccak256("simulate(address,bytes)"));
 
-    address internal constant SENTINEL_MODULES = address(0x1);
-    bytes4 internal constant UPDATED_MAGIC_VALUE = 0x1626ba7e;
+    address internal constant _SENTINEL_MODULES = address(0x1);
+    bytes4 internal constant _UPDATED_MAGIC_VALUE = 0x1626ba7e;
 
     /**
      * Implementation of ISignatureValidator (see `interfaces/ISignatureValidator.sol`)
@@ -34,6 +34,7 @@ contract CompatibilityFallbackHandler is DefaultCallbackHandler, ISignatureValid
         GnosisSafe safe = GnosisSafe(payable(msg.sender));
         bytes32 messageHash = getMessageHashForSafe(safe, _data);
         if (_signature.length == 0) {
+            // solhint-disable-next-line custom-errors
             require(safe.signedMessages(messageHash) != 0, "Hash not approved");
         } else {
             safe.checkSignatures(messageHash, _data, _signature);
@@ -53,7 +54,7 @@ contract CompatibilityFallbackHandler is DefaultCallbackHandler, ISignatureValid
     /// @param message Message that should be hashed
     /// @return Message hash.
     function getMessageHashForSafe(GnosisSafe safe, bytes memory message) public view returns (bytes32) {
-        bytes32 safeMessageHash = keccak256(abi.encode(SAFE_MSG_TYPEHASH, keccak256(message)));
+        bytes32 safeMessageHash = keccak256(abi.encode(_SAFE_MSG_TYPEHASH, keccak256(message)));
         return keccak256(abi.encodePacked(bytes1(0x19), bytes1(0x01), safe.domainSeparator(), safeMessageHash));
     }
 
@@ -70,7 +71,7 @@ contract CompatibilityFallbackHandler is DefaultCallbackHandler, ISignatureValid
     function isValidSignature(bytes32 _dataHash, bytes calldata _signature) external view returns (bytes4) {
         ISignatureValidator validator = ISignatureValidator(msg.sender);
         bytes4 value = validator.isValidSignature(abi.encode(_dataHash), _signature);
-        return (value == EIP1271_MAGIC_VALUE) ? UPDATED_MAGIC_VALUE : bytes4(0);
+        return (value == EIP1271_MAGIC_VALUE) ? _UPDATED_MAGIC_VALUE : bytes4(0);
     }
 
     /// @dev Returns array of first 10 modules.
@@ -78,7 +79,7 @@ contract CompatibilityFallbackHandler is DefaultCallbackHandler, ISignatureValid
     function getModules() external view returns (address[] memory) {
         // Caller should be a Safe
         GnosisSafe safe = GnosisSafe(payable(msg.sender));
-        (address[] memory array, ) = safe.getModulesPaginated(SENTINEL_MODULES, 10);
+        (address[] memory array, ) = safe.getModulesPaginated(_SENTINEL_MODULES, 10);
         return array;
     }
 
