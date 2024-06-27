@@ -50,9 +50,12 @@ describe('SafeOrderBuilder', function () {
         const safe = await GnosisSafe.attach(receipt.logs[1].args[0]);
 
         // workaround as safe lib expects old version of ethers
+        // TODO: remove when safe lib is updated
         safe.address = await safe.getAddress();
         safeOrderBuilder.address = await safeOrderBuilder.getAddress();
         usdc.address = await usdc.getAddress();
+        addr._signTypedData = addr.signTypedData;
+        // end of workaround
 
         const order = buildOrder({
             makerAsset: await usdc.getAddress(),
