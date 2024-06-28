@@ -43,6 +43,7 @@ module.exports = {
         paths: [
             '@1inch/solidity-utils/contracts/mocks/TokenCustomDecimalsMock.sol',
             '@1inch/solidity-utils/contracts/mocks/TokenMock.sol',
+            '@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol',
         ],
     },
     zksolc: {
