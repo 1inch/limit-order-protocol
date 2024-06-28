@@ -8,6 +8,9 @@ import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IOrderRegistrator } from "../interfaces/IOrderRegistrator.sol";
 import { OrderLib } from "../OrderLib.sol";
 
+/**
+ * @title OrderRegistrator
+ */
 contract OrderRegistrator is IOrderRegistrator {
     using AddressLib for Address;
     using OrderLib for IOrderMixin.Order;
@@ -18,6 +21,9 @@ contract OrderRegistrator is IOrderRegistrator {
         _LIMIT_ORDER_PROTOCOL = limitOrderProtocol;
     }
 
+    /**
+     * @notice See {IOrderRegistrator-registerOrder}.
+     */
     function registerOrder(IOrderMixin.Order calldata order, bytes calldata extension, bytes calldata signature) external {
         // Validate order
         {
