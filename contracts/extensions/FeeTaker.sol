@@ -56,29 +56,71 @@ contract FeeTaker is IPostInteraction, Ownable {
     receive() external payable {}
 
     /**
+     * @dev Validates whether the resolver is whitelisted.
+     * @param whitelist Whitelist is tightly packed struct of the following format:
+     * ```
+     * (bytes10)[N] resolversAddresses;
+     * ```
+     * Only 10 lowest bytes of the resolver address are used for comparison.
+     * @param resolver The resolver to check.
+     * @return Whether the resolver is whitelisted.
+     */
+    function _isWhitelisted(bytes calldata whitelist, address resolver) internal view virtual returns (bool) {
+        unchecked {
+            uint80 maskedResolverAddress = uint80(uint160(resolver));
+            uint256 size = whitelist.length / 10;
+            for (uint256 i = 0; i < size; i++) {
+                uint80 whitelistedAddress = uint80(bytes10(whitelist[:10]));
+                if (maskedResolverAddress == whitelistedAddress) {
+                    return true;
+                }
+                whitelist = whitelist[10:];
+            }
+            return false;
+        }
+    }
+
+    /**
      * @notice See {IPostInteraction-postInteraction}.
      * @dev Takes the fee in taking tokens and transfers the rest to the maker.
      * `extraData` consists of:
-     * 2 bytes — fee percentage (in 1e5)
+     * 2 bytes — integrator fee percentage (in 1e5)
+     * 2 bytes — resolver fee percentage (in 1e5)
      * 20 bytes — fee recipient
+     * 1 byte - taker whitelist size
+     * (bytes10)[N] — taker whitelist
      * 20 bytes — receiver of taking tokens (optional, if not set, maker is used)
      */
     function postInteraction(
         IOrderMixin.Order calldata order,
         bytes calldata /* extension */,
         bytes32 /* orderHash */,
-        address /* taker */,
+        address taker,
         uint256 /* makingAmount */,
         uint256 takingAmount,
         uint256 /* remainingMakingAmount */,
         bytes calldata extraData
     ) external onlyLimitOrderProtocol {
-        uint256 fee = takingAmount * uint256(uint16(bytes2(extraData))) / _FEE_BASE;
-        address feeRecipient = address(bytes20(extraData[2:22]));
+        uint256 integratorFeePercent = uint256(uint16(bytes2(extraData)));
+        uint256 resolverFeePercent = uint256(uint16(bytes2(extraData[2:])));
+
+        uint256 whitelistSize = uint8(extraData[24]);
+        uint256 indexThroughWhitelist = 25 + whitelistSize * 10;
+        bytes calldata whitelist = extraData[25:indexThroughWhitelist];
+
+        if (!_isWhitelisted(whitelist, taker)) {
+            resolverFeePercent *= 2;
+        }
+
+        uint256 userTakingAmount = _FEE_BASE * takingAmount / (_FEE_BASE + integratorFeePercent + resolverFeePercent);
+        uint256 integratorFee = userTakingAmount * integratorFeePercent / _FEE_BASE;
+        uint256 resolverFee = userTakingAmount * resolverFeePercent / _FEE_BASE;
+        address feeRecipient = address(bytes20(extraData[4:24]));
+        uint256 fee = integratorFee + resolverFee;
 
         address receiver = order.maker.get();
-        if (extraData.length > 22) {
-            receiver = address(bytes20(extraData[22:42]));
+        if (extraData.length > indexThroughWhitelist) {
+            receiver = address(bytes20(extraData[indexThroughWhitelist:indexThroughWhitelist + 20]));
         }
 
         bool isEth = order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth();
