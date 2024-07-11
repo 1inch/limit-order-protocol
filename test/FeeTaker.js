@@ -30,9 +30,13 @@ describe('FeeTaker', function () {
         await inch.connect(addr1).approve(swap, ether('1000000'));
 
         const FeeTaker = await ethers.getContractFactory('FeeTaker');
-        const feeTaker = await FeeTaker.deploy(swap, weth, addr);
+        const feeTaker = await FeeTaker.deploy(swap, weth, weth, addr);
+        const feeBank = await ethers.getContractAt('FeeBank', await feeTaker.FEE_BANK());
 
-        return { dai, weth, inch, swap, chainId, feeTaker };
+        await weth.approve(feeBank, ether('1'));
+        await feeBank.deposit(ether('1'))
+
+        return { dai, weth, inch, swap, chainId, feeTaker, feeBank };
     };
 
     it('should send all tokens to the maker with 0 fee', async function () {
@@ -99,7 +103,7 @@ describe('FeeTaker', function () {
         await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, addr2, addr3], [-takingAmount, 0, 0, takingAmount]);
     });
 
-    it.only('should charge fee when in whitelist', async function () {
+    it.only('should charge fee NOT by FEE_BANK when in whitelist', async function () {
         const { dai, weth, swap, chainId, feeTaker } = await loadFixture(deployContractsAndInit);
 
         const makingAmount = ether('300');
@@ -148,7 +152,60 @@ describe('FeeTaker', function () {
         );
     });
 
-    it.only('should charge fee when out of whitelist', async function () {
+    it.only('should charge fee by FEE_BANK when in whitelist', async function () {
+        const { dai, weth, swap, chainId, feeTaker, feeBank } = await loadFixture(deployContractsAndInit);
+
+        await feeBank.setPayWithFeeBank(true);
+
+        const makingAmount = ether('300');
+        const takingAmount = ether('0.3');
+        const integratorFee = BigInt(1e4);
+        const resolverFee = BigInt(1e3);
+        const feeRecipient = addr2.address;
+        const whitelist = '0x' + addr.address.slice(-20);
+
+        const order = buildOrder(
+            {
+                maker: addr1.address,
+                receiver: await feeTaker.getAddress(),
+                makerAsset: await dai.getAddress(),
+                takerAsset: await weth.getAddress(),
+                makingAmount,
+                takingAmount,
+            },
+            {
+                // * 2 bytes — integrator fee percentage (in 1e5)
+                // * 2 bytes — resolver fee percentage (in 1e5)
+                // * 20 bytes — fee recipient
+                // * 1 byte - taker whitelist size
+                // * (bytes10)[N] — taker whitelist
+                postInteraction: ethers.solidityPacked(
+                    ['address', 'uint16', 'uint16', 'address', 'bytes1', 'bytes'],
+                    [await feeTaker.getAddress(), integratorFee, resolverFee, feeRecipient, '0x01', whitelist],
+                ),
+            },
+        );
+
+        const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
+        const takerTraits = buildTakerTraits({
+            extension: order.extension,
+        });
+        const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
+        console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
+
+        const feeCalculated = takingAmount * integratorFee / (BigInt(1e5) + integratorFee + 2n * resolverFee) +
+            takingAmount * resolverFee / (BigInt(1e5) + integratorFee + 2n * resolverFee);
+        const cashback = takingAmount * integratorFee / (BigInt(1e5) + integratorFee + 2n * resolverFee) +
+            takingAmount * resolverFee / (BigInt(1e5) + integratorFee + 2n * resolverFee) * 2n;
+        await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
+        await expect(fillTx).to.changeTokenBalances(weth,
+            [addr, addr1, addr2],
+            [-takingAmount + cashback, takingAmount - cashback, 0],
+        );
+        expect(await feeBank.availableCredit(addr)).to.be.equal(ether('1') - feeCalculated);
+    });
+
+    it.only('should charge fee NOT by FEE_BANK when out of whitelist', async function () {
         const { dai, weth, swap, chainId, feeTaker } = await loadFixture(deployContractsAndInit);
 
         const makingAmount = ether('300');
@@ -194,6 +251,57 @@ describe('FeeTaker', function () {
             [addr, addr1, addr2],
             [-takingAmount, takingAmount - feeCalculated, feeCalculated],
         );
+    });
+
+    it.only('should charge fee by FEE_BANK when out of whitelist', async function () {
+        const { dai, weth, swap, chainId, feeTaker, feeBank } = await loadFixture(deployContractsAndInit);
+
+        await feeBank.setPayWithFeeBank(true);
+
+        const makingAmount = ether('300');
+        const takingAmount = ether('0.3');
+        const integratorFee = BigInt(1e4);
+        const resolverFee = BigInt(1e3);
+        const feeRecipient = addr2.address;
+        const whitelist = '0x' + addr2.address.slice(-20);
+
+        const order = buildOrder(
+            {
+                maker: addr1.address,
+                receiver: await feeTaker.getAddress(),
+                makerAsset: await dai.getAddress(),
+                takerAsset: await weth.getAddress(),
+                makingAmount,
+                takingAmount,
+            },
+            {
+                // * 2 bytes — integrator fee percentage (in 1e5)
+                // * 2 bytes — resolver fee percentage (in 1e5)
+                // * 20 bytes — fee recipient
+                // * 1 byte - taker whitelist size
+                // * (bytes10)[N] — taker whitelist
+                postInteraction: ethers.solidityPacked(
+                    ['address', 'uint16', 'uint16', 'address', 'bytes1', 'bytes'],
+                    [await feeTaker.getAddress(), integratorFee, resolverFee, feeRecipient, '0x01', whitelist],
+                ),
+            },
+        );
+
+        const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
+        const takerTraits = buildTakerTraits({
+            extension: order.extension,
+        });
+        const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
+        console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
+
+        const feeCalculated = takingAmount * integratorFee / (BigInt(1e5) + integratorFee + 2n * resolverFee) +
+            takingAmount * resolverFee / (BigInt(1e5) + integratorFee + 2n * resolverFee) * 2n;
+        await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
+        await expect(fillTx).to.changeTokenBalances(weth,
+            [addr, addr1, addr2],
+            [-takingAmount + feeCalculated, takingAmount - feeCalculated, 0],
+        );
+        expect(await feeBank.availableCredit(addr)).to.be.equal(ether('1') - feeCalculated);
     });
 
     it('should charge fee and send the rest to the maker receiver', async function () {

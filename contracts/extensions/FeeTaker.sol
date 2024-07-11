@@ -12,9 +12,11 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
+import { FeeBank } from "./FeeBank.sol";
+import { FeeBankCharger } from "./FeeBankCharger.sol";
 
 /// @title Helper contract that adds feature of collecting fee in takerAsset
-contract FeeTaker is IPostInteraction, Ownable {
+contract FeeTaker is IPostInteraction, FeeBankCharger, Ownable {
     using AddressLib for Address;
     using SafeERC20 for IERC20;
     using UniERC20 for IERC20;
@@ -46,7 +48,7 @@ contract FeeTaker is IPostInteraction, Ownable {
      * @notice Initializes the contract.
      * @param limitOrderProtocol The limit order protocol contract.
      */
-    constructor(address limitOrderProtocol, address weth, address owner) Ownable(owner) {
+    constructor(address limitOrderProtocol, address weth, IERC20 feeToken, address owner) FeeBankCharger(feeToken, owner) Ownable(owner) {
         _LIMIT_ORDER_PROTOCOL = limitOrderProtocol;
         _WETH = weth;
     }
@@ -115,11 +117,17 @@ contract FeeTaker is IPostInteraction, Ownable {
 
             address feeRecipient = address(bytes20(extraData[4:24]));
             uint256 whitelistEnd = 25 + uint8(extraData[24]) * 10;
-            uint256 fee = integratorFee + 2 * resolverFee;
+            uint256 maxFee = integratorFee + 2 * resolverFee;
+            uint256 fee = maxFee;
             uint256 cashback;
             if (_isWhitelisted(extraData[25:whitelistEnd], taker)) {
                 fee -= resolverFee;
                 cashback = resolverFee;
+            }
+            if (FeeBank(FEE_BANK).payWithFeeBank(taker)) {
+                _chargeFee(taker, fee);
+                cashback = maxFee;
+                fee = 0;
             }
 
             address receiver = order.maker.get();
