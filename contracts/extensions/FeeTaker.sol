@@ -7,6 +7,7 @@ import { SafeERC20 } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.s
 import { UniERC20 } from "@1inch/solidity-utils/contracts/libraries/UniERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
@@ -80,6 +81,48 @@ contract FeeTaker is IPostInteraction, Ownable {
         }
     }
 
+    function getMakingAmount(
+        IOrderMixin.Order calldata /* order */,
+        bytes calldata /* extension */,
+        bytes32 /* orderHash */,
+        address /* taker */,
+        uint256 /* takingAmount */,
+        uint256 /* remainingMakingAmount */,
+        bytes calldata /* extraData */
+    ) external pure returns (uint256) {
+        // TODO: Implement this function
+        return 0;
+    }
+
+    /**
+     * @dev Calculate takingAmount with fee.
+     * `extraData` consists of:
+     * 1 byte - taker whitelist size
+     * (bytes10)[N] — taker whitelist
+     * 2 bytes — integrator fee percentage (in 1e5)
+     * 2 bytes — resolver fee percentage (in 1e5)
+     */
+    function getTakingAmount(
+        IOrderMixin.Order calldata order,
+        bytes calldata /* extension */,
+        bytes32 /* orderHash */,
+        address taker,
+        uint256 makingAmount,
+        uint256 /* remainingMakingAmount */,
+        bytes calldata extraData
+    ) external view returns (uint256) {
+        unchecked {
+            uint256 integratorFee = uint256(uint16(bytes2(extraData[:2])));
+            uint256 resolverFee = uint256(uint16(bytes2(extraData[2:])));
+            uint256 calculatedTakingAmount = order.takingAmount;
+            if (!_isWhitelisted(extraData[5:5 + 10 * uint256(uint8(extraData[4]))], taker)) {
+                uint256 denominator = _FEE_BASE + integratorFee + resolverFee;
+                calculatedTakingAmount = Math.mulDiv(calculatedTakingAmount, denominator + resolverFee, denominator);
+            }
+            return Math.mulDiv(calculatedTakingAmount, makingAmount, order.makingAmount, Math.Rounding.Ceil);
+        }
+    }
+
     /**
      * @notice See {IPostInteraction-postInteraction}.
      * @dev Takes the fee in taking tokens and transfers the rest to the maker.
@@ -101,42 +144,36 @@ contract FeeTaker is IPostInteraction, Ownable {
         uint256 /* remainingMakingAmount */,
         bytes calldata extraData
     ) external onlyLimitOrderProtocol {
-        uint256 integratorFeePercent = uint256(uint16(bytes2(extraData)));
-        uint256 resolverFeePercent = uint256(uint16(bytes2(extraData[2:])));
+        unchecked {
+            uint256 integratorFeePercent = uint256(uint16(bytes2(extraData)));
+            uint256 resolverFeePercent = uint256(uint16(bytes2(extraData[2:])));
+            address feeRecipient = address(bytes20(extraData[4:24]));
+            uint256 whitelistEnd = 25 + uint8(extraData[24]) * 10;
+            bytes calldata whitelist = extraData[25:whitelistEnd];
 
-        uint256 whitelistSize = uint8(extraData[24]);
-        uint256 indexThroughWhitelist = 25 + whitelistSize * 10;
-        bytes calldata whitelist = extraData[25:indexThroughWhitelist];
-
-        if (!_isWhitelisted(whitelist, taker)) {
-            resolverFeePercent *= 2;
-        }
-
-        uint256 userTakingAmount = _FEE_BASE * takingAmount / (_FEE_BASE + integratorFeePercent + resolverFeePercent);
-        uint256 integratorFee = userTakingAmount * integratorFeePercent / _FEE_BASE;
-        uint256 resolverFee = userTakingAmount * resolverFeePercent / _FEE_BASE;
-        address feeRecipient = address(bytes20(extraData[4:24]));
-        uint256 fee = integratorFee + resolverFee;
-
-        address receiver = order.maker.get();
-        if (extraData.length > indexThroughWhitelist) {
-            receiver = address(bytes20(extraData[indexThroughWhitelist:indexThroughWhitelist + 20]));
-        }
-
-        bool isEth = order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth();
-
-        if (isEth) {
-            if (fee > 0) {
-                _sendEth(feeRecipient, fee);
+            if (!_isWhitelisted(whitelist, taker)) {
+                resolverFeePercent *= 2;
             }
-            unchecked {
+
+            uint256 denominator = _FEE_BASE + integratorFeePercent + resolverFeePercent;
+            uint256 integratorFee = Math.mulDiv(takingAmount, integratorFeePercent, denominator);
+            uint256 resolverFee = Math.mulDiv(takingAmount, resolverFeePercent, denominator);
+            uint256 fee = integratorFee + resolverFee;
+
+            address receiver = order.maker.get();
+            if (extraData.length > whitelistEnd) {
+                receiver = address(bytes20(extraData[whitelistEnd:whitelistEnd + 20]));
+            }
+
+            if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
+                if (fee > 0) {
+                    _sendEth(feeRecipient, fee);
+                }
                 _sendEth(receiver, takingAmount - fee);
-            }
-        } else {
-            if (fee > 0) {
-                IERC20(order.takerAsset.get()).safeTransfer(feeRecipient, fee);
-            }
-            unchecked {
+            } else {
+                if (fee > 0) {
+                    IERC20(order.takerAsset.get()).safeTransfer(feeRecipient, fee);
+                }
                 IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - fee);
             }
         }
