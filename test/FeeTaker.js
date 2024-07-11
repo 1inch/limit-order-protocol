@@ -138,14 +138,14 @@ describe('FeeTaker', function () {
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
 
-        const userTakingAmount = BigInt(1e5) * takingAmount / (BigInt(1e5) + integratorFee + 2n * resolverFee);
-        const feeCalculated = userTakingAmount * (integratorFee + resolverFee) / BigInt(1e5);
-        const cashback = userTakingAmount * resolverFee / BigInt(1e5);
+        const feeCalculated = takingAmount * integratorFee / (BigInt(1e5) + integratorFee + 2n * resolverFee) +
+            takingAmount * resolverFee / (BigInt(1e5) + integratorFee + 2n * resolverFee);
+        const cashback = takingAmount * resolverFee / (BigInt(1e5) + integratorFee + 2n * resolverFee);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
-        // await expect(fillTx).to.changeTokenBalances(weth,
-        //     [addr, addr1, addr2],
-        //     [-takingAmount+cashback, takingAmount - feeCalculated - cashback, feeCalculated]
-        // );
+        await expect(fillTx).to.changeTokenBalances(weth,
+            [addr, addr1, addr2],
+            [-takingAmount + cashback, takingAmount - feeCalculated - cashback, feeCalculated],
+        );
     });
 
     it.only('should charge fee when out of whitelist', async function () {
@@ -187,14 +187,13 @@ describe('FeeTaker', function () {
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
 
-        const userTakingAmount = BigInt(1e5) * takingAmount / (BigInt(1e5) + integratorFee + 2n * resolverFee);
-        const feeCalculated = userTakingAmount * (integratorFee + 2n * resolverFee) / BigInt(1e5);
-        const cashback = 0n;
+        const feeCalculated = takingAmount * integratorFee / (BigInt(1e5) + integratorFee + 2n * resolverFee) +
+            takingAmount * resolverFee / (BigInt(1e5) + integratorFee + 2n * resolverFee) * 2n;
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
-        // await expect(fillTx).to.changeTokenBalances(weth,
-        //     [addr, addr1, addr2],
-        //     [-takingAmount+cashback, takingAmount - feeCalculated - cashback, feeCalculated]
-        // );
+        await expect(fillTx).to.changeTokenBalances(weth,
+            [addr, addr1, addr2],
+            [-takingAmount, takingAmount - feeCalculated, feeCalculated],
+        );
     });
 
     it('should charge fee and send the rest to the maker receiver', async function () {
