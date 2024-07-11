@@ -7,6 +7,7 @@ import { SafeERC20 } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.s
 import { UniERC20 } from "@1inch/solidity-utils/contracts/libraries/UniERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
@@ -101,49 +102,47 @@ contract FeeTaker is IPostInteraction, Ownable {
         uint256 /* remainingMakingAmount */,
         bytes calldata extraData
     ) external onlyLimitOrderProtocol {
-        uint256 integratorFeePercent = uint256(uint16(bytes2(extraData)));
-        uint256 resolverFeePercent = uint256(uint16(bytes2(extraData[2:])));
-
-        uint256 userTakingAmount = _FEE_BASE * takingAmount / (_FEE_BASE + integratorFeePercent + 2 * resolverFeePercent);
-        uint256 integratorFee = userTakingAmount * integratorFeePercent / _FEE_BASE;
-        uint256 resolverFee = userTakingAmount * resolverFeePercent / _FEE_BASE;
-
-        address feeRecipient = address(bytes20(extraData[4:24]));
-        uint256 whitelistSize = uint8(extraData[24]);
-        uint256 indexThroughWhitelist = 25 + whitelistSize * 10;
-        bytes calldata whitelist = extraData[25:indexThroughWhitelist];
-        uint256 feeAndCashback = integratorFee + 2 * resolverFee;
-        uint256 cashback = 0;
-        if (_isWhitelisted(whitelist, taker)) {
-            cashback = resolverFee;
-        }
-
-        address receiver = order.maker.get();
-        if (extraData.length > indexThroughWhitelist) {
-            receiver = address(bytes20(extraData[indexThroughWhitelist:indexThroughWhitelist + 20]));
-        }
-
-        bool isEth = order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth();
-
-        if (isEth) {
-            if (feeAndCashback - cashback > 0) {
-                _sendEth(feeRecipient, feeAndCashback - cashback);
+        unchecked {
+            uint256 integratorFee;
+            uint256 resolverFee;
+            {
+                uint256 integratorFeePercent = uint16(bytes2(extraData));
+                uint256 resolverFeePercent = uint16(bytes2(extraData[2:]));
+                uint256 denominator = _FEE_BASE + integratorFeePercent + 2 * resolverFeePercent;
+                integratorFee = Math.mulDiv(takingAmount, integratorFeePercent, denominator);
+                resolverFee = Math.mulDiv(takingAmount, resolverFeePercent, denominator);
             }
-            if (cashback > 0) {
-                _sendEth(taker, cashback);
+
+            address feeRecipient = address(bytes20(extraData[4:24]));
+            uint256 whitelistEnd = 25 + uint8(extraData[24]) * 10;
+            uint256 fee = integratorFee + 2 * resolverFee;
+            uint256 cashback;
+            if (_isWhitelisted(extraData[25:whitelistEnd], taker)) {
+                fee -= resolverFee;
+                cashback = resolverFee;
             }
-            unchecked {
-                _sendEth(receiver, takingAmount - feeAndCashback);
+
+            address receiver = order.maker.get();
+            if (extraData.length > whitelistEnd) {
+                receiver = address(bytes20(extraData[whitelistEnd:whitelistEnd + 20]));
             }
-        } else {
-            if (feeAndCashback - cashback > 0) {
-                IERC20(order.takerAsset.get()).safeTransfer(feeRecipient, feeAndCashback - cashback);
-            }
-            if (cashback > 0) {
-                IERC20(order.takerAsset.get()).safeTransfer(taker, cashback);
-            }
-            unchecked {
-                IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - feeAndCashback);
+
+            if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
+                if (fee > 0) {
+                    _sendEth(feeRecipient, fee);
+                }
+                if (cashback > 0) {
+                    _sendEth(taker, cashback);
+                }
+                _sendEth(receiver, takingAmount - fee - cashback);
+            } else {
+                if (fee > 0) {
+                    IERC20(order.takerAsset.get()).safeTransfer(feeRecipient, fee);
+                }
+                if (cashback > 0) {
+                    IERC20(order.takerAsset.get()).safeTransfer(taker, cashback);
+                }
+                IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - fee - cashback);
             }
         }
     }
