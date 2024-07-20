@@ -110,8 +110,6 @@ describe('FeeTaker', function () {
         const takingAmount = ether('0.3');
         const integratorFee = BigInt(1e4);
         const resolverFee = BigInt(1e3);
-        const feeRecipient = addr2.address;
-        const whitelist = '0x' + addr.address.slice(-20);
 
         const order = buildOrder(
             {
@@ -123,15 +121,13 @@ describe('FeeTaker', function () {
                 takingAmount,
             },
             {
-                // * 2 bytes — integrator fee percentage (in 1e5)
-                // * 2 bytes — resolver fee percentage (in 1e5)
-                // * 20 bytes — fee recipient
-                // * 1 byte - taker whitelist size
-                // * (bytes10)[N] — taker whitelist
-                postInteraction: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'address', 'bytes1', 'bytes'],
-                    [await feeTaker.getAddress(), integratorFee, resolverFee, feeRecipient, '0x01', whitelist],
-                ),
+                postInteraction: buildFeeTakerPostInteractionData({
+                    feeTaker: await feeTaker.getAddress(),
+                    integratorFee,
+                    resolverFee,
+                    feeRecipient: addr2.address,
+                    whitelist: [addr.address],
+                }),
             },
         );
 
@@ -161,8 +157,6 @@ describe('FeeTaker', function () {
         const takingAmount = ether('0.3');
         const integratorFee = BigInt(1e4);
         const resolverFee = BigInt(1e3);
-        const feeRecipient = addr2.address;
-        const whitelist = '0x' + addr.address.slice(-20);
 
         const order = buildOrder(
             {
@@ -174,15 +168,12 @@ describe('FeeTaker', function () {
                 takingAmount,
             },
             {
-                // * 2 bytes — integrator fee percentage (in 1e5)
-                // * 2 bytes — resolver fee percentage (in 1e5)
-                // * 20 bytes — fee recipient
-                // * 1 byte - taker whitelist size
-                // * (bytes10)[N] — taker whitelist
-                postInteraction: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'address', 'bytes1', 'bytes'],
-                    [await feeTaker.getAddress(), integratorFee, resolverFee, feeRecipient, '0x01', whitelist],
-                ),
+                postInteraction: buildFeeTakerPostInteractionData({
+                    feeTaker: await feeTaker.getAddress(),
+                    integratorFee,
+                    resolverFee,
+                    whitelist: [addr.address],
+                }),
             },
         );
 
@@ -273,7 +264,6 @@ describe('FeeTaker', function () {
                     feeTaker: await feeTaker.getAddress(),
                     integratorFee,
                     resolverFee,
-                    feeRecipient: addr2.address,
                     whitelist: [addr2.address],
                 }),
             },

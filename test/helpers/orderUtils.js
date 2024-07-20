@@ -271,6 +271,20 @@ function skipMakerPermit (amount) {
     return BigInt(amount) | BigInt(buildTakerTraits({ skipMakerPermit: true }).traits);
 }
 
+function buildExtensionsBitmapData({
+    whitelistSize = 1,
+    feeType = 0,
+} = {}) {
+    const WHITELIST_BITMAP_OFFSET = 3; // Bitmap: VVVVVxxx
+    const FEE_RESOLVER_FLAG = 1;
+    const FEE_INTEGRATOR_FLAG = 2;
+    return ethers.toBeHex(
+        (whitelistSize << WHITELIST_BITMAP_OFFSET) |
+        feeType & FEE_RESOLVER_FLAG |
+        feeType & FEE_INTEGRATOR_FLAG,
+    );
+}
+
 function buildFeeTakerPostInteractionData ({
     feeTaker,
     integratorFee = 0n,
@@ -279,14 +293,30 @@ function buildFeeTakerPostInteractionData ({
     whitelist = [],
     receiver,
 }) {
+    // * 2 bytes — Resolver fee percentage (in 1e5). Should be skipped if resolver fee usage flag is not setted.
+    // * 2 bytes — Integrator fee percentage (in 1e5). Should be skipped if integration fee usage flag is not setted.
+    // * (bytes10)[N] — Taker whitelist
+    // * 20 bytes — Fee recipient. Should be skipped if used FeeBank or all fee flags is not setted.
+    // * 20 bytes — Receiver of taking tokens (optional, if not set, maker is used)
+    // * 1 byte - Bitmap indicating various usage flags and values.
+    let data = feeTaker;
+    if (BigInt(resolverFee) > 0n) {
+        data += trim0x(ethers.toBeHex(resolverFee, 2));
+    }
+    if (BigInt(integratorFee) > 0n) {
+        data += trim0x(ethers.toBeHex(integratorFee, 2));
+    }
     const zippedWhitelist = whitelist.map(item => item.slice(-20));
-    let data = ethers.solidityPacked(
-        ['address', 'uint16', 'uint16', 'address', 'bytes1', 'bytes'],
-        [feeTaker, integratorFee, resolverFee, feeRecipient, ethers.toBeHex(whitelist.length), '0x' + zippedWhitelist.join()],
-    );
+    data += zippedWhitelist.join();
+    if (feeRecipient) {
+        data += trim0x(feeRecipient);
+    }
     if (receiver) {
         data += trim0x(receiver);
     }
+
+    const feeType = (BigInt(resolverFee) > 0n ? 1 : 0) + (BigInt(integratorFee) > 0n ? 2 : 0);
+    data += trim0x(buildExtensionsBitmapData({ whitelistSize: whitelist.length, feeType }));
     return data;
 }
 

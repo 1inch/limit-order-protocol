@@ -12,6 +12,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
+import { FeeTakerLib } from "../libraries/FeeTakerLib.sol";
 import { FeeBank } from "./FeeBank.sol";
 import { FeeBankCharger } from "./FeeBankCharger.sol";
 
@@ -21,6 +22,7 @@ contract FeeTaker is IPostInteraction, FeeBankCharger, Ownable {
     using SafeERC20 for IERC20;
     using UniERC20 for IERC20;
     using MakerTraitsLib for MakerTraits;
+    using FeeTakerLib for bytes;
 
     /**
      * @dev The caller is not the limit order protocol contract.
@@ -87,12 +89,15 @@ contract FeeTaker is IPostInteraction, FeeBankCharger, Ownable {
      * @notice See {IPostInteraction-postInteraction}.
      * @dev Takes the fee in taking tokens and transfers the rest to the maker.
      * `extraData` consists of:
-     * 2 bytes — integrator fee percentage (in 1e5)
-     * 2 bytes — resolver fee percentage (in 1e5)
-     * 20 bytes — fee recipient
-     * 1 byte - taker whitelist size
-     * (bytes10)[N] — taker whitelist
-     * 20 bytes — receiver of taking tokens (optional, if not set, maker is used)
+     * 2 bytes — Resolver fee percentage (in 1e5). Should be skipped if resolver fee usage flag is not setted.
+     * 2 bytes — Integrator fee percentage (in 1e5). Should be skipped if integration fee usage flag is not setted.
+     * (bytes10)[N] — Taker whitelist
+     * 20 bytes — Fee recipient. Should be skipped if used FeeBank or all fee flags is not setted.
+     * 20 bytes — Receiver of taking tokens (optional, if not set, maker is used)
+     * 1 byte - Bitmap indicating various usage flags and values.
+     *          The bitmask `xxxxxxx1` signifies resolver fee usage.
+     *          The bitmask `xxxxxx1x` signifies integration fee usage.
+     *          The bitmask `VVVVVxxx` represents the number of takers in the whitelist, where the V bits denote the count of takers.
      */
     function postInteraction(
         IOrderMixin.Order calldata order,
@@ -108,31 +113,45 @@ contract FeeTaker is IPostInteraction, FeeBankCharger, Ownable {
             uint256 integratorFee;
             uint256 resolverFee;
             {
-                uint256 integratorFeePercent = uint16(bytes2(extraData));
-                uint256 resolverFeePercent = uint16(bytes2(extraData[2:]));
+                uint256 resolverFeePercent;
+                if (extraData.resolverFeeEnabled()) {
+                    resolverFeePercent = uint16(bytes2(extraData));
+                    extraData = extraData[2:];
+                }
+                uint256 integratorFeePercent;
+                if (extraData.integratorFeeEnabled()) {
+                    integratorFeePercent = uint16(bytes2(extraData));
+                    extraData = extraData[2:];
+                }
                 uint256 denominator = _FEE_BASE + integratorFeePercent + 2 * resolverFeePercent;
                 integratorFee = Math.mulDiv(takingAmount, integratorFeePercent, denominator);
                 resolverFee = Math.mulDiv(takingAmount, resolverFeePercent, denominator);
             }
 
-            address feeRecipient = address(bytes20(extraData[4:24]));
-            uint256 whitelistEnd = 25 + uint8(extraData[24]) * 10;
+            uint256 whitelistEnd = extraData.resolversCount() * 10;
             uint256 maxFee = integratorFee + 2 * resolverFee;
             uint256 fee = maxFee;
             uint256 cashback;
-            if (_isWhitelisted(extraData[25:whitelistEnd], taker)) {
+            address feeRecipient;
+            if (_isWhitelisted(extraData[:whitelistEnd], taker)) {
                 fee -= resolverFee;
                 cashback = resolverFee;
             }
-            if (FeeBank(FEE_BANK).payWithFeeBank(taker)) {
-                _chargeFee(taker, fee);
-                cashback = maxFee;
-                fee = 0;
+            extraData = extraData[whitelistEnd:];
+            if (fee > 0) {
+                if (FeeBank(FEE_BANK).payWithFeeBank(taker)) {
+                    _chargeFee(taker, fee);
+                    cashback = maxFee;
+                    fee = 0;
+                } else {
+                    feeRecipient = address(bytes20(extraData));
+                    extraData = extraData[20:];
+                }
             }
 
             address receiver = order.maker.get();
-            if (extraData.length > whitelistEnd) {
-                receiver = address(bytes20(extraData[whitelistEnd:whitelistEnd + 20]));
+            if (extraData.length > 1) {
+                receiver = address(bytes20(extraData));
             }
 
             if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
