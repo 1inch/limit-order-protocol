@@ -12,7 +12,6 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
-import { FeeTakerLib } from "../libraries/FeeTakerLib.sol";
 import { FeeBank } from "./FeeBank.sol";
 import { FeeBankCharger } from "./FeeBankCharger.sol";
 
@@ -22,7 +21,6 @@ contract FeeTaker is IPostInteraction, FeeBankCharger, Ownable {
     using SafeERC20 for IERC20;
     using UniERC20 for IERC20;
     using MakerTraitsLib for MakerTraits;
-    using FeeTakerLib for bytes;
 
     /**
      * @dev The caller is not the limit order protocol contract.
@@ -36,6 +34,9 @@ contract FeeTaker is IPostInteraction, FeeBankCharger, Ownable {
 
     /// @dev Allows fees in range [1e-5, 0.65535]
     uint256 internal constant _FEE_BASE = 1e5;
+    uint256 internal constant _WHITELIST_SHIFT = 3;
+    bytes1 internal constant _RESOLVER_FEE_FLAG = 0x01;
+    bytes1 internal constant _INTEGRATOR_FEE_FLAG = 0x02;
 
     address private immutable _LIMIT_ORDER_PROTOCOL;
     address private immutable _WETH;
@@ -86,6 +87,33 @@ contract FeeTaker is IPostInteraction, FeeBankCharger, Ownable {
     }
 
     /**
+     * @notice Checks if the resolver fee is enabled
+     * @param bitmap Bitmap indicating various usage flags and values
+     * @return True if the resolver fee is enabled
+     */
+    function _resolverFeeEnabled(bytes1 bitmap) internal pure returns (bool) {
+        return bitmap & _RESOLVER_FEE_FLAG == _RESOLVER_FEE_FLAG;
+    }
+
+    /**
+     * @notice Checks if the integrator fee is enabled
+     * @param bitmap Bitmap indicating various usage flags and values
+     * @return True if the integrator fee is enabled
+     */
+    function _integratorFeeEnabled(bytes1 bitmap) internal pure returns (bool) {
+        return bitmap & _INTEGRATOR_FEE_FLAG == _INTEGRATOR_FEE_FLAG;
+    }
+
+    /**
+     * @notice Gets the number of resolvers in the whitelist
+     * @param bitmap Bitmap indicating various usage flags and values
+     * @return The number of resolvers in the whitelist
+     */
+    function _resolversCount(bytes1 bitmap) internal pure returns (uint256) {
+        return uint8(bitmap) >> _WHITELIST_SHIFT;
+    }
+
+    /**
      * @notice See {IPostInteraction-postInteraction}.
      * @dev Takes the fee in taking tokens and transfers the rest to the maker.
      * `extraData` consists of:
@@ -114,12 +142,12 @@ contract FeeTaker is IPostInteraction, FeeBankCharger, Ownable {
             uint256 resolverFee;
             {
                 uint256 resolverFeePercent;
-                if (extraData.resolverFeeEnabled()) {
+                if (_resolverFeeEnabled(extraData[extraData.length - 1])) {
                     resolverFeePercent = uint16(bytes2(extraData));
                     extraData = extraData[2:];
                 }
                 uint256 integratorFeePercent;
-                if (extraData.integratorFeeEnabled()) {
+                if (_integratorFeeEnabled(extraData[extraData.length - 1])) {
                     integratorFeePercent = uint16(bytes2(extraData));
                     extraData = extraData[2:];
                 }
@@ -128,7 +156,7 @@ contract FeeTaker is IPostInteraction, FeeBankCharger, Ownable {
                 resolverFee = Math.mulDiv(takingAmount, resolverFeePercent, denominator);
             }
 
-            uint256 whitelistEnd = extraData.resolversCount() * 10;
+            uint256 whitelistEnd = _resolversCount(extraData[extraData.length - 1]) * 10;
             uint256 maxFee = integratorFee + 2 * resolverFee;
             uint256 fee = maxFee;
             uint256 cashback;

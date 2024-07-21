@@ -271,7 +271,7 @@ function skipMakerPermit (amount) {
     return BigInt(amount) | BigInt(buildTakerTraits({ skipMakerPermit: true }).traits);
 }
 
-function buildExtensionsBitmapData({
+function buildExtensionsBitmapData ({
     whitelistSize = 1,
     feeType = 0,
 } = {}) {
@@ -290,8 +290,8 @@ function buildFeeTakerPostInteractionData ({
     integratorFee = 0n,
     resolverFee = 0n,
     feeRecipient,
+    makerReceiver,
     whitelist = [],
-    receiver,
 }) {
     // * 2 bytes — Resolver fee percentage (in 1e5). Should be skipped if resolver fee usage flag is not setted.
     // * 2 bytes — Integrator fee percentage (in 1e5). Should be skipped if integration fee usage flag is not setted.
@@ -311,8 +311,8 @@ function buildFeeTakerPostInteractionData ({
     if (feeRecipient) {
         data += trim0x(feeRecipient);
     }
-    if (receiver) {
-        data += trim0x(receiver);
+    if (makerReceiver) {
+        data += trim0x(makerReceiver);
     }
 
     const feeType = (BigInt(resolverFee) > 0n ? 1 : 0) + (BigInt(integratorFee) > 0n ? 2 : 0);
