@@ -275,7 +275,7 @@ function buildFeeTakerPostInteractionData ({
     feeTaker,
     integratorFee = 0n,
     resolverFee = 0n,
-    feeRecipient,
+    feeRecipient = constants.ZERO_ADDRESS,
     whitelist = [],
     receiver,
 }) {
