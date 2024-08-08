@@ -99,7 +99,7 @@ describe('FeeTaker', function () {
         await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, addr2, addr3], [-takingAmount, 0, 0, takingAmount]);
     });
 
-    it.only('should charge fee when in whitelist', async function () {
+    it('should charge fee when in whitelist', async function () {
         const { dai, weth, swap, chainId, feeTaker } = await loadFixture(deployContractsAndInit);
 
         const makingAmount = ether('300');
@@ -147,13 +147,12 @@ describe('FeeTaker', function () {
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
 
-        const userTakingAmount = BigInt(1e5) * takingAmount / (BigInt(1e5) + integratorFee + resolverFee);
-        const feeCalculated = userTakingAmount * (integratorFee + resolverFee) / BigInt(1e5);
+        const feeCalculated = takingAmount * (integratorFee + resolverFee) / BigInt(1e5);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
-        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, addr2], [-takingAmount, takingAmount - feeCalculated, feeCalculated]);
+        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, addr2], [-takingAmount - feeCalculated, takingAmount, feeCalculated]);
     });
 
-    it.only('should charge fee when out of whitelist', async function () {
+    it('should charge fee when out of whitelist', async function () {
         const { dai, weth, swap, chainId, feeTaker } = await loadFixture(deployContractsAndInit);
 
         const makingAmount = ether('300');
@@ -201,12 +200,11 @@ describe('FeeTaker', function () {
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
 
-        const integratorFeeAmount = takingAmount * integratorFee / (BigInt(1e5) + integratorFee + resolverFee);
-        const resolverFeeAmount = takingAmount * resolverFee / (BigInt(1e5) + integratorFee + resolverFee);
+        const feeCalculated = takingAmount * (integratorFee + resolverFee + resolverFee) / BigInt(1e5);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
         await expect(fillTx).to.changeTokenBalances(weth,
             [addr, addr1, addr2],
-            [-(takingAmount + resolverFeeAmount), takingAmount - integratorFeeAmount - resolverFeeAmount, integratorFeeAmount + 2n * resolverFeeAmount],
+            [-takingAmount - feeCalculated, takingAmount, feeCalculated],
         );
     });
 

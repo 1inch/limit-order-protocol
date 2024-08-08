@@ -9,12 +9,13 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
+import { IAmountGetter } from "../interfaces/IAmountGetter.sol";
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 
 /// @title Helper contract that adds feature of collecting fee in takerAsset
-contract FeeTaker is IPostInteraction, Ownable {
+contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
     using AddressLib for Address;
     using SafeERC20 for IERC20;
     using UniERC20 for IERC20;
@@ -81,44 +82,78 @@ contract FeeTaker is IPostInteraction, Ownable {
         }
     }
 
+    /**
+     * @dev Calculate makingAmount with fee.
+     * `extraData` consists of:
+     * 2 bytes — integrator fee percentage (in 1e5)
+     * 2 bytes — resolver fee percentage (in 1e5)
+     * 1 byte - taker whitelist size
+     * (bytes10)[N] — taker whitelist
+     */
     function getMakingAmount(
-        IOrderMixin.Order calldata /* order */,
-        bytes calldata /* extension */,
-        bytes32 /* orderHash */,
-        address /* taker */,
-        uint256 /* takingAmount */,
-        uint256 /* remainingMakingAmount */,
-        bytes calldata /* extraData */
-    ) external pure returns (uint256) {
-        // TODO: Implement this function
-        return 0;
+        IOrderMixin.Order calldata order,
+        bytes calldata extension,
+        bytes32 orderHash,
+        address taker,
+        uint256 takingAmount,
+        uint256 remainingMakingAmount,
+        bytes calldata extraData
+    ) external view returns (uint256 calculatedMakingAmount) {
+        unchecked {
+            uint256 integratorFee = uint256(uint16(bytes2(extraData)));
+            uint256 resolverFee = uint256(uint16(bytes2(extraData[2:])));
+            bytes calldata whitelist = extraData[5:5 + 10 * uint256(uint8(extraData[4]))];
+            extraData = extraData[5 + 10 * uint256(uint8(extraData[4])):];
+            if (extraData.length > 20) {
+                calculatedMakingAmount = IAmountGetter(address(bytes20(extraData))).getMakingAmount(
+                    order, extension, orderHash, taker, takingAmount, remainingMakingAmount, extraData[20:]
+                );
+            } else {
+                calculatedMakingAmount = order.makingAmount;
+            }
+            uint256 denominator = _FEE_BASE + integratorFee + resolverFee;
+            if (!_isWhitelisted(whitelist, taker)) {
+                denominator += resolverFee;
+            }
+            calculatedMakingAmount = Math.mulDiv(calculatedMakingAmount, _FEE_BASE, denominator, Math.Rounding.Floor);
+            return Math.mulDiv(calculatedMakingAmount, takingAmount, order.takingAmount, Math.Rounding.Floor);
+        }
     }
 
     /**
      * @dev Calculate takingAmount with fee.
      * `extraData` consists of:
-     * 1 byte - taker whitelist size
-     * (bytes10)[N] — taker whitelist
      * 2 bytes — integrator fee percentage (in 1e5)
      * 2 bytes — resolver fee percentage (in 1e5)
+     * 1 byte - taker whitelist size
+     * (bytes10)[N] — taker whitelist
      */
     function getTakingAmount(
         IOrderMixin.Order calldata order,
-        bytes calldata /* extension */,
-        bytes32 /* orderHash */,
+        bytes calldata extension,
+        bytes32 orderHash,
         address taker,
         uint256 makingAmount,
-        uint256 /* remainingMakingAmount */,
+        uint256 remainingMakingAmount,
         bytes calldata extraData
-    ) external view returns (uint256) {
+    ) external view returns (uint256 calculatedTakingAmount) {
         unchecked {
-            uint256 integratorFee = uint256(uint16(bytes2(extraData[:2])));
+            uint256 integratorFee = uint256(uint16(bytes2(extraData)));
             uint256 resolverFee = uint256(uint16(bytes2(extraData[2:])));
-            uint256 calculatedTakingAmount = order.takingAmount;
-            if (!_isWhitelisted(extraData[5:5 + 10 * uint256(uint8(extraData[4]))], taker)) {
-                uint256 denominator = _FEE_BASE + integratorFee + resolverFee;
-                calculatedTakingAmount = Math.mulDiv(calculatedTakingAmount, denominator + resolverFee, denominator);
+            bytes calldata whitelist = extraData[5:5 + 10 * uint256(uint8(extraData[4]))];
+            extraData = extraData[5 + 10 * uint256(uint8(extraData[4])):];
+            if (extraData.length > 20) {
+                calculatedTakingAmount = IAmountGetter(address(bytes20(extraData))).getTakingAmount(
+                    order, extension, orderHash, taker, makingAmount, remainingMakingAmount, extraData[20:]
+                );
+            } else {
+                calculatedTakingAmount = order.takingAmount;
             }
+            uint256 numerator = _FEE_BASE + integratorFee + resolverFee;
+            if (!_isWhitelisted(whitelist, taker)) {
+                numerator += resolverFee;
+            }
+            calculatedTakingAmount = Math.mulDiv(calculatedTakingAmount, numerator, _FEE_BASE, Math.Rounding.Ceil);
             return Math.mulDiv(calculatedTakingAmount, makingAmount, order.makingAmount, Math.Rounding.Ceil);
         }
     }
