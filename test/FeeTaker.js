@@ -65,6 +65,7 @@ describe('FeeTaker', function () {
             extension: order.extension,
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
+        console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
         await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, addr2], [-takingAmount, takingAmount, 0]);
     });
@@ -100,6 +101,7 @@ describe('FeeTaker', function () {
             extension: order.extension,
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
+        console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
         await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, addr2, addr3], [-takingAmount, 0, 0, takingAmount]);
     });
@@ -253,6 +255,7 @@ describe('FeeTaker', function () {
             extension: order.extension,
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
+        console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
         await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, addr2, addr3], [-takingAmount - feeCalculated, 0, feeCalculated, takingAmount]);
     });
@@ -297,6 +300,7 @@ describe('FeeTaker', function () {
             extension: order.extension,
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
+        console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
         await expect(fillTx).to.changeTokenBalance(weth, addr, -takingAmount - feeCalculated);
         await expect(fillTx).to.changeEtherBalances([addr1, addr2], [takingAmount, feeCalculated]);
@@ -343,6 +347,7 @@ describe('FeeTaker', function () {
             extension: order.extension,
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
+        console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
         await expect(fillTx).to.changeTokenBalance(weth, addr, -takingAmount - feeCalculated);
         await expect(fillTx).to.changeEtherBalances([addr1, addr2, addr3], [0, feeCalculated, takingAmount]);
