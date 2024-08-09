@@ -33,8 +33,8 @@ describe('FeeTaker', function () {
         const feeTaker = await FeeTaker.deploy(swap, weth, weth, addr);
         const feeBank = await ethers.getContractAt('FeeBank', await feeTaker.FEE_BANK());
 
-        await weth.approve(feeBank, ether('1'));
-        await feeBank.deposit(ether('1'));
+        await weth.approve(feeBank, ether('10'));
+        await feeBank.deposit(ether('10'));
 
         return { dai, weth, inch, swap, chainId, feeTaker, feeBank };
     };
@@ -58,7 +58,7 @@ describe('FeeTaker', function () {
                 postInteraction: buildFeeTakerPostInteractionData({
                     feeTaker: await feeTaker.getAddress(),
                     feeRecipient: addr2.address,
-                    whitelist: [addr.address],
+                    whitelist: Array.from({length: 10}, (_, i) => addr.address),
                 }),
             },
         );
@@ -93,7 +93,7 @@ describe('FeeTaker', function () {
                     feeTaker: await feeTaker.getAddress(),
                     feeRecipient: addr2.address,
                     receiver: addr3.address,
-                    whitelist: [addr.address],
+                    whitelist: Array.from({length: 10}, (_, i) => addr.address),
                 }),
             },
         );
@@ -115,6 +115,7 @@ describe('FeeTaker', function () {
         const takingAmount = ether('0.3');
         const integratorFee = BigInt(1e4);
         const resolverFee = BigInt(1e3);
+        const feeBankFee = ether('3');
 
         const order = buildOrder(
             {
@@ -130,8 +131,9 @@ describe('FeeTaker', function () {
                     feeTaker: await feeTaker.getAddress(),
                     integratorFee,
                     resolverFee,
+                    feeBankFee,
                     feeRecipient: addr2.address,
-                    whitelist: [addr.address],
+                    whitelist: Array.from({length: 10}, (_, i) => addr.address),
                 }),
             },
         );
@@ -162,6 +164,7 @@ describe('FeeTaker', function () {
         const takingAmount = ether('0.3');
         const integratorFee = BigInt(1e4);
         const resolverFee = BigInt(1e3);
+        const feeBankFee = ether('3');
 
         const order = buildOrder(
             {
@@ -177,8 +180,9 @@ describe('FeeTaker', function () {
                     feeTaker: await feeTaker.getAddress(),
                     integratorFee,
                     resolverFee,
+                    feeBankFee,
                     feeRecipient: addr2.address,
-                    whitelist: [addr.address],
+                    whitelist: Array.from({length: 10}, (_, i) => addr.address),
                 }),
             },
         );
@@ -199,7 +203,7 @@ describe('FeeTaker', function () {
             [addr, addr1, addr2],
             [-takingAmount + cashback, takingAmount - cashback, 0],
         );
-        expect(await feeBank.availableCredit(addr)).to.be.equal(ether('1') - feeCalculated);
+        expect(await feeBank.availableCredit(addr)).to.be.equal(ether('10') - feeBankFee);
     });
 
     it('should charge fee NOT by FEE_BANK when out of whitelist', async function () {
@@ -209,6 +213,7 @@ describe('FeeTaker', function () {
         const takingAmount = ether('0.3');
         const integratorFee = BigInt(1e4);
         const resolverFee = BigInt(1e3);
+        const feeBankFee = ether('3');
 
         const order = buildOrder(
             {
@@ -224,8 +229,9 @@ describe('FeeTaker', function () {
                     feeTaker: await feeTaker.getAddress(),
                     integratorFee,
                     resolverFee,
+                    feeBankFee,
                     feeRecipient: addr2.address,
-                    whitelist: [addr2.address],
+                    whitelist: Array.from({length: 10}, (_, i) => addr2.address),
                 }),
             },
         );
@@ -255,6 +261,7 @@ describe('FeeTaker', function () {
         const takingAmount = ether('0.3');
         const integratorFee = BigInt(1e4);
         const resolverFee = BigInt(1e3);
+        const feeBankFee = ether('3');
 
         const order = buildOrder(
             {
@@ -270,8 +277,9 @@ describe('FeeTaker', function () {
                     feeTaker: await feeTaker.getAddress(),
                     integratorFee,
                     resolverFee,
+                    feeBankFee,
                     feeRecipient: addr2.address,
-                    whitelist: [addr2.address],
+                    whitelist: Array.from({length: 10}, (_, i) => addr2.address),
                 }),
             },
         );
@@ -290,7 +298,7 @@ describe('FeeTaker', function () {
             [addr, addr1, addr2],
             [-takingAmount + feeCalculated, takingAmount - feeCalculated, 0],
         );
-        expect(await feeBank.availableCredit(addr)).to.be.equal(ether('1') - feeCalculated);
+        expect(await feeBank.availableCredit(addr)).to.be.equal(ether('10') - feeBankFee);
     });
 
     it('should charge fee in eth', async function () {
@@ -299,6 +307,8 @@ describe('FeeTaker', function () {
         const makingAmount = ether('300');
         const takingAmount = ether('0.3');
         const integratorFee = BigInt(1e4);
+        const resolverFee = 0n;
+        const feeBankFee = 0n;
 
         const order = buildOrder(
             {
@@ -314,9 +324,10 @@ describe('FeeTaker', function () {
                 postInteraction: buildFeeTakerPostInteractionData({
                     feeTaker: await feeTaker.getAddress(),
                     integratorFee,
-                    resolverFee: 0n,
+                    resolverFee,
+                    feeBankFee,
                     feeRecipient: addr2.address,
-                    whitelist: [addr.address],
+                    whitelist: Array.from({length: 10}, (_, i) => addr.address),
                 }),
             },
         );

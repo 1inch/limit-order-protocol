@@ -59,37 +59,13 @@ contract FeeTaker is IPostInteraction, FeeBankCharger, Ownable {
     receive() external payable {}
 
     /**
-     * @dev Validates whether the resolver is whitelisted.
-     * @param whitelist Whitelist is tightly packed struct of the following format:
-     * ```
-     * (bytes10)[N] resolversAddresses;
-     * ```
-     * Only 10 lowest bytes of the resolver address are used for comparison.
-     * @param resolver The resolver to check.
-     * @return Whether the resolver is whitelisted.
-     */
-    function _isWhitelisted(bytes calldata whitelist, address resolver) internal view virtual returns (bool) {
-        unchecked {
-            uint80 maskedResolverAddress = uint80(uint160(resolver));
-            uint256 size = whitelist.length / 10;
-            for (uint256 i = 0; i < size; i++) {
-                uint80 whitelistedAddress = uint80(bytes10(whitelist[:10]));
-                if (maskedResolverAddress == whitelistedAddress) {
-                    return true;
-                }
-                whitelist = whitelist[10:];
-            }
-            return false;
-        }
-    }
-
-    /**
      * @notice See {IPostInteraction-postInteraction}.
      * @dev Takes the fee in taking tokens and transfers the rest to the maker.
      * `extraData` consists of:
      * 2 bytes — integrator fee percentage (in 1e5)
      * 2 bytes — resolver fee percentage (in 1e5)
      * 20 bytes — fee recipient
+     * 16 bytes - feeBank flat fee
      * 1 byte - taker whitelist size
      * (bytes10)[N] — taker whitelist
      * 20 bytes — receiver of taking tokens (optional, if not set, maker is used)
@@ -99,7 +75,7 @@ contract FeeTaker is IPostInteraction, FeeBankCharger, Ownable {
         bytes calldata /* extension */,
         bytes32 /* orderHash */,
         address taker,
-        uint256 /* makingAmount */,
+        uint256 makingAmount,
         uint256 takingAmount,
         uint256 /* remainingMakingAmount */,
         bytes calldata extraData
@@ -116,16 +92,17 @@ contract FeeTaker is IPostInteraction, FeeBankCharger, Ownable {
             }
 
             address feeRecipient = address(bytes20(extraData[4:24]));
-            uint256 whitelistEnd = 25 + uint8(extraData[24]) * 10;
+            uint256 feeBankFee = uint128(bytes16(extraData[24:40]));
+            uint256 whitelistEnd = 41 + uint8(extraData[40]) * 10;
             uint256 maxFee = integratorFee + 2 * resolverFee;
             uint256 fee = maxFee;
             uint256 cashback;
-            if (_isWhitelisted(extraData[25:whitelistEnd], taker)) {
+            if (_isWhitelisted(extraData[41:whitelistEnd], taker)) {
                 fee -= resolverFee;
                 cashback = resolverFee;
             }
             if (FeeBank(FEE_BANK).payWithFeeBank(taker)) {
-                _chargeFee(taker, fee);
+                _chargeFee(taker, Math.mulDiv(feeBankFee, makingAmount, order.makingAmount));
                 cashback = maxFee;
                 fee = 0;
             }
@@ -168,6 +145,31 @@ contract FeeTaker is IPostInteraction, FeeBankCharger, Ownable {
         (bool success, ) = target.call{value: amount}("");
         if (!success) {
             revert EthTransferFailed();
+        }
+    }
+
+    /**
+     * @dev Validates whether the resolver is whitelisted.
+     * @param whitelist Whitelist is tightly packed struct of the following format:
+     * ```
+     * (bytes10)[N] resolversAddresses;
+     * ```
+     * Only 10 lowest bytes of the resolver address are used for comparison.
+     * @param resolver The resolver to check.
+     * @return Whether the resolver is whitelisted.
+     */
+    function _isWhitelisted(bytes calldata whitelist, address resolver) private pure returns (bool) {
+        unchecked {
+            uint80 maskedResolverAddress = uint80(uint160(resolver));
+            uint256 size = whitelist.length / 10;
+            for (uint256 i = 0; i < size; i++) {
+                uint80 whitelistedAddress = uint80(bytes10(whitelist[:10]));
+                if (maskedResolverAddress == whitelistedAddress) {
+                    return true;
+                }
+                whitelist = whitelist[10:];
+            }
+            return false;
         }
     }
 }
