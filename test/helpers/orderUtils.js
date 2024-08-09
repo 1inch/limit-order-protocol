@@ -271,6 +271,26 @@ function skipMakerPermit (amount) {
     return BigInt(amount) | BigInt(buildTakerTraits({ skipMakerPermit: true }).traits);
 }
 
+function buildFeeTakerPostInteractionData ({
+    feeTaker,
+    integratorFee = 0n,
+    resolverFee = 0n,
+    feeRecipient = constants.ZERO_ADDRESS,
+    feeBankFee = 0n,
+    whitelist = [],
+    receiver,
+}) {
+    const zippedWhitelist = whitelist.map(item => item.slice(-20));
+    let data = ethers.solidityPacked(
+        ['address', 'uint16', 'uint16', 'address', 'uint128', 'bytes1', 'bytes'],
+        [feeTaker, integratorFee, resolverFee, feeRecipient, feeBankFee, ethers.toBeHex(whitelist.length), '0x' + zippedWhitelist.join('')],
+    );
+    if (receiver) {
+        data += trim0x(receiver);
+    }
+    return data;
+}
+
 module.exports = {
     ABIOrder,
     buildTakerTraits,
@@ -283,6 +303,7 @@ module.exports = {
     fillWithMakingAmount,
     unwrapWethTaker,
     skipMakerPermit,
+    buildFeeTakerPostInteractionData,
     name,
     version,
 };

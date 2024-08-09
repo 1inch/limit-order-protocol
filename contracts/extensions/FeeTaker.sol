@@ -7,13 +7,16 @@ import { SafeERC20 } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.s
 import { UniERC20 } from "@1inch/solidity-utils/contracts/libraries/UniERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
+import { FeeBank } from "./FeeBank.sol";
+import { FeeBankCharger } from "./FeeBankCharger.sol";
 
 /// @title Helper contract that adds feature of collecting fee in takerAsset
-contract FeeTaker is IPostInteraction, Ownable {
+contract FeeTaker is IPostInteraction, FeeBankCharger, Ownable {
     using AddressLib for Address;
     using SafeERC20 for IERC20;
     using UniERC20 for IERC20;
@@ -45,7 +48,7 @@ contract FeeTaker is IPostInteraction, Ownable {
      * @notice Initializes the contract.
      * @param limitOrderProtocol The limit order protocol contract.
      */
-    constructor(address limitOrderProtocol, address weth, address owner) Ownable(owner) {
+    constructor(address limitOrderProtocol, address weth, IERC20 feeToken, address owner) FeeBankCharger(feeToken, owner) Ownable(owner) {
         _LIMIT_ORDER_PROTOCOL = limitOrderProtocol;
         _WETH = weth;
     }
@@ -59,43 +62,72 @@ contract FeeTaker is IPostInteraction, Ownable {
      * @notice See {IPostInteraction-postInteraction}.
      * @dev Takes the fee in taking tokens and transfers the rest to the maker.
      * `extraData` consists of:
-     * 2 bytes — fee percentage (in 1e5)
+     * 2 bytes — integrator fee percentage (in 1e5)
+     * 2 bytes — resolver fee percentage (in 1e5)
      * 20 bytes — fee recipient
+     * 16 bytes - feeBank flat fee
+     * 1 byte - taker whitelist size
+     * (bytes10)[N] — taker whitelist
      * 20 bytes — receiver of taking tokens (optional, if not set, maker is used)
      */
     function postInteraction(
         IOrderMixin.Order calldata order,
         bytes calldata /* extension */,
         bytes32 /* orderHash */,
-        address /* taker */,
-        uint256 /* makingAmount */,
+        address taker,
+        uint256 makingAmount,
         uint256 takingAmount,
         uint256 /* remainingMakingAmount */,
         bytes calldata extraData
     ) external onlyLimitOrderProtocol {
-        uint256 fee = takingAmount * uint256(uint16(bytes2(extraData))) / _FEE_BASE;
-        address feeRecipient = address(bytes20(extraData[2:22]));
-
-        address receiver = order.maker.get();
-        if (extraData.length > 22) {
-            receiver = address(bytes20(extraData[22:42]));
-        }
-
-        bool isEth = order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth();
-
-        if (isEth) {
-            if (fee > 0) {
-                _sendEth(feeRecipient, fee);
+        unchecked {
+            uint256 integratorFee;
+            uint256 resolverFee;
+            {
+                uint256 integratorFeePercent = uint16(bytes2(extraData));
+                uint256 resolverFeePercent = uint16(bytes2(extraData[2:]));
+                uint256 denominator = _FEE_BASE + integratorFeePercent + 2 * resolverFeePercent;
+                integratorFee = Math.mulDiv(takingAmount, integratorFeePercent, denominator);
+                resolverFee = Math.mulDiv(takingAmount, resolverFeePercent, denominator);
             }
-            unchecked {
-                _sendEth(receiver, takingAmount - fee);
+
+            address feeRecipient = address(bytes20(extraData[4:24]));
+            uint256 feeBankFee = uint128(bytes16(extraData[24:40]));
+            uint256 whitelistEnd = 41 + uint8(extraData[40]) * 10;
+            uint256 maxFee = integratorFee + 2 * resolverFee;
+            uint256 fee = maxFee;
+            uint256 cashback;
+            if (_isWhitelisted(extraData[41:whitelistEnd], taker)) {
+                fee -= resolverFee;
+                cashback = resolverFee;
             }
-        } else {
-            if (fee > 0) {
-                IERC20(order.takerAsset.get()).safeTransfer(feeRecipient, fee);
+            if (FeeBank(FEE_BANK).payWithFeeBank(taker)) {
+                _chargeFee(taker, Math.mulDiv(feeBankFee, makingAmount, order.makingAmount));
+                cashback = maxFee;
+                fee = 0;
             }
-            unchecked {
-                IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - fee);
+
+            address receiver = order.maker.get();
+            if (extraData.length > whitelistEnd) {
+                receiver = address(bytes20(extraData[whitelistEnd:whitelistEnd + 20]));
+            }
+
+            if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
+                if (fee > 0) {
+                    _sendEth(feeRecipient, fee);
+                }
+                if (cashback > 0) {
+                    _sendEth(taker, cashback);
+                }
+                _sendEth(receiver, takingAmount - fee - cashback);
+            } else {
+                if (fee > 0) {
+                    IERC20(order.takerAsset.get()).safeTransfer(feeRecipient, fee);
+                }
+                if (cashback > 0) {
+                    IERC20(order.takerAsset.get()).safeTransfer(taker, cashback);
+                }
+                IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - fee - cashback);
             }
         }
     }
@@ -113,6 +145,31 @@ contract FeeTaker is IPostInteraction, Ownable {
         (bool success, ) = target.call{value: amount}("");
         if (!success) {
             revert EthTransferFailed();
+        }
+    }
+
+    /**
+     * @dev Validates whether the resolver is whitelisted.
+     * @param whitelist Whitelist is tightly packed struct of the following format:
+     * ```
+     * (bytes10)[N] resolversAddresses;
+     * ```
+     * Only 10 lowest bytes of the resolver address are used for comparison.
+     * @param resolver The resolver to check.
+     * @return Whether the resolver is whitelisted.
+     */
+    function _isWhitelisted(bytes calldata whitelist, address resolver) private pure returns (bool) {
+        unchecked {
+            uint80 maskedResolverAddress = uint80(uint160(resolver));
+            uint256 size = whitelist.length / 10;
+            for (uint256 i = 0; i < size; i++) {
+                uint80 whitelistedAddress = uint80(bytes10(whitelist[:10]));
+                if (maskedResolverAddress == whitelistedAddress) {
+                    return true;
+                }
+                whitelist = whitelist[10:];
+            }
+            return false;
         }
     }
 }
