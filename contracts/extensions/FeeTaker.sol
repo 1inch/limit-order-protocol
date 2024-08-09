@@ -58,31 +58,6 @@ contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
     receive() external payable {}
 
     /**
-     * @dev Validates whether the resolver is whitelisted.
-     * @param whitelist Whitelist is tightly packed struct of the following format:
-     * ```
-     * (bytes10)[N] resolversAddresses;
-     * ```
-     * Only 10 lowest bytes of the resolver address are used for comparison.
-     * @param resolver The resolver to check.
-     * @return Whether the resolver is whitelisted.
-     */
-    function _isWhitelisted(bytes calldata whitelist, address resolver) internal view virtual returns (bool) {
-        unchecked {
-            uint80 maskedResolverAddress = uint80(uint160(resolver));
-            uint256 size = whitelist.length / 10;
-            for (uint256 i = 0; i < size; i++) {
-                uint80 whitelistedAddress = uint80(bytes10(whitelist[:10]));
-                if (maskedResolverAddress == whitelistedAddress) {
-                    return true;
-                }
-                whitelist = whitelist[10:];
-            }
-            return false;
-        }
-    }
-
-    /**
      * @dev Calculate makingAmount with fee.
      * `extraData` consists of:
      * 2 bytes — integrator fee percentage (in 1e5)
@@ -100,22 +75,15 @@ contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
         bytes calldata extraData
     ) external view returns (uint256 calculatedMakingAmount) {
         unchecked {
-            uint256 integratorFee = uint256(uint16(bytes2(extraData)));
-            uint256 resolverFee = uint256(uint16(bytes2(extraData[2:])));
-            bytes calldata whitelist = extraData[5:5 + 10 * uint256(uint8(extraData[4]))];
-            extraData = extraData[5 + 10 * uint256(uint8(extraData[4])):];
-            if (extraData.length > 20) {
-                calculatedMakingAmount = IAmountGetter(address(bytes20(extraData))).getMakingAmount(
-                    order, extension, orderHash, taker, takingAmount, remainingMakingAmount, extraData[20:]
+            (uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker);
+            if (tail.length > 20) {
+                calculatedMakingAmount = IAmountGetter(address(bytes20(tail))).getMakingAmount(
+                    order, extension, orderHash, taker, takingAmount, remainingMakingAmount, tail[20:]
                 );
             } else {
                 calculatedMakingAmount = order.makingAmount;
             }
-            uint256 denominator = _FEE_BASE + integratorFee + resolverFee;
-            if (!_isWhitelisted(whitelist, taker)) {
-                denominator += resolverFee;
-            }
-            calculatedMakingAmount = Math.mulDiv(calculatedMakingAmount, _FEE_BASE, denominator, Math.Rounding.Floor);
+            calculatedMakingAmount = Math.mulDiv(calculatedMakingAmount, _FEE_BASE, _FEE_BASE + integratorFee + resolverFee, Math.Rounding.Floor);
             return Math.mulDiv(calculatedMakingAmount, takingAmount, order.takingAmount, Math.Rounding.Floor);
         }
     }
@@ -138,22 +106,15 @@ contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
         bytes calldata extraData
     ) external view returns (uint256 calculatedTakingAmount) {
         unchecked {
-            uint256 integratorFee = uint256(uint16(bytes2(extraData)));
-            uint256 resolverFee = uint256(uint16(bytes2(extraData[2:])));
-            bytes calldata whitelist = extraData[5:5 + 10 * uint256(uint8(extraData[4]))];
-            extraData = extraData[5 + 10 * uint256(uint8(extraData[4])):];
-            if (extraData.length > 20) {
-                calculatedTakingAmount = IAmountGetter(address(bytes20(extraData))).getTakingAmount(
-                    order, extension, orderHash, taker, makingAmount, remainingMakingAmount, extraData[20:]
+            (uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker);
+            if (tail.length > 20) {
+                calculatedTakingAmount = IAmountGetter(address(bytes20(tail))).getTakingAmount(
+                    order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail[20:]
                 );
             } else {
                 calculatedTakingAmount = order.takingAmount;
             }
-            uint256 numerator = _FEE_BASE + integratorFee + resolverFee;
-            if (!_isWhitelisted(whitelist, taker)) {
-                numerator += resolverFee;
-            }
-            calculatedTakingAmount = Math.mulDiv(calculatedTakingAmount, numerator, _FEE_BASE, Math.Rounding.Ceil);
+            calculatedTakingAmount = Math.mulDiv(calculatedTakingAmount, _FEE_BASE + integratorFee + resolverFee, _FEE_BASE, Math.Rounding.Ceil);
             return Math.mulDiv(calculatedTakingAmount, makingAmount, order.makingAmount, Math.Rounding.Ceil);
         }
     }
@@ -164,9 +125,9 @@ contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
      * `extraData` consists of:
      * 2 bytes — integrator fee percentage (in 1e5)
      * 2 bytes — resolver fee percentage (in 1e5)
-     * 20 bytes — fee recipient
      * 1 byte - taker whitelist size
      * (bytes10)[N] — taker whitelist
+     * 20 bytes — fee recipient
      * 20 bytes — receiver of taking tokens (optional, if not set, maker is used)
      */
     function postInteraction(
@@ -180,24 +141,16 @@ contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
         bytes calldata extraData
     ) external onlyLimitOrderProtocol {
         unchecked {
-            uint256 integratorFeePercent = uint256(uint16(bytes2(extraData)));
-            uint256 resolverFeePercent = uint256(uint16(bytes2(extraData[2:])));
-            address feeRecipient = address(bytes20(extraData[4:24]));
-            uint256 whitelistEnd = 25 + uint8(extraData[24]) * 10;
-            bytes calldata whitelist = extraData[25:whitelistEnd];
-
-            if (!_isWhitelisted(whitelist, taker)) {
-                resolverFeePercent *= 2;
-            }
-
-            uint256 denominator = _FEE_BASE + integratorFeePercent + resolverFeePercent;
-            uint256 integratorFee = Math.mulDiv(takingAmount, integratorFeePercent, denominator);
-            uint256 resolverFee = Math.mulDiv(takingAmount, resolverFeePercent, denominator);
-            uint256 fee = integratorFee + resolverFee;
+            (uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker);
+            address feeRecipient = address(bytes20(tail));
+            tail = tail[20:];
+            uint256 denominator = _FEE_BASE + integratorFee + resolverFee;
+            // fee is calculated as a sum of separate fees to limit rounding errors
+            uint256 fee = Math.mulDiv(takingAmount, integratorFee, denominator) + Math.mulDiv(takingAmount, resolverFee, denominator);
 
             address receiver = order.maker.get();
-            if (extraData.length > whitelistEnd) {
-                receiver = address(bytes20(extraData[whitelistEnd:whitelistEnd + 20]));
+            if (tail.length > 0) {
+                receiver = address(bytes20(tail));
             }
 
             if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
@@ -227,6 +180,44 @@ contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
         (bool success, ) = target.call{value: amount}("");
         if (!success) {
             revert EthTransferFailed();
+        }
+    }
+
+    /**
+     * @dev Validates whether the resolver is whitelisted.
+     * @param whitelist Whitelist is tightly packed struct of the following format:
+     * ```
+     * (bytes10)[N] resolversAddresses;
+     * ```
+     * Only 10 lowest bytes of the resolver address are used for comparison.
+     * @param resolver The resolver to check.
+     * @return Whether the resolver is whitelisted.
+     */
+    function _isWhitelisted(bytes calldata whitelist, address resolver) private pure returns (bool) {
+        unchecked {
+            uint80 maskedResolverAddress = uint80(uint160(resolver));
+            uint256 size = whitelist.length / 10;
+            for (uint256 i = 0; i < size; i++) {
+                uint80 whitelistedAddress = uint80(bytes10(whitelist[:10]));
+                if (maskedResolverAddress == whitelistedAddress) {
+                    return true;
+                }
+                whitelist = whitelist[10:];
+            }
+            return false;
+        }
+    }
+
+    function _parseFeeData(bytes calldata extraData, address taker) private pure returns (uint256 integratorFee, uint256 resolverFee, bytes calldata tail) {
+        unchecked {
+            integratorFee = uint256(uint16(bytes2(extraData)));
+            resolverFee = uint256(uint16(bytes2(extraData[2:])));
+            uint256 whitelistEnd = 5 + 10 * uint256(uint8(extraData[4]));
+            bytes calldata whitelist = extraData[5:whitelistEnd];
+            if (!_isWhitelisted(whitelist, taker)) {
+                resolverFee *= 2;
+            }
+            tail = extraData[whitelistEnd:];
         }
     }
 }
