@@ -58,7 +58,7 @@ describe('FeeTaker', function () {
                 postInteraction: buildFeeTakerPostInteractionData({
                     feeTaker: await feeTaker.getAddress(),
                     feeRecipient: addr2.address,
-                    whitelist: Array.from({length: 10}, (_, i) => addr.address),
+                    whitelist: Array.from({ length: 10 }, (_, i) => addr.address),
                 }),
             },
         );
@@ -93,7 +93,7 @@ describe('FeeTaker', function () {
                     feeTaker: await feeTaker.getAddress(),
                     feeRecipient: addr2.address,
                     receiver: addr3.address,
-                    whitelist: Array.from({length: 10}, (_, i) => addr.address),
+                    whitelist: Array.from({ length: 10 }, (_, i) => addr.address),
                 }),
             },
         );
@@ -133,7 +133,7 @@ describe('FeeTaker', function () {
                     resolverFee,
                     feeBankFee,
                     feeRecipient: addr2.address,
-                    whitelist: Array.from({length: 10}, (_, i) => addr.address),
+                    whitelist: Array.from({ length: 10 }, (_, i) => addr.address),
                 }),
             },
         );
@@ -182,7 +182,7 @@ describe('FeeTaker', function () {
                     resolverFee,
                     feeBankFee,
                     feeRecipient: addr2.address,
-                    whitelist: Array.from({length: 10}, (_, i) => addr.address),
+                    whitelist: Array.from({ length: 10 }, (_, i) => addr.address),
                 }),
             },
         );
@@ -194,8 +194,6 @@ describe('FeeTaker', function () {
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
 
-        const feeCalculated = takingAmount * integratorFee / (BigInt(1e5) + integratorFee + 2n * resolverFee) +
-            takingAmount * resolverFee / (BigInt(1e5) + integratorFee + 2n * resolverFee);
         const cashback = takingAmount * integratorFee / (BigInt(1e5) + integratorFee + 2n * resolverFee) +
             takingAmount * resolverFee / (BigInt(1e5) + integratorFee + 2n * resolverFee) * 2n;
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
@@ -231,7 +229,7 @@ describe('FeeTaker', function () {
                     resolverFee,
                     feeBankFee,
                     feeRecipient: addr2.address,
-                    whitelist: Array.from({length: 10}, (_, i) => addr2.address),
+                    whitelist: Array.from({ length: 10 }, (_, i) => addr2.address),
                 }),
             },
         );
@@ -279,7 +277,7 @@ describe('FeeTaker', function () {
                     resolverFee,
                     feeBankFee,
                     feeRecipient: addr2.address,
-                    whitelist: Array.from({length: 10}, (_, i) => addr2.address),
+                    whitelist: Array.from({ length: 10 }, (_, i) => addr2.address),
                 }),
             },
         );
@@ -327,7 +325,7 @@ describe('FeeTaker', function () {
                     resolverFee,
                     feeBankFee,
                     feeRecipient: addr2.address,
-                    whitelist: Array.from({length: 10}, (_, i) => addr.address),
+                    whitelist: Array.from({ length: 10 }, (_, i) => addr.address),
                 }),
             },
         );
