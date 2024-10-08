@@ -1,6 +1,6 @@
 const hre = require('hardhat');
-const { ethers, getChainId } = hre;
-const { saveContractWithCreate3Deployment, deployAndGetContractWithCreate3, deployAndGetContract } = require('@1inch/solidity-utils');
+const { ethers, getChainId, getNamedAccounts } = hre;
+const { deployAndGetContractWithCreate3, deployAndGetContract } = require('@1inch/solidity-utils');
 const { getNetwork } = require('@1inch/solidity-utils/hardhat-setup');
 
 const ROUTER_V6_ADDR = '0x111111125421ca6dc452d289314280a0f8842a65';
@@ -22,6 +22,8 @@ module.exports = async ({ deployments }) => {
         console.log('skipping wrong chain id deployment');
         return;
     }
+
+    const { deployer } = await getNamedAccounts();
 
     if (getNetwork().indexOf('zksync') !== -1) {
         // ZkSync deploy without create3
@@ -46,7 +48,7 @@ module.exports = async ({ deployments }) => {
             contractName: 'OrderRegistrator',
             constructorArgs: [ROUTER_V6_ADDR],
             deploymentName: 'OrderRegistrator',
-            create3Deployer: create3Deployer,
+            create3Deployer,
             salt: ORDER_REGISTRATOR_SALT,
             deployments,
         });
@@ -54,7 +56,7 @@ module.exports = async ({ deployments }) => {
             contractName: 'SafeOrderBuilder',
             constructorArgs: [ROUTER_V6_ADDR, await orderRegistrator.getAddress()],
             deploymentName: 'SafeOrderBuilder',
-            create3Deployer: create3Deployer,
+            create3Deployer,
             salt: SAFE_ORDER_BUILDER_SALT,
             deployments,
         });
