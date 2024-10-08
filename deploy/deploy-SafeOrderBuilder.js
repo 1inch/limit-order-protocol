@@ -1,13 +1,13 @@
 const hre = require('hardhat');
-const { ethers } = hre;
-const { getChainId } = hre;
+const { ethers, getChainId } = hre;
+const { saveContractWithCreate3Deployment, deployAndGetContractWithCreate3, deployAndGetContract } = require('@1inch/solidity-utils');
+const { getNetwork } = require('@1inch/solidity-utils/hardhat-setup');
 
 const ROUTER_V6_ADDR = '0x111111125421ca6dc452d289314280a0f8842a65';
+const ROUTER_V6_ADDR_ZKSYNC = '0x6fd4383cb451173d5f9304f041c7bcbf27d561ff';
 
 const ORDER_REGISTRATOR_SALT = ethers.keccak256(ethers.toUtf8Bytes('OrderRegistrator'));
 const SAFE_ORDER_BUILDER_SALT = ethers.keccak256(ethers.toUtf8Bytes('SafeOrderBuilder'));
-
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 module.exports = async ({ deployments }) => {
     const networkName = hre.network.name;
@@ -23,41 +23,40 @@ module.exports = async ({ deployments }) => {
         return;
     }
 
-    const create3Deployer = await ethers.getContractAt('ICreate3Deployer', (await deployments.get('Create3Deployer')).address);
-
-    const OrderRegistratorFactory = await ethers.getContractFactory('OrderRegistrator');
-
-    const deployData = (await OrderRegistratorFactory.getDeployTransaction(ROUTER_V6_ADDR)).data;
-
-    const txn = create3Deployer.deploy(ORDER_REGISTRATOR_SALT, deployData, { gasLimit: 5000000 });
-    await (await txn).wait();
-
-    const orderRegistratorAddr = await create3Deployer.addressOf(ORDER_REGISTRATOR_SALT);
-
-    console.log('OrderRegistrator deployed to:', orderRegistratorAddr);
-
-    const SafeOrderBuilderFactory = await ethers.getContractFactory('SafeOrderBuilder');
-
-    const deployData2 = (await SafeOrderBuilderFactory.getDeployTransaction(ROUTER_V6_ADDR, orderRegistratorAddr)).data;
-
-    const txn2 = create3Deployer.deploy(SAFE_ORDER_BUILDER_SALT, deployData2, { gasLimit: 5000000 });
-    await (await txn2).wait();
-
-    const safeOrderBuilderAddr = await create3Deployer.addressOf(SAFE_ORDER_BUILDER_SALT);
-
-    console.log('SafeOrderBuilder deployed to:', safeOrderBuilderAddr);
-
-    await sleep(5000); // wait for etherscan to index contract
-
-    if (chainId !== '31337') {
-        await hre.run('verify:verify', {
-            address: orderRegistratorAddr,
-            constructorArguments: [ROUTER_V6_ADDR],
+    if (getNetwork().indexOf('zksync') !== -1) {
+        // ZkSync deploy without create3
+        const orderRegistrator = await deployAndGetContract({
+            contractName: 'OrderRegistrator',
+            constructorArgs: [ROUTER_V6_ADDR_ZKSYNC],
+            deploymentName: 'OrderRegistrator',
+            deployments,
+            deployer,
         });
+        await deployAndGetContract({
+            contractName: 'SafeOrderBuilder',
+            constructorArgs: [ROUTER_V6_ADDR_ZKSYNC, await orderRegistrator.getAddress()],
+            deploymentName: 'SafeOrderBuilder',
+            deployments,
+            deployer,
+        });
+    } else {
+        const create3Deployer = await ethers.getContractAt('ICreate3Deployer', (await deployments.get('Create3Deployer')).address);
 
-        await hre.run('verify:verify', {
-            address: safeOrderBuilderAddr,
-            constructorArguments: [ROUTER_V6_ADDR, orderRegistratorAddr],
+        const orderRegistrator = await deployAndGetContractWithCreate3({
+            contractName: 'OrderRegistrator',
+            constructorArgs: [ROUTER_V6_ADDR],
+            deploymentName: 'OrderRegistrator',
+            create3Deployer: create3Deployer,
+            salt: ORDER_REGISTRATOR_SALT,
+            deployments,
+        });
+        await deployAndGetContractWithCreate3({
+            contractName: 'SafeOrderBuilder',
+            constructorArgs: [ROUTER_V6_ADDR, await orderRegistrator.getAddress()],
+            deploymentName: 'SafeOrderBuilder',
+            create3Deployer: create3Deployer,
+            salt: SAFE_ORDER_BUILDER_SALT,
+            deployments,
         });
     }
 };
