@@ -12,10 +12,11 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { IAmountGetter } from "../interfaces/IAmountGetter.sol";
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
+import { PostInteractionController } from "../helpers/PostInteractionController.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 
 /// @title Helper contract that adds feature of collecting fee in takerAsset
-contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
+contract FeeTaker is IPostInteraction, IAmountGetter, PostInteractionController, Ownable {
     using AddressLib for Address;
     using SafeERC20 for IERC20;
     using UniERC20 for IERC20;
@@ -119,27 +120,40 @@ contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
         }
     }
 
+    function postInteraction(
+        IOrderMixin.Order calldata order,
+        bytes calldata  extension,
+        bytes32 orderHash,
+        address taker,
+        uint256 makingAmount,
+        uint256 takingAmount,
+        uint256 remainingMakingAmount,
+        bytes calldata extraData
+    ) external onlyLimitOrderProtocol {
+        _postInteraction(order, extension, orderHash, taker, makingAmount, takingAmount, remainingMakingAmount, extraData);
+    }
+
     /**
      * @notice See {IPostInteraction-postInteraction}.
      * @dev Takes the fee in taking tokens and transfers the rest to the maker.
      * `extraData` consists of:
      * 2 bytes — integrator fee percentage (in 1e5)
      * 2 bytes — resolver fee percentage (in 1e5)
-     * 1 byte - taker whitelist size
+     * 1 byte - bitmask ABBBBBBB, where A is the receiver flag and B represents the taker whitelist size
      * (bytes10)[N] — taker whitelist
      * 20 bytes — fee recipient
      * 20 bytes — receiver of taking tokens (optional, if not set, maker is used)
      */
-    function postInteraction(
+    function _postInteraction(
         IOrderMixin.Order calldata order,
-        bytes calldata /* extension */,
-        bytes32 /* orderHash */,
+        bytes calldata extension,
+        bytes32 orderHash,
         address taker,
-        uint256 /* makingAmount */,
+        uint256 makingAmount,
         uint256 takingAmount,
-        uint256 /* remainingMakingAmount */,
+        uint256 remainingMakingAmount,
         bytes calldata extraData
-    ) external onlyLimitOrderProtocol {
+    ) internal virtual override {
         unchecked {
             (uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker);
             address feeRecipient = address(bytes20(tail));
@@ -149,8 +163,9 @@ contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
             uint256 fee = Math.mulDiv(takingAmount, integratorFee, denominator) + Math.mulDiv(takingAmount, resolverFee, denominator);
 
             address receiver = order.maker.get();
-            if (tail.length > 0) {
+            if (uint8(extraData[4]) & 0x80 > 0) { // is set receiver of taking tokens
                 receiver = address(bytes20(tail));
+                tail = tail[20:];
             }
 
             if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
@@ -164,6 +179,7 @@ contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
                 }
                 IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - fee);
             }
+            super._postInteraction(order, extension, orderHash, taker, makingAmount, takingAmount, remainingMakingAmount, tail);
         }
     }
 
@@ -212,7 +228,7 @@ contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
         unchecked {
             integratorFee = uint256(uint16(bytes2(extraData)));
             resolverFee = uint256(uint16(bytes2(extraData[2:])));
-            uint256 whitelistEnd = 5 + 10 * uint256(uint8(extraData[4]));
+            uint256 whitelistEnd = 5 + 10 * uint256(uint8(extraData[4] & 0x7F)); // & 0x7F - remove receiver of taking tokens flag
             bytes calldata whitelist = extraData[5:whitelistEnd];
             if (!_isWhitelisted(whitelist, taker)) {
                 resolverFee *= 2;
