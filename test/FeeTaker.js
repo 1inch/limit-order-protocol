@@ -91,7 +91,7 @@ describe('FeeTaker', function () {
             {
                 postInteraction: ethers.solidityPacked(
                     ['address', 'uint16', 'uint16', 'bytes1', 'address', 'address'],
-                    [await feeTaker.getAddress(), fee, fee, '0x00', feeRecipient, makerReceiver],
+                    [await feeTaker.getAddress(), fee, fee, '0x80', feeRecipient, makerReceiver],
                 ),
             },
         );
@@ -237,7 +237,7 @@ describe('FeeTaker', function () {
             {
                 postInteraction: ethers.solidityPacked(
                     ['address', 'uint16', 'uint16', 'bytes1', 'address', 'address'],
-                    [await feeTaker.getAddress(), fee, 0, '0x00', feeRecipient, makerReceiver],
+                    [await feeTaker.getAddress(), fee, 0, '0x80', feeRecipient, makerReceiver],
                 ),
                 makingAmountData: ethers.solidityPacked(
                     ['address', 'uint16', 'uint16', 'bytes1'],
@@ -329,7 +329,7 @@ describe('FeeTaker', function () {
             {
                 postInteraction: ethers.solidityPacked(
                     ['address', 'uint16', 'uint16', 'bytes1', 'address', 'address'],
-                    [await feeTaker.getAddress(), fee, 0, '0x00', feeRecipient, makerReceiver],
+                    [await feeTaker.getAddress(), fee, 0, '0x80', feeRecipient, makerReceiver],
                 ),
                 makingAmountData: ethers.solidityPacked(
                     ['address', 'uint16', 'uint16', 'bytes1'],
