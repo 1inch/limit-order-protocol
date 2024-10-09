@@ -77,15 +77,27 @@ contract FeeTaker is IPostInteraction, IAmountGetter, PostInteractionController,
     ) external view returns (uint256 calculatedMakingAmount) {
         unchecked {
             (uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker);
-            if (tail.length > 20) {
-                calculatedMakingAmount = IAmountGetter(address(bytes20(tail))).getMakingAmount(
-                    order, extension, orderHash, taker, takingAmount, remainingMakingAmount, tail[20:]
-                );
-            } else {
-                calculatedMakingAmount = order.makingAmount;
-            }
+            calculatedMakingAmount = this.getCustomMakingAmount(order, extension, orderHash, taker, takingAmount, remainingMakingAmount, tail);
             calculatedMakingAmount = Math.mulDiv(calculatedMakingAmount, _FEE_BASE, _FEE_BASE + integratorFee + resolverFee, Math.Rounding.Floor);
             return Math.mulDiv(calculatedMakingAmount, takingAmount, order.takingAmount, Math.Rounding.Floor);
+        }
+    }
+
+    function getCustomMakingAmount(
+        IOrderMixin.Order calldata order,
+        bytes calldata extension,
+        bytes32 orderHash,
+        address taker,
+        uint256 takingAmount,
+        uint256 remainingMakingAmount,
+        bytes calldata tail
+    ) external view virtual returns (uint256) {
+        if (tail.length > 20) {
+            return IAmountGetter(address(bytes20(tail))).getMakingAmount(
+                order, extension, orderHash, taker, takingAmount, remainingMakingAmount, tail[20:]
+            );
+        } else {
+            return order.makingAmount;
         }
     }
 
@@ -108,15 +120,27 @@ contract FeeTaker is IPostInteraction, IAmountGetter, PostInteractionController,
     ) external view returns (uint256 calculatedTakingAmount) {
         unchecked {
             (uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker);
-            if (tail.length > 20) {
-                calculatedTakingAmount = IAmountGetter(address(bytes20(tail))).getTakingAmount(
-                    order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail[20:]
-                );
-            } else {
-                calculatedTakingAmount = order.takingAmount;
-            }
+            calculatedTakingAmount = this.getCustomTakingAmount(order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail);
             calculatedTakingAmount = Math.mulDiv(calculatedTakingAmount, _FEE_BASE + integratorFee + resolverFee, _FEE_BASE, Math.Rounding.Ceil);
             return Math.mulDiv(calculatedTakingAmount, makingAmount, order.makingAmount, Math.Rounding.Ceil);
+        }
+    }
+
+    function getCustomTakingAmount(
+        IOrderMixin.Order calldata order,
+        bytes calldata extension,
+        bytes32 orderHash,
+        address taker,
+        uint256 makingAmount,
+        uint256 remainingMakingAmount,
+        bytes calldata tail
+    ) external view virtual returns (uint256) {
+        if (tail.length > 20) {
+            return IAmountGetter(address(bytes20(tail))).getTakingAmount(
+                order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail[20:]
+            );
+        } else {
+            return order.takingAmount;
         }
     }
 
