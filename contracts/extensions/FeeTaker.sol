@@ -248,7 +248,7 @@ contract FeeTaker is IPostInteraction, IAmountGetter, PostInteractionController,
         }
     }
 
-    function _parseFeeData(bytes calldata extraData, address taker) private pure returns (uint256 integratorFee, uint256 resolverFee, bytes calldata tail) {
+    function _parseFeeData(bytes calldata extraData, address taker) internal virtual view returns (uint256 integratorFee, uint256 resolverFee, bytes calldata tail) {
         unchecked {
             integratorFee = uint256(uint16(bytes2(extraData)));
             resolverFee = uint256(uint16(bytes2(extraData[2:])));
