@@ -4,6 +4,7 @@
         "compiler-version": ["error", "^0.8.0"],
         "private-vars-leading-underscore": "error",
         "no-global-import": "off",
+        "gas-custom-errors": "off",
         "func-visibility": ["error", { "ignoreConstructors": true }]
     }
 }
