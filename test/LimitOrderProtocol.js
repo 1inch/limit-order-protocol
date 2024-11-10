@@ -2040,8 +2040,8 @@ describe('LimitOrderProtocol', function () {
 
         it('pause and unpause can only be called by owner', async function () {
             const { contracts: { swap } } = await loadFixture(deployContractsAndInit);
-            await expect(swap.connect(addr2).pause()).to.be.revertedWithCustomError(swap, 'OwnableUnauthorizedAccount', addr2.address);
-            await expect(swap.connect(addr2).unpause()).to.be.revertedWithCustomError(swap, 'OwnableUnauthorizedAccount', addr2.address);
+            await expect(swap.connect(addr2).pause()).to.be.revertedWithCustomError(swap, 'OwnableUnauthorizedAccount').withArgs(addr2.address);
+            await expect(swap.connect(addr2).unpause()).to.be.revertedWithCustomError(swap, 'OwnableUnauthorizedAccount').withArgs(addr2.address);
         });
 
         it('unpause should work', async function () {
