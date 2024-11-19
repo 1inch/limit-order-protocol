@@ -8,11 +8,7 @@
   },
   "license": "MIT",
   "files": [
-    "contracts/*.sol",
-    "contracts/helpers",
-    "contracts/interfaces",
-    "contracts/libraries",
-    "contracts/mocks",
+    "contracts",
     "test/helpers"
   ],
   "dependencies": {
