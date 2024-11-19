@@ -24,7 +24,7 @@ contract AmountGetterWithFee is AmountGetterBase {
         uint256 takingAmount,
         uint256 remainingMakingAmount,
         bytes calldata extraData
-    ) internal view override returns (uint256) {
+    ) internal view virtual override returns (uint256) {
         unchecked {
             (, uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, _isWhitelistedGetterImpl);
             return Math.mulDiv(
@@ -46,7 +46,7 @@ contract AmountGetterWithFee is AmountGetterBase {
         uint256 makingAmount,
         uint256 remainingMakingAmount,
         bytes calldata extraData
-    ) internal view override returns (uint256) {
+    ) internal view virtual override returns (uint256) {
         unchecked {
             (, uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, _isWhitelistedGetterImpl);
             return Math.mulDiv(
