@@ -9,17 +9,19 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { IAmountGetter } from "../interfaces/IAmountGetter.sol";
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
+import { AmountGetterWithFee } from "./AmountGetterWithFee.sol";
 
 /// @title Helper contract that adds feature of collecting fee in takerAsset
-contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
+contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
     using AddressLib for Address;
     using SafeERC20 for IERC20;
     using UniERC20 for IERC20;
     using MakerTraitsLib for MakerTraits;
+
+    bytes1 private constant _CUSTOM_RECEIVER_FLAG = 0x01;
 
     /**
      * @dev The caller is not the limit order protocol contract.
@@ -27,15 +29,19 @@ contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
     error OnlyLimitOrderProtocol();
 
     /**
+     * @dev The taker is not whitelisted and does not have access token.
+     */
+    error OnlyWhitelistOrAccessToken();
+
+    /**
      * @dev Eth transfer failed. The target fallback may have reverted.
      */
     error EthTransferFailed();
 
-    /// @dev Allows fees in range [1e-5, 0.65535]
-    uint256 internal constant _FEE_BASE = 1e5;
-
     address private immutable _LIMIT_ORDER_PROTOCOL;
     address private immutable _WETH;
+    /// @notice Contract address whose tokens allow filling limit orders with a fee for resolvers that are outside the whitelist
+    IERC20 private immutable _ACCESS_TOKEN;
 
     /// @dev Modifier to check if the caller is the limit order protocol contract.
     modifier onlyLimitOrderProtocol {
@@ -46,10 +52,14 @@ contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
     /**
      * @notice Initializes the contract.
      * @param limitOrderProtocol The limit order protocol contract.
+     * @param accessToken Contract address whose tokens allow filling limit orders with a fee for resolvers that are outside the whitelist.
+     * @param weth The WETH address.
+     * @param owner The owner of the contract.
      */
-    constructor(address limitOrderProtocol, address weth, address owner) Ownable(owner) {
+    constructor(address limitOrderProtocol, IERC20 accessToken, address weth, address owner) Ownable(owner) {
         _LIMIT_ORDER_PROTOCOL = limitOrderProtocol;
         _WETH = weth;
+        _ACCESS_TOKEN = accessToken;
     }
 
     /**
@@ -57,101 +67,66 @@ contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
      */
     receive() external payable {}
 
-    /**
-     * @dev Calculate makingAmount with fee.
-     * `extraData` consists of:
-     * 2 bytes — integrator fee percentage (in 1e5)
-     * 2 bytes — resolver fee percentage (in 1e5)
-     * 1 byte - taker whitelist size
-     * (bytes10)[N] — taker whitelist
-     */
-    function getMakingAmount(
-        IOrderMixin.Order calldata order,
-        bytes calldata extension,
-        bytes32 orderHash,
-        address taker,
-        uint256 takingAmount,
-        uint256 remainingMakingAmount,
-        bytes calldata extraData
-    ) external view returns (uint256 calculatedMakingAmount) {
-        unchecked {
-            (uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker);
-            if (tail.length > 20) {
-                calculatedMakingAmount = IAmountGetter(address(bytes20(tail))).getMakingAmount(
-                    order, extension, orderHash, taker, takingAmount, remainingMakingAmount, tail[20:]
-                );
-            } else {
-                calculatedMakingAmount = order.makingAmount;
-            }
-            calculatedMakingAmount = Math.mulDiv(calculatedMakingAmount, _FEE_BASE, _FEE_BASE + integratorFee + resolverFee, Math.Rounding.Floor);
-            return Math.mulDiv(calculatedMakingAmount, takingAmount, order.takingAmount, Math.Rounding.Floor);
-        }
-    }
-
-    /**
-     * @dev Calculate takingAmount with fee.
-     * `extraData` consists of:
-     * 2 bytes — integrator fee percentage (in 1e5)
-     * 2 bytes — resolver fee percentage (in 1e5)
-     * 1 byte - taker whitelist size
-     * (bytes10)[N] — taker whitelist
-     */
-    function getTakingAmount(
+    function postInteraction(
         IOrderMixin.Order calldata order,
         bytes calldata extension,
         bytes32 orderHash,
         address taker,
         uint256 makingAmount,
+        uint256 takingAmount,
         uint256 remainingMakingAmount,
         bytes calldata extraData
-    ) external view returns (uint256 calculatedTakingAmount) {
-        unchecked {
-            (uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker);
-            if (tail.length > 20) {
-                calculatedTakingAmount = IAmountGetter(address(bytes20(tail))).getTakingAmount(
-                    order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail[20:]
-                );
-            } else {
-                calculatedTakingAmount = order.takingAmount;
-            }
-            calculatedTakingAmount = Math.mulDiv(calculatedTakingAmount, _FEE_BASE + integratorFee + resolverFee, _FEE_BASE, Math.Rounding.Ceil);
-            return Math.mulDiv(calculatedTakingAmount, makingAmount, order.makingAmount, Math.Rounding.Ceil);
-        }
+    ) external onlyLimitOrderProtocol {
+        _postInteraction(order, extension, orderHash, taker, makingAmount, takingAmount, remainingMakingAmount, extraData);
+    }
+
+    /**
+     * @notice Retrieves funds accidently sent directly to the contract address
+     * @param token ERC20 token to retrieve
+     * @param amount amount to retrieve
+     */
+    function rescueFunds(IERC20 token, uint256 amount) external onlyOwner {
+        token.uniTransfer(payable(msg.sender), amount);
     }
 
     /**
      * @notice See {IPostInteraction-postInteraction}.
      * @dev Takes the fee in taking tokens and transfers the rest to the maker.
      * `extraData` consists of:
-     * 2 bytes — integrator fee percentage (in 1e5)
-     * 2 bytes — resolver fee percentage (in 1e5)
-     * 1 byte - taker whitelist size
-     * (bytes10)[N] — taker whitelist
+     * 1 byte - flags
      * 20 bytes — fee recipient
      * 20 bytes — receiver of taking tokens (optional, if not set, maker is used)
+     * 2 bytes — integrator fee percentage (in 1e5)
+     * 2 bytes — resolver fee percentage (in 1e5)
+     * bytes — whitelist structure determined by `_isWhitelistedPostInteractionImpl` implementation
+     * bytes — custom data to call extra postInteraction (optional)
      */
-    function postInteraction(
+    function _postInteraction(
         IOrderMixin.Order calldata order,
-        bytes calldata /* extension */,
-        bytes32 /* orderHash */,
+        bytes calldata extension,
+        bytes32 orderHash,
         address taker,
-        uint256 /* makingAmount */,
+        uint256 makingAmount,
         uint256 takingAmount,
-        uint256 /* remainingMakingAmount */,
+        uint256 remainingMakingAmount,
         bytes calldata extraData
-    ) external onlyLimitOrderProtocol {
+    ) internal virtual {
         unchecked {
-            (uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker);
-            address feeRecipient = address(bytes20(tail));
-            tail = tail[20:];
+            bool customReceiver = extraData[0] & _CUSTOM_RECEIVER_FLAG == _CUSTOM_RECEIVER_FLAG;
+            address feeRecipient = address(bytes20(extraData[1:21]));
+            extraData = extraData[21:];
+
+            address receiver = order.maker.get();
+            if (customReceiver) {
+                receiver = address(bytes20(extraData));
+                extraData = extraData[20:];
+            }
+            (bool isWhitelisted, uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, _isWhitelistedPostInteractionImpl);
+            if (!isWhitelisted && _ACCESS_TOKEN.balanceOf(taker) == 0) revert OnlyWhitelistOrAccessToken();
+
             uint256 denominator = _FEE_BASE + integratorFee + resolverFee;
             // fee is calculated as a sum of separate fees to limit rounding errors
             uint256 fee = Math.mulDiv(takingAmount, integratorFee, denominator) + Math.mulDiv(takingAmount, resolverFee, denominator);
-
-            address receiver = order.maker.get();
-            if (tail.length > 0) {
-                receiver = address(bytes20(tail));
-            }
 
             if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
                 if (fee > 0) {
@@ -164,60 +139,25 @@ contract FeeTaker is IPostInteraction, IAmountGetter, Ownable {
                 }
                 IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - fee);
             }
+
+            if (tail.length >= 20) {
+                IPostInteraction(address(bytes20(tail))).postInteraction(order, extension, orderHash, taker, makingAmount, takingAmount, remainingMakingAmount, tail[20:]);
+            }
         }
     }
 
     /**
-     * @notice Retrieves funds accidently sent directly to the contract address
-     * @param token ERC20 token to retrieve
-     * @param amount amount to retrieve
+     * @dev Parses fee data from `extraData`.
+     * Override this function if whitelist structure in postInteraction is different from getters.
      */
-    function rescueFunds(IERC20 token, uint256 amount) external onlyOwner {
-        token.uniTransfer(payable(msg.sender), amount);
+    function _isWhitelistedPostInteractionImpl(bytes calldata whitelistData, address taker) internal view virtual returns (bool isWhitelisted, bytes calldata tail) {
+        return _isWhitelistedGetterImpl(whitelistData, taker);
     }
 
     function _sendEth(address target, uint256 amount) private {
         (bool success, ) = target.call{value: amount}("");
         if (!success) {
             revert EthTransferFailed();
-        }
-    }
-
-    /**
-     * @dev Validates whether the resolver is whitelisted.
-     * @param whitelist Whitelist is tightly packed struct of the following format:
-     * ```
-     * (bytes10)[N] resolversAddresses;
-     * ```
-     * Only 10 lowest bytes of the resolver address are used for comparison.
-     * @param resolver The resolver to check.
-     * @return Whether the resolver is whitelisted.
-     */
-    function _isWhitelisted(bytes calldata whitelist, address resolver) private pure returns (bool) {
-        unchecked {
-            uint80 maskedResolverAddress = uint80(uint160(resolver));
-            uint256 size = whitelist.length / 10;
-            for (uint256 i = 0; i < size; i++) {
-                uint80 whitelistedAddress = uint80(bytes10(whitelist[:10]));
-                if (maskedResolverAddress == whitelistedAddress) {
-                    return true;
-                }
-                whitelist = whitelist[10:];
-            }
-            return false;
-        }
-    }
-
-    function _parseFeeData(bytes calldata extraData, address taker) private pure returns (uint256 integratorFee, uint256 resolverFee, bytes calldata tail) {
-        unchecked {
-            integratorFee = uint256(uint16(bytes2(extraData)));
-            resolverFee = uint256(uint16(bytes2(extraData[2:])));
-            uint256 whitelistEnd = 5 + 10 * uint256(uint8(extraData[4]));
-            bytes calldata whitelist = extraData[5:whitelistEnd];
-            if (!_isWhitelisted(whitelist, taker)) {
-                resolverFee *= 2;
-            }
-            tail = extraData[whitelistEnd:];
         }
     }
 }

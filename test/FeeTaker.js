@@ -30,7 +30,7 @@ describe('FeeTaker', function () {
         await inch.connect(addr1).approve(swap, ether('1000000'));
 
         const FeeTaker = await ethers.getContractFactory('FeeTaker');
-        const feeTaker = await FeeTaker.deploy(swap, weth, addr);
+        const feeTaker = await FeeTaker.deploy(swap, inch, weth, addr);
 
         return { dai, weth, inch, swap, chainId, feeTaker };
     };
@@ -54,8 +54,8 @@ describe('FeeTaker', function () {
             },
             {
                 postInteraction: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1', 'address'],
-                    [await feeTaker.getAddress(), fee, fee, '0x00', feeRecipient],
+                    ['address', 'bytes1', 'address', 'uint16', 'uint16', 'uint8', 'bytes1'],
+                    [await feeTaker.getAddress(), '0x00', feeRecipient, fee, fee, 50, '0x00'],
                 ),
             },
         );
@@ -90,8 +90,8 @@ describe('FeeTaker', function () {
             },
             {
                 postInteraction: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1', 'address', 'address'],
-                    [await feeTaker.getAddress(), fee, fee, '0x00', feeRecipient, makerReceiver],
+                    ['address', 'bytes1', 'address', 'address', 'uint16', 'uint16', 'uint8', 'bytes1'],
+                    [await feeTaker.getAddress(), '0x01', feeRecipient, makerReceiver, fee, fee, 50, '0x00'],
                 ),
             },
         );
@@ -132,16 +132,16 @@ describe('FeeTaker', function () {
                 // * 1 byte - taker whitelist size
                 // * (bytes10)[N] — taker whitelist
                 postInteraction: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1', 'bytes', 'address'],
-                    [await feeTaker.getAddress(), integratorFee, resolverFee, '0x0a', whitelist, feeRecipient],
+                    ['address', 'bytes1', 'address', 'uint16', 'uint16', 'uint8', 'bytes1', 'bytes'],
+                    [await feeTaker.getAddress(), '0x00', feeRecipient, integratorFee, resolverFee, 50, '0x0a', whitelist],
                 ),
                 makingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1', 'bytes'],
-                    [await feeTaker.getAddress(), integratorFee, resolverFee, '0x0a', whitelist],
+                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1', 'bytes'],
+                    [await feeTaker.getAddress(), integratorFee, resolverFee, 50, '0x0a', whitelist],
                 ),
                 takingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1', 'bytes'],
-                    [await feeTaker.getAddress(), integratorFee, resolverFee, '0x0a', whitelist],
+                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1', 'bytes'],
+                    [await feeTaker.getAddress(), integratorFee, resolverFee, 50, '0x0a', whitelist],
                 ),
             },
         );
@@ -154,7 +154,7 @@ describe('FeeTaker', function () {
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
 
-        const feeCalculated = takingAmount * (integratorFee + resolverFee) / BigInt(1e5);
+        const feeCalculated = takingAmount * (integratorFee + resolverFee / 2n) / BigInt(1e5);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
         await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, addr2], [-takingAmount - feeCalculated, takingAmount, feeCalculated]);
     });
@@ -185,16 +185,16 @@ describe('FeeTaker', function () {
                 // * 1 byte - taker whitelist size
                 // * (bytes10)[N] — taker whitelist
                 postInteraction: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1', 'bytes', 'address'],
-                    [await feeTaker.getAddress(), integratorFee, resolverFee, '0x0a', whitelist, feeRecipient],
+                    ['address', 'bytes1', 'address', 'uint16', 'uint16', 'uint8', 'bytes1', 'bytes'],
+                    [await feeTaker.getAddress(), '0x00', feeRecipient, integratorFee, resolverFee, 50, '0x0a', whitelist],
                 ),
                 makingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1', 'bytes'],
-                    [await feeTaker.getAddress(), integratorFee, resolverFee, '0x0a', whitelist],
+                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1', 'bytes'],
+                    [await feeTaker.getAddress(), integratorFee, resolverFee, 50, '0x0a', whitelist],
                 ),
                 takingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1', 'bytes'],
-                    [await feeTaker.getAddress(), integratorFee, resolverFee, '0x0a', whitelist],
+                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1', 'bytes'],
+                    [await feeTaker.getAddress(), integratorFee, resolverFee, 50, '0x0a', whitelist],
                 ),
             },
         );
@@ -207,7 +207,7 @@ describe('FeeTaker', function () {
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
 
-        const feeCalculated = takingAmount * (integratorFee + resolverFee + resolverFee) / BigInt(1e5);
+        const feeCalculated = takingAmount * (integratorFee + resolverFee) / BigInt(1e5);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
         await expect(fillTx).to.changeTokenBalances(weth,
             [addr, addr1, addr2],
@@ -236,16 +236,16 @@ describe('FeeTaker', function () {
             },
             {
                 postInteraction: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1', 'address', 'address'],
-                    [await feeTaker.getAddress(), fee, 0, '0x00', feeRecipient, makerReceiver],
+                    ['address', 'bytes1', 'address', 'address', 'uint16', 'uint16', 'uint8', 'bytes1'],
+                    [await feeTaker.getAddress(), '0x01', feeRecipient, makerReceiver, fee, 0, 50, '0x00'],
                 ),
                 makingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1'],
-                    [await feeTaker.getAddress(), fee, 0, '0x00'],
+                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1'],
+                    [await feeTaker.getAddress(), fee, 0, 50, '0x00'],
                 ),
                 takingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1'],
-                    [await feeTaker.getAddress(), fee, 0, '0x00'],
+                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1'],
+                    [await feeTaker.getAddress(), fee, 0, 50, '0x00'],
                 ),
             },
         );
@@ -281,16 +281,16 @@ describe('FeeTaker', function () {
             },
             {
                 postInteraction: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1', 'address'],
-                    [await feeTaker.getAddress(), fee, 0, '0x00', feeRecipient],
+                    ['address', 'bytes1', 'address', 'uint16', 'uint16', 'uint8', 'bytes1'],
+                    [await feeTaker.getAddress(), '0x00', feeRecipient, fee, 0, 50, '0x00'],
                 ),
                 makingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1'],
-                    [await feeTaker.getAddress(), fee, 0, '0x00'],
+                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1'],
+                    [await feeTaker.getAddress(), fee, 0, 50, '0x00'],
                 ),
                 takingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1'],
-                    [await feeTaker.getAddress(), fee, 0, '0x00'],
+                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1'],
+                    [await feeTaker.getAddress(), fee, 0, 50, '0x00'],
                 ),
             },
         );
@@ -328,16 +328,16 @@ describe('FeeTaker', function () {
             },
             {
                 postInteraction: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1', 'address', 'address'],
-                    [await feeTaker.getAddress(), fee, 0, '0x00', feeRecipient, makerReceiver],
+                    ['address', 'bytes1', 'address', 'address', 'uint16', 'uint16', 'uint8', 'bytes1'],
+                    [await feeTaker.getAddress(), '0x01', feeRecipient, makerReceiver, fee, 0, 50, '0x00'],
                 ),
                 makingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1'],
-                    [await feeTaker.getAddress(), fee, 0, '0x00'],
+                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1'],
+                    [await feeTaker.getAddress(), fee, 0, 50, '0x00'],
                 ),
                 takingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'bytes1'],
-                    [await feeTaker.getAddress(), fee, 0, '0x00'],
+                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1'],
+                    [await feeTaker.getAddress(), fee, 0, 50, '0x00'],
                 ),
             },
         );
