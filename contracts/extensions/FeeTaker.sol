@@ -38,11 +38,6 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
      */
     error EthTransferFailed();
 
-    /**
-     * @dev Fee taker is set to be receiver but no fees were set.
-     */
-    error InconsistentFee();
-
     address private immutable _LIMIT_ORDER_PROTOCOL;
     address private immutable _WETH;
     /// @notice Contract address whose tokens allow filling limit orders with a fee for resolvers that are outside the whitelist
