@@ -134,24 +134,27 @@ function buildFeeTakerExtensions ({
     whitelistDiscount = 50,
     whitelist = '0x00',
     whitelistPostInteraction = whitelist,
+    customMakingGetter = '0x',
+    customTakingGetter = '0x',
+    customPostInteraction = '0x',
 }) {
     return {
         makingAmountData: ethers.solidityPacked(
-            ['address', 'bytes', 'uint16', 'uint16', 'uint8', 'bytes'],
-            [feeTaker, getterExtraPrefix, integratorFee, resolverFee, whitelistDiscount, whitelist],
+            ['address', 'bytes', 'uint16', 'uint16', 'uint8', 'bytes', 'bytes'],
+            [feeTaker, getterExtraPrefix, integratorFee, resolverFee, whitelistDiscount, whitelist, customMakingGetter],
         ),
         takingAmountData: ethers.solidityPacked(
-            ['address', 'bytes', 'uint16', 'uint16', 'uint8', 'bytes'],
-            [feeTaker, getterExtraPrefix, integratorFee, resolverFee, whitelistDiscount, whitelist],
+            ['address', 'bytes', 'uint16', 'uint16', 'uint8', 'bytes', 'bytes'],
+            [feeTaker, getterExtraPrefix, integratorFee, resolverFee, whitelistDiscount, whitelist, customTakingGetter],
         ),
         postInteraction: ethers.solidityPacked(
             ['address', 'bytes1', 'address'].concat(
                 makerReceiver ? ['address'] : [],
-                ['uint16', 'uint16', 'uint8', 'bytes'],
+                ['uint16', 'uint16', 'uint8', 'bytes', 'bytes'],
             ),
             [feeTaker, makerReceiver ? '0x01' : '0x00', feeRecipient].concat(
                 makerReceiver ? [makerReceiver] : [],
-                [integratorFee, resolverFee, whitelistDiscount, whitelistPostInteraction],
+                [integratorFee, resolverFee, whitelistDiscount, whitelistPostInteraction, customPostInteraction],
             ),
         ),
     };
