@@ -6,7 +6,7 @@ const { deploySwapTokens } = require('./helpers/fixtures');
 const { buildOrder, buildTakerTraits, signOrder, buildMakerTraits, buildFeeTakerExtensions } = require('./helpers/orderUtils');
 const { ether } = require('./helpers/utils');
 
-describe.only('FeeTaker', function () {
+describe('FeeTaker', function () {
     let addr, addr1, addr2, addr3;
     before(async function () {
         [addr, addr1, addr2, addr3] = await ethers.getSigners();
@@ -109,7 +109,7 @@ describe.only('FeeTaker', function () {
         const integratorFee = BigInt(1e4);
         const resolverFee = BigInt(1e3);
         const feeRecipient = addr2.address;
-        const whitelist = '0x' + addr.address.slice(-20).repeat(10);
+        const whitelist = '0x0a' + addr.address.slice(-20).repeat(10);
 
         const order = buildOrder(
             {
@@ -125,7 +125,6 @@ describe.only('FeeTaker', function () {
                 feeRecipient,
                 integratorFee,
                 resolverFee,
-                whitelistLength: 10,
                 whitelist,
             }),
         );
@@ -151,7 +150,7 @@ describe.only('FeeTaker', function () {
         const integratorFee = BigInt(1e4);
         const resolverFee = BigInt(1e3);
         const feeRecipient = addr2.address;
-        const whitelist = '0x' + addr2.address.slice(-20).repeat(10);
+        const whitelist = '0x0a' + addr2.address.slice(-20).repeat(10);
 
         const order = buildOrder(
             {
@@ -167,7 +166,6 @@ describe.only('FeeTaker', function () {
                 feeRecipient,
                 integratorFee,
                 resolverFee,
-                whitelistLength: 10,
                 whitelist,
             }),
         );
