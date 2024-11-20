@@ -124,7 +124,7 @@ function buildMakerTraits ({
     ).toString(16).padStart(64, '0');
 }
 
-function buildFeeTakerExtensions({
+function buildFeeTakerExtensions ({
     feeTaker,
     feeRecipient,
     makerReceiver = undefined,
@@ -154,7 +154,7 @@ function buildFeeTakerExtensions({
                 [integratorFee, resolverFee, whitelistDiscount, whitelistLength, whitelistPostInteraction],
             ),
         ),
-    }
+    };
 }
 
 function buildOrderRFQ (
