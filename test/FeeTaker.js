@@ -64,7 +64,7 @@ describe.only('FeeTaker', function () {
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
-        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, addr2], [-takingAmount, takingAmount, 0]);
+        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, feeRecipient], [-takingAmount, takingAmount, 0]);
     });
 
     it('should send all tokens to the maker receiver with 0 fee', async function () {
@@ -98,7 +98,7 @@ describe.only('FeeTaker', function () {
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
-        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, addr2, addr3], [-takingAmount, 0, 0, takingAmount]);
+        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, feeRecipient, makerReceiver], [-takingAmount, 0, 0, takingAmount]);
     });
 
     it('should charge fee when in whitelist', async function () {
@@ -140,7 +140,7 @@ describe.only('FeeTaker', function () {
 
         const feeCalculated = takingAmount * (integratorFee + resolverFee / 2n) / BigInt(1e5);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
-        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, addr2], [-takingAmount - feeCalculated, takingAmount, feeCalculated]);
+        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, feeRecipient], [-takingAmount - feeCalculated, takingAmount, feeCalculated]);
     });
 
     it('should charge fee when out of whitelist', async function () {
@@ -183,7 +183,7 @@ describe.only('FeeTaker', function () {
         const feeCalculated = takingAmount * (integratorFee + resolverFee) / BigInt(1e5);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
         await expect(fillTx).to.changeTokenBalances(weth,
-            [addr, addr1, addr2],
+            [addr, addr1, feeRecipient],
             [-takingAmount - feeCalculated, takingAmount, feeCalculated],
         );
     });
@@ -222,7 +222,7 @@ describe.only('FeeTaker', function () {
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
         console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
-        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, addr2, addr3], [-takingAmount - feeCalculated, 0, feeCalculated, takingAmount]);
+        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, feeRecipient, makerReceiver], [-takingAmount - feeCalculated, 0, feeCalculated, takingAmount]);
     });
 
     it('should charge fee in eth', async function () {
@@ -259,7 +259,7 @@ describe.only('FeeTaker', function () {
         console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
         await expect(fillTx).to.changeTokenBalance(weth, addr, -takingAmount - feeCalculated);
-        await expect(fillTx).to.changeEtherBalances([addr1, addr2], [takingAmount, feeCalculated]);
+        await expect(fillTx).to.changeEtherBalances([addr1, feeRecipient], [takingAmount, feeCalculated]);
     });
 
     it('should charge fee in eth and send the rest to the maker receiver', async function () {
@@ -298,6 +298,6 @@ describe.only('FeeTaker', function () {
         console.log(`GasUsed: ${(await (await fillTx).wait()).gasUsed.toString()}`);
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
         await expect(fillTx).to.changeTokenBalance(weth, addr, -takingAmount - feeCalculated);
-        await expect(fillTx).to.changeEtherBalances([addr1, addr2, addr3], [0, feeCalculated, takingAmount]);
+        await expect(fillTx).to.changeEtherBalances([addr1, feeRecipient, makerReceiver], [0, feeCalculated, takingAmount]);
     });
 });

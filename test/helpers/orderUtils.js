@@ -127,7 +127,7 @@ function buildMakerTraits ({
 function buildFeeTakerExtensions ({
     feeTaker,
     getterExtraPrefix = '0x',
-    feeRecipient,
+    feeRecipient = constants.ZERO_ADDRESS,
     makerReceiver = undefined,
     integratorFee = 0,
     resolverFee = 0,
