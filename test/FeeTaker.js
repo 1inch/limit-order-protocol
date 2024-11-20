@@ -3,10 +3,10 @@ const { ethers } = hre;
 const { expect } = require('@1inch/solidity-utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
-const { buildOrder, buildTakerTraits, signOrder, buildMakerTraits } = require('./helpers/orderUtils');
+const { buildOrder, buildTakerTraits, signOrder, buildMakerTraits, buildFeeTakerExtensions } = require('./helpers/orderUtils');
 const { ether } = require('./helpers/utils');
 
-describe('FeeTaker', function () {
+describe.only('FeeTaker', function () {
     let addr, addr1, addr2, addr3;
     before(async function () {
         [addr, addr1, addr2, addr3] = await ethers.getSigners();
@@ -40,7 +40,6 @@ describe('FeeTaker', function () {
 
         const makingAmount = ether('300');
         const takingAmount = ether('0.3');
-        const fee = 0;
         const feeRecipient = addr2.address;
 
         const order = buildOrder(
@@ -52,12 +51,10 @@ describe('FeeTaker', function () {
                 makingAmount,
                 takingAmount,
             },
-            {
-                postInteraction: ethers.solidityPacked(
-                    ['address', 'bytes1', 'address', 'uint16', 'uint16', 'uint8', 'bytes1'],
-                    [await feeTaker.getAddress(), '0x00', feeRecipient, fee, fee, 50, '0x00'],
-                ),
-            },
+            buildFeeTakerExtensions({
+                feeTaker: await feeTaker.getAddress(),
+                feeRecipient,
+            }),
         );
 
         const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
@@ -75,7 +72,6 @@ describe('FeeTaker', function () {
 
         const makingAmount = ether('300');
         const takingAmount = ether('0.3');
-        const fee = 0;
         const feeRecipient = addr2.address;
         const makerReceiver = addr3.address;
 
@@ -88,12 +84,11 @@ describe('FeeTaker', function () {
                 makingAmount,
                 takingAmount,
             },
-            {
-                postInteraction: ethers.solidityPacked(
-                    ['address', 'bytes1', 'address', 'address', 'uint16', 'uint16', 'uint8', 'bytes1'],
-                    [await feeTaker.getAddress(), '0x01', feeRecipient, makerReceiver, fee, fee, 50, '0x00'],
-                ),
-            },
+            buildFeeTakerExtensions({
+                feeTaker: await feeTaker.getAddress(),
+                feeRecipient,
+                makerReceiver,
+            }),
         );
 
         const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
@@ -125,25 +120,14 @@ describe('FeeTaker', function () {
                 makingAmount,
                 takingAmount,
             },
-            {
-                // * 2 bytes — integrator fee percentage (in 1e5)
-                // * 2 bytes — resolver fee percentage (in 1e5)
-                // * 20 bytes — fee recipient
-                // * 1 byte - taker whitelist size
-                // * (bytes10)[N] — taker whitelist
-                postInteraction: ethers.solidityPacked(
-                    ['address', 'bytes1', 'address', 'uint16', 'uint16', 'uint8', 'bytes1', 'bytes'],
-                    [await feeTaker.getAddress(), '0x00', feeRecipient, integratorFee, resolverFee, 50, '0x0a', whitelist],
-                ),
-                makingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1', 'bytes'],
-                    [await feeTaker.getAddress(), integratorFee, resolverFee, 50, '0x0a', whitelist],
-                ),
-                takingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1', 'bytes'],
-                    [await feeTaker.getAddress(), integratorFee, resolverFee, 50, '0x0a', whitelist],
-                ),
-            },
+            buildFeeTakerExtensions({
+                feeTaker: await feeTaker.getAddress(),
+                feeRecipient,
+                integratorFee,
+                resolverFee,
+                whitelistLength: 10,
+                whitelist,
+            }),
         );
 
         const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
@@ -178,25 +162,14 @@ describe('FeeTaker', function () {
                 makingAmount,
                 takingAmount,
             },
-            {
-                // * 2 bytes — integrator fee percentage (in 1e5)
-                // * 2 bytes — resolver fee percentage (in 1e5)
-                // * 20 bytes — fee recipient
-                // * 1 byte - taker whitelist size
-                // * (bytes10)[N] — taker whitelist
-                postInteraction: ethers.solidityPacked(
-                    ['address', 'bytes1', 'address', 'uint16', 'uint16', 'uint8', 'bytes1', 'bytes'],
-                    [await feeTaker.getAddress(), '0x00', feeRecipient, integratorFee, resolverFee, 50, '0x0a', whitelist],
-                ),
-                makingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1', 'bytes'],
-                    [await feeTaker.getAddress(), integratorFee, resolverFee, 50, '0x0a', whitelist],
-                ),
-                takingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1', 'bytes'],
-                    [await feeTaker.getAddress(), integratorFee, resolverFee, 50, '0x0a', whitelist],
-                ),
-            },
+            buildFeeTakerExtensions({
+                feeTaker: await feeTaker.getAddress(),
+                feeRecipient,
+                integratorFee,
+                resolverFee,
+                whitelistLength: 10,
+                whitelist,
+            }),
         );
 
         const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
@@ -220,8 +193,8 @@ describe('FeeTaker', function () {
 
         const makingAmount = ether('300');
         const takingAmount = ether('0.3');
-        const fee = BigInt(1e4);
-        const feeCalculated = takingAmount * fee / BigInt(1e5);
+        const integratorFee = BigInt(1e4);
+        const feeCalculated = takingAmount * integratorFee / BigInt(1e5);
         const feeRecipient = addr2.address;
         const makerReceiver = addr3.address;
 
@@ -234,20 +207,12 @@ describe('FeeTaker', function () {
                 makingAmount,
                 takingAmount,
             },
-            {
-                postInteraction: ethers.solidityPacked(
-                    ['address', 'bytes1', 'address', 'address', 'uint16', 'uint16', 'uint8', 'bytes1'],
-                    [await feeTaker.getAddress(), '0x01', feeRecipient, makerReceiver, fee, 0, 50, '0x00'],
-                ),
-                makingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1'],
-                    [await feeTaker.getAddress(), fee, 0, 50, '0x00'],
-                ),
-                takingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1'],
-                    [await feeTaker.getAddress(), fee, 0, 50, '0x00'],
-                ),
-            },
+            buildFeeTakerExtensions({
+                feeTaker: await feeTaker.getAddress(),
+                feeRecipient,
+                makerReceiver,
+                integratorFee,
+            }),
         );
 
         const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
@@ -265,8 +230,8 @@ describe('FeeTaker', function () {
 
         const makingAmount = ether('300');
         const takingAmount = ether('0.3');
-        const fee = BigInt(1e4);
-        const feeCalculated = takingAmount * fee / BigInt(1e5);
+        const integratorFee = BigInt(1e4);
+        const feeCalculated = takingAmount * integratorFee / BigInt(1e5);
         const feeRecipient = addr2.address;
 
         const order = buildOrder(
@@ -279,20 +244,11 @@ describe('FeeTaker', function () {
                 takingAmount,
                 makerTraits: buildMakerTraits({ unwrapWeth: true }),
             },
-            {
-                postInteraction: ethers.solidityPacked(
-                    ['address', 'bytes1', 'address', 'uint16', 'uint16', 'uint8', 'bytes1'],
-                    [await feeTaker.getAddress(), '0x00', feeRecipient, fee, 0, 50, '0x00'],
-                ),
-                makingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1'],
-                    [await feeTaker.getAddress(), fee, 0, 50, '0x00'],
-                ),
-                takingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1'],
-                    [await feeTaker.getAddress(), fee, 0, 50, '0x00'],
-                ),
-            },
+            buildFeeTakerExtensions({
+                feeTaker: await feeTaker.getAddress(),
+                feeRecipient,
+                integratorFee,
+            }),
         );
 
         const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
@@ -311,8 +267,8 @@ describe('FeeTaker', function () {
 
         const makingAmount = ether('300');
         const takingAmount = ether('0.3');
-        const fee = BigInt(1e4);
-        const feeCalculated = takingAmount * fee / BigInt(1e5);
+        const integratorFee = BigInt(1e4);
+        const feeCalculated = takingAmount * integratorFee / BigInt(1e5);
         const feeRecipient = addr2.address;
         const makerReceiver = addr3.address;
 
@@ -326,20 +282,12 @@ describe('FeeTaker', function () {
                 takingAmount,
                 makerTraits: buildMakerTraits({ unwrapWeth: true }),
             },
-            {
-                postInteraction: ethers.solidityPacked(
-                    ['address', 'bytes1', 'address', 'address', 'uint16', 'uint16', 'uint8', 'bytes1'],
-                    [await feeTaker.getAddress(), '0x01', feeRecipient, makerReceiver, fee, 0, 50, '0x00'],
-                ),
-                makingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1'],
-                    [await feeTaker.getAddress(), fee, 0, 50, '0x00'],
-                ),
-                takingAmountData: ethers.solidityPacked(
-                    ['address', 'uint16', 'uint16', 'uint8', 'bytes1'],
-                    [await feeTaker.getAddress(), fee, 0, 50, '0x00'],
-                ),
-            },
+            buildFeeTakerExtensions({
+                feeTaker: await feeTaker.getAddress(),
+                feeRecipient,
+                makerReceiver,
+                integratorFee,
+            }),
         );
 
         const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));

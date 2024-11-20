@@ -124,6 +124,39 @@ function buildMakerTraits ({
     ).toString(16).padStart(64, '0');
 }
 
+function buildFeeTakerExtensions({
+    feeTaker,
+    feeRecipient,
+    makerReceiver = undefined,
+    integratorFee = 0,
+    resolverFee = 0,
+    whitelistDiscount = 50,
+    whitelistLength = 0,
+    whitelist = '0x',
+    whitelistPostInteraction = whitelist,
+}) {
+    return {
+        makingAmountData: ethers.solidityPacked(
+            ['address', 'uint16', 'uint16', 'uint8', 'uint8', 'bytes'],
+            [feeTaker, integratorFee, resolverFee, whitelistDiscount, whitelistLength, whitelist],
+        ),
+        takingAmountData: ethers.solidityPacked(
+            ['address', 'uint16', 'uint16', 'uint8', 'uint8', 'bytes'],
+            [feeTaker, integratorFee, resolverFee, whitelistDiscount, whitelistLength, whitelist],
+        ),
+        postInteraction: ethers.solidityPacked(
+            ['address', 'bytes1', 'address'].concat(
+                makerReceiver ? ['address'] : [],
+                ['uint16', 'uint16', 'uint8', 'uint8', 'bytes'],
+            ),
+            [feeTaker, makerReceiver ? '0x01' : '0x00', feeRecipient].concat(
+                makerReceiver ? [makerReceiver] : [],
+                [integratorFee, resolverFee, whitelistDiscount, whitelistLength, whitelistPostInteraction],
+            ),
+        ),
+    }
+}
+
 function buildOrderRFQ (
     {
         maker,
@@ -276,6 +309,7 @@ module.exports = {
     buildTakerTraits,
     buildMakerTraits,
     buildMakerTraitsRFQ,
+    buildFeeTakerExtensions,
     buildOrder,
     buildOrderRFQ,
     buildOrderData,
