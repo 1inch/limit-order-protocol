@@ -134,7 +134,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
             uint256 fee = Math.mulDiv(takingAmount, integratorFee, denominator) + Math.mulDiv(takingAmount, resolverFee, denominator);
 
             if (order.receiver.get() == address(this)) {
-                if (fee == 0) revert InconsistentFee();
+                if (integratorFee + resolverFee == 0) revert InconsistentFee();
 
                 if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
                     if (fee > 0) {
