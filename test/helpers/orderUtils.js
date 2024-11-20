@@ -126,6 +126,7 @@ function buildMakerTraits ({
 
 function buildFeeTakerExtensions ({
     feeTaker,
+    getterExtraPrefix = '0x',
     feeRecipient,
     makerReceiver = undefined,
     integratorFee = 0,
@@ -137,12 +138,12 @@ function buildFeeTakerExtensions ({
 }) {
     return {
         makingAmountData: ethers.solidityPacked(
-            ['address', 'uint16', 'uint16', 'uint8', 'uint8', 'bytes'],
-            [feeTaker, integratorFee, resolverFee, whitelistDiscount, whitelistLength, whitelist],
+            ['address', 'bytes', 'uint16', 'uint16', 'uint8', 'uint8', 'bytes'],
+            [feeTaker, getterExtraPrefix, integratorFee, resolverFee, whitelistDiscount, whitelistLength, whitelist],
         ),
         takingAmountData: ethers.solidityPacked(
-            ['address', 'uint16', 'uint16', 'uint8', 'uint8', 'bytes'],
-            [feeTaker, integratorFee, resolverFee, whitelistDiscount, whitelistLength, whitelist],
+            ['address', 'bytes', 'uint16', 'uint16', 'uint8', 'uint8', 'bytes'],
+            [feeTaker, getterExtraPrefix, integratorFee, resolverFee, whitelistDiscount, whitelistLength, whitelist],
         ),
         postInteraction: ethers.solidityPacked(
             ['address', 'bytes1', 'address'].concat(
