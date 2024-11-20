@@ -38,6 +38,11 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
      */
     error EthTransferFailed();
 
+    /**
+     * @dev Fee taker is set to be receiver but no fees were set.
+     */
+    error InconsistentFee();
+
     address private immutable _LIMIT_ORDER_PROTOCOL;
     address private immutable _WETH;
     /// @notice Contract address whose tokens allow filling limit orders with a fee for resolvers that are outside the whitelist
@@ -128,16 +133,20 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
             // fee is calculated as a sum of separate fees to limit rounding errors
             uint256 fee = Math.mulDiv(takingAmount, integratorFee, denominator) + Math.mulDiv(takingAmount, resolverFee, denominator);
 
-            if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
-                if (fee > 0) {
-                    _sendEth(feeRecipient, fee);
+            if (order.receiver.get() == address(this)) {
+                if (fee == 0) revert InconsistentFee();
+
+                if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
+                    if (fee > 0) {
+                        _sendEth(feeRecipient, fee);
+                    }
+                    _sendEth(receiver, takingAmount - fee);
+                } else {
+                    if (fee > 0) {
+                        IERC20(order.takerAsset.get()).safeTransfer(feeRecipient, fee);
+                    }
+                    IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - fee);
                 }
-                _sendEth(receiver, takingAmount - fee);
-            } else {
-                if (fee > 0) {
-                    IERC20(order.takerAsset.get()).safeTransfer(feeRecipient, fee);
-                }
-                IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - fee);
             }
 
             if (tail.length >= 20) {

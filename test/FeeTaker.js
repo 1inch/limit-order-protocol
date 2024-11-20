@@ -45,16 +45,12 @@ describe('FeeTaker', function () {
         const order = buildOrder(
             {
                 maker: addr1.address,
-                receiver: await feeTaker.getAddress(),
                 makerAsset: await dai.getAddress(),
                 takerAsset: await weth.getAddress(),
                 makingAmount,
                 takingAmount,
             },
-            buildFeeTakerExtensions({
-                feeTaker: await feeTaker.getAddress(),
-                feeRecipient,
-            }),
+            buildFeeTakerExtensions({ feeTaker: await feeTaker.getAddress() }),
         );
 
         const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
@@ -78,17 +74,13 @@ describe('FeeTaker', function () {
         const order = buildOrder(
             {
                 maker: addr1.address,
-                receiver: await feeTaker.getAddress(),
+                receiver: makerReceiver,
                 makerAsset: await dai.getAddress(),
                 takerAsset: await weth.getAddress(),
                 makingAmount,
                 takingAmount,
             },
-            buildFeeTakerExtensions({
-                feeTaker: await feeTaker.getAddress(),
-                feeRecipient,
-                makerReceiver,
-            }),
+            buildFeeTakerExtensions({ feeTaker: await feeTaker.getAddress() }),
         );
 
         const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
