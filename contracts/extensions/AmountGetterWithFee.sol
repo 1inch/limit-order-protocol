@@ -88,7 +88,7 @@ contract AmountGetterWithFee is AmountGetterBase {
      * @param whitelistData Whitelist data is a tightly packed struct of the following format:
      * ```
      * 1 byte - size of the whitelist
-     * (bytes10)[N] whiteliested addresses;
+     * (bytes10)[N] whitelisted addresses;
      * ```
      * Only 10 lowest bytes of the address are used for comparison.
      * @param taker The taker address to check.
