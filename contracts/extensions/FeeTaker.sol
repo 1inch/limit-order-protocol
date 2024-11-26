@@ -38,6 +38,11 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
      */
     error EthTransferFailed();
 
+    /**
+      * @dev Fees are specified but FeeTaker is not set as a receiver.
+      */
+    error InconsistentFee();
+
     address private immutable _LIMIT_ORDER_PROTOCOL;
     address private immutable _WETH;
     /// @notice Contract address whose tokens allow filling limit orders with a fee for resolvers that are outside the whitelist
@@ -140,6 +145,8 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
                     }
                     IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - fee);
                 }
+            } else if (fee > 0) {
+                revert InconsistentFee();
             }
 
             if (tail.length >= 20) {
