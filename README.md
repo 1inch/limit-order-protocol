@@ -56,27 +56,33 @@ Separate RFQ order are deprecated in v4. To create the most gas efficient order 
 - ERC 1155
 - Other token standards could be supported via external extension
 
-### Deployments & audits (Limit Orders Protocol v3):
+### Deployments & audits (Limit Orders Protocol v4):
 
-You can find 1inch limit order protocol deployments here:
+You can find deployment of 1inch Router V6 and 1inch Limit Order protocol v4 deployments here:
 
-**Ethereum mainnet:** [0x119c71D3BbAC22029622cbaEc24854d3D32D2828](https://etherscan.io/address/0x119c71D3BbAC22029622cbaEc24854d3D32D2828)
+**Ethereum mainnet:** [0x111111125421ca6dc452d289314280a0f8842a65](https://etherscan.io/address/0x111111125421ca6dc452d289314280a0f8842a65)
 
-**BSC mainnet:** [0x1e38Eff998DF9d3669E32f4ff400031385Bf6362](https://bscscan.com/address/0x1e38Eff998DF9d3669E32f4ff400031385Bf6362#code)
+**BSC mainnet:** [0x111111125421ca6dc452d289314280a0f8842a65](https://bscscan.com/address/0x111111125421ca6dc452d289314280a0f8842a65#code)
 
-**Polygon mainnet:** [0x94Bc2a1C732BcAd7343B25af48385Fe76E08734f](https://polygonscan.com/address/0x94Bc2a1C732BcAd7343B25af48385Fe76E08734f#code)
+**Polygon mainnet:** [0x111111125421ca6dc452d289314280a0f8842a65](https://polygonscan.com/address/0x111111125421ca6dc452d289314280a0f8842a65#code)
 
-**Optimism Mainnet:** [0x11431a89893025D2a48dCA4EddC396f8C8117187](https://optimistic.etherscan.io/address/0x11431a89893025D2a48dCA4EddC396f8C8117187)
+**Optimism Mainnet:** [0x111111125421ca6dc452d289314280a0f8842a65](https://optimistic.etherscan.io/address/0x111111125421ca6dc452d289314280a0f8842a65#code)
 
-**Arbitrum One:** [0x7F069df72b7A39bCE9806e3AfaF579E54D8CF2b9](https://arbiscan.io/address/0x7F069df72b7A39bCE9806e3AfaF579E54D8CF2b9)
+**Arbitrum One:** [0x111111125421ca6dc452d289314280a0f8842a65](https://arbiscan.io/address/0x111111125421ca6dc452d289314280a0f8842a65#code)
 
-**Gnosis Chain:** [0x54431918cEC22932fCF97E54769F4E00f646690F](https://blockscout.com/xdai/mainnet/address/0x54431918cEC22932fCF97E54769F4E00f646690F/transactions)
+**Gnosis Chain:** [0x111111125421ca6dc452d289314280a0f8842a65](https://blockscout.com/xdai/mainnet/address/0x111111125421ca6dc452d289314280a0f8842a65/transactions)
 
-**Avalanche:** [0x0F85A912448279111694F4Ba4F85dC641c54b594](https://snowtrace.io/address/0x0F85A912448279111694F4Ba4F85dC641c54b594#code)
+**Avalanche:** [0x111111125421ca6dc452d289314280a0f8842a65](https://snowtrace.io/address/0x111111125421ca6dc452d289314280a0f8842a65#code)
 
-**Kovan Testnet:** [0xa218543cc21ee9388Fa1E509F950FD127Ca82155](https://kovan.etherscan.io/address/0xa218543cc21ee9388Fa1E509F950FD127Ca82155)
+**Fantom:** [0x111111125421ca6dc452d289314280a0f8842a65](https://ftmscan.com/address/0x111111125421ca6dc452d289314280a0f8842a65#code)
 
-**Fantom Opera:** [0x11DEE30E710B8d4a8630392781Cc3c0046365d4c](https://ftmscan.com/address/0x11DEE30E710B8d4a8630392781Cc3c0046365d4c)
+**Aurora:** [0x111111125421ca6dc452d289314280a0f8842a65](https://aurorascan.dev/address/0x111111125421ca6dc452d289314280a0f8842a65)
+
+**Kaia:** [0x111111125421ca6dc452d289314280a0f8842a65](https://kaiascan.io/address/0x111111125421ca6dc452d289314280a0f8842a65)
+
+**Base:** [0x111111125421ca6dc452d289314280a0f8842a65](https://basescan.org/address/0x111111125421ca6dc452d289314280a0f8842a65#code)
+
+**zkSync Era:** [0x6fd4383cb451173d5f9304f041c7bcbf27d561ff](https://era.zksync.network/address/0x6fd4383cb451173d5f9304f041c7bcbf27d561ff#code)
 
 You can find audit reports on etherscan and in the separate [audit repository](https://github.com/1inch/1inch-audits/tree/master/Limit%20Order%20Protocol).
 
