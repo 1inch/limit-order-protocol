@@ -58,7 +58,7 @@ Separate RFQ order are deprecated in v4. To create the most gas efficient order 
 
 ### Deployments & audits (Limit Orders Protocol v4):
 
-You can find deployment of 1inch Router V6 and 1inch Limit Order protocol v4 deployments here:
+You can find 1inch Router v6 and 1inch Limit Order protocol v4 deployments here:
 
 **Ethereum mainnet:** [0x111111125421ca6dc452d289314280a0f8842a65](https://etherscan.io/address/0x111111125421ca6dc452d289314280a0f8842a65)
 
