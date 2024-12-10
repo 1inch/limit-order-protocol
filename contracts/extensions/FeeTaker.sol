@@ -72,6 +72,9 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
      */
     receive() external payable {}
 
+    /**
+     * @notice See {IPostInteraction-postInteraction}.
+     */
     function postInteraction(
         IOrderMixin.Order calldata order,
         bytes calldata extension,
