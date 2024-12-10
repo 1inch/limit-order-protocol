@@ -1,6 +1,6 @@
 {
   "name": "@1inch/limit-order-protocol-contract",
-  "version": "4.1.1",
+  "version": "4.2.0",
   "description": "1inch Limit Order Protocol",
   "repository": {
     "type": "git",
@@ -8,11 +8,7 @@
   },
   "license": "MIT",
   "files": [
-    "contracts/*.sol",
-    "contracts/helpers",
-    "contracts/interfaces",
-    "contracts/libraries",
-    "contracts/mocks",
+    "contracts",
     "test/helpers"
   ],
   "dependencies": {
