@@ -135,7 +135,11 @@ describe('FeeTaker', function () {
         const protocolFeeCalculated = takingAmount * (integratorFee / 2n + resolverFee / 2n) / BigInt(1e5);
         const totalFeeCalculated = protocolFeeCalculated + integratorFeeCalculated;
         await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [makingAmount, -makingAmount]);
-        await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1, integratorFeeRecipient, protocolFeeRecipient], [-takingAmount - totalFeeCalculated, takingAmount, integratorFeeCalculated, protocolFeeCalculated]);
+        await expect(fillTx).to.changeTokenBalances(
+            weth,
+            [addr, addr1, integratorFeeRecipient, protocolFeeRecipient],
+            [-takingAmount - totalFeeCalculated, takingAmount, integratorFeeCalculated, protocolFeeCalculated],
+        );
     });
 
     it('should charge fee when out of whitelist', async function () {
