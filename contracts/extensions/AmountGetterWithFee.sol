@@ -10,8 +10,13 @@ import { AmountGetterBase } from "./AmountGetterBase.sol";
 /// @title Price getter contract that adds fee calculation
 contract AmountGetterWithFee is AmountGetterBase {
     /// @dev Allows fees in range [1e-5, 0.65535]
-    uint256 internal constant _FEE_BASE = 1e5;
-    uint256 internal constant _DISCOUNT_BASE = 100;
+    uint256 internal constant _BASE_1E5 = 1e5;
+    uint256 internal constant _BASE_1E2 = 100;
+
+    error InvalidIntegratorFee();
+    error InvalidIntegratorShare();
+    error InvalidResolverFee();
+    error InvalidWhitelistDiscountNumerator();
 
     /**
      * @dev Calculates makingAmount with fee.
@@ -26,11 +31,11 @@ contract AmountGetterWithFee is AmountGetterBase {
         bytes calldata extraData
     ) internal view virtual override returns (uint256) {
         unchecked {
-            (, uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, _isWhitelistedGetterImpl);
+            (, uint256 integratorFee, , uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, _isWhitelistedGetterImpl);
             return Math.mulDiv(
                 super._getMakingAmount(order, extension, orderHash, taker, takingAmount, remainingMakingAmount, tail),
-                _FEE_BASE,
-                _FEE_BASE + integratorFee + resolverFee
+                _BASE_1E5,
+                _BASE_1E5 + integratorFee + resolverFee
             );
         }
     }
@@ -48,11 +53,11 @@ contract AmountGetterWithFee is AmountGetterBase {
         bytes calldata extraData
     ) internal view virtual override returns (uint256) {
         unchecked {
-            (, uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, _isWhitelistedGetterImpl);
+            (, uint256 integratorFee, , uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, _isWhitelistedGetterImpl);
             return Math.mulDiv(
                 super._getTakingAmount(order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail),
-                _FEE_BASE + integratorFee + resolverFee,
-                _FEE_BASE,
+                _BASE_1E5 + integratorFee + resolverFee,
+                _BASE_1E5,
                 Math.Rounding.Ceil
             );
         }
@@ -61,6 +66,7 @@ contract AmountGetterWithFee is AmountGetterBase {
     /**
      * @dev `extraData` consists of:
      * 2 bytes — integrator fee percentage (in 1e5)
+     * 1 byte - integrator share percentage (in 1e2)
      * 2 bytes — resolver fee percentage (in 1e5)
      * 1 byte - whitelist discount numerator (in 1e2)
      * bytes — whitelist structure determined by `_isWhitelisted` implementation
@@ -71,14 +77,19 @@ contract AmountGetterWithFee is AmountGetterBase {
         bytes calldata extraData,
         address taker,
         function (bytes calldata, address) internal view returns (bool, bytes calldata) _isWhitelisted
-    ) internal view returns (bool isWhitelisted, uint256 integratorFee, uint256 resolverFee, bytes calldata tail) {
+    ) internal view returns (bool isWhitelisted, uint256 integratorFee, uint256 integratorShare, uint256 resolverFee, bytes calldata tail) {
         unchecked {
             integratorFee = uint256(uint16(bytes2(extraData)));
-            resolverFee = uint256(uint16(bytes2(extraData[2:])));
-            uint256 whitelistDiscountNumerator = uint256(uint8(bytes1(extraData[4:])));
-            (isWhitelisted, tail) = _isWhitelisted(extraData[5:], taker);
+            if (integratorFee > _BASE_1E5) revert InvalidIntegratorFee();
+            integratorShare = uint256(uint8(bytes1(extraData[2:])));
+            if (integratorShare > _BASE_1E2) revert InvalidIntegratorShare();
+            resolverFee = uint256(uint16(bytes2(extraData[3:])));
+            if (resolverFee > _BASE_1E5) revert InvalidResolverFee();
+            uint256 whitelistDiscountNumerator = uint256(uint8(bytes1(extraData[5:])));
+            if (whitelistDiscountNumerator > _BASE_1E2) revert InvalidWhitelistDiscountNumerator();
+            (isWhitelisted, tail) = _isWhitelisted(extraData[6:], taker);
             if (isWhitelisted) {
-                resolverFee = resolverFee * whitelistDiscountNumerator / _DISCOUNT_BASE;
+                resolverFee = resolverFee * whitelistDiscountNumerator / _BASE_1E2;
             }
         }
     }

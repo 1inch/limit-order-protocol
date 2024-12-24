@@ -102,9 +102,11 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
      * @dev Takes the fee in taking tokens and transfers the rest to the maker.
      * `extraData` consists of:
      * 1 byte - flags
-     * 20 bytes — fee recipient
+     * 20 bytes — integrator fee recipient
+     * 20 bytes - protocol fee recipient
      * 20 bytes — receiver of taking tokens (optional, if not set, maker is used)
      * 2 bytes — integrator fee percentage (in 1e5)
+     * 1 bytes - integrator rev share percentage (in 1e2)
      * 2 bytes — resolver fee percentage (in 1e5)
      * bytes — whitelist structure determined by `_isWhitelistedPostInteractionImpl` implementation
      * bytes — custom data to call extra postInteraction (optional)
@@ -121,34 +123,47 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
     ) internal virtual {
         unchecked {
             bool customReceiver = extraData[0] & _CUSTOM_RECEIVER_FLAG == _CUSTOM_RECEIVER_FLAG;
-            address feeRecipient = address(bytes20(extraData[1:21]));
-            extraData = extraData[21:];
+            address integratorFeeRecipient = address(bytes20(extraData[1:21]));
+            address protocolFeeRecipient = address(bytes20(extraData[21:41]));
+            extraData = extraData[41:];
 
             address receiver = order.maker.get();
             if (customReceiver) {
                 receiver = address(bytes20(extraData));
                 extraData = extraData[20:];
             }
-            (bool isWhitelisted, uint256 integratorFee, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, _isWhitelistedPostInteractionImpl);
+            (bool isWhitelisted, uint256 integratorFee, uint256 integratorShare, uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, _isWhitelistedPostInteractionImpl);
             if (!isWhitelisted && _ACCESS_TOKEN.balanceOf(taker) == 0) revert OnlyWhitelistOrAccessToken();
 
-            uint256 denominator = _FEE_BASE + integratorFee + resolverFee;
-            // fee is calculated as a sum of separate fees to limit rounding errors
-            uint256 fee = Math.mulDiv(takingAmount, integratorFee, denominator) + Math.mulDiv(takingAmount, resolverFee, denominator);
+            uint256 integratorFeeAmount;
+            uint256 protocolFeeAmount;
+
+            {
+                uint256 denominator = _BASE_1E5 + integratorFee + resolverFee;
+                uint256 integratorFeeTotal = Math.mulDiv(takingAmount, integratorFee, denominator);
+                integratorFeeAmount = Math.mulDiv(integratorFeeTotal, integratorShare, _BASE_1E2);
+                protocolFeeAmount = Math.mulDiv(takingAmount, resolverFee, denominator) + integratorFeeTotal - integratorFeeAmount;
+            }
 
             if (order.receiver.get() == address(this)) {
                 if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
-                    if (fee > 0) {
-                        _sendEth(feeRecipient, fee);
+                    if (integratorFeeAmount > 0) {
+                        _sendEth(integratorFeeRecipient, integratorFeeAmount);
                     }
-                    _sendEth(receiver, takingAmount - fee);
+                    if (protocolFeeAmount > 0) {
+                        _sendEth(protocolFeeRecipient, protocolFeeAmount);
+                    }
+                    _sendEth(receiver, takingAmount - integratorFeeAmount - protocolFeeAmount);
                 } else {
-                    if (fee > 0) {
-                        IERC20(order.takerAsset.get()).safeTransfer(feeRecipient, fee);
+                    if (integratorFeeAmount > 0) {
+                        IERC20(order.takerAsset.get()).safeTransfer(integratorFeeRecipient, integratorFeeAmount);
                     }
-                    IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - fee);
+                    if (protocolFeeAmount > 0) {
+                        IERC20(order.takerAsset.get()).safeTransfer(protocolFeeRecipient, protocolFeeAmount);
+                    }
+                    IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - integratorFeeAmount - protocolFeeAmount);
                 }
-            } else if (fee > 0) {
+            } else if (integratorFeeAmount + protocolFeeAmount > 0) {
                 revert InconsistentFee();
             }
 
