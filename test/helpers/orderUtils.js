@@ -127,9 +127,11 @@ function buildMakerTraits ({
 function buildFeeTakerExtensions ({
     feeTaker,
     getterExtraPrefix = '0x',
-    feeRecipient = constants.ZERO_ADDRESS,
+    integratorFeeRecipient = constants.ZERO_ADDRESS,
+    protocolFeeRecipient = constants.ZERO_ADDRESS,
     makerReceiver = undefined,
     integratorFee = 0,
+    integratorShare = 50,
     resolverFee = 0,
     whitelistDiscount = 50,
     whitelist = '0x00',
@@ -140,21 +142,21 @@ function buildFeeTakerExtensions ({
 }) {
     return {
         makingAmountData: ethers.solidityPacked(
-            ['address', 'bytes', 'uint16', 'uint16', 'uint8', 'bytes', 'bytes'],
-            [feeTaker, getterExtraPrefix, integratorFee, resolverFee, whitelistDiscount, whitelist, customMakingGetter],
+            ['address', 'bytes', 'uint16', 'uint8', 'uint16', 'uint8', 'bytes', 'bytes'],
+            [feeTaker, getterExtraPrefix, integratorFee, integratorShare, resolverFee, whitelistDiscount, whitelist, customMakingGetter],
         ),
         takingAmountData: ethers.solidityPacked(
-            ['address', 'bytes', 'uint16', 'uint16', 'uint8', 'bytes', 'bytes'],
-            [feeTaker, getterExtraPrefix, integratorFee, resolverFee, whitelistDiscount, whitelist, customTakingGetter],
+            ['address', 'bytes', 'uint16', 'uint8', 'uint16', 'uint8', 'bytes', 'bytes'],
+            [feeTaker, getterExtraPrefix, integratorFee, integratorShare, resolverFee, whitelistDiscount, whitelist, customTakingGetter],
         ),
         postInteraction: ethers.solidityPacked(
-            ['address', 'bytes1', 'address'].concat(
+            ['address', 'bytes1', 'address', 'address'].concat(
                 makerReceiver ? ['address'] : [],
-                ['uint16', 'uint16', 'uint8', 'bytes', 'bytes'],
+                ['uint16', 'uint8', 'uint16', 'uint8', 'bytes', 'bytes'],
             ),
-            [feeTaker, makerReceiver ? '0x01' : '0x00', feeRecipient].concat(
+            [feeTaker, makerReceiver ? '0x01' : '0x00', integratorFeeRecipient, protocolFeeRecipient].concat(
                 makerReceiver ? [makerReceiver] : [],
-                [integratorFee, resolverFee, whitelistDiscount, whitelistPostInteraction, customPostInteraction],
+                [integratorFee, integratorShare, resolverFee, whitelistDiscount, whitelistPostInteraction, customPostInteraction],
             ),
         ),
     };
