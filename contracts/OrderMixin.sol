@@ -257,7 +257,7 @@ abstract contract OrderMixin is IOrderMixin, EIP712, PredicateHelper, SeriesEpoc
       * @param takerTraits The taker preferences for the order.
       * @param target The address to which the order is filled.
       * @param interaction The interaction calldata.
-      * @return makingAmount The computed amount that the maker will get.
+      * @return makingAmount The computed amount that the maker will send.
       * @return takingAmount The computed amount that the taker will send.
       */
     function _fill(
