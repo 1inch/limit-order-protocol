@@ -106,8 +106,9 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
      * 20 bytes - protocol fee recipient
      * 20 bytes — receiver of taking tokens (optional, if not set, maker is used)
      * 2 bytes — integrator fee percentage (in 1e5)
-     * 1 bytes - integrator rev share percentage (in 1e2)
+     * 1 byte - integrator rev share percentage (in 1e2)
      * 2 bytes — resolver fee percentage (in 1e5)
+     * 1 byte - whitelist discount numerator (in 1e2)
      * bytes — whitelist structure determined by `_isWhitelistedPostInteractionImpl` implementation
      * bytes — custom data to call extra postInteraction (optional)
      */
