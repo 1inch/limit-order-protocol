@@ -1,3 +1,4 @@
+const { deployAndGetContractWithCreate3 } = require('@1inch/solidity-utils');
 const hre = require('hardhat');
 const { ethers } = hre;
 const { getChainId } = hre;
@@ -18,10 +19,9 @@ const WETH = {
 };
 
 const ROUTER_V6_ADDR = '0x111111125421ca6dc452d289314280a0f8842a65';
+const ACCESS_TOKEN_ADDR = '0xACCe550000159e70908C0499a1119D04e7039C28';
 
 const FEE_TAKER_SALT = ethers.keccak256(ethers.toUtf8Bytes('FeeTaker'));
-
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 module.exports = async ({ deployments, getNamedAccounts }) => {
     const networkName = hre.network.name;
@@ -39,27 +39,13 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
 
     const { deployer } = await getNamedAccounts();
 
-    const create3Deployer = await ethers.getContractAt('ICreate3Deployer', (await deployments.get('Create3Deployer')).address);
-
-    const FeeTakerFactory = await ethers.getContractFactory('FeeTaker');
-
-    const deployData = (await FeeTakerFactory.getDeployTransaction(ROUTER_V6_ADDR, WETH[chainId], deployer)).data;
-
-    const txn = create3Deployer.deploy(FEE_TAKER_SALT, deployData, { gasLimit: 5000000 });
-    await (await txn).wait();
-
-    const feeTaker = await ethers.getContractAt('FeeTaker', await create3Deployer.addressOf(FEE_TAKER_SALT));
-
-    console.log('FeeTaker deployed to:', await feeTaker.getAddress());
-
-    await sleep(5000); // wait for etherscan to index contract
-
-    if (chainId !== '31337') {
-        await hre.run('verify:verify', {
-            address: await feeTaker.getAddress(),
-            constructorArguments: [ROUTER_V6_ADDR, WETH[chainId], deployer],
-        });
-    }
+    await deployAndGetContractWithCreate3({
+        contractName: 'FeeTaker',
+        constructorArgs: [ROUTER_V6_ADDR, ACCESS_TOKEN_ADDR, WETH[chainId], deployer],
+        create3Deployer: (await deployments.get('Create3Deployer')).address,
+        salt: FEE_TAKER_SALT,
+        deployments,
+    });
 };
 
 module.exports.skip = async () => true;
