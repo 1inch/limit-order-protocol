@@ -43,6 +43,11 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
       */
     error InconsistentFee();
 
+    /**
+     * @dev The returned value is less than specified in order.takingAmount
+     */
+    error ReceivedAmountToolow();
+
     address private immutable _LIMIT_ORDER_PROTOCOL;
     address private immutable _WETH;
     /// @notice Contract address whose tokens allow filling limit orders with a fee for resolvers that are outside the whitelist
@@ -135,6 +140,11 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
 
             (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) = _getFeeAmounts(order, taker, takingAmount, extraData);
 
+            uint256 userAmount = takingAmount - integratorFeeAmount - protocolFeeAmount;
+            if (userAmount < order.takingAmount) {
+                revert ReceivedAmountToolow();
+            }
+
             if (order.receiver.get() == address(this)) {
                 if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
                     if (integratorFeeAmount > 0) {
@@ -143,7 +153,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
                     if (protocolFeeAmount > 0) {
                         _sendEth(protocolFeeRecipient, protocolFeeAmount);
                     }
-                    _sendEth(receiver, takingAmount - integratorFeeAmount - protocolFeeAmount);
+                    _sendEth(receiver, userAmount);
                 } else {
                     if (integratorFeeAmount > 0) {
                         IERC20(order.takerAsset.get()).safeTransfer(integratorFeeRecipient, integratorFeeAmount);
@@ -151,7 +161,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
                     if (protocolFeeAmount > 0) {
                         IERC20(order.takerAsset.get()).safeTransfer(protocolFeeRecipient, protocolFeeAmount);
                     }
-                    IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - integratorFeeAmount - protocolFeeAmount);
+                    IERC20(order.takerAsset.get()).safeTransfer(receiver, userAmount);
                 }
             } else if (integratorFeeAmount + protocolFeeAmount > 0) {
                 revert InconsistentFee();
