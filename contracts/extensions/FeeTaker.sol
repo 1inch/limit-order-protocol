@@ -133,7 +133,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
                 extraData = extraData[20:];
             }
 
-            (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) = _getFeeAmounts(taker, takingAmount, extraData);
+            (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) = _getFeeAmounts(order, taker, takingAmount, extraData);
 
             if (order.receiver.get() == address(this)) {
                 if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
@@ -175,7 +175,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
      * @dev Calculates fee amounts depending on whether the taker is in the whitelist and whether they have an _ACCESS_TOKEN.
      * Override this function if the calculation of integratorFee and protocolFee differs from the existing logic and requires a different parsing of extraData.
      */
-    function _getFeeAmounts(address taker, uint256 takingAmount, bytes calldata extraData) internal virtual returns (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) {
+    function _getFeeAmounts(IOrderMixin.Order calldata /* order */, address taker, uint256 takingAmount, bytes calldata extraData) internal virtual returns (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) {
         bool isWhitelisted;
         uint256 integratorFee;
         uint256 integratorShare;
