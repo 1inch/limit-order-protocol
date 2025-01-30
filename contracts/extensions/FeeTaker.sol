@@ -110,10 +110,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
      * 20 bytes — integrator fee recipient
      * 20 bytes - protocol fee recipient
      * 20 bytes — receiver of taking tokens (optional, if not set, maker is used)
-     * 2 bytes — integrator fee percentage (in 1e5)
-     * 1 bytes - integrator rev share percentage (in 1e2)
-     * 2 bytes — resolver fee percentage (in 1e5)
-     * bytes — whitelist structure determined by `_isWhitelistedPostInteractionImpl` implementation
+     * bytes - fees structure determined by `_getFeeAmounts` implementation
      * bytes — custom data to call extra postInteraction (optional)
      */
     function _postInteraction(
@@ -183,6 +180,11 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
 
     /**
      * @dev Calculates fee amounts depending on whether the taker is in the whitelist and whether they have an _ACCESS_TOKEN.
+     * `extraData` consists of:
+     * 2 bytes — integrator fee percentage (in 1e5)
+     * 1 bytes - integrator rev share percentage (in 1e2)
+     * 2 bytes — resolver fee percentage (in 1e5)
+     * bytes — whitelist structure determined by `_isWhitelistedPostInteractionImpl` implementation
      * Override this function if the calculation of integratorFee and protocolFee differs from the existing logic and requires a different parsing of extraData.
      */
     function _getFeeAmounts(IOrderMixin.Order calldata /* order */, address taker, uint256 takingAmount, bytes calldata extraData) internal virtual returns (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) {
