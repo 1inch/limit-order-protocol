@@ -135,12 +135,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
                 extraData = extraData[20:];
             }
 
-            (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) = _getFeeAmounts(order, taker, takingAmount, extraData);
-
-            uint256 userAmount = takingAmount - integratorFeeAmount - protocolFeeAmount;
-            if (userAmount < order.takingAmount) {
-                revert ReceivedAmountToolow();
-            }
+            (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) = _getFeeAmounts(order, taker, takingAmount, makingAmount, extraData);
 
             if (order.receiver.get() == address(this)) {
                 if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
@@ -150,7 +145,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
                     if (protocolFeeAmount > 0) {
                         _sendEth(protocolFeeRecipient, protocolFeeAmount);
                     }
-                    _sendEth(receiver, userAmount);
+                    _sendEth(receiver, takingAmount - integratorFeeAmount - protocolFeeAmount);
                 } else {
                     if (integratorFeeAmount > 0) {
                         IERC20(order.takerAsset.get()).safeTransfer(integratorFeeRecipient, integratorFeeAmount);
@@ -158,7 +153,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
                     if (protocolFeeAmount > 0) {
                         IERC20(order.takerAsset.get()).safeTransfer(protocolFeeRecipient, protocolFeeAmount);
                     }
-                    IERC20(order.takerAsset.get()).safeTransfer(receiver, userAmount);
+                    IERC20(order.takerAsset.get()).safeTransfer(receiver, takingAmount - integratorFeeAmount - protocolFeeAmount);
                 }
             } else if (integratorFeeAmount + protocolFeeAmount > 0) {
                 revert InconsistentFee();
@@ -187,7 +182,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
      * bytes — whitelist structure determined by `_isWhitelistedPostInteractionImpl` implementation
      * Override this function if the calculation of integratorFee and protocolFee differs from the existing logic and requires a different parsing of extraData.
      */
-    function _getFeeAmounts(IOrderMixin.Order calldata /* order */, address taker, uint256 takingAmount, bytes calldata extraData) internal virtual returns (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) {
+    function _getFeeAmounts(IOrderMixin.Order calldata /* order */, address taker, uint256 takingAmount, uint256 /* makingAmount */, bytes calldata extraData) internal virtual returns (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) {
         bool isWhitelisted;
         uint256 integratorFee;
         uint256 integratorShare;
