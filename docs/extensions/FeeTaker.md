@@ -83,7 +83,7 @@ _Takes the fee in taking tokens and transfers the rest to the maker.
 ```solidity
 function rescueFunds(contract IERC20 token, uint256 amount) external
 ```
-Retrieves funds accidently sent directly to the contract address
+Retrieves funds accidentally sent directly to the contract address
 
 #### Parameters
 
