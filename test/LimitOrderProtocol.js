@@ -1131,6 +1131,8 @@ describe('LimitOrderProtocol', function () {
         });
 
         it('Resolver cancellation just after expiration', async function () {
+            if (hre.__SOLIDITY_COVERAGE_RUNNING) { this.skip(); }
+
             const { tokens: { dai, weth }, contracts: { swap, ethOrders } } = await loadFixture(deployContractsAndInit);
 
             const expirationTime = await time.latest() + time.duration.hours(1);
@@ -1177,6 +1179,8 @@ describe('LimitOrderProtocol', function () {
         });
         
         it('Resolver cancellation in middle of auction period', async function () {
+            if (hre.__SOLIDITY_COVERAGE_RUNNING) { this.skip(); }
+
             const { tokens: { dai, weth }, contracts: { swap, ethOrders } } = await loadFixture(deployContractsAndInit);
             
             const expirationTime = await time.latest() + time.duration.hours(1);
