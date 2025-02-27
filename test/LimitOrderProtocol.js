@@ -1,17 +1,18 @@
 const hre = require('hardhat');
-const { ethers, tracer } = hre;
+const { ethers, network, tracer } = hre;
 const { expect, time, constants, getPermit2, permit2Contract } = require('@1inch/solidity-utils');
 const { fillWithMakingAmount, unwrapWethTaker, buildMakerTraits, buildMakerTraitsRFQ, buildOrder, signOrder, buildOrderData, buildTakerTraits } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
 const { joinStaticCalls, ether, findTrace, countAllItems } = require('./helpers/utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens, deployArbitraryPredicate } = require('./helpers/fixtures');
+const { parseUnits } = require('ethers');
 
 describe('LimitOrderProtocol', function () {
-    let addr, addr1, addr2;
+    let addr, addr1, addr2, addr3;
 
     before(async function () {
-        [addr, addr1, addr2] = await ethers.getSigners();
+        [addr, addr1, addr2, addr3] = await ethers.getSigners();
     });
 
     async function deployContractsAndInit () {
@@ -28,8 +29,15 @@ describe('LimitOrderProtocol', function () {
         await weth.approve(swap, ether('100'));
         await weth.connect(addr1).approve(swap, ether('100'));
 
+        // Deploy access token for third-party cancellations
+        const TokenMock = await ethers.getContractFactory('TokenMock');
+        tokens.accessToken = await TokenMock.deploy('Access Token', 'ACCESS');
+        await tokens.accessToken.waitForDeployment();
+
+        await tokens.accessToken.mint(addr2, 1);
+
         const ETHOrders = await ethers.getContractFactory('ETHOrders');
-        contracts.ethOrders = await ETHOrders.deploy(weth, swap);
+        contracts.ethOrders = await ETHOrders.deploy(weth, swap, tokens.accessToken);
         await contracts.ethOrders.waitForDeployment();
         const orderLibFactory = await ethers.getContractFactory('OrderLib');
 
@@ -960,6 +968,9 @@ describe('LimitOrderProtocol', function () {
     });
 
     describe('ETH Maker Orders', function () {
+        const maximumPremium = 500; // 50%
+        const auctionDuration = time.duration.days(1);
+        
         it('Partial fill', async function () {
             const { tokens: { dai, weth }, contracts: { swap, ethOrders }, chainId } = await loadFixture(deployContractsAndInit);
 
@@ -978,7 +989,7 @@ describe('LimitOrderProtocol', function () {
             );
             const orderHash = await swap.hashOrder(order);
 
-            const deposittx = ethOrders.connect(addr1).ethOrderDeposit(order, order.extension, { value: ether('0.3') });
+            const deposittx = ethOrders.connect(addr1).ethOrderDeposit(order, order.extension, maximumPremium, auctionDuration, { value: ether('0.3') });
             await expect(deposittx).to.changeEtherBalance(addr1, ether('-0.3'));
             await expect(deposittx).to.changeTokenBalance(weth, ethOrders, ether('0.3'));
 
@@ -1032,7 +1043,7 @@ describe('LimitOrderProtocol', function () {
             );
             const orderHash = await swap.hashOrder(order);
 
-            const deposittx = ethOrders.connect(addr1).ethOrderDeposit(order, order.extension, { value: ether('0.3') });
+            const deposittx = ethOrders.connect(addr1).ethOrderDeposit(order, order.extension, maximumPremium, auctionDuration, { value: ether('0.3') });
             await expect(deposittx).to.changeEtherBalance(addr1, ether('-0.3'));
             await expect(deposittx).to.changeTokenBalance(weth, ethOrders, ether('0.3'));
 
@@ -1073,7 +1084,7 @@ describe('LimitOrderProtocol', function () {
                 takingAmount: ether('300'),
             });
 
-            await expect(ethOrders.connect(addr1).ethOrderDeposit(order, order.extension, { value: ether('0.3') }))
+            await expect(ethOrders.connect(addr1).ethOrderDeposit(order, order.extension, maximumPremium, auctionDuration, { value: ether('0.3') }))
                 .to.be.revertedWithCustomError(ethOrders, 'InvalidOrder');
         });
 
@@ -1094,7 +1105,7 @@ describe('LimitOrderProtocol', function () {
                 },
             );
 
-            await expect(ethOrders.connect(addr1).ethOrderDeposit(order, '0x', { value: ether('0.3') }))
+            await expect(ethOrders.connect(addr1).ethOrderDeposit(order, '0x', maximumPremium, auctionDuration, { value: ether('0.3') }))
                 .to.be.revertedWithCustomError(orderLibFactory, 'MissingOrderExtension');
         });
 
@@ -1115,8 +1126,204 @@ describe('LimitOrderProtocol', function () {
                 },
             );
 
-            await expect(ethOrders.connect(addr1).ethOrderDeposit(order, order.extension.slice(0, -6), { value: ether('0.3') }))
+            await expect(ethOrders.connect(addr1).ethOrderDeposit(order, order.extension.slice(0, -6), maximumPremium, auctionDuration, { value: ether('0.3') }))
                 .to.be.revertedWithCustomError(orderLibFactory, 'InvalidExtensionHash');
+        });
+
+        it('Resolver cancellation just after expiration', async function () {
+            const { tokens: { dai, weth }, contracts: { swap, ethOrders } } = await loadFixture(deployContractsAndInit);
+
+            const expirationTime = await time.latest() + time.duration.hours(1);
+            
+            const order = buildOrder(
+                {
+                    maker: await ethOrders.getAddress(),
+                    receiver: addr1.address,
+                    makerAsset: await weth.getAddress(),
+                    takerAsset: await dai.getAddress(),
+                    makingAmount: ether('0.3'),
+                    takingAmount: ether('300'),
+                    makerTraits: buildMakerTraits({ expiry: expirationTime }),
+                },
+                {
+                    postInteraction: await ethOrders.getAddress(),
+                },
+            );
+            const orderHash = await swap.hashOrder(order);
+                        
+            await ethOrders.connect(addr1).ethOrderDeposit(
+                order,
+                order.extension,
+                maximumPremium,
+                auctionDuration,
+                { value: ether('0.3') },
+            );
+            
+            await time.increaseTo(expirationTime);
+
+            await network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x2540be400']); // 10 gwei
+            
+            const cancelTx = ethOrders.connect(addr2).cancelOrderByResolver(order.makerTraits, orderHash);
+            
+            await expect(cancelTx).to.changeTokenBalance(weth, ethOrders, ether('-0.3'));
+            await expect(cancelTx).to.emit(ethOrders, 'ETHOrderCancelledByThirdParty');
+            
+            const orderMakerBalance = await ethOrders.ordersMakersBalances(orderHash);
+            expect(orderMakerBalance.balance).to.equal(0);
+            
+            const reward = 30000n * parseUnits('10', 9); // 10 gwei
+
+            await expect(cancelTx).to.changeEtherBalances([addr1, addr2], [ether('0.3') - reward, reward]);
+        });
+        
+        it('Resolver cancellation in middle of auction period', async function () {
+            const { tokens: { dai, weth }, contracts: { swap, ethOrders } } = await loadFixture(deployContractsAndInit);
+            
+            const expirationTime = await time.latest() + time.duration.hours(1);
+
+            const order = buildOrder(
+                {
+                    maker: await ethOrders.getAddress(),
+                    receiver: addr1.address,
+                    makerAsset: await weth.getAddress(),
+                    takerAsset: await dai.getAddress(),
+                    makingAmount: ether('0.3'),
+                    takingAmount: ether('300'),
+                    makerTraits: buildMakerTraits({ expiry: expirationTime }),
+                },
+                {
+                    postInteraction: await ethOrders.getAddress(),
+                },
+            );
+            const orderHash = await swap.hashOrder(order);
+            
+            await ethOrders.connect(addr1).ethOrderDeposit(
+                order,
+                order.extension,
+                maximumPremium,
+                auctionDuration,
+                { value: ether('0.3') },
+            );
+            
+            await time.increaseTo(expirationTime + auctionDuration / 2);
+
+            await network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x2540be400']); // 10 gwei
+            
+            const cancelTx = ethOrders.connect(addr2).cancelOrderByResolver(order.makerTraits, orderHash);
+            
+            await expect(cancelTx).to.changeTokenBalance(weth, ethOrders, ether('-0.3'));
+            await expect(cancelTx).to.emit(ethOrders, 'ETHOrderCancelledByThirdParty');
+            
+            const orderMakerBalance = await ethOrders.ordersMakersBalances(orderHash);
+            expect(orderMakerBalance.balance).to.equal(0);
+
+            const reward = 30000n * parseUnits('10', 9) * 125n / 100n; // 10 gwei + 25% auction boost
+
+            await expect(cancelTx).to.changeEtherBalances([addr1, addr2], [ether('0.3') - reward, reward]);
+        });
+        
+        it('Resolver cancellation fails before expiration', async function () {
+            const { tokens: { dai, weth }, contracts: { swap, ethOrders } } = await loadFixture(deployContractsAndInit);
+            
+            const expirationTime = await time.latest() + time.duration.hours(1);
+
+            const order = buildOrder(
+                {
+                    maker: await ethOrders.getAddress(),
+                    receiver: addr1.address,
+                    makerAsset: await weth.getAddress(),
+                    takerAsset: await dai.getAddress(),
+                    makingAmount: ether('0.3'),
+                    takingAmount: ether('300'),
+                    makerTraits: buildMakerTraits({ expiry: expirationTime }),
+                },
+                {
+                    postInteraction: await ethOrders.getAddress(),
+                },
+            );
+            const orderHash = await swap.hashOrder(order);
+            
+            await ethOrders.connect(addr1).ethOrderDeposit(
+                order,
+                order.extension,
+                maximumPremium,
+                auctionDuration,
+                { value: ether('0.3') },
+            );
+
+            await expect(
+                ethOrders.connect(addr2).cancelOrderByResolver(order.makerTraits, orderHash),
+            ).to.be.revertedWithCustomError(ethOrders, 'OrderNotExpired');
+        });
+        
+        it('Resolver cancellation fails without access token', async function () {
+            const { tokens: { dai, weth }, contracts: { swap, ethOrders } } = await loadFixture(deployContractsAndInit);
+            
+            const expirationTime = await time.latest() + time.duration.hours(1);
+            
+            const order = buildOrder(
+                {
+                    maker: await ethOrders.getAddress(),
+                    receiver: addr1.address,
+                    makerAsset: await weth.getAddress(),
+                    takerAsset: await dai.getAddress(),
+                    makingAmount: ether('0.3'),
+                    takingAmount: ether('300'),
+                    makerTraits: buildMakerTraits({ expiry: expirationTime }),
+                },
+                {
+                    postInteraction: await ethOrders.getAddress(),
+                },
+            );
+            const orderHash = await swap.hashOrder(order);
+            
+            await ethOrders.connect(addr1).ethOrderDeposit(
+                order,
+                order.extension,
+                maximumPremium,
+                auctionDuration,
+                { value: ether('0.3') },
+            );
+            
+            await time.increaseTo(expirationTime + 10);
+            await expect(
+                ethOrders.connect(addr3).cancelOrderByResolver(order.makerTraits, orderHash),
+            ).to.be.revertedWithCustomError(ethOrders, 'AccessDenied');
+        });
+
+        it('Resolver cancellation fails when maximum premium is 0', async function () {
+            const { tokens: { dai, weth }, contracts: { swap, ethOrders } } = await loadFixture(deployContractsAndInit);
+            
+            const expirationTime = await time.latest() + time.duration.hours(1);
+            
+            const order = buildOrder(
+                {
+                    maker: await ethOrders.getAddress(),
+                    receiver: addr1.address,
+                    makerAsset: await weth.getAddress(),
+                    takerAsset: await dai.getAddress(),
+                    makingAmount: ether('0.3'),
+                    takingAmount: ether('300'),
+                    makerTraits: buildMakerTraits({ expiry: expirationTime }),
+                },
+                {
+                    postInteraction: await ethOrders.getAddress(),
+                },
+            );
+            const orderHash = await swap.hashOrder(order);
+            
+            await ethOrders.connect(addr1).ethOrderDeposit(
+                order,
+                order.extension,
+                0,
+                0,
+                { value: ether('0.3') },
+            );
+            
+            await time.increaseTo(expirationTime + 10);
+            await expect(
+                ethOrders.connect(addr2).cancelOrderByResolver(order.makerTraits, orderHash),
+            ).to.be.revertedWithCustomError(ethOrders, 'CancelOrderByResolverIsForbidden');
         });
 
         it('Invalid signature', async function () {
@@ -1137,7 +1344,7 @@ describe('LimitOrderProtocol', function () {
             );
             const orderHash = await swap.hashOrder(order);
 
-            const deposittx = ethOrders.connect(addr1).ethOrderDeposit(order, order.extension, { value: ether('0.3') });
+            const deposittx = ethOrders.connect(addr1).ethOrderDeposit(order, order.extension, maximumPremium, auctionDuration, { value: ether('0.3') });
             await expect(deposittx).to.changeEtherBalance(addr1, ether('-0.3'));
             await expect(deposittx).to.changeTokenBalance(weth, ethOrders, ether('0.3'));
 

@@ -77,6 +77,15 @@ library MakerTraitsLib {
     }
 
     /**
+     * @notice Returns the expiration time of the order.
+     * @param makerTraits The traits of the maker.
+     * @return result The expiration timestamp of the order.
+     */
+    function getExpirationTime(MakerTraits makerTraits) internal pure returns (uint256) {
+        return (MakerTraits.unwrap(makerTraits) >> _EXPIRATION_OFFSET) & _EXPIRATION_MASK;
+    }
+
+    /**
      * @notice Returns the nonce or epoch of the order.
      * @param makerTraits The traits of the maker.
      * @return result The nonce or epoch of the order.
