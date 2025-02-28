@@ -33,7 +33,7 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
         uint32 auctionDuration;
     }
 
-    uint256 private constant _PREMIUM_BASE = 1000;
+    uint256 private constant _PREMIUM_BASE = 1e3;
     uint256 private constant _CANCEL_GAS_LOWER_BOUND = 30000;
 
     address private immutable _LIMIT_ORDER_PROTOCOL;
