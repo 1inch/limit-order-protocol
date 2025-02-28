@@ -127,13 +127,12 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
     function cancelOrderByResolver(MakerTraits makerTraits, bytes32 orderHash) external {
         unchecked {
             if (_ACCESS_TOKEN.balanceOf(msg.sender) == 0) revert AccessDenied();
-            uint256 expirationTime = MakerTraitsLib.getExpirationTime(makerTraits);
-            if (block.timestamp < expirationTime) revert OrderNotExpired();
+            if (!makerTraits.isExpired()) revert OrderNotExpired();
             ETHOrder memory ethOrder = ordersMakersBalances[orderHash];
             if (ethOrder.maker == address(0)) revert InvalidOrder();
             if (ethOrder.maximumPremium == 0) revert CancelOrderByResolverIsForbidden();
             IOrderMixin(_LIMIT_ORDER_PROTOCOL).cancelOrder(makerTraits, orderHash);
-            uint256 reward = _CANCEL_GAS_LOWER_BOUND * block.basefee * (_PREMIUM_BASE + _getCurrentPremiumMultiplier(ethOrder, expirationTime)) / _PREMIUM_BASE;
+            uint256 reward = _CANCEL_GAS_LOWER_BOUND * block.basefee * (_PREMIUM_BASE + _getCurrentPremiumMultiplier(ethOrder, makerTraits.getExpirationTime())) / _PREMIUM_BASE;
             if (reward > ethOrder.balance) revert RewardIsTooBig();
             uint256 refundETHAmount = ethOrder.balance - reward;
             ordersMakersBalances[orderHash].balance = 0;
