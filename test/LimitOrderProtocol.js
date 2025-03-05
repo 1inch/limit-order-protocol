@@ -1319,8 +1319,8 @@ describe('LimitOrderProtocol', function () {
             await ethOrders.connect(addr1).ethOrderDeposit(
                 order,
                 order.extension,
-                0,
-                0,
+                0, // maximumPremium
+                0, // auctionDuration
                 { value: ether('0.3') },
             );
             
