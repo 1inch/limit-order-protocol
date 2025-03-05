@@ -67,12 +67,21 @@ library MakerTraitsLib {
     }
 
     /**
+     * @notice Returns the expiration time of the order.
+     * @param makerTraits The traits of the maker.
+     * @return result The expiration timestamp of the order.
+     */
+    function getExpirationTime(MakerTraits makerTraits) internal pure returns (uint256) {
+        return (MakerTraits.unwrap(makerTraits) >> _EXPIRATION_OFFSET) & _EXPIRATION_MASK;
+    }
+
+    /**
      * @notice Checks if the order has expired.
      * @param makerTraits The traits of the maker.
      * @return result A boolean indicating whether the order has expired.
      */
     function isExpired(MakerTraits makerTraits) internal view returns (bool) {
-        uint256 expiration = (MakerTraits.unwrap(makerTraits) >> _EXPIRATION_OFFSET) & _EXPIRATION_MASK;
+        uint256 expiration = getExpirationTime(makerTraits);
         return expiration != 0 && expiration < block.timestamp;  // solhint-disable-line not-rely-on-time
     }
 
