@@ -4,6 +4,7 @@ pragma solidity 0.8.23;
 
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/mixins/OnlyWethReceiver.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "../interfaces/IPostInteraction.sol";
 import "../OrderLib.sol";
@@ -20,20 +21,30 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
     error InvalidOrder();
     error NotEnoughBalance();
     error ExistingOrder();
+    error OrderNotExpired();
+    error RewardIsTooBig();
+    error CancelOrderByResolverIsForbidden();
 
     /// @notice ETH order struct.
     struct ETHOrder {
         address maker;
         uint96 balance;
+        uint16 maximumPremium;
+        uint32 auctionDuration;
     }
+
+    uint256 private constant _PREMIUM_BASE = 1e3;
+    uint256 private constant _CANCEL_GAS_LOWER_BOUND = 30000;
 
     address private immutable _LIMIT_ORDER_PROTOCOL;
     IWETH private immutable _WETH;
-    /// @notice Makers and their uint96 ETH balances in single mapping.
+    IERC20 private immutable _ACCESS_TOKEN;
+
     mapping(bytes32 orderHash => ETHOrder data) public ordersMakersBalances;
 
     event ETHDeposited(bytes32 orderHash, uint256 amount);
     event ETHOrderCancelled(bytes32 orderHash, uint256 amount);
+    event ETHOrderCancelledByThirdParty(bytes32 orderHash, uint256 amount, uint256 reward);
 
     /// @notice Only limit order protocol can call this contract.
     modifier onlyLimitOrderProtocol() {
@@ -42,9 +53,10 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
         _;
     }
 
-    constructor(IWETH weth, address limitOrderProtocol) OnlyWethReceiver(address(weth)) {
+    constructor(IWETH weth, address limitOrderProtocol, IERC20 accessToken) OnlyWethReceiver(address(weth)) {
         _WETH = weth;
         _LIMIT_ORDER_PROTOCOL = limitOrderProtocol;
+        _ACCESS_TOKEN = accessToken;
         _WETH.approve(limitOrderProtocol, type(uint256).max);
     }
 
@@ -61,7 +73,12 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
     /*
      * @notice Checks if ETH order is valid, makes ETH deposit for an order, saves real maker and wraps ETH into WETH.
      */
-    function ethOrderDeposit(IOrderMixin.Order calldata order, bytes calldata extension) external payable returns(bytes32 orderHash) {
+    function ethOrderDeposit(
+        IOrderMixin.Order calldata order, 
+        bytes calldata extension, 
+        uint16 maximumPremium, 
+        uint32 auctionDuration
+    ) external payable returns(bytes32 orderHash) {
         if (!order.makerTraits.needPostInteractionCall()) revert InvalidOrder();
         {
             (bool valid, bytes4 validationResult) = order.isValidExtension(extension);
@@ -82,7 +99,9 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
         if (ordersMakersBalances[orderHash].maker != address(0)) revert ExistingOrder();
         ordersMakersBalances[orderHash] = ETHOrder({
             maker: msg.sender,
-            balance: uint96(msg.value)
+            balance: uint96(msg.value),
+            maximumPremium: maximumPremium,
+            auctionDuration: auctionDuration
         });
         _WETH.safeDeposit(msg.value);
         emit ETHDeposited(orderHash, msg.value);
@@ -98,6 +117,33 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
         ordersMakersBalances[orderHash].balance = 0;
         _WETH.safeWithdrawTo(refundETHAmount, msg.sender);
         emit ETHOrderCancelled(orderHash, refundETHAmount);
+    }
+
+    /**
+     * @notice Allows third-party to cancel an expired order and receive a reward.
+     * @param makerTraits The traits of the maker
+     * @param orderHash Hash of the order to cancel
+     */
+    function cancelOrderByResolver(MakerTraits makerTraits, bytes32 orderHash) external {
+        unchecked {
+            if (_ACCESS_TOKEN.balanceOf(msg.sender) == 0) revert AccessDenied();
+            if (!makerTraits.isExpired()) revert OrderNotExpired();
+            ETHOrder memory ethOrder = ordersMakersBalances[orderHash];
+            if (ethOrder.maker == address(0)) revert InvalidOrder();
+            if (ethOrder.maximumPremium == 0) revert CancelOrderByResolverIsForbidden();
+            IOrderMixin(_LIMIT_ORDER_PROTOCOL).cancelOrder(makerTraits, orderHash);
+            uint256 reward = _CANCEL_GAS_LOWER_BOUND * block.basefee * (_PREMIUM_BASE + _getCurrentPremiumMultiplier(ethOrder, makerTraits.getExpirationTime())) / _PREMIUM_BASE;
+            if (reward > ethOrder.balance) revert RewardIsTooBig();
+            uint256 refundETHAmount = ethOrder.balance - reward;
+            ordersMakersBalances[orderHash].balance = 0;
+            if (reward > 0) {
+                _WETH.safeWithdrawTo(reward, msg.sender);
+            }
+            if (refundETHAmount > 0) {
+                _WETH.safeWithdrawTo(refundETHAmount, ethOrder.maker);
+            }
+            emit ETHOrderCancelledByThirdParty(orderHash, ethOrder.balance, reward);
+        }
     }
 
     /**
@@ -130,6 +176,25 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver {
         if (ordersMakersBalances[orderHash].balance < makingAmount) revert NotEnoughBalance();
         unchecked {
             ordersMakersBalances[orderHash].balance -= uint96(makingAmount);
+        }
+    }
+
+    /**
+     * @notice Calculates the current premium multiplier based on time since expiration.
+     * @param order The ETH order
+     * @param expirationTime The expiration time of the order
+     * @return The current premium multiplier (scaled by 1e3)
+     */
+    function _getCurrentPremiumMultiplier(ETHOrder memory order, uint256 expirationTime) private view returns (uint256) {
+        unchecked {
+            if (block.timestamp <= expirationTime) {
+                return 0;
+            }
+            uint256 timeElapsed = block.timestamp - expirationTime;
+            if (timeElapsed >= order.auctionDuration) {
+                return order.maximumPremium;
+            }
+            return (timeElapsed * order.maximumPremium) / order.auctionDuration;
         }
     }
 }

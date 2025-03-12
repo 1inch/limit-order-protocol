@@ -1,3 +1,4 @@
+const { deployAndGetContractWithCreate3 } = require('@1inch/solidity-utils');
 const hre = require('hardhat');
 const { ethers } = hre;
 const { getChainId } = hre;
@@ -15,13 +16,14 @@ const WETH = {
     8217: '0xe4f05A66Ec68B54A58B17c22107b02e0232cC817', // Klaytn
     8453: '0x4200000000000000000000000000000000000006', // Base
     31337: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // Hardhat
+    59144: '0xe5D7C2a44FfDDf6b295A15c148167daaAf5Cf34f', // Linea
 };
 
 const ROUTER_V6_ADDR = '0x111111125421ca6dc452d289314280a0f8842a65';
+const ACCESS_TOKEN_ADDR = '0xAccE550000863572B867E661647CD7D97b72C507';
 
+const create3Deployer = '0xD935a2bb926019E0ed6fb31fbD5b1Bbb7c05bf65';
 const FEE_TAKER_SALT = ethers.keccak256(ethers.toUtf8Bytes('FeeTaker'));
-
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 module.exports = async ({ deployments, getNamedAccounts }) => {
     const networkName = hre.network.name;
@@ -39,27 +41,13 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
 
     const { deployer } = await getNamedAccounts();
 
-    const create3Deployer = await ethers.getContractAt('ICreate3Deployer', (await deployments.get('Create3Deployer')).address);
-
-    const FeeTakerFactory = await ethers.getContractFactory('FeeTaker');
-
-    const deployData = (await FeeTakerFactory.getDeployTransaction(ROUTER_V6_ADDR, WETH[chainId], deployer)).data;
-
-    const txn = create3Deployer.deploy(FEE_TAKER_SALT, deployData, { gasLimit: 5000000 });
-    await (await txn).wait();
-
-    const feeTaker = await ethers.getContractAt('FeeTaker', await create3Deployer.addressOf(FEE_TAKER_SALT));
-
-    console.log('FeeTaker deployed to:', await feeTaker.getAddress());
-
-    await sleep(5000); // wait for etherscan to index contract
-
-    if (chainId !== '31337') {
-        await hre.run('verify:verify', {
-            address: await feeTaker.getAddress(),
-            constructorArguments: [ROUTER_V6_ADDR, WETH[chainId], deployer],
-        });
-    }
+    await deployAndGetContractWithCreate3({
+        contractName: 'FeeTaker',
+        constructorArgs: [ROUTER_V6_ADDR, ACCESS_TOKEN_ADDR, WETH[chainId], deployer],
+        create3Deployer,
+        salt: FEE_TAKER_SALT,
+        deployments,
+    });
 };
 
 module.exports.skip = async () => true;
