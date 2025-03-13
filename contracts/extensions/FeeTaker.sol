@@ -43,11 +43,6 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
       */
     error InconsistentFee();
 
-    /**
-     * @dev The returned value is less than specified in order.takingAmount
-     */
-    error ReceivedAmountToolow();
-
     address private immutable _LIMIT_ORDER_PROTOCOL;
     address private immutable _WETH;
     /// @notice Contract address whose tokens allow filling limit orders with a fee for resolvers that are outside the whitelist
