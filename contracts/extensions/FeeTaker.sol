@@ -183,11 +183,8 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
      * Override this function if the calculation of integratorFee and protocolFee differs from the existing logic and requires a different parsing of extraData.
      */
     function _getFeeAmounts(IOrderMixin.Order calldata /* order */, address taker, uint256 takingAmount, uint256 /* makingAmount */, bytes calldata extraData) internal virtual returns (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) {
-        bool isWhitelisted;
-        uint256 integratorFee;
-        uint256 integratorShare;
-        uint256 resolverFee;
-        (isWhitelisted, integratorFee, integratorShare, resolverFee, tail) = _parseFeeData(extraData, taker, _isWhitelistedPostInteractionImpl);
+        (bool isWhitelisted, uint256 integratorFee, uint256 integratorShare, uint256 resolverFee, bytes calldata parsedTail) = _parseFeeData(extraData, taker, _isWhitelistedPostInteractionImpl);
+        tail = parsedTail;
         if (!isWhitelisted && _ACCESS_TOKEN.balanceOf(taker) == 0) revert OnlyWhitelistOrAccessToken();
 
         uint256 denominator = _BASE_1E5 + integratorFee + resolverFee;
