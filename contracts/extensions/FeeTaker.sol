@@ -19,6 +19,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
     using AddressLib for Address;
     using SafeERC20 for IERC20;
     using UniERC20 for IERC20;
+    using Math for uint256;
     using MakerTraitsLib for MakerTraits;
 
     bytes1 private constant _CUSTOM_RECEIVER_FLAG = 0x01;
@@ -183,9 +184,9 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
         if (!isWhitelisted && _ACCESS_TOKEN.balanceOf(taker) == 0) revert OnlyWhitelistOrAccessToken();
 
         uint256 denominator = _BASE_1E5 + integratorFee + resolverFee;
-        uint256 integratorFeeTotal = Math.mulDiv(takingAmount, integratorFee, denominator);
-        integratorFeeAmount = Math.mulDiv(integratorFeeTotal, integratorShare, _BASE_1E2);
-        protocolFeeAmount = Math.mulDiv(takingAmount, resolverFee, denominator) + integratorFeeTotal - integratorFeeAmount;
+        uint256 integratorFeeTotal = takingAmount.mulDiv(integratorFee, denominator);
+        integratorFeeAmount = integratorFeeTotal.mulDiv(integratorShare, _BASE_1E2);
+        protocolFeeAmount = takingAmount.mulDiv(resolverFee, denominator) + integratorFeeTotal - integratorFeeAmount;
     }
 
     function _sendEth(address target, uint256 amount) private {
