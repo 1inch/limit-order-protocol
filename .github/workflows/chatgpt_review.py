@@ -22,7 +22,7 @@ prompt = (
     f"Diff:\n{diff_text}"
 )
 
-sys_prompt = (
+dev_prompt = (
     "You are a highly experienced senior software engineer and code reviewer with deep "
     "expertise across various programming languages and frameworks "
     "(including Solidity, JavaScript/TypeScript, and Rust). "
@@ -37,7 +37,7 @@ model_name = "o1-mini"
 completion = openai.chat.completions.create(
     model=model_name,
     messages=[
-        {"role": "system", "content": sys_prompt},
+        {"role": "developer", "content": dev_prompt},
         {"role": "user", "content": prompt}
     ],
     temperature=0.3,
