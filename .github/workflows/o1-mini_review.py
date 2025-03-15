@@ -34,6 +34,8 @@ completion = openai.chat.completions.create(
 )
 review_text = completion.choices[0].message.content
 
-# 4. Публикация комментария в PR через GitHub API
+print("Review text:")
+print(review_text)
+
 comment_url = f"https://api.github.com/repos/{repo}/issues/{pr_number}/comments"
 requests.post(comment_url, headers={"Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}"}, json={"body": review_text})
