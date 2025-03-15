@@ -94,14 +94,15 @@ def generate_review_reasoning(diff_text, pr_title, pr_body, model_name):
         "- Opportunities for performance or maintainability improvements\n"
         "\n"
         "Give summary of what the code changes are doing. "
-        "Then identify potential issues or improvements and provide specific, actionable suggestions "
-        "how to fix the identified issues if there are any. Avoid giving general recommendations, not related to code fixes or improvements."
+        "Then identify existing issues and provide specific, actionable suggestions "
+        "how to fix the identified issues if there are any. "
+        "Avoid giving general recommendations, not related to code fixes or improvements."
         "\n\n"
         f"PR Title:\n{pr_title}\n"
         f"PR Description:\n{pr_body}\n"
         f"Diff:\n{diff_text}"
     )
-    
+
     try:
         completion = openai.chat.completions.create(
             model=model_name,
