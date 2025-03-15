@@ -33,7 +33,7 @@ sys_prompt = (
 )
 
 # 3. Вызов OpenAI ChatCompletion
-model_name = "o1"  # можно сделать настраиваемым через переменные среды
+model_name = "o1-mini"
 completion = openai.chat.completions.create(
     model=model_name,
     messages=[
