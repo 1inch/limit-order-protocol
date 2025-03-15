@@ -23,4 +23,4 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_MODEL: o1-mini
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 .github/scripts/o1-mini_review.py
+        run: python3 .github/scripts/ai_review.py
