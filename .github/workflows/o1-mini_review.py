@@ -1,42 +1,120 @@
-import os, requests, openai
+import os
+import requests
+import openai
+import logging
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger('pr_review_bot')
+
+# Extract PR number from github environment
+def get_pr_number(github_ref):
+    parts = github_ref.split("/")
+    if len(parts) >= 3 and parts[1] == "pull":
+        pr_number = parts[2]
+    else:
+        raise ValueError(f"Unexpected GITHUB_REF format: {github_ref}")
+    return pr_number
+
+# Fetch PR code diff
+def fetch_diff(pr_url, github_token):
+    headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github.v3.diff"
+    }
+    diff_response = requests.get(pr_url, headers=headers)
+    if diff_response.status_code != 200:
+        raise RuntimeError(f"Failed to fetch PR diff: {diff_response.status_code} {diff_response.text}")
+    return diff_response.text
+
+# Fetch PR description
+def fetch_pr_description(pr_url, github_token):
+    json_headers = {
+        "Authorization": f"Bearer {github_token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    pr_details_response = requests.get(pr_url, headers=json_headers)
+    pr_data = pr_details_response.json()
+    pr_title = pr_data.get("title", "(no title)")
+    pr_body  = pr_data.get("body", "(no body)")
+    return pr_title, pr_body
+
+def generate_review(diff_text, pr_title, pr_body):
+    logger.info("Generating code review")
+    # OpenAI API call
+    prompt = (
+        "Do code review and analyze code changes "
+        "Provide clear, actionable, and concise feedback with concrete suggestions for improvement where necessary. "
+        "Avoid unnecessary elaboration, be brief, but ensure that critical details are clearly explained. "
+        "Avoid giving general recommendations, not related to code fixes or improvements. "
+        "Focus on:\n"
+        "- Potential bugs and security vulnerabilities\n"
+        "- Conformance to coding style and best practices\n"
+        "- Opportunities for performance or maintainability improvements\n"
+        "\n"
+        f"PR Title:\n{pr_title}\n"
+        f"PR Description:\n{pr_body}\n"
+        f"Diff:\n{diff_text}"
+    )
+
+    model_name = "o1-mini"
+    try:
+        completion = openai.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+    except Exception as e:
+        logger.error(f"Failed to generate review: {e}")
+        raise RuntimeError(f"Failed to generate review: {e}")
+    finally:
+        return completion.choices[0].message.content
+
+# Post review as a comment
+def post_review_comment(repo, pr_number, review_text, github_token):
+    logger.info(f"Posting review comment for PR #{pr_number}")
+    comment_url = f"https://api.github.com/repos/{repo}/issues/{pr_number}/comments"
+    comment_headers = {"Authorization": f"Bearer {github_token}"} 
+    response = requests.post(comment_url, headers=comment_headers, json={"body": review_text})
+    if response.status_code != 201:
+        logger.error(f"Failed to post comment: {response.status_code} {response.text}")
+        return False
+    else:
+        logger.info("Successfully posted review comment")
+        return True
+
+# Action start
+logger.info("Starting PR review workflow")
+
+# Get environment variables
 repo = os.environ.get("GITHUB_REPOSITORY")
-pr_number = os.environ.get("GITHUB_REF", "").split("/")[-2]  # извлекаем номер PR из ссылки вида "refs/pull/123/merge"
+github_ref = os.environ.get("GITHUB_REF")
+github_token = os.environ.get("GITHUB_TOKEN")
 openai.api_key = os.environ["OPENAI_API_KEY"]
 
+# Check if required environment variables exist
+if not repo or not github_ref or not github_token:
+    logger.critical("Missing required environment variables")
+    raise ValueError("Missing required environment variables: GITHUB_REPOSITORY, GITHUB_REF, or GITHUB_TOKEN")
+
+# Get PR ids
+pr_number = get_pr_number(github_ref)
+logger.info(f"Processing PR #{pr_number}")
 pr_url = f"https://api.github.com/repos/{repo}/pulls/{pr_number}"
-headers = {
-    "Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}",
-    "Accept": "application/vnd.github.v3.diff"
-}
-diff_response = requests.get(pr_url, headers=headers)
-diff_text = diff_response.text
 
-prompt = (
-    "Do code review and analyze code changes "
-    "Provide clear, actionable, and concise feedback with concrete suggestions for improvement where necessary. "
-    "Avoid unnecessary elaboration, be brief, but ensure that critical details are clearly explained. "
-    "Avoid giving general recommendations, not related to code fixes or improvements. "
-    "Focus on:\n"
-    "- Potential bugs and security vulnerabilities\n"
-    "- Conformance to coding style and best practices\n"
-    "- Opportunities for performance or maintainability improvements\n"
-    "\n"
-    f"Diff:\n{diff_text}"
-)
+# Fetch PR details
+logger.info("Fetching PR diff")
+diff_text = fetch_diff(pr_url, github_token)
+logger.info("Fetching PR description")
+pr_title, pr_body = fetch_pr_description(pr_url, github_token)
 
-model_name = "o1-mini"
-completion = openai.chat.completions.create(
-    model=model_name,
-    messages=[
-        {"role": "user", "content": prompt}
-    ]
-)
+# Generate review with AI
+review_text = generate_review(diff_text, pr_title, pr_body)
 
-review_text = completion.choices[0].message.content
-
-print("Review text:")
-print(review_text)
-
-comment_url = f"https://api.github.com/repos/{repo}/issues/{pr_number}/comments"
-requests.post(comment_url, headers={"Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}"}, json={"body": review_text})
+# Post the review
+post_review_comment(repo, pr_number, review_text, github_token)
+logger.info("PR review workflow completed")
