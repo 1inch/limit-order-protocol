@@ -1,4 +1,4 @@
-name: ChatGPT Code Review
+name: AI Code Review
 
 # Даем разрешения на чтение кода и запись комментариев к PR&#8203;:contentReference[oaicite:1]{index=1}
 permissions:
@@ -19,8 +19,8 @@ jobs:
       - name: Install dependencies
         run: pip install openai requests
 
-      - name: Run ChatGPT code review script
+      - name: Run AI code review script
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 .github/workflows/o1-mini_review.py
+        run: python3 .github/scripts/o1-mini_review.py
