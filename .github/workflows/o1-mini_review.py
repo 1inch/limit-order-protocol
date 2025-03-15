@@ -15,7 +15,8 @@ diff_text = diff_response.text
 prompt = (
     "Do code review and analyze code changes "
     "Provide clear, actionable, and concise feedback with concrete suggestions for improvement where necessary. "
-    "Avoid unnecessary elaboration, but ensure that critical details are clearly explained. "
+    "Avoid unnecessary elaboration, be brief, but ensure that critical details are clearly explained. "
+    "Avoid giving general recommendations, not related to code fixes or improvements. "
     "Focus on:\n"
     "- Potential bugs and security vulnerabilities\n"
     "- Conformance to coding style and best practices\n"
