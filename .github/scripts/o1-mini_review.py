@@ -113,7 +113,7 @@ def generate_review(diff_text, pr_title, pr_body, model_name="o1-mini"):
     elif model_name in REASONING_MODELS:
         return generate_review_reasoning(diff_text, pr_title, pr_body, model_name)
     else:
-        logger.warning(f"Unknown model type: {model_name}, tryinh regular review")
+        logger.warning(f"Unknown model type: {model_name}, trying regular review")
         return generate_review_regular(diff_text, pr_title, pr_body, model_name)
 
 # Post review as a comment

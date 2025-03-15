@@ -1,13 +1,12 @@
 name: AI Code Review
 
-# Даем разрешения на чтение кода и запись комментариев к PR&#8203;:contentReference[oaicite:1]{index=1}
 permissions:
   contents: read
   pull-requests: write
 
 on:
   pull_request:
-    types: [opened, reopened, synchronize]  # Запуск при создании PR и каждом новом коммите&#8203;:contentReference[oaicite:2]{index=2}
+    types: [opened, reopened, synchronize]
 
 jobs:
   code_review:
@@ -22,6 +21,6 @@ jobs:
       - name: Run AI code review script
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: o1-mini
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          AI_MODEL: o1-mini
         run: python3 .github/scripts/o1-mini_review.py
