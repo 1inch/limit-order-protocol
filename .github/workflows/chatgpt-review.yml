@@ -1,0 +1,26 @@
+name: ChatGPT Code Review
+
+# Даем разрешения на чтение кода и запись комментариев к PR&#8203;:contentReference[oaicite:1]{index=1}
+permissions:
+  contents: read
+  pull-requests: write
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]  # Запуск при создании PR и каждом новом коммите&#8203;:contentReference[oaicite:2]{index=2}
+
+jobs:
+  code_review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: pip install openai requests
+
+      - name: Run ChatGPT code review script
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 .github/workflows/chatgpt_review.py
