@@ -10,6 +10,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger('pr_review_bot')
 
+# Define model arrays
+REGULAR_MODELS = ["gpt-3.5-turbo", "gpt-4o"]
+REASONING_MODELS = ["o1-mini"]
+
 # Extract PR number from github environment
 def get_pr_number(github_ref):
     parts = github_ref.split("/")
@@ -42,9 +46,8 @@ def fetch_pr_description(pr_url, github_token):
     pr_body  = pr_data.get("body", "(no body)")
     return pr_title, pr_body
 
-def generate_review(diff_text, pr_title, pr_body):
-    logger.info("Generating code review")
-    # OpenAI API call
+def generate_review_regular(diff_text, pr_title, pr_body, model_name):
+    logger.info(f"Generating code review with regular model: {model_name}")
     prompt = (
         "Do code review and analyze code changes "
         "Provide clear, actionable, and concise feedback with concrete suggestions for improvement where necessary. "
@@ -60,7 +63,6 @@ def generate_review(diff_text, pr_title, pr_body):
         f"Diff:\n{diff_text}"
     )
 
-    model_name = "o1-mini"
     try:
         completion = openai.chat.completions.create(
             model=model_name,
@@ -73,6 +75,46 @@ def generate_review(diff_text, pr_title, pr_body):
         raise RuntimeError(f"Failed to generate review: {e}")
     
     return completion.choices[0].message.content
+
+def generate_review_reasoning(diff_text, pr_title, pr_body, model_name):
+    logger.info(f"Generating code review with reasoning model: {model_name}")
+    prompt = (
+        "Do code review and analyze code changes. "
+        "Step by step:\n"
+        "1. Understand what the code changes are doing\n"
+        "2. Identify potential issues or improvements\n"
+        "3. Provide specific, actionable feedback\n\n"
+        "Focus on:\n"
+        "- Potential bugs and security vulnerabilities\n"
+        "- Conformance to coding style and best practices\n"
+        "- Opportunities for performance or maintainability improvements\n"
+        "\n"
+        f"PR Title:\n{pr_title}\n"
+        f"PR Description:\n{pr_body}\n"
+        f"Diff:\n{diff_text}"
+    )
+
+    try:
+        completion = openai.chat.completions.create(
+            model=model_name,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+    except Exception as e:
+        logger.error(f"Failed to generate review: {e}")
+        raise RuntimeError(f"Failed to generate review: {e}")
+    
+    return completion.choices[0].message.content
+
+def generate_review(diff_text, pr_title, pr_body, model_name="o1-mini"):
+    if model_name in REGULAR_MODELS:
+        return generate_review_regular(diff_text, pr_title, pr_body, model_name)
+    elif model_name in REASONING_MODELS:
+        return generate_review_reasoning(diff_text, pr_title, pr_body, model_name)
+    else:
+        logger.warning(f"Unknown model type: {model_name}, tryinh regular review")
+        return generate_review_regular(diff_text, pr_title, pr_body, model_name)
 
 # Post review as a comment
 def post_review_comment(repo, pr_number, review_text, github_token):
@@ -95,6 +137,7 @@ repo = os.environ.get("GITHUB_REPOSITORY")
 github_ref = os.environ.get("GITHUB_REF")
 github_token = os.environ.get("GITHUB_TOKEN")
 openai.api_key = os.environ["OPENAI_API_KEY"]
+model_name = os.environ.get("OPENAI_MODEL", "o1-mini")
 
 # Check if required environment variables exist
 if not repo or not github_ref or not github_token:
@@ -103,7 +146,7 @@ if not repo or not github_ref or not github_token:
 
 # Get PR ids
 pr_number = get_pr_number(github_ref)
-logger.info(f"Processing PR #{pr_number}")
+logger.info(f"Processing PR #{pr_number} with model {model_name}")
 pr_url = f"https://api.github.com/repos/{repo}/pulls/{pr_number}"
 
 # Fetch PR details
@@ -113,7 +156,7 @@ logger.info("Fetching PR description")
 pr_title, pr_body = fetch_pr_description(pr_url, github_token)
 
 # Generate review with AI
-review_text = generate_review(diff_text, pr_title, pr_body)
+review_text = generate_review(diff_text, pr_title, pr_body, model_name)
 
 # Post the review
 post_review_comment(repo, pr_number, review_text, github_token)
