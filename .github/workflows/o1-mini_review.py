@@ -31,7 +31,6 @@ completion = openai.chat.completions.create(
     messages=[
         {"role": "user", "content": prompt}
     ],
-    temperature=0.3,
     max_completion_tokens=1000
 )
 review_text = completion.choices[0].message.content
