@@ -27,7 +27,6 @@ prompt = (
 model_name = "o1-mini"
 completion = openai.chat.completions.create(
     model=model_name,
-    reasoning_effort="medium",
     messages=[
         {"role": "user", "content": prompt}
     ],
