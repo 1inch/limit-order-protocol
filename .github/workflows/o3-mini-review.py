@@ -13,8 +13,10 @@ diff_response = requests.get(pr_url, headers=headers)
 diff_text = diff_response.text
 
 prompt = (
-    "You are acting as an advanced code review assistant. Below is a diff from a Pull Request. "
-    "Please analyze these changes in detail and provide a constructive critique. Focus on:\n"
+    "Do code review and analyze code changes "
+    "Provide clear, actionable, and concise feedback with concrete suggestions for improvement where necessary. "
+    "Avoid unnecessary elaboration, but ensure that critical details are clearly explained. "
+    "Focus on:\n"
     "- Potential bugs and security vulnerabilities\n"
     "- Conformance to coding style and best practices\n"
     "- Opportunities for performance or maintainability improvements\n"
@@ -22,23 +24,11 @@ prompt = (
     f"Diff:\n{diff_text}"
 )
 
-dev_prompt = (
-    "You are a highly experienced senior software engineer and code reviewer with deep "
-    "expertise across various programming languages and frameworks "
-    "(including Solidity, JavaScript/TypeScript, and Rust). "
-    "Your role is to thoroughly analyze code changes, focusing on correctness, security, "
-    "maintainability, and adherence to best practices. Provide clear, actionable, and concise "
-    "feedback with concrete suggestions for improvement where necessary. Avoid unnecessary elaboration, "
-    "but ensure that critical details are clearly explained."
-)
-
-# 3. Вызов OpenAI ChatCompletion
-model_name = "gpt-4o"
+model_name = "o3-mini"
 completion = openai.chat.completions.create(
     model=model_name,
-    # reasoning_effort="medium",
+    reasoning_effort="medium",
     messages=[
-        {"role": "developer", "content": dev_prompt},
         {"role": "user", "content": prompt}
     ],
     temperature=0.3,
