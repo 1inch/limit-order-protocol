@@ -24,7 +24,7 @@ prompt = (
     f"Diff:\n{diff_text}"
 )
 
-model_name = "o3-mini"
+model_name = "o1-mini"
 completion = openai.chat.completions.create(
     model=model_name,
     reasoning_effort="medium",

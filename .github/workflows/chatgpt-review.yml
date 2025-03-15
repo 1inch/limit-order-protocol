@@ -23,4 +23,4 @@ jobs:
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: python3 .github/workflows/o3-mini_review.py
+        run: python3 .github/workflows/o1-mini_review.py
