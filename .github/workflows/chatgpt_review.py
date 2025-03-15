@@ -1,7 +1,7 @@
 import os, requests, openai
 
 # Получаем переменные среды
-repo = os.environ.get("GITHUB_REPOSITORY")            # e.g. "user/repo"
+repo = os.environ.get("GITHUB_REPOSITORY")
 pr_number = os.environ.get("GITHUB_REF", "").split("/")[-2]  # извлекаем номер PR из ссылки вида "refs/pull/123/merge"
 openai.api_key = os.environ["OPENAI_API_KEY"]
 
@@ -24,7 +24,7 @@ prompt = (
 
 # 3. Вызов OpenAI ChatCompletion
 model_name = "gpt-3.5-turbo"  # можно сделать настраиваемым через переменные среды
-completion = openai.ChatCompletion.create(
+completion = openai.chat.completions.create(
     model=model_name,
     messages=[
         {"role": "system", "content": "You are a senior software engineer and code reviewer."},
