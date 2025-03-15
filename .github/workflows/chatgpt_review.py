@@ -36,7 +36,7 @@ dev_prompt = (
 model_name = "gpt-4o"
 completion = openai.chat.completions.create(
     model=model_name,
-    reasoning_effort="medium",
+    # reasoning_effort="medium",
     messages=[
         {"role": "developer", "content": dev_prompt},
         {"role": "user", "content": prompt}
