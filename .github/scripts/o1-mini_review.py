@@ -49,26 +49,34 @@ def fetch_pr_description(pr_url, github_token):
 def generate_review_regular(diff_text, pr_title, pr_body, model_name):
     logger.info(f"Generating code review with regular model: {model_name}")
     prompt = (
-        "Do code review and analyze code changes "
-        "Provide clear, actionable, and concise feedback with concrete suggestions for improvement where necessary. "
-        "Avoid unnecessary elaboration, be brief, but ensure that critical details are clearly explained. "
-        "Avoid giving general recommendations, not related to code fixes or improvements. "
-        "Focus on:\n"
+        "You are acting as an advanced code review assistant. Below is a diff from a Pull Request. "
+        "Please analyze these changes in detail and provide a constructive critique. Focus on:\n"
         "- Potential bugs and security vulnerabilities\n"
         "- Conformance to coding style and best practices\n"
         "- Opportunities for performance or maintainability improvements\n"
         "\n"
-        f"PR Title:\n{pr_title}\n"
-        f"PR Description:\n{pr_body}\n"
         f"Diff:\n{diff_text}"
+    )
+
+    dev_prompt = (
+        "You are a highly experienced senior software engineer and code reviewer with deep "
+        "expertise across various programming languages and frameworks "
+        "(including Solidity, JavaScript/TypeScript, and Rust). "
+        "Your role is to thoroughly analyze code changes, focusing on correctness, security, "
+        "maintainability, and adherence to best practices. Provide clear, actionable, and concise "
+        "feedback with concrete suggestions for improvement where necessary. Avoid unnecessary elaboration, "
+        "but ensure that critical details are clearly explained."
     )
 
     try:
         completion = openai.chat.completions.create(
             model=model_name,
             messages=[
+                {"role": "developer", "content": dev_prompt},
                 {"role": "user", "content": prompt}
-            ]
+            ],
+            temperature=0.3,
+            max_completion_tokens=1000
         )
     except Exception as e:
         logger.error(f"Failed to generate review: {e}")
