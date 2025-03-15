@@ -96,7 +96,7 @@ def generate_review_reasoning(diff_text, pr_title, pr_body, model_name):
         "Give summary of what the code changes are doing. "
         "Then identify existing issues and provide specific, actionable suggestions "
         "how to fix the identified issues if there are any. "
-        "Be brief, avoid giving general recommendations not related to code fixes"
+        "Be brief, avoid giving general recommendations not related to code fixes. "
         "Do not recommend changes outside of the code changes in the diff."
         "\n\n"
         f"PR Title:\n{pr_title}\n"
@@ -110,7 +110,7 @@ def generate_review_reasoning(diff_text, pr_title, pr_body, model_name):
             messages=[
                 {"role": "user", "content": prompt}
             ],
-            max_completion_tokens=10000
+            max_completion_tokens=4096
         )
     except Exception as e:
         logger.error(f"Failed to generate review: {e}")
