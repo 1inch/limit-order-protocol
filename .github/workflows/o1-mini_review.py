@@ -71,8 +71,8 @@ def generate_review(diff_text, pr_title, pr_body):
     except Exception as e:
         logger.error(f"Failed to generate review: {e}")
         raise RuntimeError(f"Failed to generate review: {e}")
-    finally:
-        return completion.choices[0].message.content
+    
+    return completion.choices[0].message.content
 
 # Post review as a comment
 def post_review_comment(repo, pr_number, review_text, github_token):
