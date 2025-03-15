@@ -33,7 +33,7 @@ completion = openai.chat.completions.create(
     temperature=0.3,
     max_tokens=1000
 )
-review_text = completion["choices"][0]["message"]["content"]
+review_text = completion.choices[0].message.content
 
 # 4. Публикация комментария в PR через GitHub API
 comment_url = f"https://api.github.com/repos/{repo}/issues/{pr_number}/comments"
