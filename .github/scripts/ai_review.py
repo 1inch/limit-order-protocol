@@ -109,7 +109,7 @@ def generate_review_reasoning(diff_text, pr_title, pr_body, model_name):
             messages=[
                 {"role": "user", "content": prompt}
             ],
-            max_completion_tokens=2000
+            max_completion_tokens=2500
         )
     except Exception as e:
         logger.error(f"Failed to generate review: {e}")
