@@ -37,7 +37,7 @@ model_name = "o1-mini"
 completion = openai.chat.completions.create(
     model=model_name,
     messages=[
-        {"role": "developer", "content": dev_prompt},
+        # {"role": "developer", "content": dev_prompt},
         {"role": "user", "content": prompt}
     ],
     temperature=0.3,
