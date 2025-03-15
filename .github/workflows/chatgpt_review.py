@@ -33,15 +33,16 @@ dev_prompt = (
 )
 
 # 3. Вызов OpenAI ChatCompletion
-model_name = "o1-mini"
+model_name = "gpt-4o"
 completion = openai.chat.completions.create(
     model=model_name,
+    reasoning_effort="medium",
     messages=[
-        # {"role": "developer", "content": dev_prompt},
+        {"role": "developer", "content": dev_prompt},
         {"role": "user", "content": prompt}
     ],
     temperature=0.3,
-    max_tokens=1000
+    max_completion_tokens=1000
 )
 review_text = completion.choices[0].message.content
 
