@@ -97,6 +97,7 @@ def generate_review_reasoning(diff_text, pr_title, pr_body, model_name):
         "Then identify existing issues and provide specific, actionable suggestions "
         "how to fix the identified issues if there are any. "
         "Be brief, avoid giving general recommendations not related to code fixes"
+        "Do not recommend changes outside of the code changes in the diff."
         "\n\n"
         f"PR Title:\n{pr_title}\n"
         f"PR Description:\n{pr_body}\n"
