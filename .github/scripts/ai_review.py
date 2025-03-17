@@ -12,7 +12,7 @@ logger = logging.getLogger('pr_review_bot')
 
 # Define model arrays
 REGULAR_MODELS = ["gpt-3.5-turbo", "gpt-4o"]
-REASONING_MODELS = ["o1-mini"]
+REASONING_MODELS = ["o1-mini", "o1-preview"]
 
 # Extract PR number from github environment
 def get_pr_number(github_ref):

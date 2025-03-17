@@ -21,6 +21,6 @@ jobs:
       - name: Run AI code review script
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          OPENAI_MODEL: o1-mini
+          OPENAI_MODEL: o1-preview
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 .github/scripts/ai_review.py
