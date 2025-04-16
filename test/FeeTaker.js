@@ -55,6 +55,7 @@ describe('FeeTaker', function () {
 
         const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
         const takerTraits = buildTakerTraits({
+            makingAmount: true,
             extension: order.extension,
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
@@ -85,6 +86,7 @@ describe('FeeTaker', function () {
 
         const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
         const takerTraits = buildTakerTraits({
+            makingAmount: true,
             extension: order.extension,
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
@@ -220,6 +222,7 @@ describe('FeeTaker', function () {
 
         const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
         const takerTraits = buildTakerTraits({
+            makingAmount: true,
             extension: order.extension,
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
@@ -266,6 +269,7 @@ describe('FeeTaker', function () {
 
         const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
         const takerTraits = buildTakerTraits({
+            makingAmount: true,
             extension: order.extension,
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
@@ -307,6 +311,7 @@ describe('FeeTaker', function () {
 
         const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
         const takerTraits = buildTakerTraits({
+            makingAmount: true,
             extension: order.extension,
         });
         const fillTx = swap.fillOrderArgs(order, r, vs, makingAmount, takerTraits.traits, takerTraits.args);
