@@ -97,6 +97,21 @@ interface IOrderMixin {
     function rawRemainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 remainingRaw);
 
     /**
+     * @notice Returns order hash, hashed with limit order protocol contract EIP712
+     * @param order Order
+     * @return orderHash Hash of the order
+     */
+    function hashOrder(IOrderMixin.Order calldata order) external view returns(bytes32 orderHash);
+
+    /**
+     * @notice Delegates execution to custom implementation. Could be used to validate if `transferFrom` works properly
+     * @dev The function always reverts and returns the simulation results in revert data.
+     * @param target Addresses that will be delegated
+     * @param data Data that will be passed to delegatee
+     */
+    function simulate(address target, bytes calldata data) external;
+
+    /**
      * @notice Cancels order's quote
      * @param makerTraits Order makerTraits
      * @param orderHash Hash of the order to cancel
@@ -116,21 +131,6 @@ interface IOrderMixin {
      * @param additionalMask Additional bitmask to invalidate orders
      */
     function bitsInvalidateForOrder(MakerTraits makerTraits, uint256 additionalMask) external;
-
-    /**
-     * @notice Returns order hash, hashed with limit order protocol contract EIP712
-     * @param order Order
-     * @return orderHash Hash of the order
-     */
-    function hashOrder(IOrderMixin.Order calldata order) external view returns(bytes32 orderHash);
-
-    /**
-     * @notice Delegates execution to custom implementation. Could be used to validate if `transferFrom` works properly
-     * @dev The function always reverts and returns the simulation results in revert data.
-     * @param target Addresses that will be delegated
-     * @param data Data that will be passed to delegatee
-     */
-    function simulate(address target, bytes calldata data) external;
 
     /**
      * @notice Fills order's quote, fully or partially (whichever is possible).
