@@ -14,6 +14,7 @@ interface IAmountGetter {
      * @param takingAmount Actual taking amount
      * @param remainingMakingAmount Order remaining making amount
      * @param extraData Extra data
+     * @return makingAmount Actual making amount that should be used for the order
      */
     function getMakingAmount(
         IOrderMixin.Order calldata order,
@@ -34,6 +35,7 @@ interface IAmountGetter {
      * @param makingAmount Actual taking amount
      * @param remainingMakingAmount Order remaining making amount
      * @param extraData Extra data
+     * @return takingAmount Actual taking amount that should be used for the order
      */
     function getTakingAmount(
         IOrderMixin.Order calldata order,
