@@ -4,6 +4,10 @@ pragma solidity ^0.8.0;
 
 import "./IOrderMixin.sol";
 
+/**
+ * @title IAmountGetter
+ * @notice Interface for external logic to determine actual making and taking amounts for orders.
+ */
 interface IAmountGetter {
     /**
      * @notice View method that gets called to determine the actual making amount
