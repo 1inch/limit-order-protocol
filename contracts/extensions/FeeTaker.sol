@@ -155,7 +155,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
                 revert InconsistentFee();
             }
 
-            if (tail.length >= 20) {
+            if (tail.length > 19) {
                 IPostInteraction(address(bytes20(tail))).postInteraction(order, extension, orderHash, taker, makingAmount, takingAmount, remainingMakingAmount, tail[20:]);
             }
         }
