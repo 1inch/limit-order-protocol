@@ -90,7 +90,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
     }
 
     /**
-     * @notice Retrieves funds accidently sent directly to the contract address
+     * @notice Retrieves funds accidentally sent directly to the contract address
      * @param token ERC20 token to retrieve
      * @param amount amount to retrieve
      */
