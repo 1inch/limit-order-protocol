@@ -162,14 +162,6 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
     }
 
     /**
-     * @dev Parses fee data from `extraData`.
-     * Override this function if whitelist structure in postInteraction is different from getters.
-     */
-    function _isWhitelistedPostInteractionImpl(bytes calldata whitelistData, address taker) internal view virtual returns (bool isWhitelisted, bytes calldata tail) {
-        return _isWhitelistedGetterImpl(whitelistData, taker);
-    }
-
-    /**
      * @dev Calculates fee amounts depending on whether the taker is in the whitelist and whether they have an _ACCESS_TOKEN.
      * `extraData` consists of:
      * 2 bytes — integrator fee percentage (in 1e5)
@@ -187,6 +179,14 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
         uint256 integratorFeeTotal = takingAmount.mulDiv(integratorFee, denominator);
         integratorFeeAmount = integratorFeeTotal.mulDiv(integratorShare, _BASE_1E2);
         protocolFeeAmount = takingAmount.mulDiv(resolverFee, denominator) + integratorFeeTotal - integratorFeeAmount;
+    }
+
+    /**
+     * @dev Parses fee data from `extraData`.
+     * Override this function if whitelist structure in postInteraction is different from getters.
+     */
+    function _isWhitelistedPostInteractionImpl(bytes calldata whitelistData, address taker) internal view virtual returns (bool isWhitelisted, bytes calldata tail) {
+        return _isWhitelistedGetterImpl(whitelistData, taker);
     }
 
     function _sendEth(address target, uint256 amount) private {
