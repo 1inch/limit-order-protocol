@@ -82,6 +82,7 @@ interface IOrderMixin {
 
     /**
      * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
+     * @param maker Address of the order maker
      * @param orderHash Hash of the order
      * @return remaining Remaining amount of the order
      */
@@ -89,6 +90,7 @@ interface IOrderMixin {
 
     /**
      * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
+     * @param maker Address of the order maker
      * @param orderHash Hash of the order
      * @return remainingRaw Inverse of the remaining amount of the order if order was filled at least once, otherwise 0
      */
