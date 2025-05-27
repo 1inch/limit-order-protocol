@@ -78,10 +78,10 @@ contract AmountGetterWithFee is AmountGetterBase {
     ) internal view returns (bool isWhitelisted, uint256 integratorFee, uint256 integratorShare, uint256 resolverFee, bytes calldata tail) {
         unchecked {
             integratorFee = uint256(uint16(bytes2(extraData)));
-            integratorShare = uint256(uint8(bytes1(extraData[2:])));
+            integratorShare = uint256(uint8(extraData[2]));
             if (integratorShare > _BASE_1E2) revert InvalidIntegratorShare();
             resolverFee = uint256(uint16(bytes2(extraData[3:])));
-            uint256 whitelistDiscountNumerator = uint256(uint8(bytes1(extraData[5:])));
+            uint256 whitelistDiscountNumerator = uint256(uint8(extraData[5]));
             if (whitelistDiscountNumerator > _BASE_1E2) revert InvalidWhitelistDiscountNumerator();
             (isWhitelisted, tail) = _isWhitelisted(extraData[6:], taker);
             if (isWhitelisted) {
