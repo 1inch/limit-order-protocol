@@ -31,7 +31,7 @@ interface IAmountGetter {
     ) external view returns (uint256);
 
     /**
-     * @notice View method that gets called to determine the actual making amount
+     * @notice View method that gets called to determine the actual taking amount
      * @param order Order being processed
      * @param extension Order extension data
      * @param orderHash Hash of the order being processed
