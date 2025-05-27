@@ -9,6 +9,9 @@ import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 
 /// @title Base price getter contract that either calls external getter or applies linear formula
 contract AmountGetterBase is IAmountGetter {
+    /**
+     * @notice See {IAmountGetter-getMakingAmount}.
+     */
     function getMakingAmount(
         IOrderMixin.Order calldata order,
         bytes calldata extension,
@@ -21,6 +24,9 @@ contract AmountGetterBase is IAmountGetter {
         return _getMakingAmount(order, extension, orderHash, taker, takingAmount, remainingMakingAmount, extraData);
     }
 
+    /**
+     * @notice See {IAmountGetter-getTakingAmount}.
+     */
     function getTakingAmount(
         IOrderMixin.Order calldata order,
         bytes calldata extension,

@@ -6,6 +6,10 @@ import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 import "../libraries/MakerTraitsLib.sol";
 import "../libraries/TakerTraitsLib.sol";
 
+/**
+ * @title IOrderMixin
+ * @notice Interface for order processing logic in the 1inch Limit Order Protocol.
+ */
 interface IOrderMixin {
     struct Order {
         uint256 salt;
