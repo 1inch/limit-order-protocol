@@ -9,6 +9,8 @@ import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 
 /// @title Base price getter contract that either calls external getter or applies linear formula
 contract AmountGetterBase is IAmountGetter {
+    using Math for uint256;
+
     /**
      * @notice See {IAmountGetter-getMakingAmount}.
      */
@@ -53,7 +55,7 @@ contract AmountGetterBase is IAmountGetter {
                 order, extension, orderHash, taker, takingAmount, remainingMakingAmount, extraData[20:]
             );
         } else {
-            return Math.mulDiv(order.makingAmount, takingAmount, order.takingAmount);
+            return order.makingAmount.mulDiv(takingAmount, order.takingAmount);
         }
     }
 
@@ -71,7 +73,7 @@ contract AmountGetterBase is IAmountGetter {
                 order, extension, orderHash, taker, makingAmount, remainingMakingAmount, extraData[20:]
             );
         } else {
-            return Math.mulDiv(order.takingAmount, makingAmount, order.makingAmount, Math.Rounding.Ceil);
+            return order.takingAmount.mulDiv(makingAmount, order.makingAmount, Math.Rounding.Ceil);
         }
     }
 }
