@@ -74,8 +74,8 @@ contract AmountGetterWithFee is AmountGetterBase {
     function _parseFeeData(
         bytes calldata extraData,
         address taker,
-        function (bytes calldata, address) internal pure returns (bool, bytes calldata) _isWhitelisted
-    ) internal pure returns (bool isWhitelisted, uint256 integratorFee, uint256 integratorShare, uint256 resolverFee, bytes calldata tail) {
+        function (bytes calldata, address) internal view returns (bool, bytes calldata) _isWhitelisted
+    ) internal view returns (bool isWhitelisted, uint256 integratorFee, uint256 integratorShare, uint256 resolverFee, bytes calldata tail) {
         unchecked {
             integratorFee = uint256(uint16(bytes2(extraData)));
             integratorShare = uint256(uint8(extraData[2]));
