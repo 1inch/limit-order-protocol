@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@1inch/solidity-utils@6.4.1":
-  version "6.4.1"
-  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-6.4.1.tgz#6269fce53c64b66cde35256db09d791f4b6a8822"
-  integrity sha512-nH/i+AsooEt3bMaKIlSG/++gkrOJqvT6shHxq0NDRnZpV21GbL3VdG+pLxaQRA8uIzQ10CUemJHTxJVI1Rt3xQ==
+"@1inch/solidity-utils@6.5.0":
+  version "6.5.0"
+  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-6.5.0.tgz#16c5087dfa1f201a872b25b1905a301d54928ce2"
+  integrity sha512-6QbHTsS31ZDmRouCw8g6173N8QZW0/FSckRVdXebBYYaCis+a/fNqA8skn/e2Z61kzEWGdGfr/nrdKIsALBTXw==
   dependencies:
     "@metamask/eth-sig-util" "8.0.0"
     "@nomicfoundation/hardhat-ethers" "3.0.8"
