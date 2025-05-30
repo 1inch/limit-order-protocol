@@ -9,6 +9,8 @@ import { AmountGetterBase } from "./AmountGetterBase.sol";
 
 /// @title Price getter contract that adds fee calculation
 contract AmountGetterWithFee is AmountGetterBase {
+    using Math for uint256;
+
     /// @dev Allows fees in range [1e-5, 0.65535]
     uint256 internal constant _BASE_1E5 = 1e5;
     uint256 internal constant _BASE_1E2 = 100;
@@ -30,8 +32,7 @@ contract AmountGetterWithFee is AmountGetterBase {
     ) internal view virtual override returns (uint256) {
         unchecked {
             (, uint256 integratorFee, , uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, _isWhitelistedGetterImpl);
-            return Math.mulDiv(
-                super._getMakingAmount(order, extension, orderHash, taker, takingAmount, remainingMakingAmount, tail),
+            return super._getMakingAmount(order, extension, orderHash, taker, takingAmount, remainingMakingAmount, tail).mulDiv(
                 _BASE_1E5,
                 _BASE_1E5 + integratorFee + resolverFee
             );
@@ -52,8 +53,7 @@ contract AmountGetterWithFee is AmountGetterBase {
     ) internal view virtual override returns (uint256) {
         unchecked {
             (, uint256 integratorFee, , uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, _isWhitelistedGetterImpl);
-            return Math.mulDiv(
-                super._getTakingAmount(order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail),
+            return super._getTakingAmount(order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail).mulDiv(
                 _BASE_1E5 + integratorFee + resolverFee,
                 _BASE_1E5,
                 Math.Rounding.Ceil
@@ -78,10 +78,10 @@ contract AmountGetterWithFee is AmountGetterBase {
     ) internal view returns (bool isWhitelisted, uint256 integratorFee, uint256 integratorShare, uint256 resolverFee, bytes calldata tail) {
         unchecked {
             integratorFee = uint256(uint16(bytes2(extraData)));
-            integratorShare = uint256(uint8(bytes1(extraData[2:])));
+            integratorShare = uint256(uint8(extraData[2]));
             if (integratorShare > _BASE_1E2) revert InvalidIntegratorShare();
             resolverFee = uint256(uint16(bytes2(extraData[3:])));
-            uint256 whitelistDiscountNumerator = uint256(uint8(bytes1(extraData[5:])));
+            uint256 whitelistDiscountNumerator = uint256(uint8(extraData[5]));
             if (whitelistDiscountNumerator > _BASE_1E2) revert InvalidWhitelistDiscountNumerator();
             (isWhitelisted, tail) = _isWhitelisted(extraData[6:], taker);
             if (isWhitelisted) {

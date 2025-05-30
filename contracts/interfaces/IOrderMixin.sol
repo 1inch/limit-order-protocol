@@ -6,6 +6,10 @@ import "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 import "../libraries/MakerTraitsLib.sol";
 import "../libraries/TakerTraitsLib.sol";
 
+/**
+ * @title IOrderMixin
+ * @notice Interface for order processing logic in the 1inch Limit Order Protocol.
+ */
 interface IOrderMixin {
     struct Order {
         uint256 salt;
@@ -69,26 +73,12 @@ interface IOrderMixin {
     );
 
     /**
-     * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
-     * @param maker Maker address
-     * @param slot Slot number to return bitmask for
-     * @return result Each bit represents whether corresponding was already invalidated
+     * @notice Delegates execution to custom implementation. Could be used to validate if `transferFrom` works properly
+     * @dev The function always reverts and returns the simulation results in revert data.
+     * @param target Addresses that will be delegated
+     * @param data Data that will be passed to delegatee
      */
-    function bitInvalidatorForOrder(address maker, uint256 slot) external view returns(uint256 result);
-
-    /**
-     * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
-     * @param orderHash Hash of the order
-     * @return remaining Remaining amount of the order
-     */
-    function remainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 remaining);
-
-    /**
-     * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
-     * @param orderHash Hash of the order
-     * @return remainingRaw Inverse of the remaining amount of the order if order was filled at least once, otherwise 0
-     */
-    function rawRemainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 remainingRaw);
+    function simulate(address target, bytes calldata data) external;
 
     /**
      * @notice Cancels order's quote
@@ -110,21 +100,6 @@ interface IOrderMixin {
      * @param additionalMask Additional bitmask to invalidate orders
      */
     function bitsInvalidateForOrder(MakerTraits makerTraits, uint256 additionalMask) external;
-
-    /**
-     * @notice Returns order hash, hashed with limit order protocol contract EIP712
-     * @param order Order
-     * @return orderHash Hash of the order
-     */
-    function hashOrder(IOrderMixin.Order calldata order) external view returns(bytes32 orderHash);
-
-    /**
-     * @notice Delegates execution to custom implementation. Could be used to validate if `transferFrom` works properly
-     * @dev The function always reverts and returns the simulation results in revert data.
-     * @param target Addresses that will be delegated
-     * @param data Data that will be passed to delegatee
-     */
-    function simulate(address target, bytes calldata data) external;
 
     /**
      * @notice Fills order's quote, fully or partially (whichever is possible).
@@ -207,4 +182,33 @@ interface IOrderMixin {
         TakerTraits takerTraits,
         bytes calldata args
     ) external returns(uint256 makingAmount, uint256 takingAmount, bytes32 orderHash);
+
+    /**
+     * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
+     * @param maker Maker address
+     * @param slot Slot number to return bitmask for
+     * @return result Each bit represents whether corresponding was already invalidated
+     */
+    function bitInvalidatorForOrder(address maker, uint256 slot) external view returns(uint256 result);
+
+    /**
+     * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
+     * @param orderHash Hash of the order
+     * @return remaining Remaining amount of the order
+     */
+    function remainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 remaining);
+
+    /**
+     * @notice Returns bitmask for double-spend invalidators based on lowest byte of order.info and filled quotes
+     * @param orderHash Hash of the order
+     * @return remainingRaw Inverse of the remaining amount of the order if order was filled at least once, otherwise 0
+     */
+    function rawRemainingInvalidatorForOrder(address maker, bytes32 orderHash) external view returns(uint256 remainingRaw);
+
+    /**
+     * @notice Returns order hash, hashed with limit order protocol contract EIP712
+     * @param order Order
+     * @return orderHash Hash of the order
+     */
+    function hashOrder(IOrderMixin.Order calldata order) external view returns(bytes32 orderHash);
 }

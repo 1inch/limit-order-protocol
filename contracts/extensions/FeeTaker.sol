@@ -90,7 +90,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
     }
 
     /**
-     * @notice Retrieves funds accidently sent directly to the contract address
+     * @notice Retrieves funds accidentally sent directly to the contract address
      * @param token ERC20 token to retrieve
      * @param amount amount to retrieve
      */
@@ -155,18 +155,10 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
                 revert InconsistentFee();
             }
 
-            if (tail.length >= 20) {
+            if (tail.length > 19) {
                 IPostInteraction(address(bytes20(tail))).postInteraction(order, extension, orderHash, taker, makingAmount, takingAmount, remainingMakingAmount, tail[20:]);
             }
         }
-    }
-
-    /**
-     * @dev Parses fee data from `extraData`.
-     * Override this function if whitelist structure in postInteraction is different from getters.
-     */
-    function _isWhitelistedPostInteractionImpl(bytes calldata whitelistData, address taker) internal view virtual returns (bool isWhitelisted, bytes calldata tail) {
-        return _isWhitelistedGetterImpl(whitelistData, taker);
     }
 
     /**
@@ -187,6 +179,14 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
         uint256 integratorFeeTotal = takingAmount.mulDiv(integratorFee, denominator);
         integratorFeeAmount = integratorFeeTotal.mulDiv(integratorShare, _BASE_1E2);
         protocolFeeAmount = takingAmount.mulDiv(resolverFee, denominator) + integratorFeeTotal - integratorFeeAmount;
+    }
+
+    /**
+     * @dev Parses fee data from `extraData`.
+     * Override this function if whitelist structure in postInteraction is different from getters.
+     */
+    function _isWhitelistedPostInteractionImpl(bytes calldata whitelistData, address taker) internal view virtual returns (bool isWhitelisted, bytes calldata tail) {
+        return _isWhitelistedGetterImpl(whitelistData, taker);
     }
 
     function _sendEth(address target, uint256 amount) private {
