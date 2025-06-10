@@ -22,10 +22,10 @@ const WETH = {
 };
 
 const ROUTER_V6_ADDR = '0x111111125421ca6dc452d289314280a0f8842a65';
-const ACCESS_TOKEN_ADDR = '0xAccE550000863572B867E661647CD7D97b72C507';
+const ACCESS_TOKEN_ADDR = '0xAcce5500000f71A32B5E5514D1577E14b7aacC4a';
 
 const create3Deployer = '0xD935a2bb926019E0ed6fb31fbD5b1Bbb7c05bf65';
-const FEE_TAKER_SALT = ethers.keccak256(ethers.toUtf8Bytes('FeeTaker'));
+const FEE_TAKER_SALT = ethers.keccak256(ethers.toUtf8Bytes('FeeTakerV1'));
 
 module.exports = async ({ deployments, getNamedAccounts }) => {
     const networkName = hre.network.name;

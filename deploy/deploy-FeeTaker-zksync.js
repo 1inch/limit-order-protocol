@@ -7,7 +7,7 @@ const WETH = {
 };
 
 const ROUTER_V6_ADDR = '0x6fd4383cB451173D5f9304F041C7BCBf27d561fF';
-const ACCESS_TOKEN_ADDR = '0x46B64318C4f764F6Fe81dFd1F26282A52E0f1680';
+const ACCESS_TOKEN_ADDR = '0x4888651051B2Dc08Ac55Cd0f7D671e0FCba0DEED';
 
 module.exports = async ({ deployments, getNamedAccounts }) => {
     const networkName = hre.network.name;
