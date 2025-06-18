@@ -3,7 +3,7 @@ const { ethers, network, tracer } = hre;
 const { expect, time, constants, getPermit2, permit2Contract } = require('@1inch/solidity-utils');
 const { fillWithMakingAmount, unwrapWethTaker, buildMakerTraits, buildMakerTraitsRFQ, buildOrder, signOrder, buildOrderData, buildTakerTraits } = require('./helpers/orderUtils');
 const { getPermit, withTarget } = require('./helpers/eip712');
-const { joinStaticCalls, ether, findTrace, countAllItems } = require('./helpers/utils');
+const { joinStaticCalls, ether, findTrace, countAllItems, withTrace } = require('./helpers/utils');
 const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens, deployArbitraryPredicate } = require('./helpers/fixtures');
 const { parseUnits } = require('ethers');
@@ -254,13 +254,14 @@ describe('LimitOrderProtocol', function () {
 
                 const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
                 const fillTx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
+                await withTrace(tracer, () => fillTx);
                 await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
                 await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
 
                 if (hre.__SOLIDITY_COVERAGE_RUNNING === undefined) {
                     const trace = findTrace(tracer, 'CALL', await swap.getAddress());
                     const opcodes = trace.children.map(item => item.opcode);
-                    expect(countAllItems(opcodes)).to.deep.equal({ STATICCALL: 1, CALL: 2, SLOAD: 2, SSTORE: 1, LOG1: 1, MSTORE: 29, MLOAD: 10, SHA3: 5 });
+                    expect(countAllItems(opcodes)).to.deep.equal({ STATICCALL: 1, CALL: 2, SLOAD: 2, SSTORE: 1, LOG1: 1, MSTORE: 29, MLOAD: 10, RETURN: 1 });
                 }
             }
         });
@@ -280,13 +281,14 @@ describe('LimitOrderProtocol', function () {
 
             const { r, yParityAndS: vs } = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr1));
             const fillTx = swap.fillOrder(order, r, vs, 1, fillWithMakingAmount(1));
+            await withTrace(tracer, () => fillTx);
             await expect(fillTx).to.changeTokenBalances(dai, [addr, addr1], [1, -1]);
             await expect(fillTx).to.changeTokenBalances(weth, [addr, addr1], [-1, 1]);
 
             if (hre.__SOLIDITY_COVERAGE_RUNNING === undefined) {
                 const trace = findTrace(tracer, 'CALL', await swap.getAddress());
                 const opcodes = trace.children.map(item => item.opcode);
-                expect(countAllItems(opcodes)).to.deep.equal({ STATICCALL: 1, CALL: 2, SLOAD: 2, SSTORE: 1, LOG1: 1, MSTORE: 31, MLOAD: 10, SHA3: 6 });
+                expect(countAllItems(opcodes)).to.deep.equal({ STATICCALL: 1, CALL: 2, SLOAD: 2, SSTORE: 1, LOG1: 1, MSTORE: 31, MLOAD: 10, RETURN: 1 });
             }
         });
 
