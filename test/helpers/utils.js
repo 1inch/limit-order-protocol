@@ -21,9 +21,27 @@ function calldataCost (calldata) {
     return zeroCount * 4 + nonZeroCount * 16;
 }
 
+// Enabling tracing globally may log fork internals and strong slow down tests.
+// Returns tracerOff() function to restore previous verbosity level
+function tracerOn (tracer, level = 1) {
+    const prev = tracer.verbosity;
+    tracer.verbosity = level;
+    return () => { tracer.verbosity = prev; };
+}
+
+// Temporarily sets tracer verbosity, restores it after the async function runs.
+async function withTrace (tracer, fn, level = 1) {
+    const tracerOff = tracerOn(tracer, level);
+    try {
+        return await fn();
+    } finally {
+        tracerOff();
+    }
+}
+
 // findTrace(tracer, 'CALL', exchange.address)
 function findTrace (tracer, opcode, address) {
-    return tracer.recorder.previousTraces.filter(
+    return tracer.allTraces().filter(
         tr => tr.top.opcode === opcode && tr.top.params.to.toLowerCase() === address.toLowerCase(),
     ).slice(-1)[0].top;
 }
@@ -99,6 +117,7 @@ module.exports = {
     setn,
     trim0x,
     calculateGasUsed,
+    withTrace,
     findTrace,
     flattenTree,
     countAllItems,
