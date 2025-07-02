@@ -60,5 +60,8 @@
     "lint:fix": "yarn run lint:js:fix && yarn run lint:sol:fix",
     "test": "hardhat test --parallel",
     "test:ci": "hardhat test"
+  },
+  "resolutions": {
+    "elliptic": "6.6.1"
   }
 }
