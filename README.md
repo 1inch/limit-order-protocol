@@ -14,6 +14,7 @@ The `master` branch contains the latest work-in-progress version of limit orders
 
 Please, use the commit tagged version to get the latest production version that has passed through a series of security audits:
 
+- tag `4.3.2` [Fee Flow in Limit order protocol v4](https://github.com/1inch/limit-order-protocol/tree/4.3.2) / [secure audits](https://github.com/1inch/1inch-audits/tree/master/Fees%20for%20LO%20and%20Fusion%20V1)
 - tag `4.0.0` [Limit order protocol v4](https://github.com/1inch/limit-order-protocol/tree/4.0.0) / [security audits](https://github.com/1inch/1inch-audits/tree/master/Aggregation%20Pr.%20V6%20and%20Limit%20Order%20Pr.V4)
 - tag `3.0.1` [Limit order protocol v3](https://github.com/1inch/limit-order-protocol/tree/3.0.1) / [security audits](https://github.com/1inch/1inch-audits/tree/master/Aggregation%20Pr.%20V5%20and%20Limit%20Order%20Pr.V3)
 - tag `v2` - [Limit order protocol v2](https://github.com/1inch/limit-order-protocol/tree/v2) / [security audits](https://github.com/1inch/1inch-audits/tree/master/Limit%20Order%20Protocol%20V2)
