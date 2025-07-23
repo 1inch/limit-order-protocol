@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.23;
+pragma solidity 0.8.30;
 
 import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 import { SafeERC20 } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";

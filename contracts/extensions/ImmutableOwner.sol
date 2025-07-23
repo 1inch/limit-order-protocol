@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.23;
+pragma solidity 0.8.30;
 
 /// @title A helper contract with helper modifiers to allow access to original contract creator only
 contract ImmutableOwner {

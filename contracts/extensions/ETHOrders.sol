@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.23;
+pragma solidity 0.8.30;
 
 import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import "@1inch/solidity-utils/contracts/mixins/OnlyWethReceiver.sol";

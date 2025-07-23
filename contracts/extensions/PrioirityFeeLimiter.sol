@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.23;
+pragma solidity 0.8.30;
 
 /// @title A helper contract for executing boolean functions on arbitrary target call results
 contract PriorityFeeLimiter {

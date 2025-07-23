@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.23;
+pragma solidity 0.8.30;
 
 import { AggregatorV3Interface } from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import { GnosisSafeStorage } from "@gnosis.pm/safe-contracts/contracts/examples/libraries/GnosisSafeStorage.sol";
