@@ -25,7 +25,7 @@ module.exports = {
         enableAllOpcodes: true,
     },
     solidity: {
-        version: '0.8.23',
+        version: '0.8.30',
         settings: {
             optimizer: {
                 enabled: true,
