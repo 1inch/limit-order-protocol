@@ -56,9 +56,19 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver, EIP712Alien {
 
     mapping(address maker => mapping(bytes32 orderHash => Deposit data)) public deposits;
 
-    modifier onlyLimitOrderProtocol {
-        if (msg.sender != _LIMIT_ORDER_PROTOCOL) revert AccessDenied();
+    modifier onlyLimitOrderProtocolOrOneOfTails(bytes calldata allowedMsgSenders) {
+        if (!_onlyLimitOrderProtocolOrOneOfTails(allowedMsgSenders)) revert AccessDenied();
         _;
+    }
+
+    function _onlyLimitOrderProtocolOrOneOfTails(bytes calldata allowedMsgSenders) internal view returns (bool) {
+        bytes10 shortAddress = bytes10(uint80(uint160(msg.sender)));
+        for (uint256 i = 0; i < allowedMsgSenders.length; i += 10) {
+            if (shortAddress == bytes10(allowedMsgSenders[i:])) {
+                return true;
+            }
+        }
+        return (msg.sender == _LIMIT_ORDER_PROTOCOL);
     }
 
     modifier onlyResolver {
@@ -160,8 +170,8 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver, EIP712Alien {
         uint256 makingAmount,
         uint256 /* takingAmount */,
         uint256 /* remainingMakingAmount */,
-        bytes calldata /* extraData */
-    ) external onlyLimitOrderProtocol {
+        bytes calldata extraData
+    ) external onlyLimitOrderProtocolOrOneOfTails(extraData) {
         deposits[order.maker.get()][orderHash].balance -= uint208(makingAmount);
     }
 
