@@ -32,12 +32,15 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver, EIP712Alien {
 
     error OrderShouldHavePostInteractionCallFlag(MakerTraits makerTraits);
     error OrderMakerShouldBeThisContract(address maker, address thisContract);
-    error OrderReceiverShouldBeMsgSender(address receiver, address msgSender);
+    error OrderReceiverShouldNotBeThis(address receiver, address self);
     error OrderMakingAmountShouldBeEqualToMsgValue(uint256 makingAmount, uint256 msgValue);
     error OrderPostInteractionTargetShouldBeThisContract(address target, address thisContract);
     error OrderNotExpiredYet(uint256 currentTimestamp, uint256 expirationTimestamp);
 
-    // add maker and expiration time
+    /// @notice Deposit information for an order
+    /// @param balance The amount of ETH deposited for the order
+    /// @param maxGasCostsBump The maximum gas costs bump in basis points (1_500 = +50%)
+    /// @param auctionDuration The duration of the auction in seconds
     struct Deposit {
         uint208 balance;
         uint16 maxGasCostsBump; // in basis points (1_000)
@@ -81,7 +84,7 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver, EIP712Alien {
     ) external payable {
         // Validate main order parameters
         if (order.maker.get() != address(this)) revert OrderMakerShouldBeThisContract(order.maker.get(), address(this));
-        if (order.getReceiver() != msg.sender) revert OrderReceiverShouldBeMsgSender(order.getReceiver(), msg.sender);
+        if (order.getReceiver() == address(this)) revert OrderReceiverShouldNotBeThis(order.getReceiver(), address(this));
         if (order.makingAmount != msg.value) revert OrderMakingAmountShouldBeEqualToMsgValue(order.makingAmount, msg.value);
 
         // Validate post interaction flag and target
@@ -130,11 +133,10 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver, EIP712Alien {
         _WETH.safeWithdrawTo(balance, msg.sender);
     }
 
-    function cancelExpiredOrderByResolver(IOrderMixin.Order calldata order) external onlyResolver {
+    function cancelExpiredOrderByResolver(address maker, IOrderMixin.Order calldata order) external onlyResolver {
         uint256 orderExpirationTime = order.makerTraits.getExpirationTime();
         if (orderExpirationTime > 0 && block.timestamp > orderExpirationTime) revert OrderNotExpiredYet(block.timestamp, order.makerTraits.getExpirationTime());
 
-        address maker = order.maker.get();
         bytes32 orderHash = order.hash(_domainSeparatorV4()); // IOrderMixin(_LIMIT_ORDER_PROTOCOL).hashOrder(order);
         Deposit storage deposit = deposits[maker][orderHash];
         uint256 balance = deposit.balance;
