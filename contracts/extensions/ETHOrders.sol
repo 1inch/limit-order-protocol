@@ -2,48 +2,52 @@
 
 pragma solidity 0.8.23;
 
-import "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
-import "@1inch/solidity-utils/contracts/mixins/OnlyWethReceiver.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { SafeERC20, IERC20 } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
+import { OnlyWethReceiver } from "@1inch/solidity-utils/contracts/mixins/OnlyWethReceiver.sol";
+import { IWETH } from "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
+import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 
 import { EIP712Alien } from "contracts/mocks/EIP712Alien.sol";
-import "../interfaces/IPostInteraction.sol";
-import "../OrderLib.sol";
+import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
+import { OrderLib, IOrderMixin } from "../OrderLib.sol";
+import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
+import { ExtensionLib } from "../libraries/ExtensionLib.sol";
 
 /// @title Extension that will allow to create limit order that sell ETH. ETH must be deposited into the contract.
-contract ETHOrders is IPostInteraction, OnlyWethReceiver, EIP712Alien {
+contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
     using SafeERC20 for IWETH;
+    using SafeERC20 for IERC20;
     using OrderLib for IOrderMixin.Order;
     using MakerTraitsLib for MakerTraits;
     using ExtensionLib for bytes;
     using AddressLib for Address;
 
-    error AccessDenied();
-    error InvalidOrder();
-    error NotEnoughBalance();
-    error ExistingOrder();
-    error OrderNotExpired();
-    error RewardIsTooBig();
-    error CancelOrderByResolverIsForbidden();
-
     event ETHDeposited(address maker, bytes32 orderHash, uint256 amount);
     event ETHOrderCancelled(bytes32 orderHash, uint256 amount);
     event ETHOrderCancelledByThirdParty(bytes32 orderHash, uint256 amount, uint256 reward);
+    event ETHCancelled(address maker, bytes32 orderHash, uint256 amount);
 
-    error OrderShouldHavePostInteractionCallFlag(MakerTraits makerTraits);
+    error AccessDenied(address caller);
+    error OrderShouldNotExist(address maker, bytes32 orderHash, uint256 balance);
+    error OrderShouldRequirePostInteractionCall(MakerTraits makerTraits);
     error OrderMakerShouldBeThisContract(address maker, address thisContract);
     error OrderReceiverShouldNotBeThis(address receiver, address self);
     error OrderMakingAmountShouldBeEqualToMsgValue(uint256 makingAmount, uint256 msgValue);
     error OrderPostInteractionTargetShouldBeThisContract(address target, address thisContract);
-    error OrderNotExpiredYet(uint256 currentTimestamp, uint256 expirationTimestamp);
+    error OrderExtensionInvalid(bytes4 exception);
+    error OrderShouldBeExpired(uint256 currentTimestamp, uint256 expirationTimestamp);
+    error CanNotCancelForZeroBalance();
+    error RescueFundsTooMuch(uint256 requested, uint256 available);
+    error PostInteractionExtraDataShouldMatchMaker(address orderMaker, address maker);
 
-    /// @notice Deposit information for an order
+    /// @notice Bond information for an order
     /// @param balance The amount of ETH deposited for the order
-    /// @param maxGasCostsBump The maximum gas costs bump in basis points (1_500 = +50%)
+    /// @param auctionMaxGasBump The maximum gas costs bump in basis points (1_500 = +50%)
     /// @param auctionDuration The duration of the auction in seconds
-    struct Deposit {
+    struct Bond {
         uint208 balance;
-        uint16 maxGasCostsBump; // in basis points (1_000)
+        uint16 auctionMaxGasBump; // in basis points (1_000)
         uint32 auctionDuration;
     }
 
@@ -54,10 +58,10 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver, EIP712Alien {
     IWETH private immutable _WETH;
     IERC20 private immutable _ACCESS_TOKEN;
 
-    mapping(address maker => mapping(bytes32 orderHash => Deposit data)) public deposits;
+    mapping(address maker => mapping(bytes32 orderHash => Bond)) public bonds;
 
     modifier onlyLimitOrderProtocolOrOneOfTails(bytes calldata allowedMsgSenders) {
-        if (!_onlyLimitOrderProtocolOrOneOfTails(allowedMsgSenders)) revert AccessDenied();
+        if (!_onlyLimitOrderProtocolOrOneOfTails(allowedMsgSenders)) revert AccessDenied(msg.sender);
         _;
     }
 
@@ -72,11 +76,18 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver, EIP712Alien {
     }
 
     modifier onlyResolver {
-        if (_ACCESS_TOKEN.balanceOf(msg.sender) == 0) revert AccessDenied();
+        if (_ACCESS_TOKEN.balanceOf(msg.sender) == 0) revert AccessDenied(msg.sender);
         _;
     }
 
-    constructor(IWETH weth, address limitOrderProtocol, IERC20 accessToken)
+    constructor(
+        IWETH weth,
+        address limitOrderProtocol,
+        IERC20 accessToken,
+        string memory name,
+        string memory symbol
+    )
+        ERC20(name, symbol)
         OnlyWethReceiver(address(weth))
         EIP712Alien(_LIMIT_ORDER_PROTOCOL, "1inch Limit Order Protocol", "4")
     {
@@ -86,45 +97,45 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver, EIP712Alien {
         _WETH.forceApprove(limitOrderProtocol, type(uint256).max);
     }
 
-    function depositForOrder(
+    function validateOrder(
+        address maker,
+        uint256 msgValue,
         IOrderMixin.Order calldata order,
-        bytes calldata extension,
-        uint16 maxGasCostsBump,
-        uint32 auctionDuration
-    ) external payable {
+        bytes calldata extension
+    ) external view returns(bool) {
         // Validate main order parameters
         if (order.maker.get() != address(this)) revert OrderMakerShouldBeThisContract(order.maker.get(), address(this));
         if (order.getReceiver() == address(this)) revert OrderReceiverShouldNotBeThis(order.getReceiver(), address(this));
-        if (order.makingAmount != msg.value) revert OrderMakingAmountShouldBeEqualToMsgValue(order.makingAmount, msg.value);
+        if (order.makingAmount != msgValue) revert OrderMakingAmountShouldBeEqualToMsgValue(order.makingAmount, msgValue);
 
         // Validate post interaction flag and target
-        if (!order.makerTraits.needPostInteractionCall()) revert OrderShouldHavePostInteractionCallFlag(order.makerTraits);
+        if (!order.makerTraits.needPostInteractionCall()) revert OrderShouldRequirePostInteractionCall(order.makerTraits);
         (bool isExtensionValid, bytes4 validationResult) = order.isValidExtension(extension);
-        if (!isExtensionValid) {
-            // solhint-disable-next-line no-inline-assembly
-            assembly ("memory-safe") {
-                mstore(0, validationResult)
-                revert(0, 4)
-            }
-        }
+        if (!isExtensionValid) revert OrderExtensionInvalid(validationResult);
+
+        // Validate post-interaction target and data
         bytes calldata interaction = extension.postInteractionTargetAndData();
         if (interaction.length != 20 || address(bytes20(interaction)) != address(this)) revert OrderPostInteractionTargetShouldBeThisContract(address(bytes20(interaction)), address(this));
+        address orderMaker = address(bytes20(interaction[20:40]));
+        if (orderMaker != maker) revert PostInteractionExtraDataShouldMatchMaker(orderMaker, maker);
 
         // EIP712Alien._domainSeparatorV4() is cheaper than call IOrderMixin(_LIMIT_ORDER_PROTOCOL).hashOrder(order);
         bytes32 orderHash = order.hash(_domainSeparatorV4());
-        depositForOrderHash(orderHash, maxGasCostsBump, auctionDuration);
+        if (bonds[maker][orderHash].balance != 0) revert OrderShouldNotExist(maker, orderHash, bonds[maker][orderHash].balance);
+        return true;
     }
 
-    function depositForOrderHash(
+    function deposit(
         bytes32 orderHash,
-        uint16 maxGasCostsBump,
+        uint16 auctionMaxGasBump,
         uint32 auctionDuration
     ) public payable {
-        if (deposits[msg.sender][orderHash].balance != 0) revert ExistingOrder();
+        if (bonds[msg.sender][orderHash].balance != 0) revert OrderShouldNotExist(msg.sender, orderHash, bonds[msg.sender][orderHash].balance);
 
-        deposits[msg.sender][orderHash] = Deposit({
+        _mint(msg.sender, msg.value);
+        bonds[msg.sender][orderHash] = Bond({
             balance: uint208(msg.value),
-            maxGasCostsBump: maxGasCostsBump,
+            auctionMaxGasBump: auctionMaxGasBump,
             auctionDuration: auctionDuration
         });
         _WETH.safeDeposit(msg.value);
@@ -132,38 +143,44 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver, EIP712Alien {
     }
 
     function isValidSignature(bytes32 orderHash, bytes calldata signature) external view returns(bytes4) {
-        address maker = address(uint160(bytes20(signature)));
-        uint256 balance = deposits[maker][orderHash].balance;
+        address maker = address(bytes20(signature));
+        uint256 balance = bonds[maker][orderHash].balance;
         return (balance > 0) ? this.isValidSignature.selector : bytes4(0);
     }
 
     function cancelOrder(bytes32 orderHash) external {
-        uint256 balance = deposits[msg.sender][orderHash].balance;
-        deposits[msg.sender][orderHash].balance = 0;
-        _WETH.safeWithdrawTo(balance, msg.sender);
+        return _cancelOrder(msg.sender, orderHash, address(0), 0);
     }
 
     function cancelExpiredOrderByResolver(address maker, IOrderMixin.Order calldata order) external onlyResolver {
         uint256 orderExpirationTime = order.makerTraits.getExpirationTime();
-        if (orderExpirationTime > 0 && block.timestamp > orderExpirationTime) revert OrderNotExpiredYet(block.timestamp, order.makerTraits.getExpirationTime());
+        if (orderExpirationTime > 0 && block.timestamp > orderExpirationTime) revert OrderShouldBeExpired(block.timestamp, order.makerTraits.getExpirationTime());
 
-        bytes32 orderHash = order.hash(_domainSeparatorV4()); // IOrderMixin(_LIMIT_ORDER_PROTOCOL).hashOrder(order);
-        Deposit storage deposit = deposits[maker][orderHash];
-        uint256 balance = deposit.balance;
-        deposit.balance = 0;
+        // Using EIP712Alien._domainSeparatorV4() is cheaper than call IOrderMixin(_LIMIT_ORDER_PROTOCOL).hashOrder(order);
+        bytes32 orderHash = order.hash(_domainSeparatorV4());
+        Bond storage bond = bonds[maker][orderHash];
+        uint256 resolverReward = getResolverReward(bond.auctionMaxGasBump, orderExpirationTime, bond.auctionDuration);
+        _cancelOrder(maker, orderHash, msg.sender, resolverReward);
+    }
 
-        uint256 resolverReward = getResolverReward(deposit.maxGasCostsBump, orderExpirationTime, deposit.auctionDuration);
+    function _cancelOrder(address maker, bytes32 orderHash, address resolver, uint256 resolverReward) internal {
+        uint256 balance = bonds[maker][orderHash].balance;
+        if (balance == 0) revert CanNotCancelForZeroBalance();
+        _burn(maker, balance);
+        bonds[maker][orderHash].balance = 0;
+
         if (resolverReward > 0) {
             balance -= resolverReward;
-            _WETH.safeWithdrawTo(resolverReward, msg.sender);
+            _WETH.safeWithdrawTo(resolverReward, resolver);
         }
         if (balance > 0) {
             _WETH.safeWithdrawTo(balance, maker);
         }
+        emit ETHCancelled(maker, orderHash, balance);
     }
 
     function postInteraction(
-        IOrderMixin.Order calldata order,
+        IOrderMixin.Order calldata /* order */,
         bytes calldata /* extension */,
         bytes32 orderHash,
         address /* taker */,
@@ -171,12 +188,25 @@ contract ETHOrders is IPostInteraction, OnlyWethReceiver, EIP712Alien {
         uint256 /* takingAmount */,
         uint256 /* remainingMakingAmount */,
         bytes calldata extraData
-    ) external onlyLimitOrderProtocolOrOneOfTails(extraData) {
-        deposits[order.maker.get()][orderHash].balance -= uint208(makingAmount);
+    ) external onlyLimitOrderProtocolOrOneOfTails(extraData[20:]) {
+        address maker = address(bytes20(extraData[:20]));
+        bonds[maker][orderHash].balance -= uint208(makingAmount);
     }
 
-    function getResolverReward(uint256 maxGasCostsBump, uint256 orderExpirationTime, uint256 auctionDuration) public view returns (uint256) {
-        uint256 gasCostsBump = getCurrentAuctionValue(maxGasCostsBump, orderExpirationTime, auctionDuration);
+    function rescueFunds(address token, address to, uint256 amount) external onlyResolver {
+        if (token == address(0)) {
+            payable(to).transfer(amount);
+        } else if (IWETH(token) == _WETH) {
+            uint256 available = _WETH.balanceOf(address(this)) - totalSupply();
+            if (amount > available) revert RescueFundsTooMuch(amount, available);
+            _WETH.safeWithdrawTo(amount, to);
+        } else {
+            IERC20(token).safeTransfer(to, amount);
+        }
+    }
+
+    function getResolverReward(uint256 auctionMaxGasBump, uint256 orderExpirationTime, uint256 auctionDuration) public view returns (uint256) {
+        uint256 gasCostsBump = getCurrentAuctionValue(auctionMaxGasBump, orderExpirationTime, auctionDuration);
         return _CANCEL_GAS_LOWER_BOUND * block.basefee * (_BUMP_BASE + gasCostsBump) / _BUMP_BASE;
     }
 
