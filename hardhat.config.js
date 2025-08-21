@@ -25,13 +25,13 @@ module.exports = {
         enableAllOpcodes: true,
     },
     solidity: {
-        version: '0.8.23',
+        version: '0.8.30',
         settings: {
             optimizer: {
                 enabled: true,
                 runs: 1_000_000,
             },
-            evmVersion: networks[getNetwork()]?.hardfork || 'shanghai',
+            evmVersion: networks[getNetwork()]?.hardfork || 'cancun',
             viaIR: true,
         },
     },

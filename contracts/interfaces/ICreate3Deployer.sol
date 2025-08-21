@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.23;
+pragma solidity 0.8.30;
 
 interface ICreate3Deployer {
     function deploy(bytes32 salt, bytes calldata code) external returns (address);
