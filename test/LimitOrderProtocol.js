@@ -260,7 +260,8 @@ describe('LimitOrderProtocol', function () {
                 if (hre.__SOLIDITY_COVERAGE_RUNNING === undefined) {
                     const trace = findTrace(tracer, 'CALL', await swap.getAddress());
                     const opcodes = trace.children.map(item => item.opcode);
-                    expect(countAllItems(opcodes)).to.deep.equal({ STATICCALL: 1, CALL: 2, SLOAD: 2, SSTORE: 1, LOG1: 1, MSTORE: 29, MLOAD: 10, SHA3: 5 });
+                    
+                    expect(countAllItems(opcodes)).to.deep.equal({ STATICCALL: 1, CALL: 2, SLOAD: 2, SSTORE: 1, LOG1: 1, MSTORE: 29, MLOAD: 10, RETURN: 1 });
                 }
             }
         });
@@ -286,7 +287,7 @@ describe('LimitOrderProtocol', function () {
             if (hre.__SOLIDITY_COVERAGE_RUNNING === undefined) {
                 const trace = findTrace(tracer, 'CALL', await swap.getAddress());
                 const opcodes = trace.children.map(item => item.opcode);
-                expect(countAllItems(opcodes)).to.deep.equal({ STATICCALL: 1, CALL: 2, SLOAD: 2, SSTORE: 1, LOG1: 1, MSTORE: 31, MLOAD: 10, SHA3: 6 });
+                expect(countAllItems(opcodes)).to.deep.equal({ STATICCALL: 1, CALL: 2, SLOAD: 2, SSTORE: 1, LOG1: 1, MSTORE: 31, MLOAD: 10, RETURN: 1 });
             }
         });
 

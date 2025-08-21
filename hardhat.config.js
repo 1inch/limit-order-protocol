@@ -8,6 +8,7 @@ require('hardhat-deploy');
 require('hardhat-gas-reporter');
 require('hardhat-tracer');
 require('dotenv').config();
+
 const { oneInchTemplates } = require('@1inch/solidity-utils/docgen');
 const { Networks, getNetwork } = require('@1inch/solidity-utils/hardhat-setup');
 
@@ -31,7 +32,7 @@ module.exports = {
                 enabled: true,
                 runs: 1_000_000,
             },
-            evmVersion: networks[getNetwork()]?.hardfork || 'shanghai',
+            evmVersion: networks[getNetwork()]?.hardfork || 'cancun',
             viaIR: true,
         },
     },
