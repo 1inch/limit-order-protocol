@@ -218,7 +218,7 @@ contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
     }
 
     function _update(address from, address to, uint256 value) internal override {
-        if (from != address(this) && to != address(this)) revert TransferRestricted(from, to, value);
+        if (from != address(0) && to != address(0)) revert TransferRestricted(from, to, value);
         super._update(from, to, value);
     }
 }
