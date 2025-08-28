@@ -13,6 +13,7 @@ import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
 import { OrderLib, IOrderMixin } from "../OrderLib.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 import { ExtensionLib } from "../libraries/ExtensionLib.sol";
+import { Auction, AuctionLib } from "../libraries/Auction.sol";
 
 /// @title Extension that will allow to create limit order that sell ETH. ETH must be deposited into the contract.
 contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
@@ -22,6 +23,7 @@ contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
     using MakerTraitsLib for MakerTraits;
     using ExtensionLib for bytes;
     using AddressLib for Address;
+    using AuctionLib for Auction;
 
     event ETHDeposited(address maker, bytes32 orderHash, uint256 amount);
     event ETHOrderCancelled(bytes32 orderHash, uint256 amount);
@@ -40,15 +42,14 @@ contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
     error CanNotCancelForZeroBalance();
     error RescueFundsTooMuch(uint256 requested, uint256 available);
     error PostInteractionExtraDataShouldMatchMaker(address orderMaker, address maker);
+    error ERC20TransferNotAllowed();
 
     /// @notice Bond information for an order
     /// @param balance The amount of ETH deposited for the order
-    /// @param auctionMaxGasBump The maximum gas costs bump in basis points (1_500 = +50%)
-    /// @param auctionDuration The duration of the auction in seconds
+    /// @param auction The base gas costs bump auction information
     struct Bond {
         uint208 balance;
-        uint16 auctionMaxGasBump; // in basis points (1_000)
-        uint32 auctionDuration;
+        Auction auction; // maxGasBump in basis points (1_000)
     }
 
     uint256 private constant _BUMP_BASE = 1_000;
@@ -125,18 +126,13 @@ contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
         return true;
     }
 
-    function deposit(
-        bytes32 orderHash,
-        uint16 auctionMaxGasBump,
-        uint32 auctionDuration
-    ) public payable {
+    function deposit(bytes32 orderHash, Auction auction) public payable {
         if (bonds[msg.sender][orderHash].balance != 0) revert OrderShouldNotExist(msg.sender, orderHash, bonds[msg.sender][orderHash].balance);
 
         _mint(msg.sender, msg.value);
         bonds[msg.sender][orderHash] = Bond({
             balance: uint208(msg.value),
-            auctionMaxGasBump: auctionMaxGasBump,
-            auctionDuration: auctionDuration
+            auction: auction
         });
         _WETH.safeDeposit(msg.value);
         emit ETHDeposited(msg.sender, orderHash, msg.value);
@@ -149,7 +145,7 @@ contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
     }
 
     function cancelOrder(bytes32 orderHash) external {
-        return _cancelOrder(msg.sender, orderHash, address(0), 0);
+        return _cancelOrder(msg.sender, orderHash, 0);
     }
 
     function cancelExpiredOrderByResolver(address maker, IOrderMixin.Order calldata order) external onlyResolver {
@@ -159,11 +155,11 @@ contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
         // Using EIP712Alien._domainSeparatorV4() is cheaper than call IOrderMixin(_LIMIT_ORDER_PROTOCOL).hashOrder(order);
         bytes32 orderHash = order.hash(_domainSeparatorV4());
         Bond storage bond = bonds[maker][orderHash];
-        uint256 resolverReward = getResolverReward(bond.auctionMaxGasBump, orderExpirationTime, bond.auctionDuration);
-        _cancelOrder(maker, orderHash, msg.sender, resolverReward);
+        uint256 resolverReward = getResolverReward(bond.auction, orderExpirationTime);
+        _cancelOrder(maker, orderHash, resolverReward);
     }
 
-    function _cancelOrder(address maker, bytes32 orderHash, address resolver, uint256 resolverReward) internal {
+    function _cancelOrder(address maker, bytes32 orderHash, uint256 resolverReward) internal {
         uint256 balance = bonds[maker][orderHash].balance;
         if (balance == 0) revert CanNotCancelForZeroBalance();
         _burn(maker, balance);
@@ -171,7 +167,7 @@ contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
 
         if (resolverReward > 0) {
             balance -= resolverReward;
-            _WETH.safeWithdrawTo(resolverReward, resolver);
+            _WETH.safeWithdrawTo(resolverReward, msg.sender);
         }
         if (balance > 0) {
             _WETH.safeWithdrawTo(balance, maker);
@@ -205,14 +201,18 @@ contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
         }
     }
 
-    function getResolverReward(uint256 auctionMaxGasBump, uint256 orderExpirationTime, uint256 auctionDuration) public view returns (uint256) {
-        uint256 gasCostsBump = getCurrentAuctionValue(auctionMaxGasBump, orderExpirationTime, auctionDuration);
+    function getResolverReward(Auction auction, uint256 orderExpirationTime) public view returns (uint256) {
+        uint256 gasCostsBump = auction.currentValue(orderExpirationTime);
         return _CANCEL_GAS_LOWER_BOUND * block.basefee * (_BUMP_BASE + gasCostsBump) / _BUMP_BASE;
     }
 
-    function getCurrentAuctionValue(uint256 maxAmount, uint256 start, uint256 duration) public view returns (uint256) {
-        if (block.timestamp <= start) return 0;
-        if (block.timestamp >= start + duration) return maxAmount;
-        return maxAmount * (block.timestamp - start) / duration;
+    // ERC20 overrides to prevent transfers
+
+    function transfer(address /* to */, uint256 /* amount */) public pure override returns (bool) {
+        revert ERC20TransferNotAllowed();
+    }
+
+    function transferFrom(address /* from */, address /* to */, uint256 /* amount */) public pure override returns (bool) {
+        revert ERC20TransferNotAllowed();
     }
 }

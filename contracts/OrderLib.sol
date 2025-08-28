@@ -50,7 +50,7 @@ import "./interfaces/IAmountGetter.sol";
       * @notice Calculates the hash of an order.
       * @param order The order to be hashed.
       * @param domainSeparator The domain separator to be used for the EIP-712 hashing.
-      * @return result The keccak256 hash of the order data.
+      * @return result The EIP-712 hash of the order data.
       */
     function hash(IOrderMixin.Order calldata order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
         bytes32 typehash = _LIMIT_ORDER_TYPEHASH;
@@ -61,6 +61,28 @@ import "./interfaces/IAmountGetter.sol";
             mstore(ptr, typehash)
             calldatacopy(add(ptr, 0x20), order, _ORDER_STRUCT_SIZE)
             result := keccak256(ptr, _DATA_HASH_SIZE)
+        }
+        result = ECDSA.toTypedDataHash(domainSeparator, result);
+    }
+
+    /**
+      * @notice Calculates the hash of an order in memory.
+      * @param order The order to be hashed.
+      * @param domainSeparator The domain separator to be used for the EIP-712 hashing.
+      * @return result The EIP-712 hash of the order data.
+      */
+    function hashMemory(IOrderMixin.Order memory order, bytes32 domainSeparator) internal pure returns(bytes32 result) {
+        bytes32 typehash = OrderLib._LIMIT_ORDER_TYPEHASH;
+        uint256 dataHashSize = OrderLib._DATA_HASH_SIZE;
+        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
+            let ptr := sub(order, 0x20)
+            let backup := mload(ptr)
+            mstore(ptr, typehash)
+
+            // keccak256(abi.encode(OrderLib._LIMIT_ORDER_TYPEHASH, order))
+            result := keccak256(ptr, dataHashSize)
+
+            mstore(ptr, backup)
         }
         result = ECDSA.toTypedDataHash(domainSeparator, result);
     }
