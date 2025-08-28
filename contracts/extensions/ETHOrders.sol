@@ -42,7 +42,7 @@ contract ETHOrders is ERC20, ChainablePostInteraction, OnlyWethReceiver, EIP712A
     error CanNotCancelForZeroBalance();
     error RescueFundsTooMuch(uint256 requested, uint256 available);
     error PostInteractionExtraDataShouldMatchMaker(address orderMaker, address maker);
-    error ERC20TransferNotAllowed();
+    error TransferRestricted(address from, address to, uint256 value);
 
     /// @notice Bond information for an order
     /// @param balance The amount of ETH deposited for the order
@@ -191,13 +191,9 @@ contract ETHOrders is ERC20, ChainablePostInteraction, OnlyWethReceiver, EIP712A
         }
     }
 
-    // ERC20 overrides to prevent transfers
-
-    function transfer(address /* to */, uint256 /* amount */) public pure override returns (bool) {
-        revert ERC20TransferNotAllowed();
-    }
-
-    function transferFrom(address /* from */, address /* to */, uint256 /* amount */) public pure override returns (bool) {
-        revert ERC20TransferNotAllowed();
+    // ERC20 override to prevent transfers
+    function _update(address from, address to, uint256 value) internal override {
+        if (from != address(0) && to != address(0)) revert TransferRestricted(from, to, value);
+        super._update(from, to, value);
     }
 }
