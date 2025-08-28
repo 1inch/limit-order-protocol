@@ -9,14 +9,14 @@ import { IWETH } from "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 
 import { EIP712Alien } from "contracts/mocks/EIP712Alien.sol";
-import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
+import { ChainablePostInteraction } from "./ChainablePostInteraction.sol";
 import { OrderLib, IOrderMixin } from "../OrderLib.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 import { ExtensionLib } from "../libraries/ExtensionLib.sol";
 import { Auction, AuctionLib } from "../libraries/Auction.sol";
 
 /// @title Extension that will allow to create limit order that sell ETH. ETH must be deposited into the contract.
-contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
+contract ETHOrders is ERC20, ChainablePostInteraction, OnlyWethReceiver, EIP712Alien {
     using SafeERC20 for IWETH;
     using SafeERC20 for IERC20;
     using OrderLib for IOrderMixin.Order;
@@ -30,7 +30,7 @@ contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
     event ETHOrderCancelledByThirdParty(bytes32 orderHash, uint256 amount, uint256 reward);
     event ETHCancelled(address maker, bytes32 orderHash, uint256 amount);
 
-    error AccessDenied(address caller);
+    error OnlyResolverAccessDenied(address caller);
     error OrderShouldNotExist(address maker, bytes32 orderHash, uint256 balance);
     error OrderShouldRequirePostInteractionCall(MakerTraits makerTraits);
     error OrderMakerShouldBeThisContract(address maker, address thisContract);
@@ -61,23 +61,8 @@ contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
 
     mapping(address maker => mapping(bytes32 orderHash => Bond)) public bonds;
 
-    modifier onlyLimitOrderProtocolOrOneOfTails(bytes calldata allowedMsgSenders) {
-        if (!_onlyLimitOrderProtocolOrOneOfTails(allowedMsgSenders)) revert AccessDenied(msg.sender);
-        _;
-    }
-
-    function _onlyLimitOrderProtocolOrOneOfTails(bytes calldata allowedMsgSenders) internal view returns (bool) {
-        bytes10 shortAddress = bytes10(uint80(uint160(msg.sender)));
-        for (uint256 i = 0; i < allowedMsgSenders.length; i += 10) {
-            if (shortAddress == bytes10(allowedMsgSenders[i:])) {
-                return true;
-            }
-        }
-        return (msg.sender == _LIMIT_ORDER_PROTOCOL);
-    }
-
     modifier onlyResolver {
-        if (_ACCESS_TOKEN.balanceOf(msg.sender) == 0) revert AccessDenied(msg.sender);
+        if (_ACCESS_TOKEN.balanceOf(msg.sender) == 0) revert OnlyResolverAccessDenied(msg.sender);
         _;
     }
 
@@ -89,6 +74,7 @@ contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
         string memory symbol
     )
         ERC20(name, symbol)
+        ChainablePostInteraction(limitOrderProtocol)
         OnlyWethReceiver(address(weth))
         EIP712Alien(_LIMIT_ORDER_PROTOCOL, "1inch Limit Order Protocol", "4")
     {
@@ -175,7 +161,7 @@ contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
         emit ETHCancelled(maker, orderHash, balance);
     }
 
-    function postInteraction(
+    function _postInteraction(
         IOrderMixin.Order calldata /* order */,
         bytes calldata /* extension */,
         bytes32 orderHash,
@@ -184,9 +170,10 @@ contract ETHOrders is ERC20, IPostInteraction, OnlyWethReceiver, EIP712Alien {
         uint256 /* takingAmount */,
         uint256 /* remainingMakingAmount */,
         bytes calldata extraData
-    ) external onlyLimitOrderProtocolOrOneOfTails(extraData[20:]) {
+    ) internal override returns (bytes calldata) {
         address maker = address(bytes20(extraData[:20]));
         bonds[maker][orderHash].balance -= uint208(makingAmount);
+        return extraData[20:];
     }
 
     function rescueFunds(address token, address to, uint256 amount) external onlyResolver {

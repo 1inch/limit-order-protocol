@@ -3,17 +3,14 @@
 pragma solidity 0.8.23;
 
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import { OnlyWethReceiver } from "@1inch/solidity-utils/contracts/mixins/OnlyWethReceiver.sol";
 import { IWETH } from "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 
 import { EIP712Alien } from "contracts/mocks/EIP712Alien.sol";
-import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
 import { OrderLib, IOrderMixin } from "../OrderLib.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
-import { ExtensionLib } from "../libraries/ExtensionLib.sol";
 import { Auction, AuctionLib } from "../libraries/Auction.sol";
 
 /// @title Extension that will allow to create Fusion+ order that sell ETH. ETH will be deposited into the clone.
@@ -26,7 +23,6 @@ contract ETHOrderClonable is OnlyWethReceiver, EIP712Alien {
     using MakerTraitsLib for MakerTraits;
     using AuctionLib for Auction;
 
-    error AccessDenied();
     error OnlySenderMismatch(address caller, address expected);
     error ThisIsFactoryViolation(address self, address factory);
     error ThisIsCloneViolation(address self, address clone);
@@ -99,21 +95,6 @@ contract ETHOrderClonable is OnlyWethReceiver, EIP712Alien {
         _;
     }
 
-    modifier onlyLimitOrderProtocolOrOneOfTails(bytes calldata allowedMsgSenders) {
-        if (!_onlyLimitOrderProtocolOrOneOfTails(allowedMsgSenders)) revert AccessDenied();
-        _;
-    }
-
-    function _onlyLimitOrderProtocolOrOneOfTails(bytes calldata allowedMsgSenders) internal view returns (bool) {
-        bytes10 shortAddress = bytes10(uint80(uint160(msg.sender)));
-        for (uint256 i = 0; i < allowedMsgSenders.length; i += 10) {
-            if (shortAddress == bytes10(allowedMsgSenders[i:])) {
-                return true;
-            }
-        }
-        return (msg.sender == _LIMIT_ORDER_PROTOCOL);
-    }
-
     constructor(
         IWETH weth,
         address limitOrderProtocol,
@@ -179,7 +160,7 @@ contract ETHOrderClonable is OnlyWethReceiver, EIP712Alien {
     {
         if (signature.length != _ORDER_AND_TRAITS_BYTES_LENGTH) revert SignatureShouldContainOrderAndTraitsButLengthIsWrong(_ORDER_AND_TRAITS_BYTES_LENGTH, signature.length);
         OrderAndTraits calldata orderAndTraits;
-        assembly ("memory-safe") {
+        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
             orderAndTraits := signature.offset
         }
 
