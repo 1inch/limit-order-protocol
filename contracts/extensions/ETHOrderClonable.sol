@@ -33,7 +33,7 @@ contract ETHOrderClonable is ERC20, ChainablePostInteraction, OnlyWethReceiver, 
     error OnlyByCloneViolation(address caller, address clone);
 
     error IsValidSignatureFactoryDerivationMismatch(address expected, address actual);
-    error OrderMakerShouldBeThisContract(address maker, address thisContract);
+    error OrderMakerShouldNoBeThisContract(address maker, address thisContract);
     error OrderReceiverShouldNotBeThis(address receiver, address self);
     error OrderMakingAmountShouldBeEqualToExpectedMsgValue(uint256 makingAmount, uint256 wethBalance);
     error CanNotCancelForZeroBalance();
@@ -42,7 +42,7 @@ contract ETHOrderClonable is ERC20, ChainablePostInteraction, OnlyWethReceiver, 
     error OrderShouldBeExpired(uint256 currentTime, uint256 orderExpirationTime);
     error SignatureShouldContainOrderAndTraitsButLengthIsWrong(uint256 expectedLength, uint256 actualLength);
     error RescueFundsTooMuch(uint256 requested, uint256 available);
-    error ERC20TransferNotAllowed();
+    error TransferRestricted(address from, address to, uint256 value);
 
     event CloneDeployed(address maker, bytes32 orderHash, address clone, uint256 value);
     event CloneCancelled(address maker, bytes32 orderHash, uint256 value);
@@ -115,23 +115,24 @@ contract ETHOrderClonable is ERC20, ChainablePostInteraction, OnlyWethReceiver, 
         _ACCESS_TOKEN = accessToken;
     }
 
-    // function validateOrder(
-    //     address maker,
-    //     IOrderMixin.Order calldata order,
-    //     uint256 expectedMsgValue,
-    //     address expectedClone
-    // ) external view thisIsFactory returns(bool) {
-    //     // Validate main order parameters
-    //     if (order.maker.get() != expectedClone) revert OrderMakerShouldBeThisContract(order.maker.get(), address(this));
-    //     if (order.getReceiver() == address(this) || order.getReceiver() == expectedClone) revert OrderReceiverShouldNotBeThis(order.getReceiver(), address(this));
-    //     if (expectedMsgValue != order.makingAmount) revert OrderMakingAmountShouldBeEqualToExpectedMsgValue(order.makingAmount, expectedMsgValue);
+    function validateOrder(
+        address maker,
+        IOrderMixin.Order calldata origOrder,
+        Auction auction,
+        uint256 expectedMsgValue,
+        address expectedClone
+    ) external view thisIsFactory returns(bool) {
+        // Validate main order parameters
+        if (origOrder.maker.get() == address(this)) revert OrderMakerShouldNoBeThisContract(origOrder.maker.get(), address(this));
+        if (origOrder.getReceiver() == address(this) || origOrder.getReceiver() == expectedClone) revert OrderReceiverShouldNotBeThis(origOrder.getReceiver(), address(this));
+        if (expectedMsgValue != origOrder.makingAmount) revert OrderMakingAmountShouldBeEqualToExpectedMsgValue(origOrder.makingAmount, expectedMsgValue);
 
-    //     // EIP712Alien._domainSeparatorV4() is cheaper than call IOrderMixin(_LIMIT_ORDER_PROTOCOL).hashOrder(order);
-    //     bytes32 orderHash = order.hash(_domainSeparatorV4());
-    //     address clone = addressOf(maker, orderHash);
-    //     if (clone != expectedClone) revert ExpectedCloneAddressMismatch(clone, expectedClone);
-    //     return true;
-    // }
+        // EIP712Alien._domainSeparatorV4() is cheaper than call IOrderMixin(_LIMIT_ORDER_PROTOCOL).hashOrder(order);
+        bytes32 origOrderHash = origOrder.hash(_domainSeparatorV4());
+        address clone = addressOf(maker, origOrderHash, auction);
+        if (clone != expectedClone) revert ExpectedCloneAddressMismatch(clone, expectedClone);
+        return true;
+    }
 
     function makeSalt(address maker, bytes32 orderHash, Auction auction) public pure returns (bytes32) {
         return keccak256(abi.encode(maker, orderHash, auction));
@@ -266,21 +267,20 @@ contract ETHOrderClonable is ERC20, ChainablePostInteraction, OnlyWethReceiver, 
         if (token == address(0)) {
             payable(to).transfer(amount);
         } else if (IWETH(token) == _WETH) {
-            uint256 available = _WETH.safeBalanceOf(address(this)) - totalSupply();
-            if (amount > available) revert RescueFundsTooMuch(amount, available);
+            if (address(this) != _FACTORY) {
+                uint256 remainingOrderAmount = _WETH.allowance(address(this), _LIMIT_ORDER_PROTOCOL);
+                uint256 available = _WETH.safeBalanceOf(address(this)) - remainingOrderAmount;
+                if (amount > available) revert RescueFundsTooMuch(amount, available);
+            }
             _WETH.safeWithdrawTo(amount, to);
         } else {
             IERC20(token).safeTransfer(to, amount);
         }
     }
 
-    // ERC20 overrides to prevent transfers
-
-    function transfer(address /* to */, uint256 /* amount */) public pure override returns (bool) {
-        revert ERC20TransferNotAllowed();
-    }
-
-    function transferFrom(address /* from */, address /* to */, uint256 /* amount */) public pure override returns (bool) {
-        revert ERC20TransferNotAllowed();
+    // ERC20 override to prevent transfers
+    function _update(address from, address to, uint256 value) internal override {
+        if (from != address(0) && to != address(0)) revert TransferRestricted(from, to, value);
+        super._update(from, to, value);
     }
 }
