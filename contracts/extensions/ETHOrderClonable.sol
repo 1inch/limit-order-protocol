@@ -3,18 +3,20 @@
 pragma solidity 0.8.23;
 
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SafeERC20, IERC20 } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import { OnlyWethReceiver } from "@1inch/solidity-utils/contracts/mixins/OnlyWethReceiver.sol";
 import { IWETH } from "@1inch/solidity-utils/contracts/interfaces/IWETH.sol";
 import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 
 import { EIP712Alien } from "contracts/mocks/EIP712Alien.sol";
+import { ChainablePostInteraction } from "./ChainablePostInteraction.sol";
 import { OrderLib, IOrderMixin } from "../OrderLib.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 import { Auction, AuctionLib } from "../libraries/Auction.sol";
 
 /// @title Extension that will allow to create Fusion+ order that sell ETH. ETH will be deposited into the clone.
-contract ETHOrderClonable is OnlyWethReceiver, EIP712Alien {
+contract ETHOrderClonable is ERC20, ChainablePostInteraction, OnlyWethReceiver, EIP712Alien {
     using Clones for address;
     using AddressLib for Address;
     using SafeERC20 for IWETH;
@@ -39,6 +41,7 @@ contract ETHOrderClonable is OnlyWethReceiver, EIP712Alien {
     error ExpectedCloneAddressMismatch(address actual, address expected);
     error OrderShouldBeExpired(uint256 currentTime, uint256 orderExpirationTime);
     error SignatureShouldContainOrderAndTraitsButLengthIsWrong(uint256 expectedLength, uint256 actualLength);
+    error RescueFundsTooMuch(uint256 requested, uint256 available);
     error ERC20TransferNotAllowed();
 
     event CloneDeployed(address maker, bytes32 orderHash, address clone, uint256 value);
@@ -98,8 +101,12 @@ contract ETHOrderClonable is OnlyWethReceiver, EIP712Alien {
     constructor(
         IWETH weth,
         address limitOrderProtocol,
-        IERC20 accessToken
+        IERC20 accessToken,
+        string memory name,
+        string memory symbol
     )
+        ERC20(name, symbol)
+        ChainablePostInteraction(limitOrderProtocol)
         OnlyWethReceiver(address(weth))
         EIP712Alien(_LIMIT_ORDER_PROTOCOL, "1inch Limit Order Protocol", "4")
     {
@@ -138,11 +145,12 @@ contract ETHOrderClonable is OnlyWethReceiver, EIP712Alien {
     function deposit(bytes32 origOrderHash, Auction auction) external payable thisIsFactory returns (address clone) {
         bytes32 salt = makeSalt(msg.sender, origOrderHash, auction);
         clone = _FACTORY.cloneDeterministic(salt);
-        ETHOrderClonable(payable(clone)).init{ value: msg.value }();
+        _mint(msg.sender, msg.value);
+        ETHOrderClonable(payable(clone)).deposit{ value: msg.value }();
         emit CloneDeployed(msg.sender, origOrderHash, clone, msg.value);
     }
 
-    function init()
+    function deposit()
         external
         payable
         thisIsClone
@@ -183,6 +191,37 @@ contract ETHOrderClonable is OnlyWethReceiver, EIP712Alien {
         return this.isValidSignature.selector;
     }
 
+    function burn(address maker, uint256 amount, bytes32 origOrderHash, Auction auction)
+        external
+        thisIsFactory
+        onlyByClone(maker, origOrderHash, auction)
+    {
+        _burn(maker, amount);
+    }
+
+    function _postInteraction(
+        IOrderMixin.Order calldata order,
+        bytes calldata /* extension */,
+        bytes32 /* orderHash */,
+        address /* taker */,
+        uint256 makingAmount,
+        uint256 /* takingAmount */,
+        uint256 /* remainingMakingAmount */,
+        bytes calldata extraData
+    )
+        internal
+        override
+        returns (bytes calldata)
+    {
+        address maker = address(bytes20(extraData[:20]));
+        IOrderMixin.Order memory origOrder = order;
+        origOrder.maker = Address.wrap(uint160(maker));
+        bytes32 origOrderHash = origOrder.hashMemory(_domainSeparatorV4());
+        Auction auction = Auction.wrap(uint48(bytes6(extraData[20:26])));
+        ETHOrderClonable(payable(_FACTORY)).burn(maker, makingAmount, origOrderHash, auction);
+        return extraData[26:];
+    }
+
     function cancelOrder(bytes32 orderHash, Auction auction) external thisIsClone {
         _cancelOrder(msg.sender, orderHash, auction, 0);
     }
@@ -221,5 +260,27 @@ contract ETHOrderClonable is OnlyWethReceiver, EIP712Alien {
     function getResolverReward(Auction auction, uint256 orderExpirationTime) public view returns (uint256) {
         uint256 gasCostsBump = auction.currentValue(orderExpirationTime);
         return _CANCEL_GAS_LOWER_BOUND * block.basefee * (_BUMP_BASE + gasCostsBump) / _BUMP_BASE;
+    }
+
+    function rescueFunds(address token, address to, uint256 amount) external onlyResolver {
+        if (token == address(0)) {
+            payable(to).transfer(amount);
+        } else if (IWETH(token) == _WETH) {
+            uint256 available = _WETH.safeBalanceOf(address(this)) - totalSupply();
+            if (amount > available) revert RescueFundsTooMuch(amount, available);
+            _WETH.safeWithdrawTo(amount, to);
+        } else {
+            IERC20(token).safeTransfer(to, amount);
+        }
+    }
+
+    // ERC20 overrides to prevent transfers
+
+    function transfer(address /* to */, uint256 /* amount */) public pure override returns (bool) {
+        revert ERC20TransferNotAllowed();
+    }
+
+    function transferFrom(address /* from */, address /* to */, uint256 /* amount */) public pure override returns (bool) {
+        revert ERC20TransferNotAllowed();
     }
 }

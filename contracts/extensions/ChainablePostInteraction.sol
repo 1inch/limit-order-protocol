@@ -10,8 +10,8 @@ abstract contract ChainablePostInteraction is IPostInteraction {
 
     address internal immutable _LOP;
 
-    modifier onlyLimitOrderProtocolOrTail(bytes calldata allowedMsgSenders) {
-        if (!_onlyLimitOrderProtocolOrTail(allowedMsgSenders)) revert ChainablePostInteractionAccessDenied(msg.sender);
+    modifier onlyLimitOrderProtocolOrTail(uint80 allowedTail) {
+        if ((msg.sender != _LOP) && (uint80(uint160(msg.sender)) != allowedTail)) revert ChainablePostInteractionAccessDenied(msg.sender);
         _;
     }
 
@@ -28,7 +28,7 @@ abstract contract ChainablePostInteraction is IPostInteraction {
         uint256 takingAmount,
         uint256 remainingMakingAmount,
         bytes calldata extraData
-    ) external onlyLimitOrderProtocolOrTail(extraData[20:]) {
+    ) external onlyLimitOrderProtocolOrTail(uint80(bytes10(extraData[20:]))) {
         bytes calldata tail = _postInteraction(order, extension, orderHash, taker, makingAmount, takingAmount, remainingMakingAmount, extraData);
         if (tail.length > 19) {
             IPostInteraction(address(bytes20(tail))).postInteraction(order, extension, orderHash, taker, makingAmount, takingAmount, remainingMakingAmount, tail[20:]);
@@ -45,14 +45,4 @@ abstract contract ChainablePostInteraction is IPostInteraction {
         uint256 remainingMakingAmount,
         bytes calldata extraData
     ) internal virtual returns (bytes calldata);
-
-    function _onlyLimitOrderProtocolOrTail(bytes calldata allowedTails) internal view returns (bool) {
-        bytes10 msgSenderTail = bytes10(uint80(uint160(msg.sender)));
-        for (uint256 i = 0; i < allowedTails.length; i += 10) {
-            if (msgSenderTail == bytes10(allowedTails[i:])) {
-                return true;
-            }
-        }
-        return (msg.sender == _LOP);
-    }
 }

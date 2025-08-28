@@ -84,16 +84,16 @@ contract ETHOrders is ERC20, ChainablePostInteraction, OnlyWethReceiver, EIP712A
         _WETH.forceApprove(limitOrderProtocol, type(uint256).max);
     }
 
-    function validateOrder(
-        address maker,
-        uint256 msgValue,
+    function deposit(
         IOrderMixin.Order calldata order,
-        bytes calldata extension
-    ) external view returns(bool) {
+        bytes calldata extension,
+        Auction auction
+    ) external payable {
+        address maker = msg.sender;
         // Validate main order parameters
         if (order.maker.get() != address(this)) revert OrderMakerShouldBeThisContract(order.maker.get(), address(this));
         if (order.getReceiver() == address(this)) revert OrderReceiverShouldNotBeThis(order.getReceiver(), address(this));
-        if (order.makingAmount != msgValue) revert OrderMakingAmountShouldBeEqualToMsgValue(order.makingAmount, msgValue);
+        if (order.makingAmount != msg.value) revert OrderMakingAmountShouldBeEqualToMsgValue(order.makingAmount, msg.value);
 
         // Validate post interaction flag and target
         if (!order.makerTraits.needPostInteractionCall()) revert OrderShouldRequirePostInteractionCall(order.makerTraits);
@@ -102,6 +102,7 @@ contract ETHOrders is ERC20, ChainablePostInteraction, OnlyWethReceiver, EIP712A
 
         // Validate post-interaction target and data
         bytes calldata interaction = extension.postInteractionTargetAndData();
+        // TODO: second condition can't be true for dynamic chaining
         if (interaction.length != 20 || address(bytes20(interaction)) != address(this)) revert OrderPostInteractionTargetShouldBeThisContract(address(bytes20(interaction)), address(this));
         address orderMaker = address(bytes20(interaction[20:40]));
         if (orderMaker != maker) revert PostInteractionExtraDataShouldMatchMaker(orderMaker, maker);
@@ -109,12 +110,8 @@ contract ETHOrders is ERC20, ChainablePostInteraction, OnlyWethReceiver, EIP712A
         // EIP712Alien._domainSeparatorV4() is cheaper than call IOrderMixin(_LIMIT_ORDER_PROTOCOL).hashOrder(order);
         bytes32 orderHash = order.hash(_domainSeparatorV4());
         if (bonds[maker][orderHash].balance != 0) revert OrderShouldNotExist(maker, orderHash, bonds[maker][orderHash].balance);
-        return true;
-    }
 
-    function deposit(bytes32 orderHash, Auction auction) public payable {
-        if (bonds[msg.sender][orderHash].balance != 0) revert OrderShouldNotExist(msg.sender, orderHash, bonds[msg.sender][orderHash].balance);
-
+        // Effects and interactions
         _mint(msg.sender, msg.value);
         bonds[msg.sender][orderHash] = Bond({
             balance: uint208(msg.value),
@@ -172,25 +169,26 @@ contract ETHOrders is ERC20, ChainablePostInteraction, OnlyWethReceiver, EIP712A
         bytes calldata extraData
     ) internal override returns (bytes calldata) {
         address maker = address(bytes20(extraData[:20]));
+        _burn(maker, makingAmount);
         bonds[maker][orderHash].balance -= uint208(makingAmount);
         return extraData[20:];
+    }
+
+    function getResolverReward(Auction auction, uint256 orderExpirationTime) public view returns (uint256) {
+        uint256 gasCostsBump = auction.currentValue(orderExpirationTime);
+        return _CANCEL_GAS_LOWER_BOUND * block.basefee * (_BUMP_BASE + gasCostsBump) / _BUMP_BASE;
     }
 
     function rescueFunds(address token, address to, uint256 amount) external onlyResolver {
         if (token == address(0)) {
             payable(to).transfer(amount);
         } else if (IWETH(token) == _WETH) {
-            uint256 available = _WETH.balanceOf(address(this)) - totalSupply();
+            uint256 available = _WETH.safeBalanceOf(address(this)) - totalSupply();
             if (amount > available) revert RescueFundsTooMuch(amount, available);
             _WETH.safeWithdrawTo(amount, to);
         } else {
             IERC20(token).safeTransfer(to, amount);
         }
-    }
-
-    function getResolverReward(Auction auction, uint256 orderExpirationTime) public view returns (uint256) {
-        uint256 gasCostsBump = auction.currentValue(orderExpirationTime);
-        return _CANCEL_GAS_LOWER_BOUND * block.basefee * (_BUMP_BASE + gasCostsBump) / _BUMP_BASE;
     }
 
     // ERC20 overrides to prevent transfers
