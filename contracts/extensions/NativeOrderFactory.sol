@@ -5,7 +5,7 @@ pragma solidity 0.8.23;
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
-import { SafeERC20, IERC20, IWETH } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
+import { SafeERC20, IERC20 } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
@@ -17,7 +17,6 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
     using Clones for address;
     using AddressLib for Address;
     using SafeERC20 for IERC20;
-    using SafeERC20 for IWETH;
     using OrderLib for IOrderMixin.Order;
     using MakerTraitsLib for MakerTraits;
 
@@ -27,24 +26,16 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
     error OrderReceiverShouldNotBeThis(address receiver, address self);
     error OrderMakingAmountShouldBeEqualToMsgValue(uint256 expected, uint256 actual);
 
-    IWETH private immutable _WETH;
-    address private immutable _LOP;
     address private immutable _IMPLEMENTATION;
-    IERC20 private immutable _ACCESS_TOKEN;
 
     constructor(
-        IWETH weth,
         address nativeOrderImplementation,
-        address limitOrderProtocol,
-        IERC20 accessToken
+        address limitOrderProtocol
     )
         Ownable(msg.sender)
         EIP712Alien(limitOrderProtocol, "1inch Limit Order Protocol", "4")
     {
-        _WETH = weth;
-        _LOP = limitOrderProtocol;
         _IMPLEMENTATION = nativeOrderImplementation;
-        _ACCESS_TOKEN = accessToken;
     }
 
     function create(IOrderMixin.Order calldata makerOrder) external payable returns (address clone) {
