@@ -47,7 +47,11 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
         bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
         clone = _IMPLEMENTATION.cloneDeterministic(makerOrderHash);
         NativeOrderImpl(payable(clone)).depositAndApprove{ value: msg.value }();
-        emit NativeOrderCreated(msg.sender, makerOrderHash, clone, msg.value);
+
+        IOrderMixin.Order memory order = makerOrder;
+        order.maker = Address.wrap(uint160(address(this)));
+        bytes32 orderHash = order.hashMemory(_domainSeparatorV4());
+        emit NativeOrderCreated(msg.sender, orderHash, clone, msg.value);
     }
 
     function rescueFunds(address token, address to, uint256 amount) external onlyOwner {
