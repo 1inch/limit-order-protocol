@@ -119,7 +119,10 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         uint256 orderExpirationTime = makerOrder.makerTraits.getExpirationTime();
         if (orderExpirationTime > 0 && block.timestamp > orderExpirationTime) revert OrderShouldBeExpired(block.timestamp, orderExpirationTime);
 
-        uint256 resolverReward = Math.min(rewardLimit, block.basefee * _CANCEL_GAS_LOWER_BOUND * 1.1e18 / 1e18);
+        uint256 resolverReward = 0;
+        if (rewardLimit > 0) {
+            resolverReward = Math.min(rewardLimit, block.basefee * _CANCEL_GAS_LOWER_BOUND * 1.1e18 / 1e18);
+        }
         _cancelOrder(makerOrder, resolverReward);
     }
 
