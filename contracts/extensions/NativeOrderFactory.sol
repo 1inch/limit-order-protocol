@@ -31,12 +31,13 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
     constructor(
         IWETH weth,
         address limitOrderProtocol,
-        IERC20 accessToken
+        IERC20 accessToken,
+        uint256 cancellationDelay // Recommended 60 seconds delay after order expiration for rewardable cancellation
     )
         Ownable(msg.sender)
         EIP712Alien(limitOrderProtocol, "1inch Limit Order Protocol", "4")
     {
-        IMPLEMENTATION = address(new NativeOrderImpl(weth, address(this), limitOrderProtocol, accessToken));
+        IMPLEMENTATION = address(new NativeOrderImpl(weth, address(this), limitOrderProtocol, accessToken, cancellationDelay));
     }
 
     function create(IOrderMixin.Order calldata makerOrder) external payable returns (address clone) {

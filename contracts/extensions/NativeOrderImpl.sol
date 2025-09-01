@@ -30,6 +30,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     error OrderShouldBeExpired(uint256 currentTime, uint256 expirationTime);
     error CanNotCancelForZeroBalance();
     error RescueFundsTooMuch(uint256 requested, uint256 available);
+    error CancellationDelayViolation(uint256 timePassedSinceExpiration, uint256 requiredDelay);
 
     uint256 private constant _CANCEL_GAS_LOWER_BOUND = 30_000;
 
@@ -38,6 +39,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     address private immutable _IMPLEMENTATION = address(this);
     address private immutable _FACTORY;
     IERC20 private immutable _ACCESS_TOKEN;
+    uint256 private immutable _CANCELLATION_DELAY;
 
     modifier onlyLOP {
         if (msg.sender != _LOP) revert OnlyLimitOrderProtocolViolation(msg.sender, _LOP);
@@ -58,7 +60,8 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         IWETH weth,
         address nativeOrderFactory,
         address limitOrderProtocol,
-        IERC20 accessToken
+        IERC20 accessToken,
+        uint256 cancellationDelay // Recommended 60 seconds delay after order expiration for rewardable cancellation
     )
         OnlyWethReceiver(address(weth))
         EIP712Alien(limitOrderProtocol, "1inch Limit Order Protocol", "4")
@@ -67,6 +70,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         _LOP = limitOrderProtocol;
         _FACTORY = nativeOrderFactory;
         _ACCESS_TOKEN = accessToken;
+        _CANCELLATION_DELAY = cancellationDelay;
     }
 
     function name() external pure returns (string memory) {
@@ -116,11 +120,12 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     }
 
     function cancelExpiredOrderByResolver(IOrderMixin.Order calldata makerOrder, uint256 rewardLimit) external onlyResolver {
-        uint256 orderExpirationTime = makerOrder.makerTraits.getExpirationTime();
-        if (orderExpirationTime > 0 && block.timestamp > orderExpirationTime) revert OrderShouldBeExpired(block.timestamp, orderExpirationTime);
+        uint256 orderExpiration = makerOrder.makerTraits.getExpirationTime();
+        if (orderExpiration > 0 && block.timestamp < orderExpiration) revert OrderShouldBeExpired(block.timestamp, orderExpiration);
 
         uint256 resolverReward = 0;
         if (rewardLimit > 0) {
+            if (block.timestamp - orderExpiration < _CANCELLATION_DELAY) revert CancellationDelayViolation(block.timestamp - orderExpiration, _CANCELLATION_DELAY);
             resolverReward = Math.min(rewardLimit, block.basefee * _CANCEL_GAS_LOWER_BOUND * 1.1e18 / 1e18);
         }
         _cancelOrder(makerOrder, resolverReward);
