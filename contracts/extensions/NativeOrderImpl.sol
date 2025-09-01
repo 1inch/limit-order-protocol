@@ -21,7 +21,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     using OrderLib for IOrderMixin.Order;
     using MakerTraitsLib for MakerTraits;
 
-    event NativeOrderCancelled(bytes32 makerOrderHash, uint256 balance, uint256 resolverReward);
+    event NativeOrderCancelled(bytes32 orderHash, uint256 balance, uint256 resolverReward);
 
     error OnlyLimitOrderProtocolViolation(address sender, address limitOrderProtocol);
     error OnlyFactoryViolation(address sender, address factory);
@@ -139,7 +139,11 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         if (balance > 0) {
             payable(makerOrder.maker.get()).transfer(balance);
         }
-        emit NativeOrderCancelled(makerOrderHash, balance, resolverReward);
+
+        IOrderMixin.Order memory order = makerOrder;
+        order.maker = Address.wrap(uint160(address(this)));
+        bytes32 orderHash = order.hashMemory(_domainSeparatorV4());
+        emit NativeOrderCancelled(orderHash, balance, resolverReward);
     }
 
     function rescueFunds(address token, address to, uint256 amount) external onlyResolver {
