@@ -26,7 +26,7 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
     error OrderReceiverShouldNotBeThis(address receiver, address self);
     error OrderMakingAmountShouldBeEqualToMsgValue(uint256 expected, uint256 actual);
 
-    address private immutable _IMPLEMENTATION;
+    address public immutable IMPLEMENTATION;
 
     constructor(
         IWETH weth,
@@ -36,7 +36,7 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
         Ownable(msg.sender)
         EIP712Alien(limitOrderProtocol, "1inch Limit Order Protocol", "4")
     {
-        _IMPLEMENTATION = address(new NativeOrderImpl(weth, address(this), limitOrderProtocol, accessToken));
+        IMPLEMENTATION = address(new NativeOrderImpl(weth, address(this), limitOrderProtocol, accessToken));
     }
 
     function create(IOrderMixin.Order calldata makerOrder) external payable returns (address clone) {
@@ -46,7 +46,7 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
         if (msg.value != makerOrder.makingAmount) revert OrderMakingAmountShouldBeEqualToMsgValue(makerOrder.makingAmount, msg.value);
 
         bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
-        clone = _IMPLEMENTATION.cloneDeterministic(makerOrderHash);
+        clone = IMPLEMENTATION.cloneDeterministic(makerOrderHash);
         NativeOrderImpl(payable(clone)).depositAndApprove{ value: msg.value }();
 
         IOrderMixin.Order memory order = makerOrder;
