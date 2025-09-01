@@ -5,7 +5,7 @@ pragma solidity 0.8.23;
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
-import { SafeERC20, IERC20 } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
+import { SafeERC20, IERC20, IWETH } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
@@ -29,13 +29,14 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
     address private immutable _IMPLEMENTATION;
 
     constructor(
-        address nativeOrderImplementation,
-        address limitOrderProtocol
+        IWETH weth,
+        address limitOrderProtocol,
+        IERC20 accessToken
     )
         Ownable(msg.sender)
         EIP712Alien(limitOrderProtocol, "1inch Limit Order Protocol", "4")
     {
-        _IMPLEMENTATION = nativeOrderImplementation;
+        _IMPLEMENTATION = address(new NativeOrderImpl(weth, address(this), limitOrderProtocol, accessToken));
     }
 
     function create(IOrderMixin.Order calldata makerOrder) external payable returns (address clone) {
