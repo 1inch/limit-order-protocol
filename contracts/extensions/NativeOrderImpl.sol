@@ -8,12 +8,11 @@ import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/A
 import { SafeERC20, IERC20, IWETH } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import { OnlyWethReceiver } from "@1inch/solidity-utils/contracts/mixins/OnlyWethReceiver.sol";
 
-import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 import { EIP712Alien } from "../mocks/EIP712Alien.sol";
 import { OrderLib, IOrderMixin } from "../OrderLib.sol";
 
-contract NativeOrderImpl is IERC1271, IPostInteraction, EIP712Alien, OnlyWethReceiver {
+contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     using Clones for address;
     using AddressLib for Address;
     using SafeERC20 for IERC20;
@@ -21,7 +20,6 @@ contract NativeOrderImpl is IERC1271, IPostInteraction, EIP712Alien, OnlyWethRec
     using OrderLib for IOrderMixin.Order;
     using MakerTraitsLib for MakerTraits;
 
-    event Transfer(address indexed from, address indexed to, uint256 value);
     event NativeOrderCancelled(bytes32 makerOrderHash, uint256 balance, uint256 resolverReward);
 
     error OnlyLimitOrderProtocolViolation(address sender, address limitOrderProtocol);
@@ -82,10 +80,9 @@ contract NativeOrderImpl is IERC1271, IPostInteraction, EIP712Alien, OnlyWethRec
         return 18;
     }
 
-    function depositAndApprove(address maker) external payable onlyFactory {
+    function depositAndApprove() external payable onlyFactory {
         _WETH.safeDeposit(msg.value);
         _WETH.forceApprove(_LOP, msg.value);
-        emit Transfer(address(0), maker, msg.value);
     }
 
     function isValidSignature(bytes32 hash, bytes calldata signature) external view returns(bytes4) {
@@ -111,20 +108,6 @@ contract NativeOrderImpl is IERC1271, IPostInteraction, EIP712Alien, OnlyWethRec
         }
 
         return this.isValidSignature.selector;
-    }
-
-    function postInteraction(
-        IOrderMixin.Order calldata /* order */,
-        bytes calldata /* extension */,
-        bytes32 /* orderHash */,
-        address /* taker */,
-        uint256 makingAmount,
-        uint256 /* takingAmount */,
-        uint256 /* remainingMakingAmount */,
-        bytes calldata extraData
-    ) external onlyLOP {
-        address untrustedMaker = address(bytes20(extraData[:20]));
-        emit Transfer(untrustedMaker, address(0), makingAmount);
     }
 
     function cancelOrder(IOrderMixin.Order calldata makerOrder) external {
