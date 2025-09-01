@@ -2,6 +2,7 @@
 
 pragma solidity 0.8.23;
 
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
@@ -114,11 +115,11 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         _cancelOrder(makerOrder, 0);
     }
 
-    function cancelExpiredOrderByResolver(IOrderMixin.Order calldata makerOrder) external onlyResolver {
+    function cancelExpiredOrderByResolver(IOrderMixin.Order calldata makerOrder, uint256 rewardLimit) external onlyResolver {
         uint256 orderExpirationTime = makerOrder.makerTraits.getExpirationTime();
         if (orderExpirationTime > 0 && block.timestamp > orderExpirationTime) revert OrderShouldBeExpired(block.timestamp, orderExpirationTime);
 
-        uint256 resolverReward = block.basefee * _CANCEL_GAS_LOWER_BOUND * 1.1e18 / 1e18;
+        uint256 resolverReward = Math.min(rewardLimit, block.basefee * _CANCEL_GAS_LOWER_BOUND * 1.1e18 / 1e18);
         _cancelOrder(makerOrder, resolverReward);
     }
 
