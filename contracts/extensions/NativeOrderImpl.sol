@@ -74,18 +74,6 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         _CANCELLATION_DELAY = cancellationDelay;
     }
 
-    function name() external pure returns (string memory) {
-        return "Fusion WETH";
-    }
-
-    function symbol() external pure returns (string memory) {
-        return "FWETH";
-    }
-
-    function decimals() external pure returns (uint8) {
-        return 18;
-    }
-
     function depositAndApprove() external payable onlyFactory {
         _WETH.safeDeposit(msg.value);
         _WETH.forceApprove(_LOP, msg.value);
