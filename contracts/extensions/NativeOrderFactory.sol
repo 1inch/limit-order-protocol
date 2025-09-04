@@ -22,8 +22,8 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
 
     event NativeOrderCreated(address maker, bytes32 orderHash, address clone, uint256 value);
 
+    error OrderReceiverShouldBeSetCorrectly(address receiver);
     error OrderMakerShouldBeMsgSender(address expected, address actual);
-    error OrderReceiverShouldNotBeThis(address receiver, address self);
     error OrderMakingAmountShouldBeEqualToMsgValue(uint256 expected, uint256 actual);
 
     address public immutable IMPLEMENTATION;
@@ -43,7 +43,8 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
     function create(IOrderMixin.Order calldata makerOrder) external payable returns (address clone) {
         // Validate main order parameters
         if (makerOrder.maker.get() != msg.sender) revert OrderMakerShouldBeMsgSender(msg.sender, makerOrder.maker.get());
-        if (makerOrder.getReceiver() == address(this)) revert OrderReceiverShouldNotBeThis(makerOrder.getReceiver(), address(this));
+        address receiver = makerOrder.receiver.get();
+        if (receiver == address(0) || receiver == address(this)) revert OrderReceiverShouldBeSetCorrectly(receiver);
         if (msg.value != makerOrder.makingAmount) revert OrderMakingAmountShouldBeEqualToMsgValue(makerOrder.makingAmount, msg.value);
 
         bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
