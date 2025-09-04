@@ -42,11 +42,6 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     IERC20 private immutable _ACCESS_TOKEN;
     uint256 private immutable _CANCELLATION_DELAY;
 
-    modifier onlyLOP {
-        if (msg.sender != _LOP) revert OnlyLimitOrderProtocolViolation(msg.sender, _LOP);
-        _;
-    }
-
     modifier onlyFactory {
         if (msg.sender != _FACTORY) revert OnlyFactoryViolation(msg.sender, _FACTORY);
         _;
