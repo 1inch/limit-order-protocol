@@ -57,10 +57,12 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         address nativeOrderFactory,
         address limitOrderProtocol,
         IERC20 accessToken,
-        uint256 cancellationDelay // Recommended 60 seconds delay after order expiration for rewardable cancellation
+        uint256 cancellationDelay, // Recommended 60 seconds delay after order expiration for rewardable cancellation
+        string memory name,
+        string memory version
     )
         OnlyWethReceiver(address(weth))
-        EIP712Alien(limitOrderProtocol, "1inch Limit Order Protocol", "4")
+        EIP712Alien(limitOrderProtocol, name, version)
     {
         _WETH = weth;
         _LOP = limitOrderProtocol;

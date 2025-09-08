@@ -32,12 +32,22 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
         IWETH weth,
         address limitOrderProtocol,
         IERC20 accessToken,
-        uint256 cancellationDelay // Recommended 60 seconds delay after order expiration for rewardable cancellation
+        uint256 cancellationDelay, // Recommended 60 seconds delay after order expiration for rewardable cancellation
+        string memory name,
+        string memory version
     )
         Ownable(msg.sender)
-        EIP712Alien(limitOrderProtocol, "1inch Limit Order Protocol", "4")
+        EIP712Alien(limitOrderProtocol, name, version)
     {
-        IMPLEMENTATION = address(new NativeOrderImpl(weth, address(this), limitOrderProtocol, accessToken, cancellationDelay));
+        IMPLEMENTATION = address(new NativeOrderImpl(
+            weth,
+            address(this),
+            limitOrderProtocol,
+            accessToken,
+            cancellationDelay,
+            name,
+            version
+        ));
     }
 
     function create(IOrderMixin.Order calldata makerOrder) external payable returns (address clone) {
@@ -52,7 +62,7 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
         NativeOrderImpl(payable(clone)).depositAndApprove{ value: msg.value }();
 
         IOrderMixin.Order memory order = makerOrder;
-        order.maker = Address.wrap(uint160(address(this)));
+        order.maker = Address.wrap(uint160(clone));
         bytes32 orderHash = order.hashMemory(_domainSeparatorV4());
         emit NativeOrderCreated(msg.sender, orderHash, clone, msg.value);
     }
