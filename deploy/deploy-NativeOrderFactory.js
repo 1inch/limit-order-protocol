@@ -28,10 +28,11 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         constructorArgs: [wethByNetwork[network.name], lop[network.name], accessToken[network.name], 60, '1inch Aggregation Router', '6'],
         deployments,
         deployer,
+        skipVerify: true,
     });
     console.log('NativeOrderFactory deployed to:', await nativeOrderFactory.getAddress());
 
     console.log('NativeOrderImpl deployed to:', await nativeOrderFactory.IMPLEMENTATION());
 };
 
-module.exports.skip = async () => false;
+module.exports.skip = async () => true;
