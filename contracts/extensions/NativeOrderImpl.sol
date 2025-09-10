@@ -12,7 +12,6 @@ import { OnlyWethReceiver } from "@1inch/solidity-utils/contracts/mixins/OnlyWet
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 import { EIP712Alien } from "../mocks/EIP712Alien.sol";
 import { OrderLib, IOrderMixin } from "../OrderLib.sol";
-import { INativeOrderFactory } from "../interfaces/INativeOrderFactory.sol";
 
 contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     using Clones for address;
@@ -92,7 +91,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
 
         // Check order args by CREATE2 salt validation
         bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
-        address clone = INativeOrderFactory(_FACTORY).IMPLEMENTATION().predictDeterministicAddress(makerOrderHash, _FACTORY);
+        address clone = _IMPLEMENTATION.predictDeterministicAddress(makerOrderHash, _FACTORY);
         if (clone != address(this)) {
             return bytes4(0);
         }
@@ -128,7 +127,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
 
     function _cancelOrder(IOrderMixin.Order calldata makerOrder, uint256 resolverReward) private returns(uint256 balance) {
         bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
-        address clone = INativeOrderFactory(_FACTORY).IMPLEMENTATION().predictDeterministicAddress(makerOrderHash, _FACTORY);
+        address clone = _IMPLEMENTATION.predictDeterministicAddress(makerOrderHash, _FACTORY);
         if (clone != address(this)) revert OrderIsIncorrect(clone, address(this));
 
         balance = _WETH.safeBalanceOf(address(this));
