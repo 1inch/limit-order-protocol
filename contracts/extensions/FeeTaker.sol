@@ -10,12 +10,12 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
-import { ChainablePostInteraction } from "./ChainablePostInteraction.sol";
+import { IPostInteraction } from "../interfaces/IPostInteraction.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 import { AmountGetterWithFee } from "./AmountGetterWithFee.sol";
 
 /// @title Helper contract that adds feature of collecting fee in takerAsset
-contract FeeTaker is ChainablePostInteraction, AmountGetterWithFee, Ownable {
+contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
     using AddressLib for Address;
     using SafeERC20 for IERC20;
     using UniERC20 for IERC20;
@@ -23,6 +23,11 @@ contract FeeTaker is ChainablePostInteraction, AmountGetterWithFee, Ownable {
     using MakerTraitsLib for MakerTraits;
 
     bytes1 private constant _CUSTOM_RECEIVER_FLAG = 0x01;
+
+    /**
+     * @dev The caller is not the limit order protocol contract.
+     */
+    error OnlyLimitOrderProtocol();
 
     /**
      * @dev The taker is not whitelisted and does not have access token.
@@ -44,6 +49,12 @@ contract FeeTaker is ChainablePostInteraction, AmountGetterWithFee, Ownable {
     /// @notice Contract address whose tokens allow filling limit orders with a fee for resolvers that are outside the whitelist
     IERC20 private immutable _ACCESS_TOKEN;
 
+    /// @dev Modifier to check if the caller is the limit order protocol contract.
+    modifier onlyLimitOrderProtocol {
+        if (msg.sender != _LIMIT_ORDER_PROTOCOL) revert OnlyLimitOrderProtocol();
+        _;
+    }
+
     /**
      * @notice Initializes the contract.
      * @param limitOrderProtocol The limit order protocol contract.
@@ -51,10 +62,7 @@ contract FeeTaker is ChainablePostInteraction, AmountGetterWithFee, Ownable {
      * @param weth The WETH address.
      * @param owner The owner of the contract.
      */
-    constructor(address limitOrderProtocol, IERC20 accessToken, address weth, address owner)
-        Ownable(owner)
-        ChainablePostInteraction(limitOrderProtocol)
-    {
+    constructor(address limitOrderProtocol, IERC20 accessToken, address weth, address owner) Ownable(owner) {
         _LIMIT_ORDER_PROTOCOL = limitOrderProtocol;
         _WETH = weth;
         _ACCESS_TOKEN = accessToken;
@@ -64,6 +72,22 @@ contract FeeTaker is ChainablePostInteraction, AmountGetterWithFee, Ownable {
      * @notice Fallback function to receive ETH.
      */
     receive() external payable {}
+
+    /**
+     * @notice See {IPostInteraction-postInteraction}.
+     */
+    function postInteraction(
+        IOrderMixin.Order calldata order,
+        bytes calldata extension,
+        bytes32 orderHash,
+        address taker,
+        uint256 makingAmount,
+        uint256 takingAmount,
+        uint256 remainingMakingAmount,
+        bytes calldata extraData
+    ) external onlyLimitOrderProtocol {
+        _postInteraction(order, extension, orderHash, taker, makingAmount, takingAmount, remainingMakingAmount, extraData);
+    }
 
     /**
      * @notice Retrieves funds accidentally sent directly to the contract address
@@ -87,14 +111,14 @@ contract FeeTaker is ChainablePostInteraction, AmountGetterWithFee, Ownable {
      */
     function _postInteraction(
         IOrderMixin.Order calldata order,
-        bytes calldata /* extension */,
-        bytes32 /* orderHash */,
+        bytes calldata extension,
+        bytes32 orderHash,
         address taker,
         uint256 makingAmount,
         uint256 takingAmount,
-        uint256 /* remainingMakingAmount */,
+        uint256 remainingMakingAmount,
         bytes calldata extraData
-    ) internal override returns (bytes calldata) {
+    ) internal virtual {
         unchecked {
             bool customReceiver = extraData[0] & _CUSTOM_RECEIVER_FLAG == _CUSTOM_RECEIVER_FLAG;
             address integratorFeeRecipient = address(bytes20(extraData[1:21]));
@@ -131,7 +155,9 @@ contract FeeTaker is ChainablePostInteraction, AmountGetterWithFee, Ownable {
                 revert InconsistentFee();
             }
 
-            return tail;
+            if (tail.length > 19) {
+                IPostInteraction(address(bytes20(tail))).postInteraction(order, extension, orderHash, taker, makingAmount, takingAmount, remainingMakingAmount, tail[20:]);
+            }
         }
     }
 
