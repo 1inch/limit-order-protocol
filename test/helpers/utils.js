@@ -108,6 +108,18 @@ function setn (num, bit, value) {
     }
 }
 
+function getEventArgs (receipt, contractInterface, eventName) {
+    for (const log of receipt.logs) {
+        try {
+            const parsed = contractInterface.parseLog(log);
+            if (parsed.name === eventName) {
+                return parsed.args;
+            }
+        } catch (_) {}
+    }
+    return [];
+}
+
 module.exports = {
     joinStaticCalls,
     price,
@@ -122,4 +134,5 @@ module.exports = {
     flattenTree,
     countAllItems,
     treeForEach,
+    getEventArgs,
 };
