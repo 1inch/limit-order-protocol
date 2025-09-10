@@ -26,6 +26,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
 
     error OnlyLimitOrderProtocolViolation(address sender, address limitOrderProtocol);
     error OnlyFactoryViolation(address sender, address factory);
+    error OnlyMakerViolation(address sender, address maker);
     error ResolverAccessTokenMissing(address resolver, address accessToken);
     error OrderIsIncorrect(address expected, address actual);
     error OrderShouldBeExpired(uint256 currentTime, uint256 expirationTime);
@@ -49,6 +50,11 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
 
     modifier onlyResolver {
         if (_ACCESS_TOKEN.balanceOf(msg.sender) == 0) revert ResolverAccessTokenMissing(msg.sender, address(_ACCESS_TOKEN));
+        _;
+    }
+
+    modifier onlyMaker(address maker) {
+        if (msg.sender != maker) revert OnlyMakerViolation(msg.sender, maker);
         _;
     }
 
@@ -85,7 +91,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
 
         // Check order args by CREATE2 salt validation
         bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
-        address clone = _FACTORY.predictDeterministicAddress(makerOrderHash, _FACTORY);
+        address clone = _IMPLEMENTATION.predictDeterministicAddress(makerOrderHash, _FACTORY);
         if (clone != address(this)) {
             return bytes4(0);
         }
@@ -99,7 +105,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         return this.isValidSignature.selector;
     }
 
-    function cancelOrder(IOrderMixin.Order calldata makerOrder) external {
+    function cancelOrder(IOrderMixin.Order calldata makerOrder) external onlyMaker(makerOrder.maker.get()) {
         uint256 balance = _cancelOrder(makerOrder, 0);
         bytes32 orderHash = _patchOrderMakerAndHash(makerOrder);
         emit NativeOrderCancelled(orderHash, balance);
@@ -121,7 +127,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
 
     function _cancelOrder(IOrderMixin.Order calldata makerOrder, uint256 resolverReward) private returns(uint256 balance) {
         bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
-        address clone = _FACTORY.predictDeterministicAddress(makerOrderHash, _FACTORY);
+        address clone = _IMPLEMENTATION.predictDeterministicAddress(makerOrderHash, _FACTORY);
         if (clone != address(this)) revert OrderIsIncorrect(clone, address(this));
 
         balance = _WETH.safeBalanceOf(address(this));
