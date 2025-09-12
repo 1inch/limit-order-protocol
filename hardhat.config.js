@@ -63,4 +63,8 @@ module.exports = {
         pages: 'files',
         exclude: ['mocks'],
     },
+    deployOpts: {
+        lopHelperNames: process.env.OPS_LOP_HELPER_NAMES || [],
+        deploymentMethod: process.env.OPS_DEPLOYMENT_METHOD || 'create3',
+    },
 };

@@ -1,29 +1,36 @@
 const hre = require('hardhat');
-const { getChainId, network } = hre;
-
-const wethByNetwork = {
-    hardhat: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-    mainnet: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-};
+const { getChainId } = hre;
+const constants = require('./constants');
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
-    console.log('running deploy script');
-    console.log('network id ', await getChainId());
+    const networkName = hre.network.name;
+    console.log(`running ${networkName} deploy script`);
+    const chainId = await getChainId();
+    console.log('network id ', chainId);
+    
+    if (
+        networkName in hre.config.networks[networkName] &&
+        chainId !== hre.config.networks[networkName].chainId.toString()
+    ) {
+        console.log(`network chain id: ${hre.config.networks[networkName].chainId}, your chain id ${chainId}`);
+        console.log('skipping wrong chain id deployment');
+        return;
+    }
 
     const { deploy } = deployments;
     const { deployer } = await getNamedAccounts();
 
     const limitOrderProtocol = await deploy('LimitOrderProtocol', {
         from: deployer,
-        args: [wethByNetwork[network.name]],
+        args: [constants.WETH[chainId]],
     });
 
     console.log('LimitOrderProtocol deployed to:', limitOrderProtocol.address);
 
-    if (await getChainId() !== '31337') {
+    if (chainId !== '31337') {
         await hre.run('verify:verify', {
             address: limitOrderProtocol.address,
-            constructorArguments: [wethByNetwork[network.name]],
+            constructorArguments: [constants.WETH[chainId]],
         });
     }
 };

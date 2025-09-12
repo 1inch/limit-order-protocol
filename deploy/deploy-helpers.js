@@ -1,55 +1,74 @@
-const { deployAndGetContract } = require('@1inch/solidity-utils');
+const { deployAndGetContract, deployAndGetContractWithCreate3 } = require('@1inch/solidity-utils');
 const hre = require('hardhat');
-const { getChainId } = hre;
+const { ethers, getChainId } = hre;
+const constants = require('./constants');
 
-const LOP = '0x111111125421cA6dc452d289314280a0f8842A65'; // All chains
-
-module.exports = async ({ getNamedAccounts, deployments }) => {
+module.exports = async ({ getNamedAccounts, deployments, config }) => {
     console.log('running deploy script');
     const chainId = await getChainId();
     console.log('network id ', chainId);
 
-    const { deployer } = await getNamedAccounts();
+    const lopHelperNames = config.deployOpts?.lopHelperNames;
 
-    // SeriesNonceManager
-    await deployAndGetContract({
-        contractName: 'SeriesNonceManager',
-        constructorArgs: [],
-        deployments,
-        deployer,
-    });
+    console.log('Lop helper names to deploy:', lopHelperNames);
 
-    // CallsSimulator
-    await deployAndGetContract({
-        contractName: 'CallsSimulator',
-        constructorArgs: [],
-        deployments,
-        deployer,
-    });
+    const helperOrder = ['SeriesNonceManager', 'CallsSimulator', 'PriorityFeeLimiter', 'OrderRegistrator', 'SafeOrderBuilder'];
+    const sortedLopHelperNames = lopHelperNames
+        ? helperOrder.filter(name => lopHelperNames.includes(name))
+        : [];
 
-    // PriorityFeeLimiter
-    await deployAndGetContract({
-        contractName: 'PriorityFeeLimiter',
-        constructorArgs: [],
-        deployments,
-        deployer,
-    });
+    let orderRegistrator;
 
-    // OrderRegistrator
-    const orderRegistrator = await deployAndGetContract({
-        contractName: 'OrderRegistrator',
-        constructorArgs: [LOP],
-        deployments,
-        deployer,
-    });
+    let DEPLOYMENT_METHOD = config.deployOpts?.deploymentMethod || 'create3';
 
-    // SafeOrderBuilder
-    await deployAndGetContract({
-        contractName: 'SafeOrderBuilder',
-        constructorArgs: [LOP, await orderRegistrator.getAddress()],
-        deployments,
-        deployer,
-    });
+    if (chainId !== 324) { // create3 is not supported for zksync
+        DEPLOYMENT_METHOD = 'create';
+    }
+
+    for (const helperName of sortedLopHelperNames) {
+        let args = [];
+        switch (helperName) {
+        case 'OrderRegistrator':
+            args = [constants.ROUTER_V6[chainId]];
+            break;
+        case 'SafeOrderBuilder':
+            args = [constants.ROUTER_V6[chainId], orderRegistrator ? await orderRegistrator.getAddress() : constants.ORDER_REGISTRATOR[chainId]];
+            break;
+        }
+
+        console.log(`Deploying ${helperName} with args: ${JSON.stringify(args)}`);
+        console.log(`Using deployment method: ${DEPLOYMENT_METHOD}`);
+
+        let result;
+
+        if (DEPLOYMENT_METHOD === 'create3') {
+            const create3Deployer = await ethers.getContractAt('ICreate3Deployer', constants.CREATE3_DEPLOYER[chainId]);
+
+            result = await deployAndGetContractWithCreate3({
+                contractName: helperName,
+                constructorArgs: args,
+                deploymentName: helperName,
+                create3Deployer,
+                salt: ethers.keccak256(ethers.toUtf8Bytes(helperName)),
+                deployments,
+            });
+        } else {
+            const { deployer } = await getNamedAccounts();
+
+            result = await deployAndGetContract({
+                contractName: helperName,
+                constructorArgs: args,
+                deployments,
+                deployer,
+            });
+        }
+
+        console.log(`Address for ${helperName}: ${await result.getAddress()}`);
+
+        if (helperName === 'OrderRegistrator') {
+            orderRegistrator = result;
+        }
+    }
 };
 
 module.exports.skip = async () => true;
