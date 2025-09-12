@@ -13,7 +13,7 @@ module.exports = {
     59144: '0xD935a2bb926019E0ed6fb31fbD5b1Bbb7c05bf65', // Linea
     146: '0xD935a2bb926019E0ed6fb31fbD5b1Bbb7c05bf65', // Sonic
     130: '0xD935a2bb926019E0ed6fb31fbD5b1Bbb7c05bf65', // Unichain
-    31337: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    31337: '0xD935a2bb926019E0ed6fb31fbD5b1Bbb7c05bf65',
 };
 
 module.exports.skip = async () => true;
