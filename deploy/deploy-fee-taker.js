@@ -30,10 +30,12 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
             deployer,
         });
     } else {
+        const create3Deployer = await ethers.getContractAt('ICreate3Deployer', constants.CREATE3_DEPLOYER[chainId]);
+
         await deployAndGetContractWithCreate3({
             contractName: 'FeeTaker',
             constructorArgs: [constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], constants.WETH[chainId], deployer],
-            create3Deployer: constants.CREATE3_DEPLOYER[chainId],
+            create3Deployer,
             salt: FEE_TAKER_SALT,
             deployments,
         });
