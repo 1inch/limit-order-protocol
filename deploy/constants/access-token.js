@@ -14,7 +14,7 @@ module.exports = {
     324: '0x4888651051B2Dc08Ac55Cd0f7D671e0FCba0DEED', // zksync
     146: '0xAcce5500000f71A32B5E5514D1577E14b7aacC4a', // Sonic
     130: '0xAcce5500000f71A32B5E5514D1577E14b7aacC4a', // Unichain
-    31337: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    31337: '0xAcce5500000f71A32B5E5514D1577E14b7aacC4a',
 };
 
 module.exports.skip = async () => true;
