@@ -9,7 +9,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     console.log('network id ', chainId);
     
     if (
-        networkName in hre.config.networks[networkName] &&
+        networkName in hre.config.networks &&
         chainId !== hre.config.networks[networkName].chainId.toString()
     ) {
         console.log(`network chain id: ${hre.config.networks[networkName].chainId}, your chain id ${chainId}`);

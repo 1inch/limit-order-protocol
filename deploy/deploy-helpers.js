@@ -4,9 +4,19 @@ const { ethers, getChainId } = hre;
 const constants = require('./constants');
 
 module.exports = async ({ getNamedAccounts, deployments, config }) => {
+    const networkName = hre.network.name;
     console.log('running deploy script');
     const chainId = await getChainId();
     console.log('network id ', chainId);
+
+    if (
+        networkName in hre.config.networks &&
+        chainId !== hre.config.networks[networkName].chainId.toString()
+    ) {
+        console.log(`network chain id: ${hre.config.networks[networkName].chainId}, your chain id ${chainId}`);
+        console.log('skipping wrong chain id deployment');
+        return;
+    }
 
     const lopHelperNames = config.deployOpts?.lopHelperNames;
 
@@ -21,7 +31,7 @@ module.exports = async ({ getNamedAccounts, deployments, config }) => {
 
     let DEPLOYMENT_METHOD = config.deployOpts?.deploymentMethod || 'create3';
 
-    if (chainId !== 324) { // create3 is not supported for zksync
+    if (chainId === '324') { // create3 is not supported for zksync
         DEPLOYMENT_METHOD = 'create';
     }
 

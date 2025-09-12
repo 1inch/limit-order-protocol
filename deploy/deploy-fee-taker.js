@@ -12,7 +12,7 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
     console.log('network id ', chainId);
 
     if (
-        networkName in hre.config.networks[networkName] &&
+        networkName in hre.config.networks &&
         chainId !== hre.config.networks[networkName].chainId.toString()
     ) {
         console.log(`network chain id: ${hre.config.networks[networkName].chainId}, your chain id ${chainId}`);
@@ -22,7 +22,7 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
 
     const { deployer } = await getNamedAccounts();
 
-    if (chainId === 324) { // zksync
+    if (chainId === '324') { // zksync
         await deployAndGetContract({
             contractName: 'FeeTaker',
             constructorArgs: [constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], constants.WETH[chainId], deployer],
@@ -40,4 +40,4 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
     }
 };
 
-module.exports.skip = async () => false;
+module.exports.skip = async () => true;

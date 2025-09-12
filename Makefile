@@ -112,7 +112,9 @@ upsert-constant:
 
 deploy-skip-all:
 		@{ \
-		for secret in $(FILE_DEPLOY); do \
+		for secret in $(FILE_DEPLOY_HELPERS) \
+			$(FILE_DEPLOY_LOP) \
+			$(FILE_DEPLOY_FEE_TAKER); do \
 			$(MAKE) OPS_CURRENT_DEP_FILE=$$secret deploy-skip; \
 		done \
 		}
