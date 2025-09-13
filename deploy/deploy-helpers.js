@@ -52,13 +52,11 @@ module.exports = async ({ getNamedAccounts, deployments, config }) => {
         let result;
 
         if (DEPLOYMENT_METHOD === 'create3') {
-            const create3Deployer = await ethers.getContractAt('ICreate3Deployer', constants.CREATE3_DEPLOYER[chainId]);
-
             result = await deployAndGetContractWithCreate3({
                 contractName: helperName,
                 constructorArgs: args,
                 deploymentName: helperName,
-                create3Deployer,
+                create3Deployer: constants.CREATE3_DEPLOYER[chainId],
                 salt: ethers.keccak256(ethers.toUtf8Bytes(helperName)),
                 deployments,
             });
