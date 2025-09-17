@@ -113,7 +113,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
 
     function cancelExpiredOrderByResolver(IOrderMixin.Order calldata makerOrder, uint256 rewardLimit) external onlyResolver {
         uint256 orderExpiration = makerOrder.makerTraits.getExpirationTime();
-        if (orderExpiration > 0 && block.timestamp < orderExpiration) revert OrderShouldBeExpired(block.timestamp, orderExpiration);
+        if (!makerOrder.makerTraits.isExpired()) revert OrderShouldBeExpired(block.timestamp, orderExpiration);
 
         uint256 resolverReward = 0;
         if (rewardLimit > 0) {
