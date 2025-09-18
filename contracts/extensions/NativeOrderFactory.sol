@@ -22,10 +22,6 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
 
     event NativeOrderCreated(address maker, bytes32 orderHash, address clone, uint256 value);
 
-    error OrderReceiverShouldBeSetCorrectly(address receiver);
-    error OrderMakerShouldBeMsgSender(address expected, address actual);
-    error OrderMakingAmountShouldBeEqualToMsgValue(uint256 expected, uint256 actual);
-
     address public immutable IMPLEMENTATION;
 
     constructor(
@@ -50,20 +46,10 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
         ));
     }
 
-    function create(IOrderMixin.Order calldata makerOrder) external payable returns (address clone) {
-        // Validate main order parameters
-        if (makerOrder.maker.get() != msg.sender) revert OrderMakerShouldBeMsgSender(msg.sender, makerOrder.maker.get());
-        address receiver = makerOrder.receiver.get();
-        if (receiver == address(0) || receiver == address(this)) revert OrderReceiverShouldBeSetCorrectly(receiver);
-        if (msg.value != makerOrder.makingAmount) revert OrderMakingAmountShouldBeEqualToMsgValue(makerOrder.makingAmount, msg.value);
-
-        bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
-        clone = IMPLEMENTATION.cloneDeterministic(makerOrderHash);
-        NativeOrderImpl(payable(clone)).depositAndApprove{ value: msg.value }();
-
-        IOrderMixin.Order memory order = makerOrder;
-        order.maker = Address.wrap(uint160(clone));
-        bytes32 orderHash = order.hashMemory(_domainSeparatorV4());
+    function create(bytes32 makerSalt, bytes32 orderHash, uint40 expiration) external payable returns (address clone) {
+        bytes32 salt = keccak256(abi.encode(msg.sender, makerSalt));
+        clone = IMPLEMENTATION.cloneDeterministic(salt);
+        NativeOrderImpl(payable(clone)).deposit{ value: msg.value }(msg.sender, orderHash, expiration);
         emit NativeOrderCreated(msg.sender, orderHash, clone, msg.value);
     }
 
