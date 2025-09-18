@@ -10,6 +10,7 @@ import { SafeERC20, IERC20, IWETH } from "@1inch/solidity-utils/contracts/librar
 import { OnlyWethReceiver } from "@1inch/solidity-utils/contracts/mixins/OnlyWethReceiver.sol";
 
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
+import { Errors } from "../libraries/Errors.sol";
 import { EIP712Alien } from "../mocks/EIP712Alien.sol";
 import { OrderLib, IOrderMixin } from "../OrderLib.sol";
 
@@ -136,10 +137,12 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         _WETH.safeWithdraw(balance);
         if (resolverReward > 0) {
             balance -= resolverReward;
-            payable(msg.sender).transfer(resolverReward);
+            (bool success, ) = msg.sender.call{ value: resolverReward }("");
+            if (!success) revert Errors.ETHTransferFailed();
         }
         if (balance > 0) {
-            payable(makerOrder.maker.get()).transfer(balance);
+            (bool success, ) = makerOrder.maker.get().call{ value: balance }("");
+            if (!success) revert Errors.ETHTransferFailed();
         }
     }
 
