@@ -35,7 +35,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     error RescueFundsTooMuch(uint256 requested, uint256 available);
     error CancellationDelayViolation(uint256 timePassedSinceExpiration, uint256 requiredDelay);
 
-    uint256 private constant _CANCEL_GAS_LOWER_BOUND = 30_000;
+    uint256 private constant _CANCEL_GAS_LOWER_BOUND = 70_000;
 
     IWETH private immutable _WETH;
     address private immutable _LOP;
