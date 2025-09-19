@@ -59,6 +59,13 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         _;
     }
 
+    modifier validateOrder(IOrderMixin.Order calldata makerOrder) {
+        bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
+        address clone = _IMPLEMENTATION.predictDeterministicAddress(makerOrderHash, _FACTORY);
+        if (clone != address(this)) revert OrderIsIncorrect(clone, address(this));
+        _;
+    }
+
     constructor(
         IWETH weth,
         address nativeOrderFactory,
@@ -106,13 +113,21 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         return this.isValidSignature.selector;
     }
 
-    function cancelOrder(IOrderMixin.Order calldata makerOrder) external onlyMaker(makerOrder.maker.get()) {
+    function cancelOrder(IOrderMixin.Order calldata makerOrder)
+        external
+        onlyMaker(makerOrder.maker.get())
+        validateOrder(makerOrder)
+    {
         uint256 balance = _cancelOrder(makerOrder, 0);
         bytes32 orderHash = _patchOrderMakerAndHash(makerOrder);
         emit NativeOrderCancelled(orderHash, balance);
     }
 
-    function cancelExpiredOrderByResolver(IOrderMixin.Order calldata makerOrder, uint256 rewardLimit) external onlyResolver {
+    function cancelExpiredOrderByResolver(IOrderMixin.Order calldata makerOrder, uint256 rewardLimit)
+        external
+        onlyResolver
+        validateOrder(makerOrder)
+    {
         uint256 orderExpiration = makerOrder.makerTraits.getExpirationTime();
         if (!makerOrder.makerTraits.isExpired()) revert OrderShouldBeExpired(block.timestamp, orderExpiration);
 
@@ -127,10 +142,6 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     }
 
     function _cancelOrder(IOrderMixin.Order calldata makerOrder, uint256 resolverReward) private returns(uint256 balance) {
-        bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
-        address clone = _IMPLEMENTATION.predictDeterministicAddress(makerOrderHash, _FACTORY);
-        if (clone != address(this)) revert OrderIsIncorrect(clone, address(this));
-
         balance = _WETH.safeBalanceOf(address(this));
         if (balance == 0) revert CanNotCancelForZeroBalance();
 
@@ -146,17 +157,13 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         }
     }
 
-    function rescueFunds(address token, address to, uint256 amount) external onlyResolver {
-        if (token == address(0)) {
-            payable(to).transfer(amount);
-        } else if (IWETH(token) == _WETH) {
-            uint256 remainingOrderAmount = _WETH.allowance(address(this), _LOP);
-            uint256 extraAmount = _WETH.safeBalanceOf(address(this)) - remainingOrderAmount;
-            if (amount > extraAmount) revert RescueFundsTooMuch(amount, extraAmount);
-            _WETH.safeTransfer(to, amount);
-        } else {
-            IERC20(token).safeTransfer(to, amount);
-        }
+    function withdraw(IOrderMixin.Order calldata makerOrder, address target, uint256 value, bytes memory data)
+        external
+        validateOrder(makerOrder)
+        onlyMaker(makerOrder.maker.get())
+        returns (bool, bytes memory)
+    {
+        return target.call{ value: value }(data);
     }
 
     function _patchOrderMakerAndHash(IOrderMixin.Order memory order) private view returns(bytes32) {
