@@ -18,9 +18,9 @@
     "@openzeppelin/contracts": "5.1.0"
   },
   "devDependencies": {
-    "@matterlabs/hardhat-zksync-deploy": "1.6.0",
-    "@matterlabs/hardhat-zksync-solc": "1.2.5",
-    "@matterlabs/hardhat-zksync-verify": "1.7.0",
+    "@matterlabs/hardhat-zksync-deploy": "1.8.0",
+    "@matterlabs/hardhat-zksync-solc": "1.5.1",
+    "@matterlabs/hardhat-zksync-verify": "1.9.0",
     "@metamask/eth-sig-util": "8.0.0",
     "@nomicfoundation/hardhat-chai-matchers": "2.0.8",
     "@nomicfoundation/hardhat-network-helpers": "1.0.12",
@@ -45,7 +45,7 @@
     "solhint": "5.0.3",
     "solidity-coverage": "0.8.13",
     "solidity-docgen": "0.6.0-beta.36",
-    "zksync-ethers": "6.15.0"
+    "zksync-ethers": "6.20.1"
   },
   "scripts": {
     "clean": "rimraf artifacts cache coverage contracts/hardhat-dependency-compiler artifacts-zk cache-zk",

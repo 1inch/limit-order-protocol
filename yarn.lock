@@ -1292,12 +1292,13 @@
   resolved "https://registry.yarnpkg.com/@js-sdsl/ordered-map/-/ordered-map-4.4.2.tgz#9299f82874bab9e4c7f9c48d865becbfe8d6907c"
   integrity sha512-iUKgm52T8HOE/makSxjqoWhe95ZJA1/G1sYsGev2JDKUSS14KAgg1LHb+Ba+IPow0xflbnSkOsZcO08C7w1gYw==
 
-"@matterlabs/hardhat-zksync-deploy@1.6.0":
-  version "1.6.0"
-  resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-deploy/-/hardhat-zksync-deploy-1.6.0.tgz#005a02dc63fe3d64e4892de485d7c72c75cc1f4a"
-  integrity sha512-yaOfhw7hmLOriBc+TnHrFOVKyi79XFqJN5D1Z4T6CadaSNLeq7pgBV81kkgVzaCJVoA/La2RGxPowsG7riZGbw==
+"@matterlabs/hardhat-zksync-deploy@1.8.0":
+  version "1.8.0"
+  resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-deploy/-/hardhat-zksync-deploy-1.8.0.tgz#573996894570df5d85280b016af3f986c26acb35"
+  integrity sha512-9yrDYGvD7Itgi01fxp9DKZpjzu9mM1U6HhJ6BZVRDgUsN+kTYxjHlRsQLH9Z/q/CT7SSLPZ2TvLj1mBSAlDskQ==
   dependencies:
-    "@matterlabs/hardhat-zksync-solc" "^1.2.5"
+    "@matterlabs/hardhat-zksync-solc" "^1.5.0"
+    "@matterlabs/hardhat-zksync-telemetry" "^1.1.1"
     chai "^4.3.4"
     chalk "^4.1.2"
     fs-extra "^11.2.0"
@@ -1307,27 +1308,10 @@
     sinon-chai "^3.7.0"
     ts-morph "^22.0.0"
 
-"@matterlabs/hardhat-zksync-solc@1.2.5":
-  version "1.2.5"
-  resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-solc/-/hardhat-zksync-solc-1.2.5.tgz#fbeeabc3fea0dd232fa3c8cb31bd93c103eba11a"
-  integrity sha512-iZyznWl1Hoe/Z46hnUe1s2drBZBjJOS/eN+Ql2lIBX9B6NevBl9DYzkKzH5HEIMCLGnX9sWpRAJqUQJWy9UB6w==
-  dependencies:
-    "@nomiclabs/hardhat-docker" "^2.0.2"
-    chai "^4.3.4"
-    chalk "^4.1.2"
-    debug "^4.3.5"
-    dockerode "^4.0.2"
-    fs-extra "^11.2.0"
-    proper-lockfile "^4.1.2"
-    semver "^7.6.2"
-    sinon "^18.0.0"
-    sinon-chai "^3.7.0"
-    undici "^6.18.2"
-
-"@matterlabs/hardhat-zksync-solc@^1.2.5":
-  version "1.4.0"
-  resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-solc/-/hardhat-zksync-solc-1.4.0.tgz#ae5c3e4b007998df629a1666df18a359f7d212de"
-  integrity sha512-g3rTEUql1qK2mePU8NrggvxkpvmkL5ljR++lioqluCQT7mjI9RHV5Cylh2UOAH+7aFUYir8dwYnlRHJ3OK7SGw==
+"@matterlabs/hardhat-zksync-solc@1.5.1", "@matterlabs/hardhat-zksync-solc@^1.5.0":
+  version "1.5.1"
+  resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-solc/-/hardhat-zksync-solc-1.5.1.tgz#9ceb413a7f4410bc00baadaecad5d3861fe3b72e"
+  integrity sha512-dd9CcOH31kgfe1QPAecNqGohcAzySVoFKFfp23kIfhenIXFhI7OfbxUy5uVyeycZYHip0zgRsNAIVPsIpgjPWw==
   dependencies:
     "@matterlabs/hardhat-zksync-telemetry" "^1.1.1"
     "@nomiclabs/hardhat-docker" "^2.0.2"
@@ -1336,6 +1320,7 @@
     debug "^4.3.5"
     dockerode "^4.0.2"
     fs-extra "^11.2.0"
+    lodash "^4.17.21"
     proper-lockfile "^4.1.2"
     semver "^7.6.2"
     sinon "^18.0.0"
@@ -1349,14 +1334,15 @@
   dependencies:
     "@matterlabs/zksync-telemetry-js" "git+https://github.com/matter-labs/zksync-telemetry-js.git#2fd9edbe6b9a5e0c2caeda4b04dd5631d7546a11"
 
-"@matterlabs/hardhat-zksync-verify@1.7.0":
-  version "1.7.0"
-  resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-verify/-/hardhat-zksync-verify-1.7.0.tgz#462a3bb015186e0de0eb68c95bf0bd360678b951"
-  integrity sha512-jQnrnE9uDfdP1KaG/GLs0J8+5efH97yRmNFzYuokT5qrSU0y6Ws6OFJmgDodB7hHnWOD6FSU9TebaFlAxxtFOA==
+"@matterlabs/hardhat-zksync-verify@1.9.0":
+  version "1.9.0"
+  resolved "https://registry.yarnpkg.com/@matterlabs/hardhat-zksync-verify/-/hardhat-zksync-verify-1.9.0.tgz#0a8ebf08edbda5309363f95353fdf89a57a0ace8"
+  integrity sha512-apd8h4c237jU/kRVgPSdTVdg0QlNq1jC2Kretx4AR49biHMlAC5IaRhLwGaR8vn9jT5xTTfC7UZYhUvtseRWbQ==
   dependencies:
     "@ethersproject/abi" "^5.7.0"
     "@ethersproject/address" "5.7.0"
-    "@matterlabs/hardhat-zksync-solc" "^1.2.5"
+    "@matterlabs/hardhat-zksync-solc" "^1.5.0"
+    "@matterlabs/hardhat-zksync-telemetry" "^1.1.1"
     "@nomicfoundation/hardhat-verify" "^2.0.8"
     axios "^1.7.2"
     cbor "^9.0.2"
@@ -7266,7 +7252,7 @@ stop-iteration-iterator@^1.1.0:
     es-errors "^1.3.0"
     internal-slot "^1.1.0"
 
-"string-width-cjs@npm:string-width@^4.2.0":
+"string-width-cjs@npm:string-width@^4.2.0", string-width@^4.0.0, string-width@^4.1.0, string-width@^4.2.0, string-width@^4.2.2, string-width@^4.2.3:
   version "4.2.3"
   resolved "https://registry.yarnpkg.com/string-width/-/string-width-4.2.3.tgz#269c7117d27b05ad2e536830a8ec895ef9c6d010"
   integrity sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==
@@ -7282,15 +7268,6 @@ string-width@^2.1.1:
   dependencies:
     is-fullwidth-code-point "^2.0.0"
     strip-ansi "^4.0.0"
-
-string-width@^4.0.0, string-width@^4.1.0, string-width@^4.2.0, string-width@^4.2.2, string-width@^4.2.3:
-  version "4.2.3"
-  resolved "https://registry.yarnpkg.com/string-width/-/string-width-4.2.3.tgz#269c7117d27b05ad2e536830a8ec895ef9c6d010"
-  integrity sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==
-  dependencies:
-    emoji-regex "^8.0.0"
-    is-fullwidth-code-point "^3.0.0"
-    strip-ansi "^6.0.1"
 
 string-width@^5.0.1, string-width@^5.1.2:
   version "5.1.2"
@@ -7352,7 +7329,7 @@ string_decoder@~1.1.1:
   dependencies:
     safe-buffer "~5.1.0"
 
-"strip-ansi-cjs@npm:strip-ansi@^6.0.1":
+"strip-ansi-cjs@npm:strip-ansi@^6.0.1", strip-ansi@^6.0.0, strip-ansi@^6.0.1:
   version "6.0.1"
   resolved "https://registry.yarnpkg.com/strip-ansi/-/strip-ansi-6.0.1.tgz#9e26c63d30f53443e9489495b2105d37b67a85d9"
   integrity sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==
@@ -7365,13 +7342,6 @@ strip-ansi@^4.0.0:
   integrity sha512-4XaJ2zQdCzROZDivEVIDPkcQn8LMFSa8kj8Gxb/Lnwzv9A8VctNZ+lfivC/sV3ivW8ElJTERXZoPBRrZKkNKow==
   dependencies:
     ansi-regex "^3.0.0"
-
-strip-ansi@^6.0.0, strip-ansi@^6.0.1:
-  version "6.0.1"
-  resolved "https://registry.yarnpkg.com/strip-ansi/-/strip-ansi-6.0.1.tgz#9e26c63d30f53443e9489495b2105d37b67a85d9"
-  integrity sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A==
-  dependencies:
-    ansi-regex "^5.0.1"
 
 strip-ansi@^7.0.1:
   version "7.1.0"
@@ -7950,16 +7920,7 @@ workerpool@^6.5.1:
   resolved "https://registry.yarnpkg.com/workerpool/-/workerpool-6.5.1.tgz#060f73b39d0caf97c6db64da004cd01b4c099544"
   integrity sha512-Fs4dNYcsdpYSAfVxhnl1L5zTksjvOJxtC5hzMNl+1t9B8hTJTdKDyZ5ju7ztgPy+ft9tBFXoOlDNiOT9WUXZlA==
 
-"wrap-ansi-cjs@npm:wrap-ansi@^7.0.0":
-  version "7.0.0"
-  resolved "https://registry.yarnpkg.com/wrap-ansi/-/wrap-ansi-7.0.0.tgz#67e145cff510a6a6984bdf1152911d69d2eb9e43"
-  integrity sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==
-  dependencies:
-    ansi-styles "^4.0.0"
-    string-width "^4.1.0"
-    strip-ansi "^6.0.0"
-
-wrap-ansi@^7.0.0:
+"wrap-ansi-cjs@npm:wrap-ansi@^7.0.0", wrap-ansi@^7.0.0:
   version "7.0.0"
   resolved "https://registry.yarnpkg.com/wrap-ansi/-/wrap-ansi-7.0.0.tgz#67e145cff510a6a6984bdf1152911d69d2eb9e43"
   integrity sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==
@@ -8076,10 +8037,10 @@ yocto-queue@^0.1.0:
   resolved "https://registry.yarnpkg.com/yocto-queue/-/yocto-queue-0.1.0.tgz#0294eb3dee05028d31ee1a5fa2c556a6aaf10a1b"
   integrity sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==
 
-zksync-ethers@6.15.0:
-  version "6.15.0"
-  resolved "https://registry.yarnpkg.com/zksync-ethers/-/zksync-ethers-6.15.0.tgz#50aad345be01f5425ca52d06e59836069e7d24d6"
-  integrity sha512-zafUxA/lysBO+9Wd6B3qNtDElsPwvAc2b4nBc/YiB4QY4H0pIBvV3/JqxHXXTppEo4gyHAX/+M5brW2qb4YnKA==
+zksync-ethers@6.20.1:
+  version "6.20.1"
+  resolved "https://registry.yarnpkg.com/zksync-ethers/-/zksync-ethers-6.20.1.tgz#baa3639471d48642c48ef21df5a8b0d81a3fef02"
+  integrity sha512-dq/a5mCfBwBvj123I5v9kP8xTmvTOTN+itnbei2ang0jZnLBAF2n4xeQTsiFOXweyE2XrYPMPHDY2oeVsCl0bA==
 
 zksync-ethers@^5.0.0:
   version "5.10.0"

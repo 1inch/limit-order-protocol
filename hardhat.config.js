@@ -17,8 +17,8 @@ if (getNetwork().indexOf('zksync') !== -1) {
     require('@nomicfoundation/hardhat-verify');
 }
 
-const { networks, etherscan } = (new Networks()).registerAll();
-
+// const { networks, etherscan } = (new Networks()).registerAll();
+const { networks, etherscan } = (new Networks(true, 'zksync', false)).registerAll();
 module.exports = {
     etherscan,
     tracer: {
@@ -31,7 +31,7 @@ module.exports = {
                 enabled: true,
                 runs: 1_000_000,
             },
-            evmVersion: networks[getNetwork()]?.hardfork || 'shanghai',
+            evmVersion: 'paris',
             viaIR: true,
         },
     },
@@ -49,7 +49,6 @@ module.exports = {
         paths: [
             '@1inch/solidity-utils/contracts/mocks/TokenCustomDecimalsMock.sol',
             '@1inch/solidity-utils/contracts/mocks/TokenMock.sol',
-            '@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol',
         ],
     },
     zksolc: {
