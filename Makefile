@@ -23,7 +23,7 @@ FILE_ROUTER_V6:=$(CURRENT_DIR)/deploy/constants/router-v6.js
 FILE_WETH:=$(CURRENT_DIR)/deploy/constants/weth.js
 
 deploy-helpers:
-		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_HELPERS) OPS_DEPLOYMENT_METHOD=$(if $(OPS_DEPLOYMENT_METHOD),$(OPS_DEPLOYMENT_METHOD),create3) OPS_LOP_HELPER_NAMES=$(OPS_LOP_HELPER_NAMES) validate-helpers deploy-skip-all deploy-noskip deploy-impl deploy-skip
+		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_HELPERS) OPS_DEPLOYMENT_METHOD=$(if $(OPS_DEPLOYMENT_METHOD),$(OPS_DEPLOYMENT_METHOD),create3) validate-helpers deploy-skip-all deploy-noskip deploy-impl deploy-skip
 
 deploy-lop:
 		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_LOP) validate-lop deploy-skip-all deploy-noskip deploy-impl deploy-skip
