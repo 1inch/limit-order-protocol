@@ -8,6 +8,7 @@ import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/A
 import { SafeERC20, IERC20, IWETH } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
+import { Errors } from "../libraries/Errors.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 import { EIP712Alien } from "../mocks/EIP712Alien.sol";
 import { OrderLib, IOrderMixin } from "../OrderLib.sol";
@@ -69,7 +70,8 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
 
     function rescueFunds(address token, address to, uint256 amount) external onlyOwner {
         if (token == address(0)) {
-            payable(to).transfer(amount);
+            (bool success, ) = payable(to).call{ value: amount }("");
+            if (!success) revert Errors.ETHTransferFailed();
         } else {
             IERC20(token).safeTransfer(to, amount);
         }
