@@ -64,7 +64,7 @@ module.exports = {
         exclude: ['mocks'],
     },
     deployOpts: {
-        lopHelperNames: JSON.parse(process.env.OPS_LOP_HELPER_NAMES) || [],
+        lopHelperNames: process.env.OPS_LOP_HELPER_NAMES ? JSON.parse(process.env.OPS_LOP_HELPER_NAMES) : [],
         deploymentMethod: process.env.OPS_DEPLOYMENT_METHOD || 'create3',
     },
 };
