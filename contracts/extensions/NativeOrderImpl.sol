@@ -11,7 +11,7 @@ import { OnlyWethReceiver } from "@1inch/solidity-utils/contracts/mixins/OnlyWet
 
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 import { Errors } from "../libraries/Errors.sol";
-import { EIP712Alien } from "../mocks/EIP712Alien.sol";
+import { EIP712Alien } from "../utils/EIP712Alien.sol";
 import { OrderLib, IOrderMixin } from "../OrderLib.sol";
 
 contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {

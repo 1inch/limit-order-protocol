@@ -10,7 +10,7 @@ import { SafeERC20, IERC20, IWETH } from "@1inch/solidity-utils/contracts/librar
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
-import { EIP712Alien } from "../mocks/EIP712Alien.sol";
+import { EIP712Alien } from "../utils/EIP712Alien.sol";
 import { OrderLib } from "../OrderLib.sol";
 import { NativeOrderImpl } from "./NativeOrderImpl.sol";
 
