@@ -11,7 +11,7 @@ import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { Errors } from "../libraries/Errors.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 import { EIP712Alien } from "../mocks/EIP712Alien.sol";
-import { OrderLib, IOrderMixin } from "../OrderLib.sol";
+import { OrderLib } from "../OrderLib.sol";
 import { NativeOrderImpl } from "./NativeOrderImpl.sol";
 
 contract NativeOrderFactory is Ownable, EIP712Alien {
