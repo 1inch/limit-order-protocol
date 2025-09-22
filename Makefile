@@ -4,25 +4,26 @@ ifeq ($(OPS_LAUNCH_MODE),auto)
 else
 -include .env
 endif
+export
 
-CURRENT_DIR=$(shell pwd)
+OPS_NETWORK := $(subst ",,$(OPS_NETWORK))
+OPS_CHAIN_ID := $(subst ",,$(OPS_CHAIN_ID))
+OPS_DEPLOYMENT_METHOD := $(subst ",,$(OPS_DEPLOYMENT_METHOD))
 
-OPS_NETWORK_=$(shell echo "$(OPS_NETWORK)" | tr -d '\"')
-OPS_CHAIN_ID_=$(shell echo "$(OPS_CHAIN_ID)" | tr -d '\"')
-OPS_DEPLOYMENT_METHOD_=$(shell echo "$(OPS_DEPLOYMENT_METHOD)" | tr -d '\"')
+CURRENT_DIR:=$(shell pwd)
 
-FILE_DEPLOY_HELPERS=$(CURRENT_DIR)/deploy/deploy-helpers.js
-FILE_DEPLOY_FEE_TAKER=$(CURRENT_DIR)/deploy/deploy-fee-taker.js
-FILE_DEPLOY_LOP=$(CURRENT_DIR)/deploy/deploy.js
+FILE_DEPLOY_HELPERS:=$(CURRENT_DIR)/deploy/deploy-helpers.js
+FILE_DEPLOY_FEE_TAKER:=$(CURRENT_DIR)/deploy/deploy-fee-taker.js
+FILE_DEPLOY_LOP:=$(CURRENT_DIR)/deploy/deploy.js
 
-FILE_CREATE3_DEPLOYER=$(CURRENT_DIR)/deploy/constants/create3-deployer.js
-FILE_ACCESS_TOKEN=$(CURRENT_DIR)/deploy/constants/access-token.js
-FILE_ORDER_REGISTRATOR=$(CURRENT_DIR)/deploy/constants/order-registrator.js
-FILE_ROUTER_V6=$(CURRENT_DIR)/deploy/constants/router-v6.js
-FILE_WETH=$(CURRENT_DIR)/deploy/constants/weth.js
+FILE_CREATE3_DEPLOYER:=$(CURRENT_DIR)/deploy/constants/create3-deployer.js
+FILE_ACCESS_TOKEN:=$(CURRENT_DIR)/deploy/constants/access-token.js
+FILE_ORDER_REGISTRATOR:=$(CURRENT_DIR)/deploy/constants/order-registrator.js
+FILE_ROUTER_V6:=$(CURRENT_DIR)/deploy/constants/router-v6.js
+FILE_WETH:=$(CURRENT_DIR)/deploy/constants/weth.js
 
 deploy-helpers:
-		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_HELPERS) OPS_DEPLOYMENT_METHOD=$(if $(OPS_DEPLOYMENT_METHOD_),$(OPS_DEPLOYMENT_METHOD_),create3) OPS_LOP_HELPER_NAMES=$(OPS_LOP_HELPER_NAMES) validate-helpers deploy-skip-all deploy-noskip deploy-impl deploy-skip
+		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_HELPERS) OPS_DEPLOYMENT_METHOD=$(if $(OPS_DEPLOYMENT_METHOD),$(OPS_DEPLOYMENT_METHOD),create3) OPS_LOP_HELPER_NAMES=$(OPS_LOP_HELPER_NAMES) validate-helpers deploy-skip-all deploy-noskip deploy-impl deploy-skip
 
 deploy-lop:
 		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_LOP) validate-lop deploy-skip-all deploy-noskip deploy-impl deploy-skip
@@ -32,16 +33,16 @@ deploy-fee-taker:
 
 deploy-impl:
 		@{ \
-		yarn deploy $(OPS_NETWORK_) || exit 1; \
+		yarn deploy $(OPS_NETWORK) || exit 1; \
 		}
 
 # Validation targets
 validate-helpers:
 		@{ \
-		if [ -z "$(OPS_NETWORK_)" ]; then echo "OPS_NETWORK is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_CHAIN_ID_)" ]; then echo "OPS_CHAIN_ID is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_CREATE3_DEPLOYER_ADDRESS)" ] && [ "$(OPS_DEPLOYMENT_METHOD_)" = "create3" ]; then echo "OPS_CREATE3_DEPLOYER_ADDRESS is not set!"; exit 1; fi; \
-		if [ -z "$(MAINNET_RPC_URL)" ] && [ "$(OPS_NETWORK_)" = "hardhat" ]; then echo "MAINNET_RPC_URL is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_NETWORK)" ]; then echo "OPS_NETWORK is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_CHAIN_ID)" ]; then echo "OPS_CHAIN_ID is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_CREATE3_DEPLOYER_ADDRESS)" ] && [ "$(OPS_DEPLOYMENT_METHOD)" = "create3" ]; then echo "OPS_CREATE3_DEPLOYER_ADDRESS is not set!"; exit 1; fi; \
+		if [ -z "$(MAINNET_RPC_URL)" ] && [ "$(OPS_NETWORK)" = "hardhat" ]; then echo "MAINNET_RPC_URL is not set!"; exit 1; fi; \
 		if [ -z "$(OPS_WETH_ADDRESS)" ]; then echo "OPS_WETH_ADDRESS is not set!"; exit 1; fi; \
 		if [ -z "$(OPS_LOP_HELPER_NAMES)" ]; then echo "OPS_LOP_HELPER_NAMES is not set!"; exit 1; fi; \
 		$(MAKE) process-weth process-router-v6 process-order-registrator process-create3-deployer; \
@@ -49,10 +50,10 @@ validate-helpers:
 
 validate-fee-taker:
 		@{ \
-		if [ -z "$(OPS_NETWORK_)" ]; then echo "OPS_NETWORK is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_CHAIN_ID_)" ]; then echo "OPS_CHAIN_ID is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_CREATE3_DEPLOYER_ADDRESS)" ] && [ "$(OPS_DEPLOYMENT_METHOD_)" = "create3" ]; then echo "OPS_CREATE3_DEPLOYER_ADDRESS is not set!"; exit 1; fi; \
-		if [ -z "$(MAINNET_RPC_URL)" ] && [ "$(OPS_NETWORK_)" = "hardhat" ]; then echo "MAINNET_RPC_URL is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_NETWORK)" ]; then echo "OPS_NETWORK is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_CHAIN_ID)" ]; then echo "OPS_CHAIN_ID is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_CREATE3_DEPLOYER_ADDRESS)" ] && [ "$(OPS_DEPLOYMENT_METHOD)" = "create3" ]; then echo "OPS_CREATE3_DEPLOYER_ADDRESS is not set!"; exit 1; fi; \
+		if [ -z "$(MAINNET_RPC_URL)" ] && [ "$(OPS_NETWORK)" = "hardhat" ]; then echo "MAINNET_RPC_URL is not set!"; exit 1; fi; \
 		if [ -z "$(OPS_WETH_ADDRESS)" ]; then echo "OPS_WETH_ADDRESS is not set!"; exit 1; fi; \
 		if [ -z "$(OPS_AGGREGATION_ROUTER_V6_ADDRESS)" ]; then echo "OPS_AGGREGATION_ROUTER_V6_ADDRESS is not set!"; exit 1; fi; \
 		if [ -z "$(OPS_ACCESS_TOKEN_ADDRESS)" ]; then echo "OPS_ACCESS_TOKEN_ADDRESS is not set!"; exit 1; fi; \
@@ -61,9 +62,9 @@ validate-fee-taker:
 
 validate-lop:
 		@{ \
-		if [ -z "$(OPS_NETWORK_)" ]; then echo "OPS_NETWORK is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_CHAIN_ID_)" ]; then echo "OPS_CHAIN_ID is not set!"; exit 1; fi; \
-		if [ -z "$(MAINNET_RPC_URL)" ] && [ "$(OPS_NETWORK_)" = "hardhat" ]; then echo "MAINNET_RPC_URL is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_NETWORK)" ]; then echo "OPS_NETWORK is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_CHAIN_ID)" ]; then echo "OPS_CHAIN_ID is not set!"; exit 1; fi; \
+		if [ -z "$(MAINNET_RPC_URL)" ] && [ "$(OPS_NETWORK)" = "hardhat" ]; then echo "MAINNET_RPC_URL is not set!"; exit 1; fi; \
 		if [ -z "$(OPS_WETH_ADDRESS)" ]; then echo "OPS_WETH_ADDRESS is not set!"; exit 1; fi; \
 		$(MAKE) process-weth; \
 		}
@@ -102,11 +103,12 @@ upsert-constant:
 			echo "variable for file $(OPS_GEN_FILE) is not set!"; \
 			exit 1; \
 		fi; \
-		if grep -q "$(OPS_CHAIN_ID_)" $(OPS_GEN_FILE); then \
-			sed -i '' 's|$(OPS_CHAIN_ID_): .*|$(OPS_CHAIN_ID_): $(OPS_GEN_VAL),|' $(OPS_GEN_FILE); \
+		if grep -q "$(OPS_CHAIN_ID)" $(OPS_GEN_FILE); then \
+			sed -i '' 's|$(OPS_CHAIN_ID): .*|$(OPS_CHAIN_ID): $(OPS_GEN_VAL),|' $(OPS_GEN_FILE); \
 			sed -i '' 's/"/'\''/g' $(OPS_GEN_FILE); \
 		else \
-			awk '1;/module.exports = {/{print "    $(OPS_CHAIN_ID_): $(subst ",\",$(OPS_GEN_VAL)),"}' $(OPS_GEN_FILE) > tmp && sed -i '' 's/"/'\''/g' tmp && mv tmp $(OPS_GEN_FILE); \
+			tmpfile=$$(mktemp); \
+			awk '1;/module.exports = {/{print "    $(OPS_CHAIN_ID): $(subst ",\",$(OPS_GEN_VAL)),"}' $(OPS_GEN_FILE) > $$tmpfile && sed -i '' 's/"/'\''/g' $$tmpfile && mv $$tmpfile $(OPS_GEN_FILE); \
 		fi \
 		}
 
@@ -144,7 +146,7 @@ install-dependencies:
 		yarn
 
 clean:
-		@rm -Rf $(CURRENT_DIR)/deployments/$(OPS_NETWORK_)/*
+		@rm -Rf $(CURRENT_DIR)/deployments/$(OPS_NETWORK)/*
 
 
 # Get deployed contract addresses from deployment files
@@ -154,8 +156,8 @@ get:
 			echo "Error: PARAMETER is not set. Usage: make get PARAMETER=OPS_FEE_TAKER_ADDRESS"; \
 			exit 1; \
 		fi; \
-		if [ -z "$(OPS_NETWORK_)" ]; then \
-			echo "Error: OPS_NETWORK_ is not set"; \
+		if [ -z "$(OPS_NETWORK)" ]; then \
+			echo "Error: OPS_NETWORK is not set"; \
 			exit 1; \
 		fi; \
 		CONTRACT_FILE=""; \
@@ -169,7 +171,7 @@ get:
 			"OPS_CALLS_SIMULATOR_ADDRESS") CONTRACT_FILE="CallsSimulator.json" ;; \
 			*) echo "Error: Unknown parameter $(PARAMETER)"; exit 1 ;; \
 		esac; \
-		DEPLOYMENT_FILE="$(CURRENT_DIR)/deployments/$(OPS_NETWORK_)/$$CONTRACT_FILE"; \
+		DEPLOYMENT_FILE="$(CURRENT_DIR)/deployments/$(OPS_NETWORK)/$$CONTRACT_FILE"; \
 		if [ ! -f "$$DEPLOYMENT_FILE" ]; then \
 			echo "Error: Deployment file $$DEPLOYMENT_FILE not found"; \
 			exit 1; \
