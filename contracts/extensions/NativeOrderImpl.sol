@@ -25,14 +25,12 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     event NativeOrderCancelled(bytes32 orderHash, uint256 balance);
     event NativeOrderCancelledByResolver(bytes32 orderHash, uint256 balance, uint256 resolverReward);
 
-    error OnlyLimitOrderProtocolViolation(address sender, address limitOrderProtocol);
     error OnlyFactoryViolation(address sender, address factory);
     error OnlyMakerViolation(address sender, address maker);
     error ResolverAccessTokenMissing(address resolver, address accessToken);
     error OrderIsIncorrect(address expected, address actual);
     error OrderShouldBeExpired(uint256 currentTime, uint256 expirationTime);
     error CanNotCancelForZeroBalance();
-    error RescueFundsTooMuch(uint256 requested, uint256 available);
     error CancellationDelayViolation(uint256 timePassedSinceExpiration, uint256 requiredDelay);
 
     uint256 private constant _CANCEL_GAS_LOWER_BOUND = 70_000;
