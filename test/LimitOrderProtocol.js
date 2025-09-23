@@ -1346,6 +1346,67 @@ describe('LimitOrderProtocol', function () {
                 clone.connect(addr2).cancelExpiredOrderByResolver(order, 0),
             ).to.be.revertedWithCustomError(clone, 'CanNotCancelForZeroBalance');
         });
+
+        it('Maker can call withdraw WETH from clone', async function () {
+            const { tokens: { dai, weth }, contracts: { nativeOrderFactory } } = await loadFixture(deployContractsAndInit);
+
+            const expirationTime = await time.latest() + time.duration.hours(1);
+
+            const order = buildOrder(
+                {
+                    maker: addr1.address,
+                    receiver: addr1.address,
+                    makerAsset: await weth.getAddress(),
+                    takerAsset: await dai.getAddress(),
+                    makingAmount: ether('0.3'),
+                    takingAmount: ether('300'),
+                    makerTraits: buildMakerTraits({ expiry: expirationTime }),
+                },
+                {},
+            );
+
+            const receipt = await (await nativeOrderFactory.connect(addr1).create(order, { value: order.makingAmount })).wait();
+            const cloneAddress = getEventArgs(receipt, nativeOrderFactory.interface, 'NativeOrderCreated')[2]; // index 2 is clone address
+            const clone = await ethers.getContractAt('NativeOrderImpl', cloneAddress);
+            const tx = clone.connect(addr1).withdraw(
+                order,
+                await weth.getAddress(),
+                0,
+                weth.interface.encodeFunctionData('transfer', [addr1.address, ether('0.3')]),
+            );
+            await expect(tx).to.changeTokenBalances(weth, [cloneAddress, addr1.address], [ether('-0.3'), ether('0.3')]);
+        });
+
+        it('Cann\'t call withdraw, if caller is not a maker', async function () {
+            const { tokens: { dai, weth }, contracts: { nativeOrderFactory } } = await loadFixture(deployContractsAndInit);
+
+            const expirationTime = await time.latest() + time.duration.hours(1);
+
+            const order = buildOrder(
+                {
+                    maker: addr1.address,
+                    receiver: addr1.address,
+                    makerAsset: await weth.getAddress(),
+                    takerAsset: await dai.getAddress(),
+                    makingAmount: ether('0.3'),
+                    takingAmount: ether('300'),
+                    makerTraits: buildMakerTraits({ expiry: expirationTime }),
+                },
+                {},
+            );
+
+            const receipt = await (await nativeOrderFactory.connect(addr1).create(order, { value: order.makingAmount })).wait();
+            const cloneAddress = getEventArgs(receipt, nativeOrderFactory.interface, 'NativeOrderCreated')[2]; // index 2 is clone address
+            const clone = await ethers.getContractAt('NativeOrderImpl', cloneAddress);
+            await expect(
+                clone.connect(addr2).withdraw(
+                    order,
+                    await weth.getAddress(),
+                    0,
+                    weth.interface.encodeFunctionData('transfer', [addr1.address, ether('0.3')]),
+                ),
+            ).to.be.revertedWithCustomError(clone, 'OnlyMakerViolation');
+        });
     });
 
     describe('Remaining invalidator', function () {
