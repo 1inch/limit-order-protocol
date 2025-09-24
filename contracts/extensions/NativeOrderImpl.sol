@@ -58,8 +58,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     }
 
     modifier validateOrder(IOrderMixin.Order calldata makerOrder) {
-        bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
-        address clone = _IMPLEMENTATION.predictDeterministicAddress(makerOrderHash, _FACTORY);
+        address clone = _calcCloneAddress(makerOrder);
         if (clone != address(this)) revert OrderIsIncorrect(clone, address(this));
         _;
     }
@@ -96,8 +95,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         }
 
         // Check order args by CREATE2 salt validation
-        bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
-        address clone = _IMPLEMENTATION.predictDeterministicAddress(makerOrderHash, _FACTORY);
+        address clone = _calcCloneAddress(makerOrder);
         if (clone != address(this)) {
             return bytes4(0);
         }
@@ -167,5 +165,10 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     function _patchOrderMakerAndHash(IOrderMixin.Order memory order) private view returns(bytes32) {
         order.maker = Address.wrap(uint160(address(this)));
         return order.hashMemory(_domainSeparatorV4());
+    }
+
+    function _calcCloneAddress(IOrderMixin.Order calldata makerOrder) private view returns(address) {
+        bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
+        return _IMPLEMENTATION.predictDeterministicAddress(makerOrderHash, _FACTORY);
     }
 }
