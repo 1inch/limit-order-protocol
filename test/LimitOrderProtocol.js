@@ -1377,7 +1377,7 @@ describe('LimitOrderProtocol', function () {
             await expect(tx).to.changeTokenBalances(weth, [cloneAddress, addr1.address], [ether('-0.3'), ether('0.3')]);
         });
 
-        it('Cann\'t call withdraw, if caller is not a maker', async function () {
+        it('Can\'t call withdraw, if caller is not a maker', async function () {
             const { tokens: { dai, weth }, contracts: { nativeOrderFactory } } = await loadFixture(deployContractsAndInit);
 
             const expirationTime = await time.latest() + time.duration.hours(1);
