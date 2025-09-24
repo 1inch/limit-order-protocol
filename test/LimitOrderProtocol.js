@@ -1196,7 +1196,7 @@ describe('LimitOrderProtocol', function () {
             await expect(cancelTx).to.changeTokenBalance(weth, cloneAddress, ether('-0.3'));
             await expect(cancelTx).to.emit(clone, 'NativeOrderCancelledByResolver');
 
-            const reward = 30000n * parseUnits('11', 9); // 110% of base fee
+            const reward = 70000n * parseUnits('11', 9); // 110% of base fee
 
             await expect(cancelTx).to.changeEtherBalances([addr1, addr2], [ether('0.3') - reward, reward]);
         });
@@ -1261,7 +1261,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(clone, 'OrderShouldBeExpired');
         });
 
-        it('Resolver ancellation fails if reward requested before 1 minute after order expiry', async function () {
+        it('Resolver cancellation fails if reward requested before 1 minute after order expiry', async function () {
             const { tokens: { dai, weth }, contracts: { nativeOrderFactory } } = await loadFixture(deployContractsAndInit);
 
             const expirationTime = await time.latest() + time.duration.hours(1);
@@ -1347,7 +1347,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(clone, 'CanNotCancelForZeroBalance');
         });
 
-        it('RescueFunds from clone can get extra WETH amount', async function () {
+        it('Maker can call withdraw WETH from clone', async function () {
             const { tokens: { dai, weth }, contracts: { nativeOrderFactory } } = await loadFixture(deployContractsAndInit);
 
             const expirationTime = await time.latest() + time.duration.hours(1);
@@ -1368,14 +1368,16 @@ describe('LimitOrderProtocol', function () {
             const receipt = await (await nativeOrderFactory.connect(addr1).create(order, { value: order.makingAmount })).wait();
             const cloneAddress = getEventArgs(receipt, nativeOrderFactory.interface, 'NativeOrderCreated')[2]; // index 2 is clone address
             const clone = await ethers.getContractAt('NativeOrderImpl', cloneAddress);
-
-            await weth.connect(addr).deposit({ value: ether('0.1') });
-            await weth.connect(addr).transfer(cloneAddress, ether('0.1'));
-            const tx = clone.connect(addr2).rescueFunds(await weth.getAddress(), addr2.address, ether('0.1'));
-            await expect(tx).to.changeTokenBalances(weth, [cloneAddress, addr2], [ether('-0.1'), ether('0.1')]);
+            const tx = clone.connect(addr1).withdraw(
+                order,
+                await weth.getAddress(),
+                0,
+                weth.interface.encodeFunctionData('transfer', [addr1.address, ether('0.3')]),
+            );
+            await expect(tx).to.changeTokenBalances(weth, [cloneAddress, addr1.address], [ether('-0.3'), ether('0.3')]);
         });
 
-        it('RescueFunds can\'t get amount more then extra', async function () {
+        it('Can\'t call withdraw, if caller is not a maker', async function () {
             const { tokens: { dai, weth }, contracts: { nativeOrderFactory } } = await loadFixture(deployContractsAndInit);
 
             const expirationTime = await time.latest() + time.duration.hours(1);
@@ -1396,13 +1398,14 @@ describe('LimitOrderProtocol', function () {
             const receipt = await (await nativeOrderFactory.connect(addr1).create(order, { value: order.makingAmount })).wait();
             const cloneAddress = getEventArgs(receipt, nativeOrderFactory.interface, 'NativeOrderCreated')[2]; // index 2 is clone address
             const clone = await ethers.getContractAt('NativeOrderImpl', cloneAddress);
-
-            await weth.connect(addr).deposit({ value: ether('0.1') });
-            await weth.connect(addr).transfer(cloneAddress, ether('0.1'));
-
             await expect(
-                clone.connect(addr2).rescueFunds(await weth.getAddress(), addr2.address, ether('0.1') + 1n),
-            ).to.be.revertedWithCustomError(clone, 'RescueFundsTooMuch');
+                clone.connect(addr2).withdraw(
+                    order,
+                    await weth.getAddress(),
+                    0,
+                    weth.interface.encodeFunctionData('transfer', [addr1.address, ether('0.3')]),
+                ),
+            ).to.be.revertedWithCustomError(clone, 'OnlyMakerViolation');
         });
     });
 

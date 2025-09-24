@@ -10,7 +10,8 @@ import { SafeERC20, IERC20, IWETH } from "@1inch/solidity-utils/contracts/librar
 import { OnlyWethReceiver } from "@1inch/solidity-utils/contracts/mixins/OnlyWethReceiver.sol";
 
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
-import { EIP712Alien } from "../mocks/EIP712Alien.sol";
+import { Errors } from "../libraries/Errors.sol";
+import { EIP712Alien } from "../utils/EIP712Alien.sol";
 import { OrderLib, IOrderMixin } from "../OrderLib.sol";
 
 contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
@@ -24,17 +25,15 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     event NativeOrderCancelled(bytes32 orderHash, uint256 balance);
     event NativeOrderCancelledByResolver(bytes32 orderHash, uint256 balance, uint256 resolverReward);
 
-    error OnlyLimitOrderProtocolViolation(address sender, address limitOrderProtocol);
     error OnlyFactoryViolation(address sender, address factory);
     error OnlyMakerViolation(address sender, address maker);
     error ResolverAccessTokenMissing(address resolver, address accessToken);
     error OrderIsIncorrect(address expected, address actual);
     error OrderShouldBeExpired(uint256 currentTime, uint256 expirationTime);
     error CanNotCancelForZeroBalance();
-    error RescueFundsTooMuch(uint256 requested, uint256 available);
     error CancellationDelayViolation(uint256 timePassedSinceExpiration, uint256 requiredDelay);
 
-    uint256 private constant _CANCEL_GAS_LOWER_BOUND = 30_000;
+    uint256 private constant _CANCEL_GAS_LOWER_BOUND = 70_000;
 
     IWETH private immutable _WETH;
     address private immutable _LOP;
@@ -55,6 +54,12 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
 
     modifier onlyMaker(address maker) {
         if (msg.sender != maker) revert OnlyMakerViolation(msg.sender, maker);
+        _;
+    }
+
+    modifier validateOrder(IOrderMixin.Order calldata makerOrder) {
+        address clone = _calcCloneAddress(makerOrder);
+        if (clone != address(this)) revert OrderIsIncorrect(clone, address(this));
         _;
     }
 
@@ -90,8 +95,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         }
 
         // Check order args by CREATE2 salt validation
-        bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
-        address clone = _IMPLEMENTATION.predictDeterministicAddress(makerOrderHash, _FACTORY);
+        address clone = _calcCloneAddress(makerOrder);
         if (clone != address(this)) {
             return bytes4(0);
         }
@@ -105,15 +109,23 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         return this.isValidSignature.selector;
     }
 
-    function cancelOrder(IOrderMixin.Order calldata makerOrder) external onlyMaker(makerOrder.maker.get()) {
+    function cancelOrder(IOrderMixin.Order calldata makerOrder)
+        external
+        onlyMaker(makerOrder.maker.get())
+        validateOrder(makerOrder)
+    {
         uint256 balance = _cancelOrder(makerOrder, 0);
         bytes32 orderHash = _patchOrderMakerAndHash(makerOrder);
         emit NativeOrderCancelled(orderHash, balance);
     }
 
-    function cancelExpiredOrderByResolver(IOrderMixin.Order calldata makerOrder, uint256 rewardLimit) external onlyResolver {
+    function cancelExpiredOrderByResolver(IOrderMixin.Order calldata makerOrder, uint256 rewardLimit)
+        external
+        onlyResolver
+        validateOrder(makerOrder)
+    {
         uint256 orderExpiration = makerOrder.makerTraits.getExpirationTime();
-        if (orderExpiration > 0 && block.timestamp < orderExpiration) revert OrderShouldBeExpired(block.timestamp, orderExpiration);
+        if (!makerOrder.makerTraits.isExpired()) revert OrderShouldBeExpired(block.timestamp, orderExpiration);
 
         uint256 resolverReward = 0;
         if (rewardLimit > 0) {
@@ -126,38 +138,37 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     }
 
     function _cancelOrder(IOrderMixin.Order calldata makerOrder, uint256 resolverReward) private returns(uint256 balance) {
-        bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
-        address clone = _IMPLEMENTATION.predictDeterministicAddress(makerOrderHash, _FACTORY);
-        if (clone != address(this)) revert OrderIsIncorrect(clone, address(this));
-
         balance = _WETH.safeBalanceOf(address(this));
         if (balance == 0) revert CanNotCancelForZeroBalance();
 
         _WETH.safeWithdraw(balance);
         if (resolverReward > 0) {
             balance -= resolverReward;
-            payable(msg.sender).transfer(resolverReward);
+            (bool success, ) = msg.sender.call{ value: resolverReward }("");
+            if (!success) revert Errors.ETHTransferFailed();
         }
         if (balance > 0) {
-            payable(makerOrder.maker.get()).transfer(balance);
+            (bool success, ) = makerOrder.maker.get().call{ value: balance }("");
+            if (!success) revert Errors.ETHTransferFailed();
         }
     }
 
-    function rescueFunds(address token, address to, uint256 amount) external onlyResolver {
-        if (token == address(0)) {
-            payable(to).transfer(amount);
-        } else if (IWETH(token) == _WETH) {
-            uint256 remainingOrderAmount = _WETH.allowance(address(this), _LOP);
-            uint256 extraAmount = _WETH.safeBalanceOf(address(this)) - remainingOrderAmount;
-            if (amount > extraAmount) revert RescueFundsTooMuch(amount, extraAmount);
-            _WETH.safeTransfer(to, amount);
-        } else {
-            IERC20(token).safeTransfer(to, amount);
-        }
+    function withdraw(IOrderMixin.Order calldata makerOrder, address target, uint256 value, bytes memory data)
+        external
+        validateOrder(makerOrder)
+        onlyMaker(makerOrder.maker.get())
+        returns (bool, bytes memory)
+    {
+        return target.call{ value: value }(data);
     }
 
     function _patchOrderMakerAndHash(IOrderMixin.Order memory order) private view returns(bytes32) {
         order.maker = Address.wrap(uint160(address(this)));
         return order.hashMemory(_domainSeparatorV4());
+    }
+
+    function _calcCloneAddress(IOrderMixin.Order calldata makerOrder) private view returns(address) {
+        bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
+        return _IMPLEMENTATION.predictDeterministicAddress(makerOrderHash, _FACTORY);
     }
 }
