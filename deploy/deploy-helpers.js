@@ -5,27 +5,26 @@ const constants = require('./constants');
 
 module.exports = async ({ getNamedAccounts, deployments, config }) => {
     const networkName = hre.network.name;
-    console.log('running deploy script');
+    console.log(`running ${networkName} deploy script`);
     const chainId = await getChainId();
     console.log('network id ', chainId);
 
     if (
         networkName in hre.config.networks &&
-        chainId !== hre.config.networks[networkName].chainId.toString()
+        chainId !== hre.config.networks[networkName].chainId?.toString()
     ) {
         console.log(`network chain id: ${hre.config.networks[networkName].chainId}, your chain id ${chainId}`);
         console.log('skipping wrong chain id deployment');
         return;
     }
 
-    const lopHelperNames = config.deployOpts?.lopHelperNames;
-
-    console.log('Lop helper names to deploy:', lopHelperNames);
-
+    const lopHelperConfigs = config.deployOpts?.lopHelperConfigs || [];
     const helperOrder = ['SeriesNonceManager', 'CallsSimulator', 'PriorityFeeLimiter', 'OrderRegistrator', 'SafeOrderBuilder'];
-    const sortedLopHelperNames = lopHelperNames
-        ? helperOrder.filter(name => lopHelperNames.includes(name))
-        : [];
+    const sortedLopHelperConfigs = helperOrder
+        .map(name => lopHelperConfigs.find(cfg => cfg.name === name))
+        .filter(cfg => cfg); // remove undefined
+
+    console.log('Lop helper configs to deploy:', sortedLopHelperConfigs);
 
     let orderRegistrator;
 
@@ -35,7 +34,9 @@ module.exports = async ({ getNamedAccounts, deployments, config }) => {
         DEPLOYMENT_METHOD = 'create';
     }
 
-    for (const helperName of sortedLopHelperNames) {
+    for (const helperConfig of sortedLopHelperConfigs) {
+        const helperName = helperConfig.name;
+
         let args = [];
         switch (helperName) {
         case 'OrderRegistrator':
@@ -52,12 +53,20 @@ module.exports = async ({ getNamedAccounts, deployments, config }) => {
         let result;
 
         if (DEPLOYMENT_METHOD === 'create3') {
+            const salt = helperConfig.salt
+                ? (
+                helperConfig.salt.startsWith('0x')
+                    ? helperConfig.salt
+                    : ethers.keccak256(ethers.toUtf8Bytes(helperConfig.salt))
+                )
+                : ethers.keccak256(ethers.toUtf8Bytes(helperName));
+                
             result = await deployAndGetContractWithCreate3({
                 contractName: helperName,
                 constructorArgs: args,
                 deploymentName: helperName,
                 create3Deployer: constants.CREATE3_DEPLOYER[chainId],
-                salt: ethers.keccak256(ethers.toUtf8Bytes(helperName)),
+                salt,
                 deployments,
             });
         } else {

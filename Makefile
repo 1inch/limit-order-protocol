@@ -16,11 +16,7 @@ FILE_DEPLOY_HELPERS:=$(CURRENT_DIR)/deploy/deploy-helpers.js
 FILE_DEPLOY_FEE_TAKER:=$(CURRENT_DIR)/deploy/deploy-fee-taker.js
 FILE_DEPLOY_LOP:=$(CURRENT_DIR)/deploy/deploy.js
 
-FILE_CREATE3_DEPLOYER:=$(CURRENT_DIR)/deploy/constants/create3-deployer.js
-FILE_ACCESS_TOKEN:=$(CURRENT_DIR)/deploy/constants/access-token.js
-FILE_ORDER_REGISTRATOR:=$(CURRENT_DIR)/deploy/constants/order-registrator.js
-FILE_ROUTER_V6:=$(CURRENT_DIR)/deploy/constants/router-v6.js
-FILE_WETH:=$(CURRENT_DIR)/deploy/constants/weth.js
+FILE_CONSTANTS_JSON:=$(CURRENT_DIR)/deploy/constants/constants.json
 
 deploy-helpers:
 		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_HELPERS) OPS_DEPLOYMENT_METHOD=$(if $(OPS_DEPLOYMENT_METHOD),$(OPS_DEPLOYMENT_METHOD),create3) validate-helpers deploy-skip-all deploy-noskip deploy-impl deploy-skip
@@ -44,7 +40,7 @@ validate-helpers:
 		if [ -z "$(OPS_CREATE3_DEPLOYER_ADDRESS)" ] && [ "$(OPS_DEPLOYMENT_METHOD)" = "create3" ]; then echo "OPS_CREATE3_DEPLOYER_ADDRESS is not set!"; exit 1; fi; \
 		if [ -z "$(MAINNET_RPC_URL)" ] && [ "$(OPS_NETWORK)" = "hardhat" ]; then echo "MAINNET_RPC_URL is not set!"; exit 1; fi; \
 		if [ -z "$(OPS_WETH_ADDRESS)" ]; then echo "OPS_WETH_ADDRESS is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_LOP_HELPER_NAMES)" ]; then echo "OPS_LOP_HELPER_NAMES is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_LOP_HELPER_CONFIGS)" ]; then echo "OPS_LOP_HELPER_CONFIGS is not set!"; exit 1; fi; \
 		$(MAKE) process-weth process-router-v6 process-order-registrator process-create3-deployer; \
 		}
 
@@ -57,7 +53,8 @@ validate-fee-taker:
 		if [ -z "$(OPS_WETH_ADDRESS)" ]; then echo "OPS_WETH_ADDRESS is not set!"; exit 1; fi; \
 		if [ -z "$(OPS_AGGREGATION_ROUTER_V6_ADDRESS)" ]; then echo "OPS_AGGREGATION_ROUTER_V6_ADDRESS is not set!"; exit 1; fi; \
 		if [ -z "$(OPS_ACCESS_TOKEN_ADDRESS)" ]; then echo "OPS_ACCESS_TOKEN_ADDRESS is not set!"; exit 1; fi; \
-		$(MAKE) process-weth process-router-v6 process-access-token process-create3-deployer; \
+		if [ -z "$(OPS_FEE_TAKER_SALT)" ] && [ "$(OPS_CHAIN_ID)" != "324" ]; then echo "OPS_FEE_TAKER_SALT is not set!"; exit 1; fi; \
+		$(MAKE) process-weth process-router-v6 process-access-token process-create3-deployer process-fee-taker-salt; \
 		}
 
 validate-lop:
@@ -73,43 +70,57 @@ validate-lop:
 process-create3-deployer:
 	@{ \
 		if [ -n "$(OPS_CREATE3_DEPLOYER_ADDRESS)" ]; then \
-			$(MAKE) OPS_GEN_VAL='$(OPS_CREATE3_DEPLOYER_ADDRESS)' OPS_GEN_FILE=$(FILE_CREATE3_DEPLOYER) upsert-constant; \
+			$(MAKE) OPS_GEN_VAL='$(OPS_CREATE3_DEPLOYER_ADDRESS)' OPS_GEN_KEY='create3Deployer' upsert-constant; \
 		fi; \
 	}
 
 process-weth:
-		@$(MAKE) OPS_GEN_VAL='$(OPS_WETH_ADDRESS)' OPS_GEN_FILE=$(FILE_WETH) upsert-constant
+		@$(MAKE) OPS_GEN_VAL='$(OPS_WETH_ADDRESS)' OPS_GEN_KEY='weth' upsert-constant
 
 process-router-v6:
 	@{ \
 		if [ -n "$(OPS_AGGREGATION_ROUTER_V6_ADDRESS)" ]; then \
-			$(MAKE) OPS_GEN_VAL='$(OPS_AGGREGATION_ROUTER_V6_ADDRESS)' OPS_GEN_FILE=$(FILE_ROUTER_V6) upsert-constant; \
+			$(MAKE) OPS_GEN_VAL='$(OPS_AGGREGATION_ROUTER_V6_ADDRESS)' OPS_GEN_KEY='routerV6' upsert-constant; \
 		fi; \
 	}
 
 process-order-registrator:
 	@{ \
 		if [ -n "$(OPS_ORDER_REGISTRATOR_ADDRESS)" ]; then \
-			$(MAKE) OPS_GEN_VAL='$(OPS_ORDER_REGISTRATOR_ADDRESS)' OPS_GEN_FILE=$(FILE_ORDER_REGISTRATOR) upsert-constant; \
+			$(MAKE) OPS_GEN_VAL='$(OPS_ORDER_REGISTRATOR_ADDRESS)' OPS_GEN_KEY='orderRegistrator' upsert-constant; \
 		fi; \
 	}
 
 process-access-token:
-		@$(MAKE) OPS_GEN_VAL='$(OPS_ACCESS_TOKEN_ADDRESS)' OPS_GEN_FILE=$(FILE_ACCESS_TOKEN) upsert-constant
+		@$(MAKE) OPS_GEN_VAL='$(OPS_ACCESS_TOKEN_ADDRESS)' OPS_GEN_KEY='accessToken' upsert-constant
+
+process-fee-taker-salt:
+	@{ \
+		if [ -n "$(OPS_FEE_TAKER_SALT)" ]; then \
+			$(MAKE) OPS_GEN_VAL='$(OPS_FEE_TAKER_SALT)' OPS_GEN_KEY='feeTakerSalt' upsert-constant; \
+		fi; \
+	}
+
+process-permit2-witness-proxy-salt:
+		@$(MAKE) OPS_GEN_VAL='$(OPS_PERMIT2_WITNESS_PROXY_SALT)' OPS_GEN_KEY='permit2WitnessProxySalt' upsert-constant
 
 upsert-constant:
 		@{ \
 		if [ -z "$(OPS_GEN_VAL)" ]; then \
-			echo "variable for file $(OPS_GEN_FILE) is not set!"; \
+			echo "Variable for key $(OPS_GEN_KEY) is not set!"; \
 			exit 1; \
 		fi; \
-		if grep -q "$(OPS_CHAIN_ID)" $(OPS_GEN_FILE); then \
-			sed -i '' 's|$(OPS_CHAIN_ID): .*|$(OPS_CHAIN_ID): $(OPS_GEN_VAL),|' $(OPS_GEN_FILE); \
-			sed -i '' 's/"/'\''/g' $(OPS_GEN_FILE); \
-		else \
-			tmpfile=$$(mktemp); \
-			awk '1;/module.exports = {/{print "    $(OPS_CHAIN_ID): $(subst ",\",$(OPS_GEN_VAL)),"}' $(OPS_GEN_FILE) > $$tmpfile && sed -i '' 's/"/'\''/g' $$tmpfile && mv $$tmpfile $(OPS_GEN_FILE); \
-		fi \
+		if [ -z "$(OPS_GEN_KEY)" ]; then \
+			echo "OPS_GEN_KEY is not set!"; \
+			exit 1; \
+		fi; \
+		if [ -z "$(OPS_CHAIN_ID)" ]; then \
+			echo "OPS_CHAIN_ID is not set!"; \
+			exit 1; \
+		fi; \
+		tmpfile=$$(mktemp); \
+		jq '.$(OPS_GEN_KEY)."$(OPS_CHAIN_ID)" = "$(OPS_GEN_VAL)"' $(FILE_CONSTANTS_JSON) > $$tmpfile && mv $$tmpfile $(FILE_CONSTANTS_JSON); \
+		echo "Updated $(OPS_GEN_KEY)[$(OPS_CHAIN_ID)] = $(OPS_GEN_VAL)"; \
 		}
 
 deploy-skip-all:
@@ -140,7 +151,7 @@ launch-hh-node:
 install: install-utils install-dependencies
 
 install-utils:
-		brew install yarn wget
+		brew install yarn wget jq
 
 install-dependencies:
 		yarn

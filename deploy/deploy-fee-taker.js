@@ -3,8 +3,6 @@ const hre = require('hardhat');
 const { ethers, getChainId } = hre;
 const constants = require('./constants');
 
-const FEE_TAKER_SALT = ethers.keccak256(ethers.toUtf8Bytes('FeeTakerV1'));
-
 module.exports = async ({ deployments, getNamedAccounts }) => {
     const networkName = hre.network.name;
     console.log(`running ${networkName} deploy script`);
@@ -13,7 +11,7 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
 
     if (
         networkName in hre.config.networks &&
-        chainId !== hre.config.networks[networkName].chainId.toString()
+        chainId !== hre.config.networks[networkName].chainId?.toString()
     ) {
         console.log(`network chain id: ${hre.config.networks[networkName].chainId}, your chain id ${chainId}`);
         console.log('skipping wrong chain id deployment');
@@ -30,11 +28,15 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
             deployer,
         });
     } else {
+        const salt = constants.FEE_TAKER_SALT[chainId].startsWith('0x')
+            ? constants.FEE_TAKER_SALT[chainId]
+            : ethers.keccak256(ethers.toUtf8Bytes(constants.FEE_TAKER_SALT[chainId]));
+            
         await deployAndGetContractWithCreate3({
             contractName: 'FeeTaker',
             constructorArgs: [constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], constants.WETH[chainId], deployer],
             create3Deployer: constants.CREATE3_DEPLOYER[chainId],
-            salt: FEE_TAKER_SALT,
+            salt,
             deployments,
         });
     }
