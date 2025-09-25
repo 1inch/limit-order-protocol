@@ -9,7 +9,6 @@ import { SafeERC20, IERC20, IWETH } from "@1inch/solidity-utils/contracts/librar
 
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { Errors } from "../libraries/Errors.sol";
-import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 import { EIP712Alien } from "../utils/EIP712Alien.sol";
 import { OrderLib } from "../OrderLib.sol";
 import { NativeOrderImpl } from "./NativeOrderImpl.sol";
@@ -19,7 +18,6 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
     using AddressLib for Address;
     using SafeERC20 for IERC20;
     using OrderLib for IOrderMixin.Order;
-    using MakerTraitsLib for MakerTraits;
 
     event NativeOrderCreated(address maker, bytes32 orderHash, address clone, uint256 value);
 
