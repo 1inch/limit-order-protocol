@@ -45,6 +45,10 @@ module.exports = {
         enable: true,
         currency: 'USD',
     },
+    deploy: {
+        // Exclude JSON files from being processed as deployment scripts
+        skipFiles: ['**/*.json'],
+    },
     dependencyCompiler: {
         paths: [
             '@1inch/solidity-utils/contracts/mocks/TokenCustomDecimalsMock.sol',
