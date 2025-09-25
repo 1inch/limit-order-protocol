@@ -1100,7 +1100,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(nativeOrderFactory, 'OrderMakerShouldBeMsgSender');
         });
 
-        it('Create native order fails with zero resiver', async function () {
+        it('Create native order fails with zero receiver', async function () {
             const { tokens: { dai, weth }, contracts: { nativeOrderFactory } } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
@@ -1120,7 +1120,7 @@ describe('LimitOrderProtocol', function () {
             ).to.be.revertedWithCustomError(nativeOrderFactory, 'OrderReceiverShouldBeSetCorrectly');
         });
 
-        it('Create native order fails if resiver is nativeOrderFactory address', async function () {
+        it('Create native order fails if receiver is nativeOrderFactory address', async function () {
             const { tokens: { dai, weth }, contracts: { nativeOrderFactory } } = await loadFixture(deployContractsAndInit);
 
             const order = buildOrder(
