@@ -46,8 +46,8 @@ module.exports = {
         currency: 'USD',
     },
     deploy: {
-        // Exclude JSON files from being processed as deployment scripts
-        skipFiles: ['**/*.json'],
+        // Exclude all files in deploy/constants directory and its subdirectories
+        skipFiles: ['constants/**'],
     },
     dependencyCompiler: {
         paths: [
