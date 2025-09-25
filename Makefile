@@ -119,7 +119,7 @@ upsert-constant:
 			exit 1; \
 		fi; \
 		tmpfile=$$(mktemp); \
-		jq '.$(OPS_GEN_KEY)."$(OPS_CHAIN_ID)" = "$(OPS_GEN_VAL)"' $(FILE_CONSTANTS_JSON) > $$tmpfile && mv $$tmpfile $(FILE_CONSTANTS_JSON); \
+		jq '.$(OPS_GEN_KEY)."$(OPS_CHAIN_ID)" = $(OPS_GEN_VAL)' $(FILE_CONSTANTS_JSON) > $$tmpfile && mv $$tmpfile $(FILE_CONSTANTS_JSON); \
 		echo "Updated $(OPS_GEN_KEY)[$(OPS_CHAIN_ID)] = $(OPS_GEN_VAL)"; \
 		}
 
