@@ -45,10 +45,6 @@ module.exports = {
         enable: true,
         currency: 'USD',
     },
-    deploy: {
-        // Exclude all files in deploy/constants directory and its subdirectories
-        skipFiles: ['constants/**'],
-    },
     dependencyCompiler: {
         paths: [
             '@1inch/solidity-utils/contracts/mocks/TokenCustomDecimalsMock.sol',
