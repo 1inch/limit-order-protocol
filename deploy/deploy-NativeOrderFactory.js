@@ -22,8 +22,6 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         deployer,
         skipVerify: true,
     });
-    console.log('NativeOrderFactory deployed to:', await nativeOrderFactory.getAddress());
-
     console.log('NativeOrderImpl deployed to:', await nativeOrderFactory.IMPLEMENTATION());
 };
 
