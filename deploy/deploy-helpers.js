@@ -55,9 +55,9 @@ module.exports = async ({ getNamedAccounts, deployments, config }) => {
         if (DEPLOYMENT_METHOD === 'create3') {
             const salt = helperConfig.salt
                 ? (
-                helperConfig.salt.startsWith('0x')
-                    ? helperConfig.salt
-                    : ethers.keccak256(ethers.toUtf8Bytes(helperConfig.salt))
+                    helperConfig.salt.startsWith('0x')
+                        ? helperConfig.salt
+                        : ethers.keccak256(ethers.toUtf8Bytes(helperConfig.salt))
                 )
                 : ethers.keccak256(ethers.toUtf8Bytes(helperName));
                 
