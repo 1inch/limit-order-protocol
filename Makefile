@@ -16,7 +16,7 @@ FILE_DEPLOY_HELPERS:=$(CURRENT_DIR)/deploy/deploy-helpers.js
 FILE_DEPLOY_FEE_TAKER:=$(CURRENT_DIR)/deploy/deploy-fee-taker.js
 FILE_DEPLOY_LOP:=$(CURRENT_DIR)/deploy/deploy.js
 
-FILE_CONSTANTS_JSON:=$(CURRENT_DIR)/deploy/constants/constants.json
+FILE_CONSTANTS_JSON:=$(CURRENT_DIR)/config/constants.json
 
 deploy-helpers:
 		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_HELPERS) OPS_DEPLOYMENT_METHOD=$(if $(OPS_DEPLOYMENT_METHOD),$(OPS_DEPLOYMENT_METHOD),create3) validate-helpers deploy-skip-all deploy-noskip deploy-impl deploy-skip
