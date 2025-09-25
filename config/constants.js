@@ -1,9 +1,4 @@
-const fs = require('fs');
-const path = require('path');
-
-// Read and parse the constants JSON file
-const constantsPath = path.join(__dirname, './constants.json');
-const constants = JSON.parse(fs.readFileSync(constantsPath, 'utf8'));
+const constants = require('./constants.json');
 
 module.exports = {
     WETH: constants.weth || {},
@@ -14,5 +9,3 @@ module.exports = {
     FEE_TAKER_SALT: constants.feeTakerSalt || {},
     PERMIT2_WITNESS_PROXY_SALT: constants.permit2WitnessProxySalt || {},
 };
-
-module.exports.skip = async () => true;
