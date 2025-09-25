@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Read and parse the constants JSON file
-const constantsPath = path.join(__dirname, 'constants.json');
+const constantsPath = path.join(__dirname, './constants.json');
 const constants = JSON.parse(fs.readFileSync(constantsPath, 'utf8'));
 
 module.exports = {

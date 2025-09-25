@@ -2,7 +2,7 @@ const { deployAndGetContract } = require('@1inch/solidity-utils');
 
 const hre = require('hardhat');
 const { getChainId } = hre;
-const constants = require('./constants');
+const constants = require('../config/constants');
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
     const networkName = hre.network.name;
