@@ -1,0 +1,252 @@
+{
+  "address": "0x8aEE633e5DE241b71b5051FC1956f31E44fec471",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "AdvanceNonceFailed",
+      "type": "error"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "maker",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "series",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "newNonce",
+          "type": "uint256"
+        }
+      ],
+      "name": "NonceIncreased",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "series",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "advanceNonce",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "series",
+          "type": "uint8"
+        }
+      ],
+      "name": "increaseNonce",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "series",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "maker",
+          "type": "address"
+        }
+      ],
+      "name": "nonce",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "nonce",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "series",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "makerAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "makerNonce",
+          "type": "uint256"
+        }
+      ],
+      "name": "nonceEquals",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "time",
+          "type": "uint256"
+        }
+      ],
+      "name": "timestampBelow",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "timeNonceSeriesAccount",
+          "type": "uint256"
+        }
+      ],
+      "name": "timestampBelowAndNonceEquals",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x4a1ca0a06db5bd9f5637334e49432ee32777d835516a90f0ef6d3937cba7b759",
+  "receipt": {
+    "to": null,
+    "from": "0xAA74E80De15758Fe983Cb6102176ef2cE195ECfE",
+    "contractAddress": "0x8aEE633e5DE241b71b5051FC1956f31E44fec471",
+    "transactionIndex": 0,
+    "gasUsed": "295636",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0xd9ef1e06494193cf2998944deb1211ecb74117435dd2a3f27d389c2158dbbe12",
+    "transactionHash": "0x4a1ca0a06db5bd9f5637334e49432ee32777d835516a90f0ef6d3937cba7b759",
+    "logs": [],
+    "blockNumber": 23447145,
+    "cumulativeGasUsed": "295636",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "f50c1a3607e800e3d06c604a25510f68",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.30+commit.73712a01\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"AdvanceNonceFailed\",\"type\":\"error\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"maker\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"series\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"newNonce\",\"type\":\"uint256\"}],\"name\":\"NonceIncreased\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"series\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"advanceNonce\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"series\",\"type\":\"uint8\"}],\"name\":\"increaseNonce\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"series\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"maker\",\"type\":\"address\"}],\"name\":\"nonce\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"series\",\"type\":\"uint256\"},{\"internalType\":\"address\",\"name\":\"makerAddress\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"makerNonce\",\"type\":\"uint256\"}],\"name\":\"nonceEquals\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"time\",\"type\":\"uint256\"}],\"name\":\"timestampBelow\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"timeNonceSeriesAccount\",\"type\":\"uint256\"}],\"name\":\"timestampBelowAndNonceEquals\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"nonceEquals(uint256,address,uint256)\":{\"returns\":{\"_0\":\"Result True if `makerAddress` has specified nonce. Otherwise, false\"}},\"timestampBelow(uint256)\":{\"returns\":{\"_0\":\"Result True if current block timestamp is lower than `time`. Otherwise, false\"}}},\"title\":\"A helper contract to manage nonce with the series\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"advanceNonce(uint256,uint256)\":{\"notice\":\"Advances nonce by specified amount\"},\"increaseNonce(uint8)\":{\"notice\":\"Advances nonce by one\"},\"nonceEquals(uint256,address,uint256)\":{\"notice\":\"Checks if `makerAddress` has specified `makerNonce` for `series`\"},\"timestampBelow(uint256)\":{\"notice\":\"Checks passed time against block timestamp\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/helpers/SeriesNonceManager.sol\":\"SeriesNonceManager\"},\"evmVersion\":\"shanghai\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":1000000},\"remappings\":[],\"viaIR\":true},\"sources\":{\"contracts/helpers/SeriesNonceManager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n\\npragma solidity 0.8.30;\\n\\n/// @title A helper contract to manage nonce with the series\\ncontract SeriesNonceManager {\\n    error AdvanceNonceFailed();\\n    event NonceIncreased(address indexed maker, uint256 series, uint256 newNonce);\\n\\n    // {\\n    //    1: {\\n    //        '0x762f73Ad...842Ffa8': 0,\\n    //        '0xd20c41ee...32aaDe2': 1\\n    //    },\\n    //    2: {\\n    //        '0x762f73Ad...842Ffa8': 3,\\n    //        '0xd20c41ee...32aaDe2': 15\\n    //    },\\n    //    ...\\n    // }\\n    mapping(uint256 series => mapping(address maker => uint256 nonce)) public nonce;\\n\\n    /// @notice Advances nonce by one\\n    function increaseNonce(uint8 series) external {\\n        advanceNonce(series, 1);\\n    }\\n\\n    /// @notice Advances nonce by specified amount\\n    function advanceNonce(uint256 series, uint256 amount) public {\\n        if (amount == 0 || amount > 255) revert AdvanceNonceFailed();\\n        unchecked {\\n            uint256 newNonce = nonce[series][msg.sender] + amount;\\n            nonce[series][msg.sender] = newNonce;\\n            emit NonceIncreased(msg.sender, series, newNonce);\\n        }\\n    }\\n\\n    /// @notice Checks if `makerAddress` has specified `makerNonce` for `series`\\n    /// @return Result True if `makerAddress` has specified nonce. Otherwise, false\\n    function nonceEquals(uint256 series, address makerAddress, uint256 makerNonce) public view returns(bool) {\\n        return nonce[series][makerAddress] == makerNonce;\\n    }\\n\\n    /// @notice Checks passed time against block timestamp\\n    /// @return Result True if current block timestamp is lower than `time`. Otherwise, false\\n    function timestampBelow(uint256 time) public view returns(bool) {\\n        return block.timestamp < time;  // solhint-disable-line not-rely-on-time\\n    }\\n\\n    function timestampBelowAndNonceEquals(uint256 timeNonceSeriesAccount) public view returns(bool) {\\n        uint256 _time = uint40(timeNonceSeriesAccount >> 216);\\n        uint256 _nonce = uint40(timeNonceSeriesAccount >> 176);\\n        uint256 _series = uint16(timeNonceSeriesAccount >> 160);\\n        address _account = address(uint160(timeNonceSeriesAccount));\\n        return timestampBelow(_time) && nonceEquals(_series, _account, _nonce);\\n    }\\n}\\n\",\"keccak256\":\"0xb9e5cf5d3fabf0ca2a2dfbfad0db7f0d389a5ba513c72d80d02de1066c8ebf49\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x60808060405234601557610462908161001a8239f35b5f80fdfe60806040526004361015610011575f80fd5b5f5f3560e01c80632cc2878d146103585780634a7f2a4b146102e95780635d3a09dc146101e857806363592c2b146101ab5780637a37dc2c146100db5763976222211461005c575f80fd5b346100d85760607ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126100d85760206100ce610098610409565b604435906004355f525f60205273ffffffffffffffffffffffffffffffffffffffff60405f2091165f5260205260405f20541490565b6040519015158152f35b80fd5b346101a75760207ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101a75760043560ff81168091036101a757805f525f60205260405f2073ffffffffffffffffffffffffffffffffffffffff33165f52602052600160405f205401815f525f60205260405f2073ffffffffffffffffffffffffffffffffffffffff33165f526020528060405f205560405191825260208201527fdc0537f71d06d3708f52baf4ddf6918b25f1a145ba08873de27485682b35cac160403392a2005b5f80fd5b346101a75760207ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101a757602060405160043542108152f35b346101a75760407ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101a757600435602435801580156102df575b6102b757815f525f60205260405f2073ffffffffffffffffffffffffffffffffffffffff33165f5260205260405f205401815f525f60205260405f2073ffffffffffffffffffffffffffffffffffffffff33165f526020528060405f205560405191825260208201527fdc0537f71d06d3708f52baf4ddf6918b25f1a145ba08873de27485682b35cac160403392a2005b7fbd71636d000000000000000000000000000000000000000000000000000000005f5260045ffd5b5060ff8111610226565b346101a75760407ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101a757610320610409565b6004355f525f60205273ffffffffffffffffffffffffffffffffffffffff60405f2091165f52602052602060405f2054604051908152f35b346101a75760207ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101a75760206004358060d81c421090816103a4575b506040519015158152f35b610403915064ffffffffff8160b01c169061ffff73ffffffffffffffffffffffffffffffffffffffff82169160a01c165f525f60205273ffffffffffffffffffffffffffffffffffffffff60405f2091165f5260205260405f20541490565b82610399565b6024359073ffffffffffffffffffffffffffffffffffffffff821682036101a75756fea264697066735822122011c2e43c3e56bfdbe0a2d175915af18e3af6df79e23218c0fea79c9b2aead7e664736f6c634300081e0033",
+  "deployedBytecode": "0x60806040526004361015610011575f80fd5b5f5f3560e01c80632cc2878d146103585780634a7f2a4b146102e95780635d3a09dc146101e857806363592c2b146101ab5780637a37dc2c146100db5763976222211461005c575f80fd5b346100d85760607ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126100d85760206100ce610098610409565b604435906004355f525f60205273ffffffffffffffffffffffffffffffffffffffff60405f2091165f5260205260405f20541490565b6040519015158152f35b80fd5b346101a75760207ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101a75760043560ff81168091036101a757805f525f60205260405f2073ffffffffffffffffffffffffffffffffffffffff33165f52602052600160405f205401815f525f60205260405f2073ffffffffffffffffffffffffffffffffffffffff33165f526020528060405f205560405191825260208201527fdc0537f71d06d3708f52baf4ddf6918b25f1a145ba08873de27485682b35cac160403392a2005b5f80fd5b346101a75760207ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101a757602060405160043542108152f35b346101a75760407ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101a757600435602435801580156102df575b6102b757815f525f60205260405f2073ffffffffffffffffffffffffffffffffffffffff33165f5260205260405f205401815f525f60205260405f2073ffffffffffffffffffffffffffffffffffffffff33165f526020528060405f205560405191825260208201527fdc0537f71d06d3708f52baf4ddf6918b25f1a145ba08873de27485682b35cac160403392a2005b7fbd71636d000000000000000000000000000000000000000000000000000000005f5260045ffd5b5060ff8111610226565b346101a75760407ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101a757610320610409565b6004355f525f60205273ffffffffffffffffffffffffffffffffffffffff60405f2091165f52602052602060405f2054604051908152f35b346101a75760207ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc3601126101a75760206004358060d81c421090816103a4575b506040519015158152f35b610403915064ffffffffff8160b01c169061ffff73ffffffffffffffffffffffffffffffffffffffff82169160a01c165f525f60205273ffffffffffffffffffffffffffffffffffffffff60405f2091165f5260205260405f20541490565b82610399565b6024359073ffffffffffffffffffffffffffffffffffffffff821682036101a75756fea264697066735822122011c2e43c3e56bfdbe0a2d175915af18e3af6df79e23218c0fea79c9b2aead7e664736f6c634300081e0033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "nonceEquals(uint256,address,uint256)": {
+        "returns": {
+          "_0": "Result True if `makerAddress` has specified nonce. Otherwise, false"
+        }
+      },
+      "timestampBelow(uint256)": {
+        "returns": {
+          "_0": "Result True if current block timestamp is lower than `time`. Otherwise, false"
+        }
+      }
+    },
+    "title": "A helper contract to manage nonce with the series",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "advanceNonce(uint256,uint256)": {
+        "notice": "Advances nonce by specified amount"
+      },
+      "increaseNonce(uint8)": {
+        "notice": "Advances nonce by one"
+      },
+      "nonceEquals(uint256,address,uint256)": {
+        "notice": "Checks if `makerAddress` has specified `makerNonce` for `series`"
+      },
+      "timestampBelow(uint256)": {
+        "notice": "Checks passed time against block timestamp"
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 17261,
+        "contract": "contracts/helpers/SeriesNonceManager.sol:SeriesNonceManager",
+        "label": "nonce",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_mapping(t_uint256,t_mapping(t_address,t_uint256))"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_mapping(t_address,t_uint256)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => uint256)",
+        "numberOfBytes": "32",
+        "value": "t_uint256"
+      },
+      "t_mapping(t_uint256,t_mapping(t_address,t_uint256))": {
+        "encoding": "mapping",
+        "key": "t_uint256",
+        "label": "mapping(uint256 => mapping(address => uint256))",
+        "numberOfBytes": "32",
+        "value": "t_mapping(t_address,t_uint256)"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}

@@ -2,10 +2,8 @@
 # yarn lockfile v1
 
 
-"@1inch/solidity-utils@6.6.0":
-  version "6.6.0"
-  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-6.6.0.tgz#2b805c250996b637e8bfe0a66a8107bd10447157"
-  integrity sha512-BZTN/oE6ttqPXH/nI1iYO2lPZZSinQibUvXDZGYRzXooncN+n6VELPCCIzoUqV+CoYb6ULYHk+DDlCKFQ/1peA==
+"@1inch/solidity-utils@file:../solidity-utils":
+  version "6.9.0"
   dependencies:
     "@metamask/eth-sig-util" "8.0.0"
     "@nomicfoundation/hardhat-ethers" "3.0.8"
@@ -17,7 +15,6 @@
     dotenv "16.4.5"
     ethereumjs-util "7.1.5"
     ethers "6.13.4"
-    hardhat "2.23.0"
     hardhat-deploy "0.14.0"
     mocha-chai-jest-snapshot "1.1.6"
     node-fetch "2.7.0"

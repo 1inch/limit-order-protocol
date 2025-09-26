@@ -1,0 +1,59 @@
+{
+  "address": "0x39C17D237Eda5c4DF093F9410902136834501D09",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "isPriorityFeeValid",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x3af314c380e8adc0874110f783bdcf7a522282396dc7b45333b01a5655f83333",
+  "receipt": {
+    "to": null,
+    "from": "0xAA74E80De15758Fe983Cb6102176ef2cE195ECfE",
+    "contractAddress": "0x39C17D237Eda5c4DF093F9410902136834501D09",
+    "transactionIndex": 0,
+    "gasUsed": "100107",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x3abb9818f94f634b783843e5ce7ad506a813c400d863685b7445140ac44e1928",
+    "transactionHash": "0x3af314c380e8adc0874110f783bdcf7a522282396dc7b45333b01a5655f83333",
+    "logs": [],
+    "blockNumber": 23447150,
+    "cumulativeGasUsed": "100107",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "f50c1a3607e800e3d06c604a25510f68",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.30+commit.73712a01\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"isPriorityFeeValid\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"title\":\"A helper contract for executing boolean functions on arbitrary target call results\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"isPriorityFeeValid()\":{\"notice\":\"Validates priority fee according to the spec https://snapshot.org/#/1inch.eth/proposal/0xa040c60050147a0f67042ae024673e92e813b5d2c0f748abf70ddfa1ed107cbe For blocks with baseFee <10.6 gwei \\u2013 the priorityFee is capped at 70% of the baseFee. For blocks with baseFee between 10.6 gwei and 104.1 gwei \\u2013 the priorityFee is capped at 50% of the baseFee. For blocks with baseFee >104.1 gwei \\u2013 priorityFee is capped at 65% of the block\\u2019s baseFee.\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/extensions/PrioirityFeeLimiter.sol\":\"PriorityFeeLimiter\"},\"evmVersion\":\"shanghai\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":1000000},\"remappings\":[],\"viaIR\":true},\"sources\":{\"contracts/extensions/PrioirityFeeLimiter.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n\\npragma solidity 0.8.30;\\n\\n/// @title A helper contract for executing boolean functions on arbitrary target call results\\ncontract PriorityFeeLimiter {\\n    /// @notice Validates priority fee according to the spec\\n    /// https://snapshot.org/#/1inch.eth/proposal/0xa040c60050147a0f67042ae024673e92e813b5d2c0f748abf70ddfa1ed107cbe\\n    /// For blocks with baseFee <10.6 gwei \\u2013 the priorityFee is capped at 70% of the baseFee.\\n    /// For blocks with baseFee between 10.6 gwei and 104.1 gwei \\u2013 the priorityFee is capped at 50% of the baseFee.\\n    /// For blocks with baseFee >104.1 gwei \\u2013 priorityFee is capped at 65% of the block\\u2019s baseFee.\\n    function isPriorityFeeValid() public view returns(bool) {\\n        unchecked {\\n            uint256 baseFee = block.basefee;\\n            uint256 priorityFee = tx.gasprice - baseFee;\\n\\n            if (baseFee < 10.6 gwei) {\\n                return priorityFee * 100 <= baseFee * 70;\\n            } else if (baseFee < 104.1 gwei) {\\n                return priorityFee * 2 <= baseFee;\\n            } else {\\n                return priorityFee * 100 <= baseFee * 65;\\n            }\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0xc3de5e99b649cd7b3e58d64d85654295e189adb366b9ed214f15c8762ff3bd82\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x6080806040523460135760d8908160188239f35b5f80fdfe60808060405260043610156011575f80fd5b5f3560e01c6302024708146023575f80fd5b34605e575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc360112605e5760209060586062565b15158152f35b5f80fd5b483a03640277cf2a0048105f14607f576064604648029102111590565b64183cd7f100481015609557489060011b111590565b606460414802910211159056fea264697066735822122008682a6e5362a8a47057f35ea1367056f9798238fc29344f46a0abd3ca5f2e1d64736f6c634300081e0033",
+  "deployedBytecode": "0x60808060405260043610156011575f80fd5b5f3560e01c6302024708146023575f80fd5b34605e575f7ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc360112605e5760209060586062565b15158152f35b5f80fd5b483a03640277cf2a0048105f14607f576064604648029102111590565b64183cd7f100481015609557489060011b111590565b606460414802910211159056fea264697066735822122008682a6e5362a8a47057f35ea1367056f9798238fc29344f46a0abd3ca5f2e1d64736f6c634300081e0033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "title": "A helper contract for executing boolean functions on arbitrary target call results",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "isPriorityFeeValid()": {
+        "notice": "Validates priority fee according to the spec https://snapshot.org/#/1inch.eth/proposal/0xa040c60050147a0f67042ae024673e92e813b5d2c0f748abf70ddfa1ed107cbe For blocks with baseFee <10.6 gwei – the priorityFee is capped at 70% of the baseFee. For blocks with baseFee between 10.6 gwei and 104.1 gwei – the priorityFee is capped at 50% of the baseFee. For blocks with baseFee >104.1 gwei – priorityFee is capped at 65% of the block’s baseFee."
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": null
+  }
+}
