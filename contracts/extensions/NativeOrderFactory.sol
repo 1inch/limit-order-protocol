@@ -57,7 +57,7 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
         if (msg.value != makerOrder.makingAmount) revert OrderMakingAmountShouldBeEqualToMsgValue(makerOrder.makingAmount, msg.value);
 
         bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
-        clone = IMPLEMENTATION.cloneDeterministic(makerOrderHash);
+        clone = _cloneImplementation(makerOrderHash);
         NativeOrderImpl(payable(clone)).depositAndApprove{ value: msg.value }();
 
         IOrderMixin.Order memory order = makerOrder;
@@ -73,5 +73,9 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
         } else {
             IERC20(token).safeTransfer(to, amount);
         }
+    }
+
+    function _cloneImplementation(bytes32 makerOrderHash) internal virtual returns (address) {
+        return IMPLEMENTATION.cloneDeterministic(makerOrderHash);
     }
 }

@@ -14,4 +14,4 @@ yarn-error.log
 .coverage_contracts
 .coverage_artifacts
 .idea
-.env
+.env*
