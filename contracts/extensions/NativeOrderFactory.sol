@@ -38,15 +38,14 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
         Ownable(msg.sender)
         EIP712Alien(limitOrderProtocol, name, version)
     {
-        IMPLEMENTATION = address(new NativeOrderImpl(
+        IMPLEMENTATION = _createImplementation(
             weth,
-            address(this),
             limitOrderProtocol,
             accessToken,
             cancellationDelay,
             name,
             version
-        ));
+        );
     }
 
     function create(IOrderMixin.Order calldata makerOrder) external payable returns (address clone) {
@@ -77,5 +76,24 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
 
     function _cloneImplementation(bytes32 makerOrderHash) internal virtual returns (address) {
         return IMPLEMENTATION.cloneDeterministic(makerOrderHash);
+    }
+
+    function _createImplementation(
+        IWETH weth,
+        address limitOrderProtocol,
+        IERC20 accessToken,
+        uint256 cancellationDelay,
+        string memory name,
+        string memory version
+    ) internal virtual returns (address) {
+        return address(new NativeOrderImpl(
+            weth,
+            address(this),
+            limitOrderProtocol,
+            accessToken,
+            cancellationDelay,
+            name,
+            version
+        ));
     }
 }

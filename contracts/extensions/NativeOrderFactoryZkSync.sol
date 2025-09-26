@@ -4,6 +4,7 @@ pragma solidity 0.8.30;
 
 import { IERC20, IWETH } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 import { NativeOrderFactory } from "./NativeOrderFactory.sol";
+import { NativeOrderImplZkSync } from "./NativeOrderImplZkSync.sol";
 import { MinimalProxyZkSync } from "../helpers/MinimalProxyZkSync.sol";
 
 contract NativeOrderFactoryZkSync is NativeOrderFactory {
@@ -35,5 +36,24 @@ contract NativeOrderFactoryZkSync is NativeOrderFactory {
 
     function _cloneImplementation(bytes32 makerOrderHash) internal virtual override returns (address) {
         return address(new MinimalProxyZkSync{ salt: makerOrderHash }(IMPLEMENTATION));
+    }
+
+    function _createImplementation(
+        IWETH weth,
+        address limitOrderProtocol,
+        IERC20 accessToken,
+        uint256 cancellationDelay,
+        string memory name,
+        string memory version
+    ) internal override returns (address) {
+        return address(new NativeOrderImplZkSync(
+            weth,
+            address(this),
+            limitOrderProtocol,
+            accessToken,
+            cancellationDelay,
+            name,
+            version
+        ));
     }
 }
