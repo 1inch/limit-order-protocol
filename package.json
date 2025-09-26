@@ -20,7 +20,7 @@
   "devDependencies": {
     "@matterlabs/hardhat-zksync-deploy": "1.6.0",
     "@matterlabs/hardhat-zksync-solc": "1.2.5",
-    "@matterlabs/hardhat-zksync-verify": "1.7.0",
+    "@matterlabs/hardhat-zksync-verify": "1.9.1",
     "@metamask/eth-sig-util": "8.0.0",
     "@nomicfoundation/hardhat-chai-matchers": "2.0.8",
     "@nomicfoundation/hardhat-network-helpers": "1.0.12",

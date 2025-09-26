@@ -53,9 +53,12 @@ module.exports = {
         ],
     },
     zksolc: {
-        version: '1.4.0',
+        version: '1.5.15',
         compilerSource: 'binary',
-        settings: {},
+        settings: {
+            suppressedErrors: ['sendtransfer'],
+            suppressedWarnings: ['assemblycreate', 'txorigin'],
+        },
     },
     docgen: {
         outputDir: 'docs',
