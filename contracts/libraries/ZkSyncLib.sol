@@ -24,7 +24,7 @@ library ZkSyncLib {
         address deployer,
         bytes32 inputHash
     ) internal pure returns (address addr) {
-        assembly ("memory-safe") {
+        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
             let ptr := mload(0x40)
             mstore(ptr, _CREATE2_PREFIX)
             mstore(add(ptr, 0x20), deployer)

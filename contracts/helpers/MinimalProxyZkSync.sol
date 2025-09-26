@@ -13,7 +13,7 @@ contract MinimalProxyZkSync {
     // solhint-disable-next-line no-complex-fallback
     fallback() external payable {
         address _impl = _IMPLEMENTATION;
-        assembly ("memory-safe") {
+        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly
             calldatacopy(0, 0, calldatasize())
             let result := delegatecall(gas(), _impl, 0, calldatasize(), 0, 0)
             returndatacopy(0, 0, returndatasize())

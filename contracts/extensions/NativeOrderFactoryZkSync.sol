@@ -7,8 +7,8 @@ import { NativeOrderFactory } from "./NativeOrderFactory.sol";
 import { MinimalProxyZkSync } from "../helpers/MinimalProxyZkSync.sol";
 
 contract NativeOrderFactoryZkSync is NativeOrderFactory {
-    bytes32 private immutable NATIVE_ORDER_IMPL_HASH;
-    bytes32 private immutable PROXY_BYTECODE_HASH;
+    bytes32 private immutable _NATIVE_ORDER_IMPL_HASH;
+    bytes32 private immutable _PROXY_BYTECODE_HASH;
 
     constructor(
         IWETH weth,
@@ -20,17 +20,17 @@ contract NativeOrderFactoryZkSync is NativeOrderFactory {
     )
         NativeOrderFactory(weth, limitOrderProtocol, accessToken, cancellationDelay, name, version)
     {
-        NATIVE_ORDER_IMPL_HASH = keccak256(abi.encode(IMPLEMENTATION));
+        _NATIVE_ORDER_IMPL_HASH = keccak256(abi.encode(IMPLEMENTATION));
         MinimalProxyZkSync proxySrc = new MinimalProxyZkSync(IMPLEMENTATION);
         bytes32 bytecodeHashSrc;
-        assembly ("memory-safe") {
+        assembly ("memory-safe") { // solhint-disable-line no-inline-assembly 
             bytecodeHashSrc := extcodehash(proxySrc)
         }
-        PROXY_BYTECODE_HASH = bytecodeHashSrc;
+        _PROXY_BYTECODE_HASH = bytecodeHashSrc;
     }
 
     function getHashes() external view returns (bytes32, bytes32) {
-        return (PROXY_BYTECODE_HASH, NATIVE_ORDER_IMPL_HASH);
+        return (_PROXY_BYTECODE_HASH, _NATIVE_ORDER_IMPL_HASH);
     }
 
     function _cloneImplementation(bytes32 makerOrderHash) internal virtual override returns (address) {

@@ -61,5 +61,5 @@ module.exports = {
         templates: oneInchTemplates(),
         pages: 'files',
         exclude: ['mocks'],
-    }
+    },
 };
