@@ -18,6 +18,7 @@ if (getNetwork().indexOf('zksync') !== -1) {
 }
 
 const { networks, etherscan } = (new Networks()).registerAll();
+
 module.exports = {
     etherscan,
     tracer: {
