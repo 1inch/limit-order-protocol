@@ -1,6 +1,5 @@
-require('@matterlabs/hardhat-zksync-deploy');
-require('@matterlabs/hardhat-zksync-solc');
 require('@nomicfoundation/hardhat-chai-matchers');
+require('@nomicfoundation/hardhat-verify');
 require('solidity-coverage');
 require('solidity-docgen');
 require('hardhat-dependency-compiler');
@@ -10,12 +9,6 @@ require('hardhat-tracer');
 require('dotenv').config();
 const { oneInchTemplates } = require('@1inch/solidity-utils/docgen');
 const { Networks, getNetwork } = require('@1inch/solidity-utils/hardhat-setup');
-
-if (getNetwork().indexOf('zksync') !== -1) {
-    require('@matterlabs/hardhat-zksync-verify');
-} else {
-    require('@nomicfoundation/hardhat-verify');
-}
 
 const { networks, etherscan } = (new Networks()).registerAll();
 
@@ -51,14 +44,6 @@ module.exports = {
             '@1inch/solidity-utils/contracts/mocks/TokenMock.sol',
             '@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol',
         ],
-    },
-    zksolc: {
-        version: '1.5.15',
-        compilerSource: 'binary',
-        settings: {
-            suppressedErrors: ['sendtransfer'],
-            suppressedWarnings: ['assemblycreate', 'txorigin'],
-        },
     },
     docgen: {
         outputDir: 'docs',
