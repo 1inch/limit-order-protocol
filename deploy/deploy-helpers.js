@@ -30,7 +30,7 @@ module.exports = async ({ getNamedAccounts, deployments, config }) => {
 
     let DEPLOYMENT_METHOD = config.deployOpts?.deploymentMethod || 'create3';
 
-    if (chainId === '324') { // create3 is not supported for zksync
+    if (networkName.indexOf('zksync') !== -1) { // create3 is not supported for zksync
         DEPLOYMENT_METHOD = 'create';
     }
 

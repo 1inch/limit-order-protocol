@@ -18,9 +18,9 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
         return;
     }
 
-    const { deployer } = await getNamedAccounts();
+    if (networkName.indexOf('zksync') !== -1) { // zksync
+        const { deployer } = await getNamedAccounts();
 
-    if (chainId === '324') { // zksync
         await deployAndGetContract({
             contractName: 'FeeTaker',
             constructorArgs: [constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], constants.WETH[chainId], deployer],

@@ -15,6 +15,7 @@ CURRENT_DIR:=$(shell pwd)
 FILE_DEPLOY_HELPERS:=$(CURRENT_DIR)/deploy/deploy-helpers.js
 FILE_DEPLOY_FEE_TAKER:=$(CURRENT_DIR)/deploy/deploy-fee-taker.js
 FILE_DEPLOY_LOP:=$(CURRENT_DIR)/deploy/deploy.js
+FILE_DEPLOY_NATIVE_ORDER_FACTORY:=$(CURRENT_DIR)/deploy/deploy-native-order-factory.js
 
 FILE_CONSTANTS_JSON:=$(CURRENT_DIR)/config/constants.json
 
@@ -26,6 +27,9 @@ deploy-lop:
 
 deploy-fee-taker:
 		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_FEE_TAKER) validate-fee-taker deploy-skip-all deploy-noskip deploy-impl deploy-skip
+
+deploy-native-order-factory:
+		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_NATIVE_ORDER_FACTORY) validate-native-order-factory deploy-skip-all deploy-noskip deploy-impl deploy-skip
 
 deploy-impl:
 		@{ \
@@ -53,8 +57,21 @@ validate-fee-taker:
 		if [ -z "$(OPS_WETH_ADDRESS)" ]; then echo "OPS_WETH_ADDRESS is not set!"; exit 1; fi; \
 		if [ -z "$(OPS_AGGREGATION_ROUTER_V6_ADDRESS)" ]; then echo "OPS_AGGREGATION_ROUTER_V6_ADDRESS is not set!"; exit 1; fi; \
 		if [ -z "$(OPS_ACCESS_TOKEN_ADDRESS)" ]; then echo "OPS_ACCESS_TOKEN_ADDRESS is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_FEE_TAKER_SALT)" ] && [ "$(OPS_CHAIN_ID)" != "324" ]; then echo "OPS_FEE_TAKER_SALT is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_FEE_TAKER_SALT)" ] && [ "$(findstring zksync,$(OPS_NETWORK))" = "" ]; then echo "OPS_FEE_TAKER_SALT is not set!"; exit 1; fi; \
 		$(MAKE) process-weth process-router-v6 process-access-token process-create3-deployer process-fee-taker-salt; \
+		}
+
+validate-native-order-factory:
+		@{ \
+		if [ -z "$(OPS_NETWORK)" ]; then echo "OPS_NETWORK is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_CHAIN_ID)" ]; then echo "OPS_CHAIN_ID is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_CREATE3_DEPLOYER_ADDRESS)" ] && [ "$(OPS_DEPLOYMENT_METHOD)" = "create3" ]; then echo "OPS_CREATE3_DEPLOYER_ADDRESS is not set!"; exit 1; fi; \
+		if [ -z "$(MAINNET_RPC_URL)" ] && [ "$(OPS_NETWORK)" = "hardhat" ]; then echo "MAINNET_RPC_URL is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_WETH_ADDRESS)" ]; then echo "OPS_WETH_ADDRESS is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_AGGREGATION_ROUTER_V6_ADDRESS)" ]; then echo "OPS_AGGREGATION_ROUTER_V6_ADDRESS is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_ACCESS_TOKEN_ADDRESS)" ]; then echo "OPS_ACCESS_TOKEN_ADDRESS is not set!"; exit 1; fi; \
+		if [ -z "$(OPS_NATIVE_ORDER_SALT)" ] && [ "$(findstring zksync,$(OPS_NETWORK))" = "" ]; then echo "OPS_NATIVE_ORDER_SALT is not set!"; exit 1; fi; \
+		$(MAKE) process-weth process-router-v6 process-access-token process-create3-deployer process-native-order-factory-salt; \
 		}
 
 validate-lop:
@@ -98,6 +115,13 @@ process-fee-taker-salt:
 	@{ \
 		if [ -n "$(OPS_FEE_TAKER_SALT)" ]; then \
 			$(MAKE) OPS_GEN_VAL='$(OPS_FEE_TAKER_SALT)' OPS_GEN_KEY='feeTakerSalt' upsert-constant; \
+		fi; \
+	}
+
+process-native-order-factory-salt:
+	@{ \
+		if [ -n "$(OPS_NATIVE_ORDER_SALT)" ]; then \
+			$(MAKE) OPS_GEN_VAL='$(OPS_NATIVE_ORDER_SALT)' OPS_GEN_KEY='nativeOrderSalt' upsert-constant; \
 		fi; \
 	}
 
@@ -180,6 +204,7 @@ get:
 			"OPS_SERIES_NONCE_MANAGER_ADDRESS") CONTRACT_FILE="SeriesNonceManager.json" ;; \
 			"OPS_PRIORITY_FEE_LIMITER_ADDRESS") CONTRACT_FILE="PriorityFeeLimiter.json" ;; \
 			"OPS_CALLS_SIMULATOR_ADDRESS") CONTRACT_FILE="CallsSimulator.json" ;; \
+			"OPS_NATIVE_ORDER_FACTORY_ADDRESS") CONTRACT_FILE="NativeOrderFactory.json" ;; \
 			*) echo "Error: Unknown parameter $(PARAMETER)"; exit 1 ;; \
 		esac; \
 		DEPLOYMENT_FILE="$(CURRENT_DIR)/deployments/$(OPS_NETWORK)/$$CONTRACT_FILE"; \
@@ -200,6 +225,7 @@ help:
 	@echo "  deploy-helpers         Deploy helper contracts"
 	@echo "  deploy-lop             Deploy LimitOrderProtocol contract"
 	@echo "  deploy-fee-taker       Deploy FeeTaker contract"
+	@echo "  deploy-native-order-factory Deploy NativeOrderFactory contract"
 	@echo "  deploy-impl            Run deployment script for current file"
 	@echo "  deploy-skip            Set skip=true in deployment file"
 	@echo "  deploy-noskip          Set skip=false in deployment file"
@@ -227,8 +253,9 @@ help:
 .PHONY: \
 install install-utils install-dependencies clean \
 deploy-helpers deploy-lop deploy-fee-taker deploy-impl \
-deploy-skip deploy-noskip deploy-skip-all launch-hh-node \
+deploy-skip deploy-noskip deploy-skip-all deploy-native-order-factory \
 get help \
 validate-helpers validate-fee-taker validate-lop \
 process-create3-deployer process-weth process-router-v6 process-order-registrator process-access-token \
+process-fee-taker-salt process-permit2-witness-proxy-salt process-native-order-factory-salt
 upsert-constant
