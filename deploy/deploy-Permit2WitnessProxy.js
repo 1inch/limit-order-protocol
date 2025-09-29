@@ -1,10 +1,10 @@
-const { deployAndGetContractWithCreate3 } = require('@1inch/solidity-utils');
+const { deployAndGetContractWithCreate3, deployAndGetContract } = require('@1inch/solidity-utils');
 
 const hre = require('hardhat');
 const { ethers, getChainId, network } = hre;
 const constants = require('../config/constants');
 
-module.exports = async ({ deployments }) => {
+module.exports = async ({ deployments, getNamedAccounts }) => {
     const networkName = network.name;
     console.log(`running ${networkName} deploy script`);
     const chainId = await getChainId();

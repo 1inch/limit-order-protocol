@@ -1,5 +1,5 @@
 const hre = require('hardhat');
-const { getChainId, network } = hre;
+const { getChainId, network, ethers } = hre;
 const { deployAndGetContract, deployAndGetContractWithCreate3 } = require('@1inch/solidity-utils');
 const constants = require('../config/constants');
 
@@ -44,7 +44,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         });
     }
 
-    if (chainId != 31337) {
+    if (chainId !== '31337') {
         const implementationAddress = await nativeOrderFactory.IMPLEMENTATION();
         console.log(`NativeOrderImpl deployed to: ${implementationAddress}`);
 
