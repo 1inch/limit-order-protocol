@@ -257,5 +257,5 @@ deploy-skip deploy-noskip deploy-skip-all deploy-native-order-factory \
 get help \
 validate-helpers validate-fee-taker validate-lop \
 process-create3-deployer process-weth process-router-v6 process-order-registrator process-access-token \
-process-fee-taker-salt process-permit2-witness-proxy-salt process-native-order-factory-salt
+process-fee-taker-salt process-permit2-witness-proxy-salt process-native-order-factory-salt \
 upsert-constant
