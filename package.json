@@ -12,19 +12,16 @@
     "test/helpers"
   ],
   "dependencies": {
-    "@1inch/solidity-utils": "6.6.0",
+    "@1inch/solidity-utils": "6.7.1",
     "@chainlink/contracts": "0.8.0",
     "@gnosis.pm/safe-contracts": "1.3.0",
     "@openzeppelin/contracts": "5.1.0"
   },
   "devDependencies": {
-    "@matterlabs/hardhat-zksync-deploy": "1.6.0",
-    "@matterlabs/hardhat-zksync-solc": "1.2.5",
-    "@matterlabs/hardhat-zksync-verify": "1.7.0",
     "@metamask/eth-sig-util": "8.0.0",
     "@nomicfoundation/hardhat-chai-matchers": "2.0.8",
     "@nomicfoundation/hardhat-network-helpers": "1.0.12",
-    "@nomicfoundation/hardhat-verify": "2.0.11",
+    "@nomicfoundation/hardhat-verify": "2.0.14",
     "@nomicfoundation/hardhat-ethers": "3.0.8",
     "@uniswap/permit2-sdk": "1.3.0",
     "chai": "4.5.0",
@@ -37,15 +34,14 @@
     "ethers": "6.13.4",
     "hardhat": "2.23.0",
     "hardhat-dependency-compiler": "1.2.1",
-    "hardhat-deploy": "0.14.0",
+    "hardhat-deploy": "1.0.4",
     "hardhat-gas-reporter": "1.0.10",
     "hardhat-tracer": "3.2.1",
     "rimraf": "6.0.1",
     "solc": "0.8.30",
     "solhint": "5.0.3",
     "solidity-coverage": "0.8.13",
-    "solidity-docgen": "0.6.0-beta.36",
-    "zksync-ethers": "6.15.0"
+    "solidity-docgen": "0.6.0-beta.36"
   },
   "scripts": {
     "clean": "rimraf artifacts cache coverage contracts/hardhat-dependency-compiler artifacts-zk cache-zk",

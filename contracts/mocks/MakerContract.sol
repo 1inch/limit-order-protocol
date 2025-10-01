@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "../LimitOrderProtocol.sol";
 import "../OrderLib.sol";
-import { EIP712Alien } from "./EIP712Alien.sol";
+import { EIP712Alien } from "../utils/EIP712Alien.sol";
 
 contract MakerContract is IERC1271, EIP712Alien, ERC20 {
     using SafeERC20 for IERC20;
