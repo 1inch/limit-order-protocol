@@ -19,6 +19,8 @@ FILE_DEPLOY_NATIVE_ORDER_FACTORY:=$(CURRENT_DIR)/deploy/deploy-native-order-fact
 
 FILE_CONSTANTS_JSON:=$(CURRENT_DIR)/config/constants.json
 
+IS_ZKSYNC := $(findstring zksync,$(OPS_NETWORK))
+
 deploy-helpers:
 		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_HELPERS) OPS_DEPLOYMENT_METHOD=$(if $(OPS_DEPLOYMENT_METHOD),$(OPS_DEPLOYMENT_METHOD),create3) validate-helpers deploy-skip-all deploy-noskip deploy-impl deploy-skip
 
@@ -37,111 +39,87 @@ deploy-impl:
 		}
 
 # Validation targets
+validate-common:
+		@{ \
+		$(MAKE) ID=OPS_NETWORK validate || exit 1; \
+		$(MAKE) ID=OPS_CHAIN_ID validate || exit 1; \
+		if [ "$(OPS_NETWORK)" = "hardhat" ]; then \
+			$(MAKE) ID=MAINNET_RPC_URL validate || exit 1; \
+		fi; \
+		$(MAKE) ID=OPS_WETH_ADDRESS validate || exit 1; \
+		$(MAKE) process-weth || exit 1; \
+		}
+
 validate-helpers:
 		@{ \
-		if [ -z "$(OPS_NETWORK)" ]; then echo "OPS_NETWORK is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_CHAIN_ID)" ]; then echo "OPS_CHAIN_ID is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_CREATE3_DEPLOYER_ADDRESS)" ] && [ "$(OPS_DEPLOYMENT_METHOD)" = "create3" ]; then echo "OPS_CREATE3_DEPLOYER_ADDRESS is not set!"; exit 1; fi; \
-		if [ -z "$(MAINNET_RPC_URL)" ] && [ "$(OPS_NETWORK)" = "hardhat" ]; then echo "MAINNET_RPC_URL is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_WETH_ADDRESS)" ]; then echo "OPS_WETH_ADDRESS is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_LOP_HELPER_CONFIGS)" ]; then echo "OPS_LOP_HELPER_CONFIGS is not set!"; exit 1; fi; \
-		$(MAKE) process-weth process-router-v6 process-order-registrator process-create3-deployer; \
+		$(MAKE) validate-common || exit 1; \
+		$(MAKE) ID=OPS_LOP_HELPER_CONFIGS validate || exit 1; \
+		if [ "$(OPS_DEPLOYMENT_METHOD)" = "create3" ]; then \
+			$(MAKE) ID=OPS_CREATE3_DEPLOYER_ADDRESS validate || exit 1; \
+		fi; \
+		if echo "$(OPS_LOP_HELPER_CONFIGS)" | grep -q 'OrderRegistrator' || echo "$(OPS_LOP_HELPER_CONFIGS)" | grep -q 'SafeOrderBuilder'; then \
+			$(MAKE) ID=OPS_AGGREGATION_ROUTER_V6_ADDRESS validate || exit 1; \
+		fi; \
+		$(MAKE) process-router-v6 process-order-registrator process-create3-deployer || exit 1; \
 		}
 
 validate-fee-taker:
 		@{ \
-		if [ -z "$(OPS_NETWORK)" ]; then echo "OPS_NETWORK is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_CHAIN_ID)" ]; then echo "OPS_CHAIN_ID is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_CREATE3_DEPLOYER_ADDRESS)" ] && [ "$(OPS_DEPLOYMENT_METHOD)" = "create3" ]; then echo "OPS_CREATE3_DEPLOYER_ADDRESS is not set!"; exit 1; fi; \
-		if [ -z "$(MAINNET_RPC_URL)" ] && [ "$(OPS_NETWORK)" = "hardhat" ]; then echo "MAINNET_RPC_URL is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_WETH_ADDRESS)" ]; then echo "OPS_WETH_ADDRESS is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_AGGREGATION_ROUTER_V6_ADDRESS)" ]; then echo "OPS_AGGREGATION_ROUTER_V6_ADDRESS is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_ACCESS_TOKEN_ADDRESS)" ]; then echo "OPS_ACCESS_TOKEN_ADDRESS is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_FEE_TAKER_SALT)" ] && [ "$(findstring zksync,$(OPS_NETWORK))" = "" ]; then echo "OPS_FEE_TAKER_SALT is not set!"; exit 1; fi; \
-		$(MAKE) process-weth process-router-v6 process-access-token process-create3-deployer process-fee-taker-salt; \
+		$(MAKE) validate-common || exit 1; \
+		$(MAKE) ID=OPS_AGGREGATION_ROUTER_V6_ADDRESS validate || exit 1; \
+		$(MAKE) ID=OPS_ACCESS_TOKEN_ADDRESS validate || exit 1; \
+		if [ "$(IS_ZKSYNC)" = "" ]; then \
+			$(MAKE) ID=OPS_CREATE3_DEPLOYER_ADDRESS validate || exit 1; \
+			$(MAKE) ID=OPS_FEE_TAKER_SALT validate || exit 1; \
+		fi; \
+		$(MAKE) process-router-v6 process-access-token process-fee-taker-salt process-create3-deployer || exit 1; \
 		}
 
 validate-native-order-factory:
 		@{ \
-		if [ -z "$(OPS_NETWORK)" ]; then echo "OPS_NETWORK is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_CHAIN_ID)" ]; then echo "OPS_CHAIN_ID is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_CREATE3_DEPLOYER_ADDRESS)" ] && [ "$(OPS_DEPLOYMENT_METHOD)" = "create3" ]; then echo "OPS_CREATE3_DEPLOYER_ADDRESS is not set!"; exit 1; fi; \
-		if [ -z "$(MAINNET_RPC_URL)" ] && [ "$(OPS_NETWORK)" = "hardhat" ]; then echo "MAINNET_RPC_URL is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_WETH_ADDRESS)" ]; then echo "OPS_WETH_ADDRESS is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_AGGREGATION_ROUTER_V6_ADDRESS)" ]; then echo "OPS_AGGREGATION_ROUTER_V6_ADDRESS is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_ACCESS_TOKEN_ADDRESS)" ]; then echo "OPS_ACCESS_TOKEN_ADDRESS is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_NATIVE_ORDER_SALT)" ] && [ "$(findstring zksync,$(OPS_NETWORK))" = "" ]; then echo "OPS_NATIVE_ORDER_SALT is not set!"; exit 1; fi; \
-		$(MAKE) process-weth process-router-v6 process-access-token process-create3-deployer process-native-order-factory-salt; \
+		$(MAKE) validate-common || exit 1; \
+		$(MAKE) ID=OPS_AGGREGATION_ROUTER_V6_ADDRESS validate || exit 1; \
+		$(MAKE) ID=OPS_ACCESS_TOKEN_ADDRESS validate || exit 1; \
+		if [ "$(IS_ZKSYNC)" = "" ]; then \
+			$(MAKE) ID=OPS_CREATE3_DEPLOYER_ADDRESS validate || exit 1; \
+			$(MAKE) ID=OPS_NATIVE_ORDER_SALT validate || exit 1; \
+		fi; \
+		$(MAKE) process-router-v6 process-access-token process-native-order-factory-salt process-create3-deployer || exit 1; \
 		}
 
 validate-lop:
-		@{ \
-		if [ -z "$(OPS_NETWORK)" ]; then echo "OPS_NETWORK is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_CHAIN_ID)" ]; then echo "OPS_CHAIN_ID is not set!"; exit 1; fi; \
-		if [ -z "$(MAINNET_RPC_URL)" ] && [ "$(OPS_NETWORK)" = "hardhat" ]; then echo "MAINNET_RPC_URL is not set!"; exit 1; fi; \
-		if [ -z "$(OPS_WETH_ADDRESS)" ]; then echo "OPS_WETH_ADDRESS is not set!"; exit 1; fi; \
-		$(MAKE) process-weth; \
-		}
+		@$(MAKE) validate-common || exit 1
 
 # Process constant functions for new addresses
 process-create3-deployer:
-	@{ \
-		if [ -n "$(OPS_CREATE3_DEPLOYER_ADDRESS)" ]; then \
-			$(MAKE) OPS_GEN_VAL='$(OPS_CREATE3_DEPLOYER_ADDRESS)' OPS_GEN_KEY='create3Deployer' upsert-constant; \
-		fi; \
-	}
+		@if [ -n "$$OPS_CREATE3_DEPLOYER_ADDRESS" ]; then $(MAKE) OPS_GEN_VAL='$(OPS_CREATE3_DEPLOYER_ADDRESS)' OPS_GEN_KEY='create3Deployer' upsert-constant; fi
 
 process-weth:
 		@$(MAKE) OPS_GEN_VAL='$(OPS_WETH_ADDRESS)' OPS_GEN_KEY='weth' upsert-constant
 
 process-router-v6:
-	@{ \
-		if [ -n "$(OPS_AGGREGATION_ROUTER_V6_ADDRESS)" ]; then \
-			$(MAKE) OPS_GEN_VAL='$(OPS_AGGREGATION_ROUTER_V6_ADDRESS)' OPS_GEN_KEY='routerV6' upsert-constant; \
-		fi; \
-	}
+		@if [ -n "$$OPS_AGGREGATION_ROUTER_V6_ADDRESS" ]; then $(MAKE) OPS_GEN_VAL='$(OPS_AGGREGATION_ROUTER_V6_ADDRESS)' OPS_GEN_KEY='routerV6' upsert-constant; fi
 
 process-order-registrator:
-	@{ \
-		if [ -n "$(OPS_ORDER_REGISTRATOR_ADDRESS)" ]; then \
-			$(MAKE) OPS_GEN_VAL='$(OPS_ORDER_REGISTRATOR_ADDRESS)' OPS_GEN_KEY='orderRegistrator' upsert-constant; \
-		fi; \
-	}
+		@if [ -n "$$OPS_ORDER_REGISTRATOR_ADDRESS" ]; then $(MAKE) OPS_GEN_VAL='$(OPS_ORDER_REGISTRATOR_ADDRESS)' OPS_GEN_KEY='orderRegistrator' upsert-constant; fi
 
 process-access-token:
 		@$(MAKE) OPS_GEN_VAL='$(OPS_ACCESS_TOKEN_ADDRESS)' OPS_GEN_KEY='accessToken' upsert-constant
 
 process-fee-taker-salt:
-	@{ \
-		if [ -n "$(OPS_FEE_TAKER_SALT)" ]; then \
-			$(MAKE) OPS_GEN_VAL='$(OPS_FEE_TAKER_SALT)' OPS_GEN_KEY='feeTakerSalt' upsert-constant; \
-		fi; \
-	}
+		@if [ -n "$$OPS_FEE_TAKER_SALT" ]; then $(MAKE) OPS_GEN_VAL='$(OPS_FEE_TAKER_SALT)' OPS_GEN_KEY='feeTakerSalt' upsert-constant; fi
 
 process-native-order-factory-salt:
-	@{ \
-		if [ -n "$(OPS_NATIVE_ORDER_SALT)" ]; then \
-			$(MAKE) OPS_GEN_VAL='$(OPS_NATIVE_ORDER_SALT)' OPS_GEN_KEY='nativeOrderSalt' upsert-constant; \
-		fi; \
-	}
+		@if [ -n "$$OPS_NATIVE_ORDER_SALT" ]; then $(MAKE) OPS_GEN_VAL='$(OPS_NATIVE_ORDER_SALT)' OPS_GEN_KEY='nativeOrderSalt' upsert-constant; fi
 
 process-permit2-witness-proxy-salt:
-		@$(MAKE) OPS_GEN_VAL='$(OPS_PERMIT2_WITNESS_PROXY_SALT)' OPS_GEN_KEY='permit2WitnessProxySalt' upsert-constant
+		@if [ -n "$$OPS_PERMIT2_WITNESS_PROXY_SALT" ]; then $(MAKE) OPS_GEN_VAL='$(OPS_PERMIT2_WITNESS_PROXY_SALT)' OPS_GEN_KEY='permit2WitnessProxySalt' upsert-constant; fi
 
 upsert-constant:
 		@{ \
-		if [ -z "$(OPS_GEN_VAL)" ]; then \
-			echo "Variable for key $(OPS_GEN_KEY) is not set!"; \
-			exit 1; \
-		fi; \
-		if [ -z "$(OPS_GEN_KEY)" ]; then \
-			echo "OPS_GEN_KEY is not set!"; \
-			exit 1; \
-		fi; \
-		if [ -z "$(OPS_CHAIN_ID)" ]; then \
-			echo "OPS_CHAIN_ID is not set!"; \
-			exit 1; \
-		fi; \
+		$(MAKE) ID=OPS_GEN_VAL validate || exit 1; \
+		$(MAKE) ID=OPS_GEN_KEY validate || exit 1; \
+		$(MAKE) ID=OPS_CHAIN_ID validate || exit 1; \
 		tmpfile=$$(mktemp); \
 		jq '.$(OPS_GEN_KEY)."$(OPS_CHAIN_ID)" = $(OPS_GEN_VAL)' $(FILE_CONSTANTS_JSON) > $$tmpfile && mv $$tmpfile $(FILE_CONSTANTS_JSON); \
 		echo "Updated $(OPS_GEN_KEY)[$(OPS_CHAIN_ID)] = $(OPS_GEN_VAL)"; \
@@ -164,10 +142,7 @@ deploy-noskip:
 
 launch-hh-node:
 		@{ \
-		if [ -z "$(NODE_RPC)" ]; then \
-			echo "NODE_RPC is not set!"; \
-			exit 1; \
-		fi; \
+		$(MAKE) ID=NODE_RPC validate || exit 1; \
 		echo "Launching Hardhat node with RPC: $(NODE_RPC)"; \
 		npx hardhat node --fork $(NODE_RPC) --vvvv --full-trace; \
 		}
@@ -187,14 +162,8 @@ clean:
 # Get deployed contract addresses from deployment files
 get:
 		@{ \
-		if [ -z "$(PARAMETER)" ]; then \
-			echo "Error: PARAMETER is not set. Usage: make get PARAMETER=OPS_FEE_TAKER_ADDRESS"; \
-			exit 1; \
-		fi; \
-		if [ -z "$(OPS_NETWORK)" ]; then \
-			echo "Error: OPS_NETWORK is not set"; \
-			exit 1; \
-		fi; \
+		$(MAKE) ID=PARAMETER validate || exit 1; \
+		$(MAKE) ID=OPS_NETWORK validate || exit 1; \
 		CONTRACT_FILE=""; \
 		case "$(PARAMETER)" in \
 			"OPS_FEE_TAKER_ADDRESS") CONTRACT_FILE="FeeTaker.json" ;; \
@@ -214,6 +183,15 @@ get:
 		fi; \
 		ADDRESS=$$(cat "$$DEPLOYMENT_FILE" | grep '"address"' | head -1 | sed 's/.*"address": *"\([^"]*\)".*/\1/'); \
 		echo "$$ADDRESS"; \
+		}
+
+validate:
+		@{ \
+			VALUE=$$(echo "$${!ID}" | tr -d '"'); \
+			if [ -z "$${VALUE}" ]; then \
+				echo "$${ID} is not set (Value: '$${VALUE}')!"; \
+				exit 1; \
+			fi; \
 		}
 
 help:
@@ -258,4 +236,4 @@ get help \
 validate-helpers validate-fee-taker validate-lop \
 process-create3-deployer process-weth process-router-v6 process-order-registrator process-access-token \
 process-fee-taker-salt process-permit2-witness-proxy-salt process-native-order-factory-salt \
-upsert-constant
+upsert-constant validate validate-common launch-hh-node
