@@ -60,6 +60,8 @@ module.exports = async ({ getNamedAccounts, deployments, config }) => {
                         : ethers.keccak256(ethers.toUtf8Bytes(helperConfig.salt))
                 )
                 : ethers.keccak256(ethers.toUtf8Bytes(helperName));
+
+            console.log(`Using salt: ${salt}`);
                 
             result = await deployAndGetContractWithCreate3({
                 contractName: helperName,

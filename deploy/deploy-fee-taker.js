@@ -31,6 +31,8 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
         const salt = constants.FEE_TAKER_SALT[chainId].startsWith('0x')
             ? constants.FEE_TAKER_SALT[chainId]
             : ethers.keccak256(ethers.toUtf8Bytes(constants.FEE_TAKER_SALT[chainId]));
+
+        console.log(`Using salt: ${salt}`);
             
         await deployAndGetContractWithCreate3({
             contractName: 'FeeTaker',

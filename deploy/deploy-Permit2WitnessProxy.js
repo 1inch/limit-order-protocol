@@ -34,6 +34,8 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
             ? constants.PERMIT2_WITNESS_PROXY_SALT[chainId]
             : ethers.keccak256(ethers.toUtf8Bytes(constants.PERMIT2_WITNESS_PROXY_SALT[chainId]));
 
+        console.log(`Using salt: ${salt}`);
+
         await deployAndGetContractWithCreate3({
             contractName: 'Permit2WitnessProxy',
             constructorArgs: [constants.ROUTER_V6[chainId]],

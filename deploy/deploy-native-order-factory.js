@@ -35,6 +35,8 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
             ? constants.NATIVE_ORDER_SALT[chainId]
             : ethers.keccak256(ethers.toUtf8Bytes(constants.NATIVE_ORDER_SALT[chainId]));
 
+        console.log(`Using salt: ${salt}`);
+
         nativeOrderFactory = await deployAndGetContractWithCreate3({
             contractName: 'NativeOrderFactory',
             constructorArgs: [constants.WETH[chainId], constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], 60, '1inch Aggregation Router', '6'],
