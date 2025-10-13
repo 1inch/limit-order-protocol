@@ -51,4 +51,8 @@ module.exports = {
         pages: 'files',
         exclude: ['mocks'],
     },
+    deployOpts: {
+        lopHelperConfigs: process.env.OPS_LOP_HELPER_CONFIGS ? JSON.parse(process.env.OPS_LOP_HELPER_CONFIGS) : [],
+        deploymentMethod: process.env.OPS_DEPLOYMENT_METHOD,
+    },
 };
