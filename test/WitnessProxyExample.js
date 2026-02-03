@@ -4,6 +4,7 @@ const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { ether } = require('./helpers/utils');
 const { signOrder, buildOrder, buildTakerTraits, buildMakerTraitsRFQ } = require('./helpers/orderUtils');
 const { deploySwapTokens } = require('./helpers/fixtures');
+const { nextPermit2Nonce } = require('./helpers/nonce');
 const hre = require('hardhat');
 const { ethers } = hre;
 
@@ -37,16 +38,13 @@ describe('WitnessProxyExample', function () {
     it('permit2 witness example', async function () {
         const { dai, weth, swap, chainId, permit2WitnessProxy } = await loadFixture(deployWitnessProxyFixture);
 
-        // Use unique nonce to avoid conflicts with other tests that use Permit2
-        const nonce = 0;
-
         const permit = {
             permitted: {
                 token: await weth.getAddress(),
                 amount: ether('1'),
             },
             spender: await permit2WitnessProxy.getAddress(),
-            nonce,
+            nonce: nextPermit2Nonce(),
             deadline: 0xffffffff,
         };
 
