@@ -1,6 +1,5 @@
 const { constants, permit2Contract } = require('@1inch/solidity-utils');
 const { SignatureTransfer, PERMIT2_ADDRESS } = require('@uniswap/permit2-sdk');
-const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { ether } = require('./helpers/utils');
 const { signOrder, buildOrder, buildTakerTraits, buildMakerTraitsRFQ } = require('./helpers/orderUtils');
 const { deploySwapTokens } = require('./helpers/fixtures');
@@ -17,12 +16,11 @@ describe('WitnessProxyExample', function () {
         [addr, addr1] = await ethers.getSigners();
     });
 
-    async function deployWitnessProxyFixture () {
+    it('permit2 witness example', async function () {
         const { dai, weth, swap, chainId } = await deploySwapTokens();
 
         await dai.mint(addr, ether('2000'));
         await weth.connect(addr1).deposit({ value: ether('1') });
-
         await dai.approve(swap, ether('2000'));
         await weth.connect(addr1).approve(PERMIT2_ADDRESS, ether('1'));
 
@@ -31,12 +29,6 @@ describe('WitnessProxyExample', function () {
         await permit2WitnessProxy.waitForDeployment();
 
         await permit2Contract();
-
-        return { dai, weth, swap, chainId, permit2WitnessProxy };
-    }
-
-    it('permit2 witness example', async function () {
-        const { dai, weth, swap, chainId, permit2WitnessProxy } = await loadFixture(deployWitnessProxyFixture);
 
         const permit = {
             permitted: {
@@ -57,7 +49,7 @@ describe('WitnessProxyExample', function () {
         const data = SignatureTransfer.getPermitData(
             permit,
             PERMIT2_ADDRESS,
-            31337,
+            chainId,
             witness,
         );
 
