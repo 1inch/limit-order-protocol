@@ -546,11 +546,11 @@ The example demonstrates the principles of how the predicate calldata is assembl
 
 ```javascript
 // Predicate = (5 < call result < 15) = or(5 < call result, 15 > call result)
-const arbitaryFunction = arbitraryPredicate.interface.encodeFunctionData('copyArg', [10]);
-// Create predicate:  (arbitary call result < 15 || arbitary call result > 5)
+const arbitraryFunction = arbitraryPredicate.interface.encodeFunctionData('copyArg', [10]);
+// Create predicate:  (arbitrary call result < 15 || arbitrary call result > 5)
 const arbitraryCallPredicate = swap.interface.encodeFunctionData('arbitraryStaticCall', [
     arbitraryPredicate.address,
-    arbitaryFunction,
+    arbitraryFunction,
 ]);
 const comparelt = swap.interface.encodeFunctionData('lt', [15, arbitraryCallPredicate]);
 const comparegt = swap.interface.encodeFunctionData('gt', [5, arbitraryCallPredicate]);
