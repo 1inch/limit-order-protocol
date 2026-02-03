@@ -36,7 +36,7 @@ interface IAmountGetter {
      * @param extension Order extension data
      * @param orderHash Hash of the order being processed
      * @param taker Taker address
-     * @param makingAmount Actual taking amount
+     * @param makingAmount Actual making amount
      * @param remainingMakingAmount Order remaining making amount
      * @param extraData Extra data
      * @return takingAmount Actual taking amount that should be used for the order
