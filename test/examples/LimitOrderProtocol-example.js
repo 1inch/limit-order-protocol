@@ -125,12 +125,12 @@ describe.skip('LimitOrderProtocol usage example', function () {
     it('predicate example', async function () {
         const { dai, weth, swap, chainId, arbitraryPredicate } = await loadFixture(deployContractsAndInit);
 
-        // Create predicate:  (arbitary call result < 15 || arbitary call result > 5)
+        // Create predicate:  (arbitrary call result < 15 || arbitrary call result > 5)
         // call result
-        const arbitaryFunction = arbitraryPredicate.interface.encodeFunctionData('copyArg', [10]);
+        const arbitraryFunction = arbitraryPredicate.interface.encodeFunctionData('copyArg', [10]);
         const arbitraryCallPredicate = swap.interface.encodeFunctionData('arbitraryStaticCall', [
             arbitraryPredicate.address,
-            arbitaryFunction,
+            arbitraryFunction,
         ]);
         // call result < 15
         const comparelt = swap.interface.encodeFunctionData('lt', [15, arbitraryCallPredicate]);
