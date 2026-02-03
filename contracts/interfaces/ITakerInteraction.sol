@@ -10,7 +10,7 @@ import "./IOrderMixin.sol";
  */
 interface ITakerInteraction {
     /**
-     * @dev This callback allows to interactively handle maker aseets to produce takers assets, doesn't supports ETH as taker assets
+     * @dev This callback allows to interactively handle maker assets to produce taker assets, doesn't support ETH as taker assets
      * @notice Callback method that gets called after maker fund transfer but before taker fund transfer
      * @param order Order being processed
      * @param extension Order extension data
