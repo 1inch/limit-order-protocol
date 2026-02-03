@@ -6,7 +6,7 @@ const { deploySwapTokens } = require('./helpers/fixtures');
 const hre = require('hardhat');
 const { ethers } = hre;
 
-describe('ProxyExample', function () {
+describe('Permit2Proxy', function () {
     let addr, addr1;
 
     before(async function () {
