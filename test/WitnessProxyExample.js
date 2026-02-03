@@ -16,7 +16,7 @@ describe('WitnessProxyExample', function () {
         [addr, addr1] = await ethers.getSigners();
     });
 
-    async function deployWitnessProxyFixture() {
+    async function deployWitnessProxyFixture () {
         const { dai, weth, swap, chainId } = await deploySwapTokens();
 
         await dai.mint(addr, ether('2000'));

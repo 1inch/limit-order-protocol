@@ -14,7 +14,7 @@ describe('Permit2Proxy', function () {
         [addr, addr1] = await ethers.getSigners();
     });
 
-    async function deployPermit2ProxyFixture() {
+    async function deployPermit2ProxyFixture () {
         const { dai, weth, swap, chainId } = await deploySwapTokens();
 
         await dai.mint(addr, ether('2000'));
