@@ -48,7 +48,7 @@ The key features of the protocol are **extreme flexibility** and **high gas effi
 
 ### RFQ orders
 
-Separate RFQ order are deprecated in v4. To create the most gas efficient order use a basic order without extensions.
+Separate RFQ orders are deprecated in v4. To create the most gas efficient order use a basic order without extensions.
 
 ### Supported tokens
 
