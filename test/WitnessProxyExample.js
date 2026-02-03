@@ -1,5 +1,6 @@
 const { constants, permit2Contract } = require('@1inch/solidity-utils');
 const { SignatureTransfer, PERMIT2_ADDRESS } = require('@uniswap/permit2-sdk');
+const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
 const { ether } = require('./helpers/utils');
 const { signOrder, buildOrder, buildTakerTraits, buildMakerTraitsRFQ } = require('./helpers/orderUtils');
 const { deploySwapTokens } = require('./helpers/fixtures');
@@ -15,7 +16,7 @@ describe('WitnessProxyExample', function () {
         [addr, addr1] = await ethers.getSigners();
     });
 
-    it('permit2 witness example', async function () {
+    async function deployWitnessProxyFixture() {
         const { dai, weth, swap, chainId } = await deploySwapTokens();
 
         await dai.mint(addr, ether('2000'));
@@ -30,13 +31,22 @@ describe('WitnessProxyExample', function () {
 
         await permit2Contract();
 
+        return { dai, weth, swap, chainId, permit2WitnessProxy };
+    }
+
+    it('permit2 witness example', async function () {
+        const { dai, weth, swap, chainId, permit2WitnessProxy } = await loadFixture(deployWitnessProxyFixture);
+
+        // Use unique nonce to avoid conflicts with other tests that use Permit2
+        const nonce = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
+
         const permit = {
             permitted: {
                 token: await weth.getAddress(),
                 amount: ether('1'),
             },
             spender: await permit2WitnessProxy.getAddress(),
-            nonce: 0,
+            nonce,
             deadline: 0xffffffff,
         };
 
