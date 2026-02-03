@@ -92,7 +92,7 @@ This mechanism allows the proxy to "sign" orders without having a private key, u
 
 ## Cancellation Mechanisms
 
-Native order can be cancelled either by Maker itself or by a Resolver. Cancellation by Resolver requires small part of native currency to compensate for gas costs and incentivize the cancellation.
+Native orders can be cancelled either by the Maker or by a Resolver. Cancellation by Resolver requires a small part of native currency to compensate for gas costs and incentivize the cancellation.
 
 ##### User Cancellation
 - Only the original order maker can cancel their own order
