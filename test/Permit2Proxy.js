@@ -36,7 +36,7 @@ describe('Permit2Proxy', function () {
         const { dai, weth, swap, chainId, permit2Proxy } = await loadFixture(deployPermit2ProxyFixture);
 
         // Use unique nonce to avoid conflicts with other tests that use Permit2
-        const nonce = BigInt(Date.now()) * 1000n + BigInt(Math.floor(Math.random() * 1000));
+        const nonce = 1;
 
         const permit = {
             permitted: {
