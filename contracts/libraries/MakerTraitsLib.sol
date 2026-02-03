@@ -171,7 +171,7 @@ library MakerTraitsLib {
     }
 
     /**
-     * @notice Checks if the maker needs to unwraps WETH.
+     * @notice Checks if the maker needs to unwrap WETH.
      * @param makerTraits The traits of the maker.
      * @return result A boolean indicating whether the maker needs to unwrap WETH.
      */
