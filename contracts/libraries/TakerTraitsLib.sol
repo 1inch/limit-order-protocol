@@ -80,7 +80,7 @@ library TakerTraitsLib {
     /**
      * @notice Checks if the order should skip maker's permit execution.
      * @param takerTraits The traits of the taker.
-     * @return result A boolean indicating whether the order don't apply permit.
+     * @return result A boolean indicating whether the order doesn't apply permit.
      */
     function skipMakerPermit(TakerTraits takerTraits) internal pure returns (bool) {
         return (TakerTraits.unwrap(takerTraits) & _SKIP_ORDER_PERMIT_FLAG) != 0;
