@@ -2,7 +2,7 @@
 
 ## Overview
 
-The 1inch Limit Order Protocol works with ERC-20 tokens, but doesn't handle native blockchain currency (ETH, BNB, MATIC, etc.). Native currencies cannot directly approve spending allowances or be transferred using standard ERC-20 interfaces. The `NativeOrderFactory` extension solve this problem by creating a proxy system that wraps native currency into WETH (Wrapped ETH) while maintaining full compatibility with the existing limit order infrastructure.
+The 1inch Limit Order Protocol works with ERC-20 tokens, but doesn't handle native blockchain currency (ETH, BNB, MATIC, etc.). Native currencies cannot directly approve spending allowances or be transferred using standard ERC-20 interfaces. The `NativeOrderFactory` extension solves this problem by creating a proxy system that wraps native currency into WETH (Wrapped ETH) while maintaining full compatibility with the existing limit order infrastructure.
 
 ```mermaid
 graph LR
