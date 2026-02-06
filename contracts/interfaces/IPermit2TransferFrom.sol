@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.0;
 
+/// @title IPermit2TransferFrom
+/// @notice Interface for Uniswap's Permit2 SignatureTransfer `permitTransferFrom` functionality.
 interface IPermit2TransferFrom {
     struct TokenPermissions {
         // ERC20 token address
@@ -25,6 +27,11 @@ interface IPermit2TransferFrom {
         uint256 requestedAmount;
     }
 
+    /// @notice Transfers tokens using a signed permit.
+    /// @param permit The permit data containing token permissions, nonce, and deadline.
+    /// @param transferDetails The transfer recipient and requested amount.
+    /// @param owner The token owner who signed the permit.
+    /// @param signature The signature authorizing the transfer.
     function permitTransferFrom(
         PermitTransferFrom calldata permit,
         SignatureTransferDetails calldata transferDetails,
