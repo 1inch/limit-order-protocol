@@ -10,12 +10,20 @@ import "./ImmutableOwner.sol";
 /* solhint-disable func-name-mixedcase */
 
 contract Permit2Proxy is ImmutableOwner {
+
+    /// @notice 0x000000000022D473030F116dDEE9F6B43aC78BA3 for evm chain
+    /// @notice https://docs.uniswap.org/contracts/v3/reference/deployments/Ethereum-deploymentschain
+    /// @notice 0x0000000000225e31d15943971f47ad3022f714fa for zksync era chain
+    /// @notice https://docs.uniswap.org/contracts/v3/reference/deployments/ZKsync-deploymentschain
+    /// @notice The Permit2 contract address
+
+    IPermit2TransferFrom private immutable _PERMIT2;
+
     error Permit2ProxyBadSelector();
 
-    IPermit2TransferFrom private constant _PERMIT2 = IPermit2TransferFrom(0x000000000022D473030F116dDEE9F6B43aC78BA3);
-
-    constructor(address _immutableOwner) ImmutableOwner(_immutableOwner) {
+    constructor(address _immutableOwner, address _permit2) ImmutableOwner(_immutableOwner) {
         if (Permit2Proxy.func_nZHTch.selector != IERC20.transferFrom.selector) revert Permit2ProxyBadSelector();
+        _PERMIT2 = IPermit2TransferFrom(_permit2);
     }
 
     /// @notice Proxy transfer method for `Permit2.permitTransferFrom`. Selector must match `IERC20.transferFrom`
