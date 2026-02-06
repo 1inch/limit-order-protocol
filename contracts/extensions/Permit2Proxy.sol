@@ -12,9 +12,9 @@ import "./ImmutableOwner.sol";
 contract Permit2Proxy is ImmutableOwner {
 
     /// @notice 0x000000000022D473030F116dDEE9F6B43aC78BA3 for evm chain
-    /// @notice https://docs.uniswap.org/contracts/v3/reference/deployments/Ethereum-deploymentschain
-    /// @notice 0x0000000000225e31d15943971f47ad3022f714fa for zksync era chain
-    /// @notice https://docs.uniswap.org/contracts/v3/reference/deployments/ZKsync-deploymentschain
+    /// @notice https://docs.uniswap.org/contracts/v3/reference/deployments/Ethereum-deployments
+    /// @notice 0x0000000000225e31d15943971f47ad3022f714fa for zksync
+    /// @notice https://docs.uniswap.org/contracts/v3/reference/deployments/ZKsync-deployments
     /// @notice The Permit2 contract address
 
     IPermit2TransferFrom private immutable _PERMIT2;

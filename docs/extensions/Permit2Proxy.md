@@ -22,7 +22,7 @@ constructor(address _immutableOwner, address _permit2) public
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | _immutableOwner | address | The address of the limit order protocol contract |
-| _permit2 | address | The Permit2 contract address. Use `0x000000000022D473030F116dDEE9F6B43aC78BA3` for EVM chains or `0x0000000000225e31d15943971f47ad3022f714fa` for zkSync Era |
+| _permit2 | address | The Permit2 contract address. Use `0x000000000022D473030F116dDEE9F6B43aC78BA3` for EVM chains or `0x0000000000225e31d15943971f47ad3022f714fa` for zkSync |
 
 ### func_nZHTch
 
