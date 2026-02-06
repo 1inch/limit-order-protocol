@@ -4,7 +4,7 @@
 A proxy contract that enables using Uniswap's Permit2 `permitTransferFrom` within the limit order protocol without the witness functionality.
 
 ### Functions list
-- [constructor(_immutableOwner) public](#constructor)
+- [constructor(_immutableOwner, _permit2) public](#constructor)
 - [func_nZHTch(from, to, amount, permit, sig) external](#func_nzhtch)
 
 ### Errors list
@@ -14,8 +14,15 @@ A proxy contract that enables using Uniswap's Permit2 `permitTransferFrom` withi
 ### constructor
 
 ```solidity
-constructor(address _immutableOwner) public
+constructor(address _immutableOwner, address _permit2) public
 ```
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| _immutableOwner | address | The address of the limit order protocol contract |
+| _permit2 | address | The Permit2 contract address. Use `0x000000000022D473030F116dDEE9F6B43aC78BA3` for EVM chains or `0x0000000000225e31d15943971f47ad3022f714fa` for zkSync Era |
 
 ### func_nZHTch
 
