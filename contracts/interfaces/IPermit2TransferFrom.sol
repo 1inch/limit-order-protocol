@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 /// @title IPermit2TransferFrom
 /// @notice Interface for Uniswap's Permit2 SignatureTransfer `permitTransferFrom` functionality.
+/// @custom:security-contact security@1inch.io
 interface IPermit2TransferFrom {
     struct TokenPermissions {
         // ERC20 token address

@@ -11,8 +11,8 @@ import "./ImmutableOwner.sol";
 
 /// @title Permit2Proxy
 /// @notice A proxy contract that enables using Uniswap's Permit2 `permitTransferFrom` within the limit order protocol.
-/// @dev This proxy should only be used with orders that have partial fills disabled (`NO_PARTIAL_FILLS_FLAG`),
-/// because Permit2 nonces are single-use and will be consumed on the first fill.
+/// @dev Permit2 nonces are single-use
+
 contract Permit2Proxy is ImmutableOwner {
 
     /// @notice The Permit2 contract address.

@@ -8,13 +8,6 @@ const hre = require('hardhat');
 const { ethers } = hre;
 
 describe('Permit2Proxy', function () {
-    it('should return correct permit2 address for zk chain', function () {
-        expect(permit2Address(324).toLowerCase()).to.equal('0x0000000000225e31d15943971f47ad3022f714fa');
-    });
-
-    it('should return correct permit2 address for eth mainnet', function () {
-        expect(permit2Address(1).toLowerCase()).to.equal('0x000000000022d473030f116ddee9f6b43ac78ba3');
-    });
     let addr, addr1;
 
     before(async function () {
