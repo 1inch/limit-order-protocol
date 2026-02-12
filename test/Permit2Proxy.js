@@ -1,5 +1,5 @@
 const { constants, permit2Contract } = require('@1inch/solidity-utils');
-const { SignatureTransfer, PERMIT2_ADDRESS } = require('@uniswap/permit2-sdk');
+const { SignatureTransfer, permit2Address } = require('@uniswap/permit2-sdk');
 const { ether } = require('./helpers/utils');
 const { signOrder, buildOrder, buildTakerTraits, buildMakerTraitsRFQ } = require('./helpers/orderUtils');
 const { deploySwapTokens } = require('./helpers/fixtures');
@@ -17,16 +17,18 @@ describe('Permit2Proxy', function () {
     it('permit2 example (without witness)', async function () {
         const { dai, weth, swap, chainId } = await deploySwapTokens();
 
+        const permit2Addr = permit2Address(chainId);
+
         await dai.mint(addr, ether('2000'));
         await weth.connect(addr1).deposit({ value: ether('1') });
         await dai.approve(swap, ether('2000'));
-        await weth.connect(addr1).approve(PERMIT2_ADDRESS, ether('1'));
+        await weth.connect(addr1).approve(permit2Addr, ether('1'));
+
+        await permit2Contract(permit2Addr);
 
         const Permit2Proxy = await ethers.getContractFactory('Permit2Proxy');
-        const permit2Proxy = await Permit2Proxy.deploy(await swap.getAddress());
+        const permit2Proxy = await Permit2Proxy.deploy(await swap.getAddress(), permit2Addr);
         await permit2Proxy.waitForDeployment();
-
-        await permit2Contract();
 
         const permit = {
             permitted: {
@@ -40,7 +42,7 @@ describe('Permit2Proxy', function () {
 
         const data = SignatureTransfer.getPermitData(
             permit,
-            PERMIT2_ADDRESS,
+            permit2Addr,
             chainId,
         );
 
