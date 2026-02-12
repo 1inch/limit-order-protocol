@@ -3,7 +3,7 @@
 
 A proxy contract that enables using Uniswap's Permit2 `permitTransferFrom` within the limit order protocol without the witness functionality.
 
-> **Important:** This proxy should only be used with orders that have partial fills disabled (`NO_PARTIAL_FILLS_FLAG` set in maker traits). Permit2's `SignatureTransfer` nonces are single-use — the nonce is consumed on the first fill, which means any subsequent partial fill attempt will revert.
+> **Important:** Permit2's `SignatureTransfer` nonces are single-use — the nonce is consumed on the first fill, which means any subsequent partial fill attempt will revert.
 
 ### Functions list
 - [constructor(_immutableOwner, _permit2) public](#constructor)
