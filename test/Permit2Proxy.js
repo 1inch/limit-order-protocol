@@ -1,4 +1,4 @@
-const { expect, constants, permit2Contract } = require('@1inch/solidity-utils');
+const { constants, permit2Contract } = require('@1inch/solidity-utils');
 const { SignatureTransfer, permit2Address } = require('@uniswap/permit2-sdk');
 const { ether } = require('./helpers/utils');
 const { signOrder, buildOrder, buildTakerTraits, buildMakerTraitsRFQ } = require('./helpers/orderUtils');
