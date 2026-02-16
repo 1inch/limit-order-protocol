@@ -28,6 +28,7 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
             constructorArgs: [constants.ROUTER_V6[chainId]],
             deployments,
             deployer,
+            skipVerify: process.env.OPS_SKIP_VERIFY === 'true',
         });
     } else {
         const salt = constants.PERMIT2_WITNESS_PROXY_SALT[chainId].startsWith('0x')
@@ -42,6 +43,7 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
             create3Deployer: constants.CREATE3_DEPLOYER[chainId],
             salt,
             deployments,
+            skipVerify: process.env.OPS_SKIP_VERIFY === 'true',
         });
     }
 };

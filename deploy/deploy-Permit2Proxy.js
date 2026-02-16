@@ -40,7 +40,7 @@ module.exports = async ({ deployments }) => {
 
     await sleep(5000); // wait for etherscan to index contract
 
-    if (chainId !== '31337') {
+    if (chainId !== '31337' && process.env.OPS_SKIP_VERIFY !== 'true') {
         await hre.run('verify:verify', {
             address: permit2ProxyAddr,
             constructorArguments: [ROUTER_V6_ADDR, permit2Addr],

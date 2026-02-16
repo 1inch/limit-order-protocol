@@ -70,6 +70,7 @@ module.exports = async ({ getNamedAccounts, deployments, config }) => {
                 create3Deployer: constants.CREATE3_DEPLOYER[chainId],
                 salt,
                 deployments,
+                skipVerify: process.env.OPS_SKIP_VERIFY === 'true',
             });
         } else {
             const { deployer } = await getNamedAccounts();
@@ -79,6 +80,7 @@ module.exports = async ({ getNamedAccounts, deployments, config }) => {
                 constructorArgs: args,
                 deployments,
                 deployer,
+                skipVerify: process.env.OPS_SKIP_VERIFY === 'true',
             });
         }
 
