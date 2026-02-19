@@ -9,6 +9,7 @@ export
 OPS_NETWORK := $(subst ",,$(OPS_NETWORK))
 OPS_CHAIN_ID := $(subst ",,$(OPS_CHAIN_ID))
 OPS_DEPLOYMENT_METHOD := $(subst ",,$(OPS_DEPLOYMENT_METHOD))
+OPS_SKIP_VERIFY := $(subst ",,$(OPS_SKIP_VERIFY))
 
 CURRENT_DIR:=$(shell pwd)
 
@@ -22,16 +23,16 @@ FILE_CONSTANTS_JSON:=$(CURRENT_DIR)/config/constants.json
 IS_ZKSYNC := $(findstring zksync,$(OPS_NETWORK))
 
 deploy-helpers:
-		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_HELPERS) OPS_DEPLOYMENT_METHOD=$(if $(OPS_DEPLOYMENT_METHOD),$(OPS_DEPLOYMENT_METHOD),create3) validate-helpers deploy-skip-all deploy-noskip deploy-impl deploy-skip
+		@$(MAKE) OPS_SKIP_VERIFY=$(OPS_SKIP_VERIFY) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_HELPERS) OPS_DEPLOYMENT_METHOD=$(if $(OPS_DEPLOYMENT_METHOD),$(OPS_DEPLOYMENT_METHOD),create3) validate-helpers deploy-skip-all deploy-noskip deploy-impl deploy-skip
 
 deploy-lop:
-		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_LOP) validate-lop deploy-skip-all deploy-noskip deploy-impl deploy-skip
+		@$(MAKE) OPS_SKIP_VERIFY=$(OPS_SKIP_VERIFY) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_LOP) validate-lop deploy-skip-all deploy-noskip deploy-impl deploy-skip
 
 deploy-fee-taker:
-		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_FEE_TAKER) validate-fee-taker deploy-skip-all deploy-noskip deploy-impl deploy-skip
+		@$(MAKE) OPS_SKIP_VERIFY=$(OPS_SKIP_VERIFY) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_FEE_TAKER) validate-fee-taker deploy-skip-all deploy-noskip deploy-impl deploy-skip
 
 deploy-native-order-factory:
-		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_NATIVE_ORDER_FACTORY) validate-native-order-factory deploy-skip-all deploy-noskip deploy-impl deploy-skip
+		@$(MAKE) OPS_SKIP_VERIFY=$(OPS_SKIP_VERIFY) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_NATIVE_ORDER_FACTORY) validate-native-order-factory deploy-skip-all deploy-noskip deploy-impl deploy-skip
 
 deploy-impl:
 		@{ \
