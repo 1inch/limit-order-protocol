@@ -10,7 +10,7 @@ require('dotenv').config();
 const { oneInchTemplates } = require('@1inch/solidity-utils/docgen');
 const { Networks, getNetwork } = require('@1inch/solidity-utils/hardhat-setup');
 
-const n = new Networks(true, 'mainnet', true);
+const n = new Networks();
 const { networks } = n.registerAll();
 const etherscan = n.getEtherscanConfig(getNetwork());
 
