@@ -141,7 +141,7 @@ process-permit2-witness-proxy-salt:
 		@if [ -n "$$OPS_PERMIT2_WITNESS_PROXY_SALT" ]; then $(MAKE) OPS_GEN_VAL='$(OPS_PERMIT2_WITNESS_PROXY_SALT)' OPS_GEN_KEY='permit2WitnessProxySalt' upsert-constant; fi
 
 process-permit2-proxy-salt:
-		@if [ -n "$$OPS_PERMIT2_PROXY_SALT" ]; then $(MAKE) OPS_GEN_VAL='$(OPS_PERMIT2_PROXY_SALT)' OPS_GEN_KEY='permit2Proxy
+		@if [ -n "$$OPS_PERMIT2_PROXY_SALT" ]; then $(MAKE) OPS_GEN_VAL='$(OPS_PERMIT2_PROXY_SALT)' OPS_GEN_KEY='permit2ProxySalt' upsert-constant; fi
 
 upsert-constant:
 		@{ \
