@@ -29,6 +29,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
             constructorArgs: [constants.WETH[chainId], constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], 60, '1inch Aggregation Router', '6'],
             deployments,
             deployer,
+            skipVerify: process.env.OPS_SKIP_VERIFY === 'true',
         });
     } else {
         const salt = constants.NATIVE_ORDER_SALT[chainId].startsWith('0x')
@@ -43,10 +44,11 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
             create3Deployer: constants.CREATE3_DEPLOYER[chainId],
             salt,
             deployments,
+            skipVerify: process.env.OPS_SKIP_VERIFY === 'true',
         });
     }
 
-    if (chainId !== '31337') {
+    if (chainId !== '31337' && process.env.OPS_SKIP_VERIFY !== 'true') {
         const implementationAddress = await nativeOrderFactory.IMPLEMENTATION();
         console.log(`NativeOrderImpl deployed to: ${implementationAddress}`);
 
