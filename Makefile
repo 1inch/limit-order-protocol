@@ -17,6 +17,7 @@ FILE_DEPLOY_HELPERS:=$(CURRENT_DIR)/deploy/deploy-helpers.js
 FILE_DEPLOY_FEE_TAKER:=$(CURRENT_DIR)/deploy/deploy-fee-taker.js
 FILE_DEPLOY_LOP:=$(CURRENT_DIR)/deploy/deploy.js
 FILE_DEPLOY_NATIVE_ORDER_FACTORY:=$(CURRENT_DIR)/deploy/deploy-native-order-factory.js
+FILE_DEPLOY_PERMIT2_PROXY:=$(CURRENT_DIR)/deploy/deploy-Permit2Proxy.js
 
 FILE_CONSTANTS_JSON:=$(CURRENT_DIR)/config/constants.json
 
@@ -33,6 +34,9 @@ deploy-fee-taker:
 
 deploy-native-order-factory:
 		@$(MAKE) OPS_SKIP_VERIFY=$(OPS_SKIP_VERIFY) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_NATIVE_ORDER_FACTORY) validate-native-order-factory deploy-skip-all deploy-noskip deploy-impl deploy-skip
+
+deploy-permit2-proxy:
+		@$(MAKE) OPS_SKIP_VERIFY=$(OPS_SKIP_VERIFY) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_PERMIT2_PROXY) validate-permit2-proxy deploy-skip-all deploy-noskip deploy-impl deploy-skip
 
 deploy-impl:
 		@{ \
@@ -88,6 +92,17 @@ validate-native-order-factory:
 		$(MAKE) process-router-v6 process-access-token process-native-order-factory-salt process-create3-deployer || exit 1; \
 		}
 
+validate-permit2-proxy:
+		@{ \
+		$(MAKE) validate-common || exit 1; \
+		$(MAKE) ID=OPS_AGGREGATION_ROUTER_V6_ADDRESS validate || exit 1; \
+		if [ "$(IS_ZKSYNC)" = "" ]; then \
+			$(MAKE) ID=OPS_CREATE3_DEPLOYER_ADDRESS validate || exit 1; \
+			$(MAKE) ID=OPS_PERMIT2_PROXY_SALT validate || exit 1; \
+		fi; \
+		$(MAKE) process-router-v6 process-permit2-proxy-salt process-create3-deployer || exit 1; \
+		}
+
 validate-lop:
 		@$(MAKE) validate-common || exit 1
 
@@ -115,6 +130,9 @@ process-native-order-factory-salt:
 
 process-permit2-witness-proxy-salt:
 		@if [ -n "$$OPS_PERMIT2_WITNESS_PROXY_SALT" ]; then $(MAKE) OPS_GEN_VAL='$(OPS_PERMIT2_WITNESS_PROXY_SALT)' OPS_GEN_KEY='permit2WitnessProxySalt' upsert-constant; fi
+
+process-permit2-proxy-salt:
+		@if [ -n "$$OPS_PERMIT2_PROXY_SALT" ]; then $(MAKE) OPS_GEN_VAL='$(OPS_PERMIT2_PROXY_SALT)' OPS_GEN_KEY='permit2Proxy
 
 upsert-constant:
 		@{ \
@@ -209,6 +227,7 @@ help:
 	@echo "  deploy-lop             Deploy LimitOrderProtocol contract"
 	@echo "  deploy-fee-taker       Deploy FeeTaker contract"
 	@echo "  deploy-native-order-factory Deploy NativeOrderFactory contract"
+	@echo "  deploy-permit2-proxy   Deploy Permit2Proxy contract"
 	@echo "  deploy-impl            Run deployment script for current file"
 	@echo "  deploy-skip            Set skip=true in deployment file"
 	@echo "  deploy-noskip          Set skip=false in deployment file"
@@ -236,9 +255,9 @@ help:
 .PHONY: \
 install install-utils install-dependencies clean \
 deploy-helpers deploy-lop deploy-fee-taker deploy-impl \
-deploy-skip deploy-noskip deploy-skip-all deploy-native-order-factory \
+deploy-skip deploy-noskip deploy-skip-all deploy-native-order-factory deploy-permit2-proxy \
 get help \
-validate-helpers validate-fee-taker validate-lop \
+validate-helpers validate-fee-taker validate-permit2-proxy validate-lop \
 process-create3-deployer process-weth process-router-v6 process-order-registrator process-access-token \
-process-fee-taker-salt process-permit2-witness-proxy-salt process-native-order-factory-salt \
+process-fee-taker-salt process-permit2-witness-proxy-salt process-native-order-factory-salt process-permit2-proxy-salt \
 upsert-constant validate validate-common launch-hh-node
