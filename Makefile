@@ -55,6 +55,15 @@ validate-common:
 		$(MAKE) process-weth || exit 1; \
 		}
 
+validate-basic:
+		@{ \
+		$(MAKE) ID=OPS_NETWORK validate || exit 1; \
+		$(MAKE) ID=OPS_CHAIN_ID validate || exit 1; \
+		if [ "$(OPS_NETWORK)" = "hardhat" ]; then \
+			$(MAKE) ID=MAINNET_RPC_URL validate || exit 1; \
+		fi; \
+		}
+
 validate-helpers:
 		@{ \
 		$(MAKE) validate-common || exit 1; \
@@ -94,7 +103,7 @@ validate-native-order-factory:
 
 validate-permit2-proxy:
 		@{ \
-		$(MAKE) validate-common || exit 1; \
+		$(MAKE) validate-basic || exit 1; \
 		$(MAKE) ID=OPS_AGGREGATION_ROUTER_V6_ADDRESS validate || exit 1; \
 		if [ "$(IS_ZKSYNC)" = "" ]; then \
 			$(MAKE) ID=OPS_CREATE3_DEPLOYER_ADDRESS validate || exit 1; \
@@ -197,6 +206,7 @@ get:
 			"OPS_PRIORITY_FEE_LIMITER_ADDRESS") CONTRACT_FILE="PriorityFeeLimiter.json" ;; \
 			"OPS_CALLS_SIMULATOR_ADDRESS") CONTRACT_FILE="CallsSimulator.json" ;; \
 			"OPS_NATIVE_ORDER_FACTORY_ADDRESS") CONTRACT_FILE="NativeOrderFactory.json" ;; \
+			"OPS_PERMIT2_PROXY_ADDRESS") CONTRACT_FILE="Permit2Proxy.json" ;; \
 			*) echo "Error: Unknown parameter $(PARAMETER)"; exit 1 ;; \
 		esac; \
 		DEPLOYMENT_FILE="$(CURRENT_DIR)/deployments/$(OPS_NETWORK)/$$CONTRACT_FILE"; \
@@ -260,4 +270,4 @@ get help \
 validate-helpers validate-fee-taker validate-permit2-proxy validate-lop \
 process-create3-deployer process-weth process-router-v6 process-order-registrator process-access-token \
 process-fee-taker-salt process-permit2-witness-proxy-salt process-native-order-factory-salt process-permit2-proxy-salt \
-upsert-constant validate validate-common launch-hh-node
+upsert-constant validate validate-common validate-basic launch-hh-node
