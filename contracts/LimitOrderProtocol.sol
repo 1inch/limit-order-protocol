@@ -23,7 +23,7 @@ import "./OrderMixin.sol";
  *
  * RFQ orders supports
  * - Expiration time
- * - Cancelation by order id
+ * - Cancellation by order id
  * - Partial Fill (only once)
  *
  * See [OrderMixin](OrderMixin.md) for more details.
