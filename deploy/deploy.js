@@ -1,31 +1,32 @@
-const hre = require('hardhat');
-const { getChainId, network } = hre;
+const { deployAndGetContract } = require('@1inch/solidity-utils');
 
-const wethByNetwork = {
-    hardhat: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-    mainnet: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-};
+const hre = require('hardhat');
+const { getChainId } = hre;
+const constants = require('../config/constants');
 
 module.exports = async ({ getNamedAccounts, deployments }) => {
-    console.log('running deploy script');
-    console.log('network id ', await getChainId());
+    const networkName = hre.network.name;
+    console.log(`running ${networkName} deploy script`);
+    const chainId = await getChainId();
+    console.log('network id ', chainId);
 
-    const { deploy } = deployments;
+    if (
+        networkName in hre.config.networks &&
+        chainId !== hre.config.networks[networkName].chainId?.toString()
+    ) {
+        console.log(`network chain id: ${hre.config.networks[networkName].chainId}, your chain id ${chainId}`);
+        console.log('skipping wrong chain id deployment');
+        return;
+    }
+
     const { deployer } = await getNamedAccounts();
 
-    const limitOrderProtocol = await deploy('LimitOrderProtocol', {
-        from: deployer,
-        args: [wethByNetwork[network.name]],
+    await deployAndGetContract({
+        contractName: 'LimitOrderProtocol',
+        constructorArgs: [constants.WETH[chainId]],
+        deployments,
+        deployer,
     });
-
-    console.log('LimitOrderProtocol deployed to:', limitOrderProtocol.address);
-
-    if (await getChainId() !== '31337') {
-        await hre.run('verify:verify', {
-            address: limitOrderProtocol.address,
-            constructorArguments: [wethByNetwork[network.name]],
-        });
-    }
 };
 
 module.exports.skip = async () => true;

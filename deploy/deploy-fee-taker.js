@@ -1,11 +1,10 @@
 const { deployAndGetContractWithCreate3, deployAndGetContract } = require('@1inch/solidity-utils');
-
 const hre = require('hardhat');
-const { ethers, getChainId, network } = hre;
+const { ethers, getChainId } = hre;
 const constants = require('../config/constants');
 
 module.exports = async ({ deployments, getNamedAccounts }) => {
-    const networkName = network.name;
+    const networkName = hre.network.name;
     console.log(`running ${networkName} deploy script`);
     const chainId = await getChainId();
     console.log('network id ', chainId);
@@ -19,26 +18,25 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
         return;
     }
 
-    if (networkName.indexOf('zksync') !== -1) {
-        const { deployer } = await getNamedAccounts();
+    const { deployer } = await getNamedAccounts();
 
-        // Deploy on zkSync-like networks without create3
+    if (networkName.indexOf('zksync') !== -1) { // zksync
         await deployAndGetContract({
-            contractName: 'Permit2WitnessProxy',
-            constructorArgs: [constants.ROUTER_V6[chainId]],
+            contractName: 'FeeTaker',
+            constructorArgs: [constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], constants.WETH[chainId], deployer],
             deployments,
             deployer,
         });
     } else {
-        const salt = constants.PERMIT2_WITNESS_PROXY_SALT[chainId].startsWith('0x')
-            ? constants.PERMIT2_WITNESS_PROXY_SALT[chainId]
-            : ethers.keccak256(ethers.toUtf8Bytes(constants.PERMIT2_WITNESS_PROXY_SALT[chainId]));
+        const salt = constants.FEE_TAKER_SALT[chainId].startsWith('0x')
+            ? constants.FEE_TAKER_SALT[chainId]
+            : ethers.keccak256(ethers.toUtf8Bytes(constants.FEE_TAKER_SALT[chainId]));
 
         console.log(`Using salt: ${salt}`);
-
+            
         await deployAndGetContractWithCreate3({
-            contractName: 'Permit2WitnessProxy',
-            constructorArgs: [constants.ROUTER_V6[chainId]],
+            contractName: 'FeeTaker',
+            constructorArgs: [constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], constants.WETH[chainId], deployer],
             create3Deployer: constants.CREATE3_DEPLOYER[chainId],
             salt,
             deployments,
