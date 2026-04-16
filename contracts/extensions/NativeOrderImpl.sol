@@ -151,6 +151,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
             (bool success, ) = makerOrder.maker.get().call{ value: balance }("");
             if (!success) revert Errors.ETHTransferFailed();
         }
+        _WETH.approve(_LOP, 0);
     }
 
     function withdraw(IOrderMixin.Order calldata makerOrder, address target, uint256 value, bytes memory data)

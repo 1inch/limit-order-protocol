@@ -1058,6 +1058,44 @@ describe('LimitOrderProtocol', function () {
             await expect(cancelTx).to.changeEtherBalance(addr1, ether('0.1'));
         });
 
+        it('Cancel order prevents re-filling after accidental WETH deposit', async function () {
+            const { tokens: { dai, weth }, contracts: { swap, nativeOrderFactory } } = await loadFixture(deployContractsAndInit);
+
+            const order = buildOrder(
+                {
+                    maker: addr1.address,
+                    receiver: addr1.address,
+                    makerAsset: await weth.getAddress(),
+                    takerAsset: await dai.getAddress(),
+                    makingAmount: ether('0.3'),
+                    takingAmount: ether('300'),
+                },
+                {},
+            );
+
+            const receipt = await (await nativeOrderFactory.connect(addr1).create(order, { value: order.makingAmount })).wait();
+            const cloneAddress = getEventArgs(receipt, nativeOrderFactory.interface, 'NativeOrderCreated')[2];
+            expect(await weth.balanceOf(cloneAddress)).to.equal(order.makingAmount);
+
+            const clone = await ethers.getContractAt('NativeOrderImpl', cloneAddress);
+            await clone.connect(addr1).cancelOrder(order);
+            expect(await weth.balanceOf(cloneAddress)).to.equal(0);
+
+            await weth.connect(addr1).deposit({ value: ether('0.3') });
+            await weth.connect(addr1).transfer(cloneAddress, ether('0.3'));
+            expect(await weth.balanceOf(cloneAddress)).to.equal(ether('0.3'));
+
+            const signature = abiCoder.encode([ABIOrder], [order]);
+            const takerTraits = buildTakerTraits({
+                threshold: ether('0.1'),
+                extension: order.extension,
+            });
+            order.maker = cloneAddress;
+            await expect(
+                swap.fillContractOrderArgs(order, signature, ether('100'), takerTraits.traits, takerTraits.args),
+            ).to.be.revertedWithCustomError(swap, 'TransferFromMakerToTakerFailed');
+        });
+
         it('Create native order fails for existing order', async function () {
             const { tokens: { dai, weth }, contracts: { nativeOrderFactory } } = await loadFixture(deployContractsAndInit);
 
