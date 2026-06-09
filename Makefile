@@ -9,6 +9,7 @@ export
 OPS_NETWORK := $(subst ",,$(OPS_NETWORK))
 OPS_CHAIN_ID := $(subst ",,$(OPS_CHAIN_ID))
 OPS_DEPLOYMENT_METHOD := $(subst ",,$(OPS_DEPLOYMENT_METHOD))
+OPS_SKIP_VERIFY := $(subst ",,$(OPS_SKIP_VERIFY))
 
 CURRENT_DIR:=$(shell pwd)
 
@@ -16,22 +17,26 @@ FILE_DEPLOY_HELPERS:=$(CURRENT_DIR)/deploy/deploy-helpers.js
 FILE_DEPLOY_FEE_TAKER:=$(CURRENT_DIR)/deploy/deploy-fee-taker.js
 FILE_DEPLOY_LOP:=$(CURRENT_DIR)/deploy/deploy.js
 FILE_DEPLOY_NATIVE_ORDER_FACTORY:=$(CURRENT_DIR)/deploy/deploy-native-order-factory.js
+FILE_DEPLOY_PERMIT2_PROXY:=$(CURRENT_DIR)/deploy/deploy-Permit2Proxy.js
 
 FILE_CONSTANTS_JSON:=$(CURRENT_DIR)/config/constants.json
 
 IS_ZKSYNC := $(findstring zksync,$(OPS_NETWORK))
 
 deploy-helpers:
-		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_HELPERS) OPS_DEPLOYMENT_METHOD=$(if $(OPS_DEPLOYMENT_METHOD),$(OPS_DEPLOYMENT_METHOD),create3) validate-helpers deploy-skip-all deploy-noskip deploy-impl deploy-skip
+		@$(MAKE) OPS_SKIP_VERIFY=$(OPS_SKIP_VERIFY) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_HELPERS) OPS_DEPLOYMENT_METHOD=$(if $(OPS_DEPLOYMENT_METHOD),$(OPS_DEPLOYMENT_METHOD),create3) validate-helpers deploy-skip-all deploy-noskip deploy-impl deploy-skip
 
 deploy-lop:
-		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_LOP) validate-lop deploy-skip-all deploy-noskip deploy-impl deploy-skip
+		@$(MAKE) OPS_SKIP_VERIFY=$(OPS_SKIP_VERIFY) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_LOP) validate-lop deploy-skip-all deploy-noskip deploy-impl deploy-skip
 
 deploy-fee-taker:
-		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_FEE_TAKER) validate-fee-taker deploy-skip-all deploy-noskip deploy-impl deploy-skip
+		@$(MAKE) OPS_SKIP_VERIFY=$(OPS_SKIP_VERIFY) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_FEE_TAKER) validate-fee-taker deploy-skip-all deploy-noskip deploy-impl deploy-skip
 
 deploy-native-order-factory:
-		@$(MAKE) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_NATIVE_ORDER_FACTORY) validate-native-order-factory deploy-skip-all deploy-noskip deploy-impl deploy-skip
+		@$(MAKE) OPS_SKIP_VERIFY=$(OPS_SKIP_VERIFY) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_NATIVE_ORDER_FACTORY) validate-native-order-factory deploy-skip-all deploy-noskip deploy-impl deploy-skip
+
+deploy-permit2-proxy:
+		@$(MAKE) OPS_SKIP_VERIFY=$(OPS_SKIP_VERIFY) OPS_CURRENT_DEP_FILE=$(FILE_DEPLOY_PERMIT2_PROXY) validate-permit2-proxy deploy-skip-all deploy-noskip deploy-impl deploy-skip
 
 deploy-impl:
 		@{ \
@@ -48,6 +53,15 @@ validate-common:
 		fi; \
 		$(MAKE) ID=OPS_WETH_ADDRESS validate || exit 1; \
 		$(MAKE) process-weth || exit 1; \
+		}
+
+validate-basic:
+		@{ \
+		$(MAKE) ID=OPS_NETWORK validate || exit 1; \
+		$(MAKE) ID=OPS_CHAIN_ID validate || exit 1; \
+		if [ "$(OPS_NETWORK)" = "hardhat" ]; then \
+			$(MAKE) ID=MAINNET_RPC_URL validate || exit 1; \
+		fi; \
 		}
 
 validate-helpers:
@@ -87,6 +101,17 @@ validate-native-order-factory:
 		$(MAKE) process-router-v6 process-access-token process-native-order-factory-salt process-create3-deployer || exit 1; \
 		}
 
+validate-permit2-proxy:
+		@{ \
+		$(MAKE) validate-basic || exit 1; \
+		$(MAKE) ID=OPS_AGGREGATION_ROUTER_V6_ADDRESS validate || exit 1; \
+		if [ "$(IS_ZKSYNC)" = "" ]; then \
+			$(MAKE) ID=OPS_CREATE3_DEPLOYER_ADDRESS validate || exit 1; \
+			$(MAKE) ID=OPS_PERMIT2_PROXY_SALT validate || exit 1; \
+		fi; \
+		$(MAKE) process-router-v6 process-permit2-proxy-salt process-create3-deployer || exit 1; \
+		}
+
 validate-lop:
 		@$(MAKE) validate-common || exit 1
 
@@ -115,13 +140,20 @@ process-native-order-factory-salt:
 process-permit2-witness-proxy-salt:
 		@if [ -n "$$OPS_PERMIT2_WITNESS_PROXY_SALT" ]; then $(MAKE) OPS_GEN_VAL='$(OPS_PERMIT2_WITNESS_PROXY_SALT)' OPS_GEN_KEY='permit2WitnessProxySalt' upsert-constant; fi
 
+process-permit2-proxy-salt:
+		@if [ -n "$$OPS_PERMIT2_PROXY_SALT" ]; then $(MAKE) OPS_GEN_VAL='$(OPS_PERMIT2_PROXY_SALT)' OPS_GEN_KEY='permit2ProxySalt' upsert-constant; fi
+
 upsert-constant:
 		@{ \
 		$(MAKE) ID=OPS_GEN_VAL validate || exit 1; \
 		$(MAKE) ID=OPS_GEN_KEY validate || exit 1; \
 		$(MAKE) ID=OPS_CHAIN_ID validate || exit 1; \
 		tmpfile=$$(mktemp); \
-		jq '.$(OPS_GEN_KEY)."$(OPS_CHAIN_ID)" = $(OPS_GEN_VAL)' $(FILE_CONSTANTS_JSON) > $$tmpfile && mv $$tmpfile $(FILE_CONSTANTS_JSON); \
+		if echo '$(OPS_GEN_VAL)' | jq type >/dev/null 2>&1; then \
+			jq --argjson val '$(OPS_GEN_VAL)' '.$(OPS_GEN_KEY)."$(OPS_CHAIN_ID)" = $$val' $(FILE_CONSTANTS_JSON) > $$tmpfile; \
+		else \
+			jq --arg val '$(OPS_GEN_VAL)' '.$(OPS_GEN_KEY)."$(OPS_CHAIN_ID)" = $$val' $(FILE_CONSTANTS_JSON) > $$tmpfile; \
+		fi && mv $$tmpfile $(FILE_CONSTANTS_JSON); \
 		echo "Updated $(OPS_GEN_KEY)[$(OPS_CHAIN_ID)] = $(OPS_GEN_VAL)"; \
 		}
 
@@ -174,6 +206,7 @@ get:
 			"OPS_PRIORITY_FEE_LIMITER_ADDRESS") CONTRACT_FILE="PriorityFeeLimiter.json" ;; \
 			"OPS_CALLS_SIMULATOR_ADDRESS") CONTRACT_FILE="CallsSimulator.json" ;; \
 			"OPS_NATIVE_ORDER_FACTORY_ADDRESS") CONTRACT_FILE="NativeOrderFactory.json" ;; \
+			"OPS_PERMIT2_PROXY_ADDRESS") CONTRACT_FILE="Permit2Proxy.json" ;; \
 			*) echo "Error: Unknown parameter $(PARAMETER)"; exit 1 ;; \
 		esac; \
 		DEPLOYMENT_FILE="$(CURRENT_DIR)/deployments/$(OPS_NETWORK)/$$CONTRACT_FILE"; \
@@ -204,6 +237,7 @@ help:
 	@echo "  deploy-lop             Deploy LimitOrderProtocol contract"
 	@echo "  deploy-fee-taker       Deploy FeeTaker contract"
 	@echo "  deploy-native-order-factory Deploy NativeOrderFactory contract"
+	@echo "  deploy-permit2-proxy   Deploy Permit2Proxy contract"
 	@echo "  deploy-impl            Run deployment script for current file"
 	@echo "  deploy-skip            Set skip=true in deployment file"
 	@echo "  deploy-noskip          Set skip=false in deployment file"
@@ -231,9 +265,9 @@ help:
 .PHONY: \
 install install-utils install-dependencies clean \
 deploy-helpers deploy-lop deploy-fee-taker deploy-impl \
-deploy-skip deploy-noskip deploy-skip-all deploy-native-order-factory \
+deploy-skip deploy-noskip deploy-skip-all deploy-native-order-factory deploy-permit2-proxy \
 get help \
-validate-helpers validate-fee-taker validate-lop \
+validate-helpers validate-fee-taker validate-permit2-proxy validate-lop \
 process-create3-deployer process-weth process-router-v6 process-order-registrator process-access-token \
-process-fee-taker-salt process-permit2-witness-proxy-salt process-native-order-factory-salt \
-upsert-constant validate validate-common launch-hh-node
+process-fee-taker-salt process-permit2-witness-proxy-salt process-native-order-factory-salt process-permit2-proxy-salt \
+upsert-constant validate validate-common validate-basic launch-hh-node

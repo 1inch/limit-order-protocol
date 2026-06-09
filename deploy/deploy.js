@@ -26,6 +26,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         constructorArgs: [constants.WETH[chainId]],
         deployments,
         deployer,
+        skipVerify: process.env.OPS_SKIP_VERIFY === 'true',
     });
 };
 

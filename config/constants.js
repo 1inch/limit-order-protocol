@@ -7,6 +7,7 @@ module.exports = {
     CREATE3_DEPLOYER: constants.create3Deployer || {},
     ORDER_REGISTRATOR: constants.orderRegistrator || {},
     FEE_TAKER_SALT: constants.feeTakerSalt || {},
+    PERMIT2_PROXY_SALT: constants.permit2ProxySalt || {},
     PERMIT2_WITNESS_PROXY_SALT: constants.permit2WitnessProxySalt || {},
     NATIVE_ORDER_SALT: constants.nativeOrderSalt || {},
 };
