@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@1inch/solidity-utils@6.7.1":
-  version "6.7.1"
-  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-6.7.1.tgz#992f6ac90b72a1c590a51f9509ee5d14f5c60bd3"
-  integrity sha512-dJnlYaXJvF5qForput4bDfR7tTqjxchgNu+1gBPagwCheijRsUy44rHjbXRDl1WbI/LzDSV1+9elOj1ilwogiA==
+"@1inch/solidity-utils@6.9.4":
+  version "6.9.4"
+  resolved "https://registry.yarnpkg.com/@1inch/solidity-utils/-/solidity-utils-6.9.4.tgz#c905e6dd8eac3ee664dc212f1ad2db79e0b01bff"
+  integrity sha512-QMW7oJB13NVkexeFhGDTshA7TEd1x4rBxeJBHbGVh38GM8KPZ0mU4avRKElRuLkAuurjEwht7FwpZnSInfqZbQ==
   dependencies:
     "@metamask/eth-sig-util" "8.0.0"
     "@nomicfoundation/hardhat-ethers" "3.0.8"
@@ -1458,6 +1458,21 @@
   version "2.0.14"
   resolved "https://registry.yarnpkg.com/@nomicfoundation/hardhat-verify/-/hardhat-verify-2.0.14.tgz#ba80918fac840f1165825f2a422a694486f82f6f"
   integrity sha512-z3iVF1WYZHzcdMMUuureFpSAfcnlfJbJx3faOnGrOYg6PRTki1Ut9JAuRccnFzMHf1AmTEoSUpWcyvBCoxL5Rg==
+  dependencies:
+    "@ethersproject/abi" "^5.1.2"
+    "@ethersproject/address" "^5.0.2"
+    cbor "^8.1.0"
+    debug "^4.1.1"
+    lodash.clonedeep "^4.5.0"
+    picocolors "^1.1.0"
+    semver "^6.3.0"
+    table "^6.8.0"
+    undici "^5.14.0"
+
+"@nomicfoundation/hardhat-verify@2.1.3":
+  version "2.1.3"
+  resolved "https://registry.yarnpkg.com/@nomicfoundation/hardhat-verify/-/hardhat-verify-2.1.3.tgz#f61a192a792b39f9978cef1450047deaff3ea052"
+  integrity sha512-danbGjPp2WBhLkJdQy9/ARM3WQIK+7vwzE0urNem1qZJjh9f54Kf5f1xuQv8DvqewUAkuPxVt/7q4Grz5WjqSg==
   dependencies:
     "@ethersproject/abi" "^5.1.2"
     "@ethersproject/address" "^5.0.2"
