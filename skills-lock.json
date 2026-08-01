@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "skills": {
+    "arc42-c4": {
+      "source": "marvinrichter/clarc",
+      "sourceType": "github",
+      "skillPath": "skills/arc42-c4/SKILL.md",
+      "computedHash": "493fc0bc47409ddbac70978635b10d6b7a3415bfb8f583feabb9c3b5540003a2"
+    },
+    "audit-context-building": {
+      "source": "trailofbits/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/audit-context-building/skills/audit-context-building/SKILL.md",
+      "computedHash": "47ae283f86574c2f21778b9b1b4979dbc81af4f9c018bd9585535b2744266e51"
+    },
+    "documentation-and-adrs": {
+      "source": "addyosmani/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/documentation-and-adrs/SKILL.md",
+      "computedHash": "7464fd2950b99fb00bbf65cab27653e0a049eef00c98927713ffdfe232a9daa9"
+    },
+    "entry-point-analyzer": {
+      "source": "trailofbits/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/entry-point-analyzer/skills/entry-point-analyzer/SKILL.md",
+      "computedHash": "78dd6cbfce13a600e890d1c8936d85eb9c6e4d8752327bb5954796f6e03f2bd9"
+    },
+    "property-based-testing": {
+      "source": "trailofbits/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/property-based-testing/skills/property-based-testing/SKILL.md",
+      "computedHash": "30146f00ecab4e49019c40b5e0f18869addfbfa4c448f1382aa288ce8b7c0417"
+    },
+    "reverse-engineer": {
+      "source": "TrevorEdris/fellowship-of-the-workflows",
+      "sourceType": "github",
+      "skillPath": "skills/reverse-engineer/SKILL.md",
+      "computedHash": "3143a3d715423af0a1ec32545512a6498aa624e0dc06b00de625b79cc50e5104"
+    },
+    "secure-workflow-guide": {
+      "source": "trailofbits/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/building-secure-contracts/skills/secure-workflow-guide/SKILL.md",
+      "computedHash": "9974c020a5916ec5067c8e5befb0ae867e41f55d0286386289dc0d690a7d2246"
+    },
+    "spec-to-code-compliance": {
+      "source": "trailofbits/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/spec-to-code-compliance/skills/spec-to-code-compliance/SKILL.md",
+      "computedHash": "8cc0fc37847fe8398fd433590cfa23989a582b80510ab751cef09b918790d913"
+    },
+    "web3-testing": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/blockchain-web3/skills/web3-testing/SKILL.md",
+      "computedHash": "0bc9248c2d886879c0364fc1c49f12b137572185ef9aeb7752ff0bd4a95f4ca4"
+    },
+    "working-with-legacy-code": {
+      "source": "wondelai/skills",
+      "sourceType": "github",
+      "skillPath": "working-with-legacy-code/SKILL.md",
+      "computedHash": "df7edc19123ea872066f2421592cc6ed08f8cefb8e6d34d154703840975c3b91"
+    }
+  }
+}

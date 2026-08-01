@@ -1,0 +1,63 @@
+version: 3
+orchestrator: solidity-protocol-reconstruction-orchestrator
+base_mandatory:
+  - name: spec-to-code-compliance
+    source: https://github.com/trailofbits/skills
+    phase: specification-compliance
+  - name: reverse-engineer
+    source: https://github.com/TrevorEdris/fellowship-of-the-workflows
+    phase: requirements-reconstruction
+  - name: audit-context-building
+    source: https://github.com/trailofbits/skills
+    phase: architecture-context
+  - name: entry-point-analyzer
+    source: https://github.com/trailofbits/skills
+    phase: entry-points-and-privileges
+  - name: bdd-practices
+    source: https://github.com/majiayu000/claude-skill-registry
+    phase: behaviour-specification
+  - name: working-with-legacy-code
+    source: https://github.com/wondelai/skills
+    phase: characterization-testing
+  - name: property-based-testing
+    source: https://github.com/trailofbits/skills
+    phase: invariants-and-stateful-testing
+  - name: secure-workflow-guide
+    source: https://github.com/trailofbits/skills
+    phase: security-readiness
+framework_mandatory:
+  hardhat2:
+    - name: web3-testing
+      source: https://github.com/wshobson/agents
+      phase: hardhat2-testing
+  hardhat3:
+    - name: hardhat
+      source: https://github.com/NomicFoundation/hardhat-skills
+      phase: hardhat3-testing
+  foundry:
+    - name: foundry-solidity
+      source: https://github.com/tenequm/skills
+      phase: foundry-testing
+framework_conditional:
+  hardhat3:
+    - package: "@nomicfoundation/hardhat-toolbox-viem"
+      name: hardhat-toolbox-viem
+      source: https://github.com/NomicFoundation/hardhat-skills
+    - package: "@nomicfoundation/hardhat-toolbox-mocha-ethers"
+      name: hardhat-toolbox-mocha-ethers
+      source: https://github.com/NomicFoundation/hardhat-skills
+optional:
+  - capability: arc42-publication
+    name: arc42-c4
+    source: https://github.com/marvinrichter/clarc
+    flag: --with-arc42
+  - capability: adr-writing
+    name: documentation-and-adrs
+    aliases:
+      - adr-writing
+      - adr-skill
+      - architecture-decision-records
+      - create-architectural-decision-record
+      - adr-creating
+    source: https://github.com/addyosmani/agent-skills
+    flag: --with-adrs
