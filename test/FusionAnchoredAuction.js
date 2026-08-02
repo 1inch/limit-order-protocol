@@ -135,9 +135,9 @@ describe('FusionAnchoredAuction', function () {
         return await time.latest();
     }
 
-    function fill (swap, order, sig, amount, { byMakingAmount = true, from = taker } = {}) {
+    function fill (swap, order, sig, amount, { byMakingAmount = true, from = taker, overrides = {} } = {}) {
         const takerTraits = buildTakerTraits({ makingAmount: byMakingAmount, extension: order.extension });
-        return swap.connect(from).fillOrderArgs(order, sig.r, sig.yParityAndS, amount, takerTraits.traits, takerTraits.args);
+        return swap.connect(from).fillOrderArgs(order, sig.r, sig.yParityAndS, amount, takerTraits.traits, takerTraits.args, overrides);
     }
 
     describe('unanchored auction', function () {
@@ -205,6 +205,32 @@ describe('FusionAnchoredAuction', function () {
             await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
         });
 
+        it('walks past the points it has already passed', async function () {
+            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
+
+            const startTime = await time.latest() + 100;
+            const params = {
+                startTime,
+                duration: 100,
+                initialRateBump: Number(HALF_PERCENT),
+                points: [
+                    { coefficient: Number(HALF_PERCENT * 4n / 5n), delay: 20 },
+                    { coefficient: Number(HALF_PERCENT * 2n / 5n), delay: 20 },
+                ],
+            };
+            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
+            const sig = await signature(order, chainId, swap);
+
+            // Past both points, so the curve runs from the last one down to zero at the finish.
+            const fillTime = startTime + 60;
+            await time.setNextBlockTimestamp(fillTime);
+            const fillTx = fill(swap, order, sig, MAKING_AMOUNT);
+
+            const expected = takingAmountFor(order, params, fillTime, MAKING_AMOUNT, MAKING_AMOUNT);
+            expect(expected).to.equal(ceilDiv(TAKING_AMOUNT * (BASE_POINTS + HALF_PERCENT * 4n / 15n), BASE_POINTS));
+            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+        });
+
         it('offsets the gas bump from the rate bump', async function () {
             const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
 
@@ -228,7 +254,9 @@ describe('FusionAnchoredAuction', function () {
             const baseFee = 1000000000n; // exactly the estimated gas price, so the whole gas bump applies
             await hre.network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x' + baseFee.toString(16)]);
             await time.setNextBlockTimestamp(startTime - 1);
-            const fillTx = fill(swap, order, sig, MAKING_AMOUNT);
+            // The gas price is pinned because the fee history the provider would infer one from predates the
+            // base fee this test forces.
+            const fillTx = fill(swap, order, sig, MAKING_AMOUNT, { overrides: { gasPrice: baseFee * 2n } });
 
             const expected = ceilDiv(TAKING_AMOUNT * (BASE_POINTS + HALF_PERCENT - HALF_PERCENT / 5n), BASE_POINTS);
             await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
@@ -576,6 +604,43 @@ describe('FusionAnchoredAuction', function () {
 
             await time.setNextBlockTimestamp(allowedTime);
             await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.changeTokenBalances(dai, [taker, maker], [MAKING_AMOUNT, -MAKING_AMOUNT]);
+        });
+
+        it('passes the fill on to the next post-interaction', async function () {
+            const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
+
+            const InteractionMock = await ethers.getContractFactory('InteractionMock');
+            const interactionMock = await InteractionMock.deploy();
+            await interactionMock.waitForDeployment();
+
+            const buildOrderWithChainedInteraction = async (threshold) => {
+                const order = await buildAuctionOrder({
+                    dai,
+                    weth,
+                    auction,
+                    auctionDetails: buildAnchoredAuctionDetails({ ...auctionParams, startTime: 0 }),
+                    exclusivity: ethers.solidityPacked(
+                        ['bytes', 'address', 'uint256'],
+                        [
+                            buildAnchoredExclusivity({ allowedTimeDelay: 0, whitelist: [{ address: taker.address }] }),
+                            await interactionMock.getAddress(),
+                            threshold,
+                        ],
+                    ),
+                });
+                return { order, sig: await signature(order, chainId, swap) };
+            };
+
+            // The auction is running, so the fill costs more than the unbumped taking amount.
+            const rejecting = await buildOrderWithChainedInteraction(TAKING_AMOUNT);
+            await announce(registrator, swap, chainId, rejecting.order);
+            await expect(fill(swap, rejecting.order, rejecting.sig, MAKING_AMOUNT))
+                .to.be.revertedWithCustomError(interactionMock, 'TakingAmountTooHigh');
+
+            const accepting = await buildOrderWithChainedInteraction(TAKING_AMOUNT * 2n);
+            await announce(registrator, swap, chainId, accepting.order);
+            await expect(fill(swap, accepting.order, accepting.sig, MAKING_AMOUNT))
+                .to.changeTokenBalances(dai, [taker, maker], [MAKING_AMOUNT, -MAKING_AMOUNT]);
         });
 
         it('reverts when an anchored window has no announcement to hang on', async function () {
