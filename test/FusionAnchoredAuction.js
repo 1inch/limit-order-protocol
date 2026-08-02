@@ -7,6 +7,7 @@ const {
     buildAnchoredAuctionDetails,
     buildAnchoredExclusivity,
     buildFeeTakerExtensions,
+    buildMakerTraits,
     buildOrder,
     buildTakerTraits,
     signOrder,
@@ -160,6 +161,120 @@ describe('FusionAnchoredAuction', function () {
             await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
         });
 
+        it('treats the start and finish instants as inside and after the auction', async function () {
+            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
+
+            const startTime = await time.latest() + 100;
+            const params = { startTime, duration: 100, initialRateBump: Number(HALF_PERCENT) };
+            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
+            const sig = await signature(order, chainId, swap);
+
+            // Exactly at the start the full initial bump still applies.
+            await time.setNextBlockTimestamp(startTime);
+            const atStart = ceilDiv((TAKING_AMOUNT / 2n) * (BASE_POINTS + HALF_PERCENT), BASE_POINTS);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n)).to.changeTokenBalances(weth, [taker, maker], [-atStart, atStart]);
+
+            // Exactly at the finish the bump is already gone.
+            await time.setNextBlockTimestamp(startTime + params.duration);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n)).to.changeTokenBalances(
+                weth, [taker, maker], [-TAKING_AMOUNT / 2n, TAKING_AMOUNT / 2n],
+            );
+        });
+
+        it('turns a zero-duration auction into a step from the initial bump to the floor', async function () {
+            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
+
+            const startTime = await time.latest() + 100;
+            const order = await buildAuctionOrder({
+                dai,
+                weth,
+                auction,
+                auctionDetails: buildAnchoredAuctionDetails({ startTime, duration: 0, initialRateBump: Number(HALF_PERCENT) }),
+            });
+            const sig = await signature(order, chainId, swap);
+
+            await time.setNextBlockTimestamp(startTime);
+            const atStart = ceilDiv((TAKING_AMOUNT / 2n) * (BASE_POINTS + HALF_PERCENT), BASE_POINTS);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n)).to.changeTokenBalances(weth, [taker, maker], [-atStart, atStart]);
+
+            await time.setNextBlockTimestamp(startTime + 1);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n)).to.changeTokenBalances(
+                weth, [taker, maker], [-TAKING_AMOUNT / 2n, TAKING_AMOUNT / 2n],
+            );
+        });
+
+        it('lets a zero-delay point re-anchor the curve away from the initial bump', async function () {
+            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
+
+            const startTime = await time.latest() + 100;
+            const params = {
+                startTime,
+                duration: 100,
+                initialRateBump: Number(HALF_PERCENT),
+                points: [{ coefficient: Number(HALF_PERCENT / 5n), delay: 0 }],
+            };
+            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
+            const sig = await signature(order, chainId, swap);
+
+            // The moment the auction starts the curve runs from the zero-delay point, not the initial bump.
+            const fillTime = startTime + 50;
+            await time.setNextBlockTimestamp(fillTime);
+            const fillTx = fill(swap, order, sig, MAKING_AMOUNT);
+
+            const expected = takingAmountFor(order, params, fillTime, MAKING_AMOUNT, MAKING_AMOUNT);
+            expect(expected).to.equal(ceilDiv(TAKING_AMOUNT * (BASE_POINTS + HALF_PERCENT / 10n), BASE_POINTS));
+            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+        });
+
+        it('clamps the price at the floor when the gas bump exceeds the auction bump', async function () {
+            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
+
+            const startTime = await time.latest() + 100;
+            const baseFee = 1000000000n; // 1 gwei, exactly the estimate below
+            const overrides = { gasPrice: baseFee * 2n };
+
+            // A gas bump worth twice the whole curve: the rate bump bottoms out at zero rather than underflowing.
+            const clamped = await buildAuctionOrder({
+                dai,
+                weth,
+                auction,
+                auctionDetails: buildAnchoredAuctionDetails({
+                    startTime,
+                    duration: 100,
+                    initialRateBump: Number(HALF_PERCENT),
+                    gasBumpEstimate: Number(HALF_PERCENT * 2n),
+                    gasPriceEstimate: 1000,
+                }),
+            });
+            const clampedSig = await signature(clamped, chainId, swap);
+            await hre.network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x' + baseFee.toString(16)]);
+            await time.setNextBlockTimestamp(startTime + 50);
+            await expect(fill(swap, clamped, clampedSig, MAKING_AMOUNT, { overrides })).to.changeTokenBalances(
+                weth, [taker, maker], [-TAKING_AMOUNT, TAKING_AMOUNT],
+            );
+
+            // A gas bump estimate without a gas price estimate is inert rather than dividing by zero.
+            const inert = await buildAuctionOrder({
+                dai,
+                weth,
+                auction,
+                auctionDetails: buildAnchoredAuctionDetails({
+                    startTime,
+                    duration: 100,
+                    initialRateBump: Number(HALF_PERCENT),
+                    gasBumpEstimate: Number(HALF_PERCENT * 2n),
+                    gasPriceEstimate: 0,
+                }),
+            });
+            const inertSig = await signature(inert, chainId, swap);
+            await hre.network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x' + baseFee.toString(16)]);
+            await time.setNextBlockTimestamp(startTime + 75);
+            const expected = ceilDiv(TAKING_AMOUNT * (BASE_POINTS + HALF_PERCENT / 4n), BASE_POINTS);
+            await expect(fill(swap, inert, inertSig, MAKING_AMOUNT, { overrides })).to.changeTokenBalances(
+                weth, [taker, maker], [-expected, expected],
+            );
+        });
+
         it('walks past the points it has already passed', async function () {
             const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
 
@@ -270,6 +385,86 @@ describe('FusionAnchoredAuction', function () {
             await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
         });
 
+        it('lets anyone holding the signature announce, and prices from that announcement', async function () {
+            const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
+
+            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(anchoredParams) });
+            const sig = await signature(order, chainId, swap);
+
+            // Registration is permissionless by design: the first caller starts the clock.
+            await registrator.connect(otherResolver).registerOrder(order, order.extension, sig.compactSerialized);
+            const announcedAt = await time.latest();
+
+            await time.setNextBlockTimestamp(announcedAt + anchoredParams.startDelay);
+            const expected = ceilDiv(TAKING_AMOUNT * (BASE_POINTS + HALF_PERCENT), BASE_POINTS);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+        });
+
+        it('cannot resurrect an order past its own expiry', async function () {
+            const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
+
+            const expiry = await time.latest() + 100;
+            const auctionAddress = await auction.getAddress();
+            const auctionData = ethers.solidityPacked(['address', 'bytes'], [auctionAddress, buildAnchoredAuctionDetails(anchoredParams)]);
+            const order = buildOrder(
+                {
+                    maker: maker.address,
+                    makerAsset: await dai.getAddress(),
+                    takerAsset: await weth.getAddress(),
+                    makingAmount: MAKING_AMOUNT,
+                    takingAmount: TAKING_AMOUNT,
+                    makerTraits: buildMakerTraits({ expiry }),
+                },
+                { makingAmountData: auctionData, takingAmountData: auctionData },
+            );
+            const sig = await signature(order, chainId, swap);
+            const announcedAt = await announce(registrator, swap, chainId, order);
+            expect(await registrator.announcedAt(await swap.hashOrder(order))).to.equal(announcedAt);
+
+            // The maker's absolute expiry is enforced by the protocol core and always wins over the announcement.
+            await time.setNextBlockTimestamp(announcedAt + 20);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n)).to.changeTokenBalances(dai, [taker, maker], [MAKING_AMOUNT / 2n, -MAKING_AMOUNT / 2n]);
+
+            await time.setNextBlockTimestamp(expiry + 1);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n)).to.be.revertedWithCustomError(swap, 'OrderExpired');
+        });
+
+        it('handles every optional field at once, in both fill directions', async function () {
+            const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
+
+            const params = {
+                startTime: 0,
+                duration: 100,
+                initialRateBump: Number(HALF_PERCENT),
+                startDelay: 10,
+                fillScalingNumerator: 100,
+                postAuctionWindow: 60,
+            };
+            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
+            const sig = await signature(order, chainId, swap);
+            const announcedAt = await announce(registrator, swap, chainId, order);
+            const resolved = { ...params, startTime: announcedAt + params.startDelay };
+
+            // A fill by making amount halfway through the anchored auction, penalized for its half share.
+            const firstFillTime = announcedAt + 60;
+            await time.setNextBlockTimestamp(firstFillTime);
+            const firstExpected = takingAmountFor(order, resolved, firstFillTime, MAKING_AMOUNT / 2n, MAKING_AMOUNT);
+            expect(firstExpected).to.equal(ceilDiv((TAKING_AMOUNT / 2n) * (BASE_POINTS + HALF_PERCENT * 3n / 4n), BASE_POINTS));
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n)).to.changeTokenBalances(weth, [taker, maker], [-firstExpected, firstExpected]);
+
+            // A fill by taking amount after the auction, priced through the conservative estimate.
+            const secondFillTime = announcedAt + 120;
+            await time.setNextBlockTimestamp(secondFillTime);
+            const takingAmount = TAKING_AMOUNT / 10n;
+            const secondExpected = makingAmountFor(order, resolved, secondFillTime, takingAmount, MAKING_AMOUNT / 2n);
+            await expect(fill(swap, order, sig, takingAmount, { byMakingAmount: false }))
+                .to.changeTokenBalances(dai, [taker, maker], [secondExpected, -secondExpected]);
+
+            // And past the anchored deadline nothing fills at all.
+            await time.setNextBlockTimestamp(announcedAt + params.startDelay + params.duration + params.postAuctionWindow + 1);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 10n)).to.be.revertedWithCustomError(auction, 'AuctionExpired');
+        });
+
         it('gives a slow announcement the same curve a prompt one gets', async function () {
             const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
 
@@ -293,14 +488,14 @@ describe('FusionAnchoredAuction', function () {
     describe('post-auction deadline', function () {
         const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 0, postAuctionWindow: 60 };
 
-        it('allows a fill inside the window that follows the auction', async function () {
+        it('allows a fill up to the very last second of the window', async function () {
             const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
 
             const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
             const sig = await signature(order, chainId, swap);
             const announcedAt = await announce(registrator, swap, chainId, order);
 
-            await time.setNextBlockTimestamp(announcedAt + params.duration + params.postAuctionWindow - 1);
+            await time.setNextBlockTimestamp(announcedAt + params.duration + params.postAuctionWindow);
             await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.changeTokenBalances(
                 weth, [taker, maker], [-TAKING_AMOUNT, TAKING_AMOUNT],
             );
@@ -492,6 +687,140 @@ describe('FusionAnchoredAuction', function () {
             expect(expected).to.be.lessThanOrEqual(exact);
         });
 
+        it('applies no penalty while the curve sits above the initial bump', async function () {
+            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
+
+            const startTime = await time.latest() + 100;
+            const params = {
+                startTime,
+                duration: 100,
+                initialRateBump: Number(HALF_PERCENT),
+                fillScalingNumerator: 100,
+                points: [{ coefficient: Number(HALF_PERCENT * 2n), delay: 50 }],
+            };
+            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
+            const sig = await signature(order, chainId, swap);
+
+            // A rising curve has released no discount to withhold, so a small fill pays the curve and no more.
+            const fillTime = startTime + 25;
+            await time.setNextBlockTimestamp(fillTime);
+            const makingAmount = MAKING_AMOUNT / 10n;
+            const fillTx = fill(swap, order, sig, makingAmount);
+
+            const expected = takingAmountFor(order, params, fillTime, makingAmount, MAKING_AMOUNT);
+            expect(expected).to.equal(ceilDiv((TAKING_AMOUNT / 10n) * (BASE_POINTS + HALF_PERCENT * 3n / 2n), BASE_POINTS));
+            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+        });
+
+        it('offsets the gas bump from the already-scaled bump', async function () {
+            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
+
+            const startTime = await time.latest() + 100;
+            const baseFee = 1000000000n; // 1 gwei, exactly the estimate below
+            const order = await buildAuctionOrder({
+                dai,
+                weth,
+                auction,
+                auctionDetails: buildAnchoredAuctionDetails({
+                    startTime,
+                    duration: 100,
+                    initialRateBump: Number(HALF_PERCENT),
+                    fillScalingNumerator: 100,
+                    gasBumpEstimate: Number(HALF_PERCENT / 2n),
+                    gasPriceEstimate: 1000,
+                }),
+            });
+            const sig = await signature(order, chainId, swap);
+
+            await hre.network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x' + baseFee.toString(16)]);
+            await time.setNextBlockTimestamp(startTime + 200);
+            const fillTx = fill(swap, order, sig, MAKING_AMOUNT / 10n, { overrides: { gasPrice: baseFee * 2n } });
+
+            // After the auction the tenth-sized fill is scaled up to 0.9 of the initial bump and the gas bump
+            // of half the initial bump comes off that, leaving 0.4 — the ordering this contract commits to.
+            const expected = ceilDiv((TAKING_AMOUNT / 10n) * (BASE_POINTS + HALF_PERCENT * 4n / 10n), BASE_POINTS);
+            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+        });
+
+        it('caps an oversized taking-amount fill at the remainder priced as a full fill', async function () {
+            const { dai, weth, swap, order, sig, afterAuction } = await deployFilledOrder(100);
+
+            await time.setNextBlockTimestamp(afterAuction);
+            const fillTx = fill(swap, order, sig, TAKING_AMOUNT * 2n, { byMakingAmount: false });
+
+            // The protocol caps the fill at what is left and reprices it through getTakingAmount, so the taker
+            // sweeps the order at the full-fill price instead of paying the amount they offered.
+            await expect(fillTx).to.changeTokenBalances(dai, [taker, maker], [MAKING_AMOUNT, -MAKING_AMOUNT]);
+            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-TAKING_AMOUNT, TAKING_AMOUNT]);
+        });
+
+        it('is inert for an order that forbids partial fills', async function () {
+            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
+
+            const startTime = await time.latest() + 10;
+            const auctionData = ethers.solidityPacked(
+                ['address', 'bytes'],
+                [await auction.getAddress(), buildAnchoredAuctionDetails({ startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), fillScalingNumerator: 100 })],
+            );
+            const order = buildOrder(
+                {
+                    maker: maker.address,
+                    makerAsset: await dai.getAddress(),
+                    takerAsset: await weth.getAddress(),
+                    makingAmount: MAKING_AMOUNT,
+                    takingAmount: TAKING_AMOUNT,
+                    makerTraits: buildMakerTraits({ allowPartialFill: false }),
+                },
+                { makingAmountData: auctionData, takingAmountData: auctionData },
+            );
+            const sig = await signature(order, chainId, swap);
+
+            await time.setNextBlockTimestamp(startTime + 150);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n)).to.be.revertedWithCustomError(swap, 'PartialFillNotAllowed');
+
+            // The only fill such an order allows is the full one, which fill scaling prices at the plain curve.
+            await time.setNextBlockTimestamp(startTime + 151);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.changeTokenBalances(
+                weth, [taker, maker], [-TAKING_AMOUNT, TAKING_AMOUNT],
+            );
+        });
+
+        it('keeps its rounding directions at dust-sized amounts', async function () {
+            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
+
+            const startTime = await time.latest() + 10;
+            const params = { startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), fillScalingNumerator: 100 };
+            const auctionData = ethers.solidityPacked(
+                ['address', 'bytes'],
+                [await auction.getAddress(), buildAnchoredAuctionDetails(params)],
+            );
+            const order = buildOrder(
+                {
+                    maker: maker.address,
+                    makerAsset: await dai.getAddress(),
+                    takerAsset: await weth.getAddress(),
+                    makingAmount: 3n,
+                    takingAmount: 1n,
+                },
+                { makingAmountData: auctionData, takingAmountData: auctionData },
+            );
+            const sig = await signature(order, chainId, swap);
+
+            // One wei of a three-wei order: the taking amount rounds up twice, so the penalized dust fill
+            // costs two wei rather than a rounded-down zero premium.
+            const fillTime = startTime + 200;
+            await time.setNextBlockTimestamp(fillTime);
+            const expected = takingAmountFor(order, params, fillTime, 1n, 3n);
+            expect(expected).to.equal(2n);
+            await expect(fill(swap, order, sig, 1n)).to.changeTokenBalances(weth, [taker, maker], [-2n, 2n]);
+
+            // A fill by taking amount rounds the making amount down and the cap reprices the sweep exactly.
+            await time.setNextBlockTimestamp(fillTime + 1);
+            await expect(fill(swap, order, sig, 1n, { byMakingAmount: false })).to.changeTokenBalances(
+                dai, [taker, maker], [2n, -2n],
+            );
+        });
+
         it('rejects a strength above 100%', async function () {
             const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
 
@@ -566,6 +895,90 @@ describe('FusionAnchoredAuction', function () {
             await time.setNextBlockTimestamp(announcedAt + 30);
             await expect(fill(swap, order, sig, MAKING_AMOUNT, { from: otherResolver }))
                 .to.changeTokenBalances(dai, [otherResolver, maker], [MAKING_AMOUNT, -MAKING_AMOUNT]);
+        });
+
+        it('keeps a built allowed time that is later than the anchored one', async function () {
+            const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
+
+            const allowedTime = await time.latest() + 100;
+            const order = await buildAuctionOrder({
+                dai,
+                weth,
+                auction,
+                auctionDetails: buildAnchoredAuctionDetails(auctionParams),
+                exclusivity: buildAnchoredExclusivity({
+                    allowedTime,
+                    allowedTimeDelay: 5,
+                    whitelist: [{ address: taker.address }],
+                }),
+            });
+            const sig = await signature(order, chainId, swap);
+            const announcedAt = await announce(registrator, swap, chainId, order);
+            expect(announcedAt + 5).to.be.lessThan(allowedTime);
+
+            // Anchoring may only move the window later, mirroring the auction start's max() semantics.
+            await time.setNextBlockTimestamp(allowedTime - 1);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.be.revertedWithCustomError(auction, 'AllowedTimeViolation');
+
+            await time.setNextBlockTimestamp(allowedTime);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.changeTokenBalances(dai, [taker, maker], [MAKING_AMOUNT, -MAKING_AMOUNT]);
+        });
+
+        it('staggers two whitelisted resolvers by their deltas', async function () {
+            const { dai, weth, swap, chainId, registrator, auction, inch } = await loadFixture(deployContractsAndInit);
+
+            await inch.mint(otherResolver, ether('1'));
+            await weth.connect(otherResolver).deposit({ value: ether('1') });
+            await weth.connect(otherResolver).approve(swap, ether('1'));
+
+            const order = await buildAuctionOrder({
+                dai,
+                weth,
+                auction,
+                auctionDetails: buildAnchoredAuctionDetails(auctionParams),
+                exclusivity: buildAnchoredExclusivity({
+                    allowedTimeDelay: 10,
+                    whitelist: [
+                        { address: taker.address, delta: 20 },
+                        { address: otherResolver.address },
+                    ],
+                }),
+            });
+            const sig = await signature(order, chainId, swap);
+            const announcedAt = await announce(registrator, swap, chainId, order);
+
+            // The second resolver is whitelisted but its window opens a delta after the first one's.
+            await time.setNextBlockTimestamp(announcedAt + 15);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n, { from: otherResolver }))
+                .to.be.revertedWithCustomError(auction, 'AllowedTimeViolation');
+
+            await time.setNextBlockTimestamp(announcedAt + 16);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n))
+                .to.changeTokenBalances(dai, [taker, maker], [MAKING_AMOUNT / 2n, -MAKING_AMOUNT / 2n]);
+
+            await time.setNextBlockTimestamp(announcedAt + 30);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n, { from: otherResolver }))
+                .to.changeTokenBalances(dai, [otherResolver, maker], [MAKING_AMOUNT / 2n, -MAKING_AMOUNT / 2n]);
+        });
+
+        it('gates everyone by the anchored time when the whitelist is empty', async function () {
+            const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
+
+            const order = await buildAuctionOrder({
+                dai,
+                weth,
+                auction,
+                auctionDetails: buildAnchoredAuctionDetails(auctionParams),
+                exclusivity: buildAnchoredExclusivity({ allowedTimeDelay: 30, whitelist: [] }),
+            });
+            const sig = await signature(order, chainId, swap);
+            const announcedAt = await announce(registrator, swap, chainId, order);
+
+            await time.setNextBlockTimestamp(announcedAt + 29);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.be.revertedWithCustomError(auction, 'AllowedTimeViolation');
+
+            await time.setNextBlockTimestamp(announcedAt + 30);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.changeTokenBalances(dai, [taker, maker], [MAKING_AMOUNT, -MAKING_AMOUNT]);
         });
 
         it('still enforces an absolute allowed time when not anchored', async function () {
