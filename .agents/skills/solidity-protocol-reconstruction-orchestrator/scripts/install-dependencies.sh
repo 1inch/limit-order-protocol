@@ -6,6 +6,35 @@ FRAMEWORK="auto"
 ALL_FRAMEWORKS=0
 WITH_ARC42=0
 WITH_ADRS=0
+AGENT=""
+YES=0
+
+usage() {
+  cat <<'USAGE'
+Usage: install-dependencies.sh [--apply] [--framework PROFILE] [--all-frameworks]
+                               [--with-arc42] [--with-adrs] [--with-optional]
+                               [--agent NAME[,NAME...]] [--yes]
+
+Without --apply the script only prints the commands it would run.
+
+  --framework   auto (default) | hardhat2 | hardhat3 | foundry
+                | hybrid-hardhat2-foundry | hybrid-hardhat3-foundry
+  --agent       agent target passed through to `npx skills add`. Defaults to the
+                identifier whose project path matches the directory this
+                orchestrator is installed under, so specialists land next to it
+                (`.agents/skills/` -> universal, `.cursor/skills/` -> cursor,
+                `.claude/skills/` -> claude-code). Use '*' for every agent, or
+                `--agent auto` to let the CLI auto-detect.
+  --yes         pass --yes to `npx skills add`.
+
+Exit codes:
+  0  preview printed, or install and re-check succeeded
+  1  install applied but check-dependencies.sh still reports missing skills
+  2  usage error
+  3  framework profile could not be resolved
+  4  python3 missing or manifest unreadable
+USAGE
+}
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -16,92 +45,119 @@ while [[ $# -gt 0 ]]; do
     --with-arc42) WITH_ARC42=1 ;;
     --with-adrs) WITH_ADRS=1 ;;
     --with-optional) WITH_ARC42=1; WITH_ADRS=1 ;;
-    -h|--help)
-      echo "Usage: install-dependencies.sh [--apply] [--framework auto|...] [--all-frameworks] [--with-optional]"
-      exit 0 ;;
-    *) echo "Unknown argument: $1" >&2; exit 2 ;;
+    --agent) shift; AGENT="${1:-}" ;;
+    --agent=*) AGENT="${1#*=}" ;;
+    --yes|-y) YES=1 ;;
+    -h|--help) usage; exit 0 ;;
+    *) echo "Unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
   shift
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/manifest.sh
+. "$SCRIPT_DIR/lib/manifest.sh"
+require_python3
+
+DETECTED=""
+detect_field() {
+  [[ -n "$DETECTED" ]] || DETECTED="$("$SCRIPT_DIR/detect-project-stack.sh" --format env)"
+  awk -F= -v k="$1" '$1==k{sub(/^[^=]*=/,""); print}' <<<"$DETECTED" | sed -e "s/^'//" -e "s/'$//"
+}
+
 if [[ "$ALL_FRAMEWORKS" -eq 0 && "$FRAMEWORK" == "auto" ]]; then
-  eval "$($SCRIPT_DIR/detect-project-stack.sh --format env)"
-  FRAMEWORK="$FRAMEWORK_PROFILE"
-fi
-if [[ "$ALL_FRAMEWORKS" -eq 0 ]]; then
-  case "$FRAMEWORK" in hardhat2|hardhat3|foundry|hybrid-hardhat2-foundry|hybrid-hardhat3-foundry) ;; *) echo "Cannot resolve framework: $FRAMEWORK" >&2; exit 3;; esac
+  FRAMEWORK="$(detect_field FRAMEWORK_PROFILE)"
 fi
 
-# Skills are grouped by source repository so each repo is cloned once and its
-# skills are installed with a single `--skill a b c` invocation, instead of one
-# `npx skills add` call (and one clone) per skill.
-SOURCES=()
-SOURCE_SKILLS=()
+TARGET="$FRAMEWORK"
+if [[ "$ALL_FRAMEWORKS" -eq 1 ]]; then
+  TARGET="all"
+elif ! manifest_query profiles | grep -qx -- "$FRAMEWORK"; then
+  echo "Cannot resolve framework: ${FRAMEWORK:-<empty>}" >&2
+  echo "Run scripts/detect-project-stack.sh, then pass --framework explicitly." >&2
+  exit 3
+fi
 
-add_skill(){
-  local src="$1" skill="$2" idx=-1 i
-  for i in "${!SOURCES[@]}"; do
-    [[ "${SOURCES[$i]}" == "$src" ]] && { idx=$i; break; }
-  done
-  if [[ "$idx" -eq -1 ]]; then
-    SOURCES+=("$src")
-    SOURCE_SKILLS+=("$skill")
-  else
-    case " ${SOURCE_SKILLS[$idx]} " in
-      *" $skill "*) ;;
-      *) SOURCE_SKILLS[$idx]="${SOURCE_SKILLS[$idx]} $skill" ;;
-    esac
-  fi
-}
-
-add_skill "https://github.com/trailofbits/skills" "spec-to-code-compliance"
-add_skill "TrevorEdris/fellowship-of-the-workflows" "reverse-engineer"
-add_skill "https://github.com/trailofbits/skills" "audit-context-building"
-add_skill "https://github.com/trailofbits/skills" "entry-point-analyzer"
-add_skill "https://github.com/wondelai/skills" "working-with-legacy-code"
-add_skill "https://github.com/trailofbits/skills" "property-based-testing"
-add_skill "https://github.com/trailofbits/skills" "secure-workflow-guide"
-add_skill "majiayu000/claude-skill-registry" "bdd-practices"
-
-add_hh2(){ add_skill "https://github.com/wshobson/agents" "web3-testing"; }
-add_hh3(){
-  add_skill "nomicfoundation/hardhat-skills" "hardhat"
-  if [[ "$ALL_FRAMEWORKS" -eq 1 ]]; then
-    add_skill "nomicfoundation/hardhat-skills" "hardhat-toolbox-viem"
-    add_skill "nomicfoundation/hardhat-skills" "hardhat-toolbox-mocha-ethers"
-  else
-    eval "$($SCRIPT_DIR/detect-project-stack.sh --format env)"
-    if [[ -n "${TOOLBOX_VIEM_VERSION:-}" ]]; then add_skill "nomicfoundation/hardhat-skills" "hardhat-toolbox-viem"; fi
-    if [[ -n "${TOOLBOX_MOCHA_ETHERS_VERSION:-}" ]]; then add_skill "nomicfoundation/hardhat-skills" "hardhat-toolbox-mocha-ethers"; fi
-  fi
-  return 0
-}
-add_foundry(){ add_skill "tenequm/skills" "foundry-solidity"; }
-
-if [[ "$ALL_FRAMEWORKS" -eq 1 ]]; then add_hh2; add_hh3; add_foundry
-else
-  case "$FRAMEWORK" in
-    hardhat2) add_hh2 ;;
-    hardhat3) add_hh3 ;;
-    foundry) add_foundry ;;
-    hybrid-hardhat2-foundry) add_hh2; add_foundry ;;
-    hybrid-hardhat3-foundry) add_hh3; add_foundry ;;
+# The orchestrator lives under `<repo>/<agent-dir>/skills/<name>`. Install the
+# specialists into that same directory rather than assuming an agent name: the
+# CLI's agent-to-path mapping is version-dependent (`--agent cursor` has meant
+# both `.cursor/skills/` and `.agents/skills/`), and hardcoding one is what
+# previously scattered skills across two roots.
+#
+# `universal` is the CLI identifier whose project path is `.agents/skills/`.
+detect_agent() {
+  local dir
+  dir="$(cd "$SCRIPT_DIR/../../.." && pwd)"      # .../<agent-dir>/skills -> <agent-dir>
+  case "$(basename "$dir")" in
+    .agents) echo "universal" ;;
+    .cursor) echo "cursor" ;;
+    .claude) echo "claude-code" ;;
+    *) echo "" ;;
   esac
-fi
+}
 
-[[ "$WITH_ARC42" -eq 1 ]] && add_skill "marvinrichter/clarc" "arc42-c4"
-[[ "$WITH_ADRS" -eq 1 ]] && add_skill "addyosmani/agent-skills" "documentation-and-adrs"
+if [[ -z "$AGENT" ]]; then
+  AGENT="$(detect_agent)"
+fi
+AGENT_ARG=""
+AGENT_NOTE="CLI auto-detection"
+case "$AGENT" in
+  ""|auto) ;;
+  # Quoted because '*' means "every agent" and must not be glob-expanded.
+  *) AGENT_ARG=" --agent '$AGENT'"; AGENT_NOTE="$AGENT" ;;
+esac
+YES_ARG=""
+[[ "$YES" -eq 1 ]] && YES_ARG=" --yes"
+
+CONDITIONAL_ARGS=()
+if [[ "$TARGET" == *hardhat3* || "$TARGET" == "all" ]]; then
+  [[ -n "$(detect_field TOOLBOX_VIEM_VERSION)" ]] && CONDITIONAL_ARGS+=(--toolbox-viem)
+  [[ -n "$(detect_field TOOLBOX_MOCHA_ETHERS_VERSION)" ]] && CONDITIONAL_ARGS+=(--toolbox-mocha-ethers)
+fi
 
 COMMANDS=()
-for i in "${!SOURCES[@]}"; do
-  COMMANDS+=("npx skills@latest add ${SOURCES[$i]} --skill ${SOURCE_SKILLS[$i]} --agent cursor")
-done
+while IFS=$'\t' read -r source skills; do
+  [[ -n "$source" ]] || continue
+  COMMANDS+=("npx skills@latest add $source --skill $skills$AGENT_ARG$YES_ARG")
+done < <(
+  manifest_query install --framework "$TARGET" \
+    $([[ "$WITH_ARC42" -eq 1 ]] && echo --with-arc42) \
+    $([[ "$WITH_ADRS" -eq 1 ]] && echo --with-adrs) \
+    ${CONDITIONAL_ARGS[@]+"${CONDITIONAL_ARGS[@]}"}
+)
 
 if [[ "$APPLY" -eq 0 ]]; then
-  printf 'Framework selection: %s\n\nCommands:\n\n' "$([[ "$ALL_FRAMEWORKS" -eq 1 ]] && echo all || echo "$FRAMEWORK")"
+  printf 'Framework selection: %s\n' "$TARGET"
+  printf 'Agent target:        %s\n' "$AGENT_NOTE"
+  printf 'Manifest:            %s\n\n' "$SKILL_MANIFEST"
+  printf 'Commands:\n\n'
   printf '%s\n' "${COMMANDS[@]}"
-  echo; echo "Re-run with --apply to execute."
+  cat <<'NOTE'
+
+Re-run with --apply to execute.
+If skills-lock.json already pins this exact set, `npx skills experimental_install`
+restores it without resolving sources again.
+NOTE
   exit 0
 fi
-for c in "${COMMANDS[@]}"; do echo; echo "> $c"; bash -lc "$c"; done
+
+for c in "${COMMANDS[@]}"; do
+  echo
+  echo "> $c"
+  bash -lc "$c"
+done
+
+echo
+echo "> re-checking installed skills"
+CHECK_ARGS=(full)
+[[ "$ALL_FRAMEWORKS" -eq 0 ]] && CHECK_ARGS+=(--framework "$FRAMEWORK")
+[[ "$WITH_ARC42" -eq 1 ]] && CHECK_ARGS+=(--with-arc42)
+[[ "$WITH_ADRS" -eq 1 ]] && CHECK_ARGS+=(--with-adrs)
+if "$SCRIPT_DIR/check-dependencies.sh" "${CHECK_ARGS[@]}"; then
+  echo
+  echo "Install complete: every requested skill resolves."
+  exit 0
+fi
+echo
+echo "Install ran but check-dependencies.sh still reports missing skills. Resolve them before starting a phase." >&2
+exit 1
