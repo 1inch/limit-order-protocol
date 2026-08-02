@@ -13,6 +13,17 @@ export SKILL_MANIFEST
 # the tree they are inspecting.
 export PYTHONDONTWRITEBYTECODE=1
 
+# bash 3.2 is the floor: macOS ships 3.2.57 as /bin/bash. Everything in this
+# skill stays within that dialect; scripts/validate-package.sh lints for it.
+require_bash() {
+  local major="${BASH_VERSINFO[0]:-0}"
+  local minor="${BASH_VERSINFO[1]:-0}"
+  if [[ "$major" -lt 3 ]] || [[ "$major" -eq 3 && "$minor" -lt 2 ]]; then
+    echo "solidity-protocol-reconstruction-orchestrator requires bash >= 3.2 (found ${BASH_VERSION:-unknown})." >&2
+    exit 4
+  fi
+}
+
 require_python3() {
   local why=""
   if ! command -v python3 >/dev/null 2>&1; then
@@ -49,3 +60,7 @@ manifest_query() {
   [[ -n "$out" ]] && printf '%s\n' "$out"
   return 0
 }
+
+# Every script sources this file before doing anything else, so checking here
+# covers all of them.
+require_bash

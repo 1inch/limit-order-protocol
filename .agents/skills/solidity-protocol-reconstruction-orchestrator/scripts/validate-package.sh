@@ -49,7 +49,7 @@ required=(
   assets/requirement.template.md
   scripts/detect-project-stack.sh scripts/check-dependencies.sh
   scripts/install-dependencies.sh scripts/validate-package.sh
-  scripts/lib/manifest.py scripts/lib/manifest.sh
+  scripts/lib/manifest.py scripts/lib/manifest.sh scripts/lib/bash32-lint.tsv
 )
 missing_files=()
 for rel in "${required[@]}"; do
@@ -139,15 +139,26 @@ while IFS= read -r artifact; do
 done < <(grep -oE 'docs/protocol-reconstruction/[A-Za-z0-9./_-]+' "$SKILL_DIR/SKILL.md" | sed 's#docs/protocol-reconstruction/##' | sort -u)
 pass "every artifact named in SKILL.md is defined in references/artifacts.md"
 
-# Templated artifacts must actually ship a template.
-declare -A TEMPLATE_FOR=(
-  [STATUS.md]=assets/STATUS.template.md
-  [03-divergence-decisions.md]=assets/divergence-decisions.template.md
-  [06-existing-test-audit.md]=assets/existing-test-audit.template.md
-  [08-traceability-matrix.md]=assets/traceability-matrix.template.md
+# Templated artifacts must actually ship a template. Parallel indexed arrays,
+# because bash 3.2 has no associative arrays and fails silently if given one.
+TEMPLATED_ARTIFACTS=(
+  STATUS.md
+  03-divergence-decisions.md
+  06-existing-test-audit.md
+  08-traceability-matrix.md
 )
-for artifact in "${!TEMPLATE_FOR[@]}"; do
-  template="${TEMPLATE_FOR[$artifact]}"
+ARTIFACT_TEMPLATES=(
+  assets/STATUS.template.md
+  assets/divergence-decisions.template.md
+  assets/existing-test-audit.template.md
+  assets/traceability-matrix.template.md
+)
+if [[ "${#TEMPLATED_ARTIFACTS[@]}" -ne "${#ARTIFACT_TEMPLATES[@]}" ]]; then
+  fail "TEMPLATED_ARTIFACTS and ARTIFACT_TEMPLATES are different lengths"
+fi
+for i in "${!TEMPLATED_ARTIFACTS[@]}"; do
+  artifact="${TEMPLATED_ARTIFACTS[$i]}"
+  template="${ARTIFACT_TEMPLATES[$i]}"
   [[ -f "$SKILL_DIR/$template" ]] || fail "artifact '$artifact' has no template at $template"
   grep -q -- "$template" "$SKILL_DIR/references/artifacts.md" \
     || fail "references/artifacts.md does not link '$artifact' to $template"
@@ -177,7 +188,8 @@ fi
 
 # --------------------------------------------------------- 8. script hygiene
 
-for script in "$SKILL_DIR"/scripts/*.sh "$SKILL_DIR"/scripts/lib/*.sh; do
+SHELL_SCRIPTS=("$SKILL_DIR"/scripts/*.sh "$SKILL_DIR"/scripts/lib/*.sh)
+for script in "${SHELL_SCRIPTS[@]}"; do
   bash -n "$script" || fail "syntax error: ${script#"$SKILL_DIR"/}"
 done
 # ast.parse rather than py_compile: py_compile writes __pycache__ into the skill
@@ -203,6 +215,42 @@ if [[ "${#NOT_EXEC[@]}" -gt 0 ]]; then
   fi
 else
   pass "scripts/*.sh are executable"
+fi
+
+# ------------------------------------------------- 9. bash 3.2 portability
+#
+# The rule table lives in scripts/lib/bash32-lint.tsv, outside the scripts it
+# scans, so the patterns cannot match themselves. See that file for why this
+# check exists and why `bash -n` above cannot replace it.
+LINT_RULES="$SKILL_DIR/scripts/lib/bash32-lint.tsv"
+LINT_PATTERNS=()
+LINT_REASONS=()
+while IFS=$'\t' read -r lint_pattern lint_reason; do
+  case "$lint_pattern" in ''|\#*) continue ;; esac
+  LINT_PATTERNS+=("$lint_pattern")
+  LINT_REASONS+=("$lint_reason")
+done < "$LINT_RULES"
+
+if [[ "${#LINT_PATTERNS[@]}" -eq 0 ]]; then
+  fail "no portability rules loaded from ${LINT_RULES#"$SKILL_DIR"/}"
+fi
+PORTABILITY_HITS=0
+for i in ${LINT_PATTERNS[@]+"${!LINT_PATTERNS[@]}"}; do
+  while IFS= read -r hit; do
+    [[ -n "$hit" ]] || continue
+    fail "bash 3.2: ${hit#"$SKILL_DIR"/}"
+    printf '      %s\n' "${LINT_REASONS[$i]}" >&2
+    PORTABILITY_HITS=$((PORTABILITY_HITS + 1))
+    # Comment-only lines are dropped: a comment cannot execute, and this file
+    # documents the very constructs it forbids.
+  done < <(
+    grep -nE "${LINT_PATTERNS[$i]}" "${SHELL_SCRIPTS[@]}" 2>/dev/null |
+      awk '{ body = $0; sub(/^[^:]*:[0-9]+:/, "", body); if (body !~ /^[[:space:]]*#/) print }' \
+      || true
+  )
+done
+if [[ "$PORTABILITY_HITS" -eq 0 ]]; then
+  pass "no bash 4+ constructs in ${#SHELL_SCRIPTS[@]} shell scripts (${#LINT_PATTERNS[@]} rules, floor is bash 3.2)"
 fi
 
 echo

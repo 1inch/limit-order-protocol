@@ -29,7 +29,16 @@ This skill is agent-agnostic. Install it into the skills directory your agent re
 
 Cursor, Codex, Gemini CLI, and several other clients read `.agents/skills/` directly. Use `.cursor/skills/` or `.claude/skills/` only if your client requires it, and keep exactly one copy: a duplicate installation makes `check-dependencies.sh` warn, because a stale copy can otherwise win path resolution silently.
 
-`skill-dependencies.json` is the single source of truth for the specialist dependency graph, the per-mode required sets, and the package version. The scripts read it; nothing is hardcoded. `python3` is the only external requirement.
+`skill-dependencies.json` is the single source of truth for the specialist dependency graph, the per-mode required sets, and the package version. The scripts read it; nothing is hardcoded.
+
+### Requirements
+
+| Requirement | Notes |
+| ----------- | ----- |
+| `bash` >= 3.2 | macOS ships 3.2.57 as `/bin/bash`, so that is the floor. The scripts avoid `mapfile`, `readarray`, associative arrays, `${var^^}`/`${var,,}`, `;;&`, `&>>`, and heredocs inside `$( )`, none of which work on 3.2. `scripts/validate-package.sh` lints for all of them against `scripts/lib/bash32-lint.tsv`, because `bash -n` on a newer bash cannot catch them. |
+| `python3` >= 3.8 | Standard library only. Used to read `skill-dependencies.json`, `package.json`, and `foundry.toml`. |
+
+No other dependency. The scripts also stay within POSIX/BSD behaviour for `find`, `sed`, `awk`, `grep`, and `mktemp` so they run unmodified on macOS.
 
 ## Detect project stack
 
@@ -94,15 +103,11 @@ After `--apply` the script re-runs `check-dependencies.sh` and reports the resul
 
 ### `--agent`
 
-`npx skills add` installs into the directory belonging to the agent you name, and that mapping has changed between CLI versions. The script therefore derives the target from the directory the orchestrator itself is installed under, so the specialists land beside it:
+`npx skills add` installs into the directory belonging to the agent you name, and that mapping has changed between CLI versions: `--agent cursor` has meant both `.cursor/skills/` and `.agents/skills/`. Any value hardcoded here would eventually install to the wrong root, so **no `--agent` is passed by default** and the CLI auto-detects.
 
-| Orchestrator location | Derived `--agent` |
-| --------------------- | ----------------- |
-| `.agents/skills/` | `universal` |
-| `.cursor/skills/` | `cursor` |
-| `.claude/skills/` | `claude-code` |
+Pass `--agent <name>[,<name>]` with the identifier your CLI version documents (`npx skills add --help`), or `--agent '*'` for every agent. `--yes` is passed through for non-interactive use.
 
-Override with `--agent <name>[,<name>]`, `--agent '*'` for every agent, or `--agent auto` to let the CLI auto-detect. `--yes` is passed through for non-interactive use.
+The preview prints the orchestrator's own install root. After installing, run `check-dependencies.sh` to confirm the specialists resolved beside it; it warns if a skill exists under more than one root.
 
 ### Restoring from a lockfile
 
@@ -121,7 +126,9 @@ Run after editing this skill:
 .agents/skills/solidity-protocol-reconstruction-orchestrator/scripts/validate-package.sh --fix
 ```
 
-It checks that all required files exist, that the frontmatter is intact, that the version in `skill-dependencies.json` matches `SKILL.md`, `README.md`, and `CHANGELOG.md`, that every manifest skill is documented and every requested skill is in the manifest, that every artifact named in `SKILL.md` is defined in `references/artifacts.md` and has a template where one is expected, that every reference is linked from `SKILL.md`, that `SKILL.md` stays under 500 lines, and that the scripts parse and are executable. It does not modify the tree; `--fix` only sets the executable bit.
+It checks that all required files exist, that the frontmatter is intact, that the version in `skill-dependencies.json` matches `SKILL.md`, `README.md`, and `CHANGELOG.md`, that every manifest skill is documented and every requested skill is in the manifest, that every artifact named in `SKILL.md` is defined in `references/artifacts.md` and has a template where one is expected, that every reference is linked from `SKILL.md`, that `SKILL.md` stays under 500 lines, that the scripts parse and are executable, and that no script uses a bash 4+ construct. It does not modify the tree; `--fix` only sets the executable bit.
+
+Run it on any bash version: the portability lint is pure `grep`, so it catches bash 3.2 breakage even when you are on bash 5.
 
 ## Output
 

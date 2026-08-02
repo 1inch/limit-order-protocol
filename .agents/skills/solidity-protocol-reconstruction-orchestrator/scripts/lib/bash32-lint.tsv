@@ -1,0 +1,25 @@
+# bash 3.2 portability rules, read by scripts/validate-package.sh.
+#
+# macOS ships bash 3.2.57 as /bin/bash and as the bash on PATH, so every shell
+# script in this skill must stay within that dialect. `bash -n` cannot catch
+# these: on bash 4+ they all parse, and `declare -A` degrades on 3.2 into an
+# arithmetic error followed by a silently wrong result.
+#
+# This table lives outside the scripts it scans so the patterns can be written
+# plainly without matching themselves.
+#
+# Format: <extended regex><TAB><reason>. Blank lines and # comments are ignored
+# here, and comment-only lines in the scanned scripts are skipped, since a
+# comment cannot execute.
+#
+# A `<<` rule must exclude `<<<`: a herestring is portable to bash 3.2.
+
+mapfile	mapfile is bash 4; use a while IFS= read -r loop
+readarray	readarray is bash 4; use a while IFS= read -r loop
+declare[[:space:]]+-A	declare -A is bash 4; use parallel indexed arrays
+local[[:space:]]+-A	local -A is bash 4; use parallel indexed arrays
+\$\{[A-Za-z_][A-Za-z0-9_]*\^\^?\}	${var^^} and ${var^} are bash 4; use tr
+\$\{[A-Za-z_][A-Za-z0-9_]*,,?\}	${var,,} and ${var,} are bash 4; use tr
+;;&	;;& is bash 4 case fallthrough
+&>>	&>> is bash 4 redirection; use >>file 2>&1
+\$\([^(].*(^|[^<])<<[^<]	heredoc inside $( ): bash 3.2 cannot parse it; move it into a function body

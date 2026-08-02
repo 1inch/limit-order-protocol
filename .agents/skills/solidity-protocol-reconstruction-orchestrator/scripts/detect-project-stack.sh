@@ -122,12 +122,14 @@ count_files() {
 
 # Prints the first directory containing a match, so evidence names where the
 # file actually is rather than everywhere that was searched.
+# No `-print -quit`: that is a GNU/FreeBSD extension, and a find that rejects it
+# would report "no match" instead of failing, which is a silent wrong answer.
 first_dir_with() {
   local pattern="$1"; shift
   local d
   for d in "$@"; do
     [[ -n "$d" && -d "$d" ]] || continue
-    if find "$d" -type f -name "$pattern" -not -path '*/node_modules/*' -print -quit 2>/dev/null | grep -q .; then
+    if [[ -n "$(find "$d" -type f -name "$pattern" -not -path '*/node_modules/*' -print 2>/dev/null | head -n 1)" ]]; then
       echo "$d"
       return 0
     fi
@@ -168,9 +170,11 @@ REMAP_FILE="$(first_existing remappings.txt)"
 
 # ---------------------------------------------------------------- foundry.toml
 
-FOUNDRY_FACTS=""
-if [[ -n "$FOUNDRY_CONFIG" ]]; then
-  FOUNDRY_FACTS="$(python3 - "$FOUNDRY_CONFIG" <<'PY'
+# The heredoc lives in a function body, never directly inside a command
+# substitution: bash 3.2 cannot parse `$(cmd <<'TAG' ... TAG)` and reports the
+# failure at an unrelated line far below.
+parse_foundry_toml() {
+  python3 - "$1" <<'PY'
 import os, re, sys
 
 path = sys.argv[1]
@@ -298,7 +302,11 @@ emit('INVARIANT_RUNS', nested('invariant', 'runs'))
 emit('INVARIANT_DEPTH', nested('invariant', 'depth'))
 emit('INVARIANT_FAIL_ON_REVERT', nested('invariant', 'fail_on_revert'))
 PY
-)" || FOUNDRY_FACTS=""
+}
+
+FOUNDRY_FACTS=""
+if [[ -n "$FOUNDRY_CONFIG" ]]; then
+  FOUNDRY_FACTS="$(parse_foundry_toml "$FOUNDRY_CONFIG")" || FOUNDRY_FACTS=""
 fi
 
 fget() {
@@ -329,8 +337,16 @@ FOUNDRY_TOML_REMAPPING_COUNT="$(fget REMAPPINGS_COUNT)"
 
 # Foundry-configured paths, always widened with the conventional alternatives so
 # the score check and the file counts read the same directories.
-mapfile -t SOL_TEST_DIRS < <(dedupe "$FOUNDRY_TEST_PATH" test tests)
-mapfile -t SOL_SCRIPT_DIRS < <(dedupe "$FOUNDRY_SCRIPT_PATH" script scripts)
+# Collected with a read loop: bash 3.2 has no builtin that slurps lines into an
+# array.
+SOL_TEST_DIRS=()
+while IFS= read -r _dir; do
+  if [[ -n "$_dir" ]]; then SOL_TEST_DIRS+=("$_dir"); fi
+done < <(dedupe "$FOUNDRY_TEST_PATH" test tests)
+SOL_SCRIPT_DIRS=()
+while IFS= read -r _dir; do
+  if [[ -n "$_dir" ]]; then SOL_SCRIPT_DIRS+=("$_dir"); fi
+done < <(dedupe "$FOUNDRY_SCRIPT_PATH" script scripts)
 
 # ------------------------------------------------------------------- scoring
 

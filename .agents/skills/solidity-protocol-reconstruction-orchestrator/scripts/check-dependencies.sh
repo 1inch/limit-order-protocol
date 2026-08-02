@@ -71,7 +71,12 @@ if ! manifest_query profiles | grep -qx -- "$FRAMEWORK"; then
   exit 3
 fi
 
-mapfile -t REQUIRED < <(
+# Collected with a read loop: bash 3.2 has no builtin that slurps lines into an
+# array.
+REQUIRED=()
+while IFS= read -r skill; do
+  if [[ -n "$skill" ]]; then REQUIRED+=("$skill"); fi
+done < <(
   manifest_query required --mode "$MODE" --framework "$FRAMEWORK" \
     $([[ "$WITH_ARC42" -eq 1 ]] && echo --with-arc42)
 )
@@ -89,7 +94,8 @@ ROOTS=(
   "$HOME/.agents/skills" "$HOME/.cursor/skills" "$HOME/.claude/skills"
 )
 
-TMP="$(mktemp)"; trap 'rm -f "$TMP"' EXIT
+# An explicit template: BSD mktemp on macOS does not accept a bare `mktemp`.
+TMP="$(mktemp "${TMPDIR:-/tmp}/spro-skills.XXXXXX")"; trap 'rm -f "$TMP"' EXIT
 SEEN_ROOTS=()
 for root in "${ROOTS[@]}"; do
   [[ -d "$root" ]] || continue
@@ -111,7 +117,11 @@ find_all() { awk -F '\t' -v s="$1" '$1==s{print $2}' "$TMP"; }
 CONFLICTS=()
 report() {
   local skill="$1" label="${2:-$1}" note="${3:-}"
-  mapfile -t matches < <(find_all "$skill")
+  local matches=()
+  local match_line
+  while IFS= read -r match_line; do
+    if [[ -n "$match_line" ]]; then matches+=("$match_line"); fi
+  done < <(find_all "$skill")
   if [[ "${#matches[@]}" -eq 0 ]]; then
     printf 'MISSING %-36s %s\n' "$label" "$note"
     return 1

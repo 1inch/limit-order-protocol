@@ -19,12 +19,12 @@ Without --apply the script only prints the commands it would run.
 
   --framework   auto (default) | hardhat2 | hardhat3 | foundry
                 | hybrid-hardhat2-foundry | hybrid-hardhat3-foundry
-  --agent       agent target passed through to `npx skills add`. Defaults to the
-                identifier whose project path matches the directory this
-                orchestrator is installed under, so specialists land next to it
-                (`.agents/skills/` -> universal, `.cursor/skills/` -> cursor,
-                `.claude/skills/` -> claude-code). Use '*' for every agent, or
-                `--agent auto` to let the CLI auto-detect.
+  --agent       agent target passed through to `npx skills add`. Omitted by
+                default so the CLI auto-detects. The CLI's agent-to-path mapping
+                changes between versions, so a value hardcoded here could
+                install to the wrong root. Pass the identifier your CLI version
+                documents, or '*' for every agent, then confirm the specialists
+                landed beside this orchestrator.
   --yes         pass --yes to `npx skills add`.
 
 Exit codes:
@@ -78,33 +78,27 @@ elif ! manifest_query profiles | grep -qx -- "$FRAMEWORK"; then
   exit 3
 fi
 
-# The orchestrator lives under `<repo>/<agent-dir>/skills/<name>`. Install the
-# specialists into that same directory rather than assuming an agent name: the
-# CLI's agent-to-path mapping is version-dependent (`--agent cursor` has meant
-# both `.cursor/skills/` and `.agents/skills/`), and hardcoding one is what
-# previously scattered skills across two roots.
-#
-# `universal` is the CLI identifier whose project path is `.agents/skills/`.
-detect_agent() {
-  local dir
-  dir="$(cd "$SCRIPT_DIR/../../.." && pwd)"      # .../<agent-dir>/skills -> <agent-dir>
-  case "$(basename "$dir")" in
-    .agents) echo "universal" ;;
-    .cursor) echo "cursor" ;;
-    .claude) echo "claude-code" ;;
-    *) echo "" ;;
+# No `--agent` by default. The CLI's agent-to-path mapping is version-dependent
+# (`--agent cursor` has meant both `.cursor/skills/` and `.agents/skills/`), so
+# any value hardcoded here is a guess that can silently install to the wrong
+# root. Letting the CLI auto-detect is the only option that cannot go stale.
+# Pass `--agent` explicitly when you know the identifier your CLI version uses.
+INSTALL_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Quote only when the value would otherwise be mangled by the shell, so a plain
+# identifier prints bare and '*' (meaning every agent) is not glob-expanded.
+quote_if_needed() {
+  case "$1" in
+    *[!A-Za-z0-9_.,:@/-]*) printf "'%s'" "$1" ;;
+    *) printf '%s' "$1" ;;
   esac
 }
 
-if [[ -z "$AGENT" ]]; then
-  AGENT="$(detect_agent)"
-fi
 AGENT_ARG=""
-AGENT_NOTE="CLI auto-detection"
+AGENT_NOTE="CLI auto-detection (no --agent passed)"
 case "$AGENT" in
   ""|auto) ;;
-  # Quoted because '*' means "every agent" and must not be glob-expanded.
-  *) AGENT_ARG=" --agent '$AGENT'"; AGENT_NOTE="$AGENT" ;;
+  *) AGENT_ARG=" --agent $(quote_if_needed "$AGENT")"; AGENT_NOTE="$AGENT" ;;
 esac
 YES_ARG=""
 [[ "$YES" -eq 1 ]] && YES_ARG=" --yes"
@@ -129,12 +123,15 @@ done < <(
 if [[ "$APPLY" -eq 0 ]]; then
   printf 'Framework selection: %s\n' "$TARGET"
   printf 'Agent target:        %s\n' "$AGENT_NOTE"
+  printf 'Install root:        %s\n' "$INSTALL_ROOT"
   printf 'Manifest:            %s\n\n' "$SKILL_MANIFEST"
   printf 'Commands:\n\n'
   printf '%s\n' "${COMMANDS[@]}"
   cat <<'NOTE'
 
 Re-run with --apply to execute.
+After installing, confirm the specialists landed beside this orchestrator with
+scripts/check-dependencies.sh; pass --agent if your CLI chose a different root.
 If skills-lock.json already pins this exact set, `npx skills experimental_install`
 restores it without resolving sources again.
 NOTE

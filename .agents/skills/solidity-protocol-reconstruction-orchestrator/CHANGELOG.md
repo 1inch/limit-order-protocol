@@ -25,6 +25,10 @@
 - Requirement criticality, so the completion contract's "each critical
   requirement has executable verification" is checkable.
 - `--format json` for the detector, and `scripts/lib/manifest.py`.
+- A bash 3.2 portability lint in `validate-package.sh`, driven by
+  `scripts/lib/bash32-lint.tsv`. macOS ships bash 3.2.57 as `/bin/bash`, and
+  `bash -n` on a newer bash cannot catch bash 4+ constructs. A `require_bash`
+  guard sits beside `require_python3`.
 - `disable-model-invocation: true` and `argument-hint` in the frontmatter; the
   description now states when to invoke the skill.
 
@@ -43,9 +47,12 @@
 - `check-dependencies.sh` accepts `resume`, reads required sets from the
   manifest, reports duplicate installations, and includes the framework
   specialist in `security-review`.
-- `install-dependencies.sh` derives the agent target from the orchestrator's own
-  install root instead of hardcoding `--agent cursor`, and exposes `--agent` and
-  `--yes`.
+- `install-dependencies.sh` no longer passes `--agent` at all by default. It
+  previously hardcoded `--agent cursor`, which installed specialists into
+  `.cursor/skills/` while the orchestrator lived in `.agents/skills/`. The CLI's
+  agent-to-path mapping changes between versions, so the flag is now omitted and
+  the CLI auto-detects; `--agent` and `--yes` are exposed as pass-throughs and
+  the preview prints the orchestrator's install root to check against.
 - `validate-package.sh` reads the version from the manifest, cross-checks the
   manifest against the documentation and the scripts, asserts artifact
   templates, and no longer mutates the tree during validation.
@@ -79,6 +86,16 @@
   exit 3 on it.
 - `README.md` told the reader to install into `.cursor/skills/` while every
   command example used `.agents/skills/`.
+- bash 3.2 compatibility, so the scripts run on stock macOS. The detector had a
+  heredoc directly inside a command substitution, which bash 3.2 cannot parse:
+  it failed the whole file with `unexpected EOF while looking for matching`
+  pointing at an unrelated line 500 lines away, which in turn made every
+  `check-dependencies.sh` mode exit 3. `mapfile` in the detector and in
+  `check-dependencies.sh`, and `declare -A` in `validate-package.sh`, are bash 4
+  only; the associative array degraded into an arithmetic error and then
+  reported `ok`, a false pass on the artifact-template check. Also dropped
+  `find -print -quit` and bare `mktemp`, neither of which is portable to BSD
+  userland.
 
 ## 4.0.0
 
