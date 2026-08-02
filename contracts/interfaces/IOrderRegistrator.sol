@@ -25,4 +25,18 @@ interface IOrderRegistrator {
      * @param signature The signature of the order.
      */
     function registerOrder(IOrderMixin.Order calldata order, bytes calldata extension, bytes calldata signature) external;
+
+    /**
+     * @notice Returns the block timestamp of the first registration of an order.
+     * @param orderHash The hash of the order.
+     * @return timestamp The timestamp of the first registration, or 0 if the order was never registered.
+     */
+    function announcedAt(bytes32 orderHash) external view returns (uint256 timestamp);
+
+    /**
+     * @notice Returns the block number of the first registration of an order.
+     * @param orderHash The hash of the order.
+     * @return blockNumber The block number of the first registration, or 0 if the order was never registered.
+     */
+    function announcedAtBlock(bytes32 orderHash) external view returns (uint256 blockNumber);
 }

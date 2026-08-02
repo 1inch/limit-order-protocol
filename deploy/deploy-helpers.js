@@ -53,6 +53,12 @@ module.exports = async ({ getNamedAccounts, deployments, config }) => {
         let result;
 
         if (DEPLOYMENT_METHOD === 'create3') {
+            if (helperName === 'OrderRegistrator' && !helperConfig.salt) {
+                // The default salt resolves to the address the previous, announcement-less registrator already
+                // occupies on every chain it was deployed to.
+                throw new Error('Deploying OrderRegistrator requires an explicit salt, as the default one is already taken by the deployment that predates stored announcements.');
+            }
+
             const salt = helperConfig.salt
                 ? (
                     helperConfig.salt.startsWith('0x')
