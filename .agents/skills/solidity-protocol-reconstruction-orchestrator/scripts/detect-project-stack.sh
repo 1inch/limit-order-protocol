@@ -120,12 +120,17 @@ count_files() {
   echo "$count"
 }
 
-has_file() {
+# Prints the first directory containing a match, so evidence names where the
+# file actually is rather than everywhere that was searched.
+first_dir_with() {
   local pattern="$1"; shift
   local d
   for d in "$@"; do
     [[ -n "$d" && -d "$d" ]] || continue
-    find "$d" -type f -name "$pattern" -not -path '*/node_modules/*' -print -quit 2>/dev/null | grep -q . && return 0
+    if find "$d" -type f -name "$pattern" -not -path '*/node_modules/*' -print -quit 2>/dev/null | grep -q .; then
+      echo "$d"
+      return 0
+    fi
   done
   return 1
 }
@@ -338,9 +343,8 @@ if [[ -n "$HH_CONFIG" ]]; then
   HH_SCORE=$((HH_SCORE + 2))
   note_evidence "hardhat config ${HH_CONFIG}"
 fi
-HH_IN_SCRIPTS=0
 if grep -qiE '(^|[[:space:]])(npx[[:space:]]+)?hardhat([[:space:]]|$)' <<<"$PKG_SCRIPTS"; then
-  HH_SCORE=$((HH_SCORE + 1)); HH_IN_SCRIPTS=1
+  HH_SCORE=$((HH_SCORE + 1))
   note_evidence "package.json scripts invoke hardhat"
 fi
 
@@ -367,13 +371,15 @@ if [[ -n "$FORGE_STD_DIR" ]]; then
   FOUNDRY_SCORE=$((FOUNDRY_SCORE + 1)); CORROBORATION=$((CORROBORATION + 1))
   note_evidence "forge-std vendored at ${FORGE_STD_DIR}"
 fi
-if has_file '*.t.sol' ${SOL_TEST_DIRS[@]+"${SOL_TEST_DIRS[@]}"}; then
+SOL_TESTS_ONLY_SIGNAL=0
+if match_dir="$(first_dir_with '*.t.sol' ${SOL_TEST_DIRS[@]+"${SOL_TEST_DIRS[@]}"})"; then
   FOUNDRY_SCORE=$((FOUNDRY_SCORE + 1)); CORROBORATION=$((CORROBORATION + 1))
-  note_evidence "*.t.sol under $(join_commas "${SOL_TEST_DIRS[@]}")"
+  SOL_TESTS_ONLY_SIGNAL=1
+  note_evidence "*.t.sol under ${match_dir}/"
 fi
-if has_file '*.s.sol' ${SOL_SCRIPT_DIRS[@]+"${SOL_SCRIPT_DIRS[@]}"}; then
+if match_dir="$(first_dir_with '*.s.sol' ${SOL_SCRIPT_DIRS[@]+"${SOL_SCRIPT_DIRS[@]}"})"; then
   FOUNDRY_SCORE=$((FOUNDRY_SCORE + 1)); CORROBORATION=$((CORROBORATION + 1))
-  note_evidence "*.s.sol under $(join_commas "${SOL_SCRIPT_DIRS[@]}")"
+  note_evidence "*.s.sol under ${match_dir}/"
 fi
 if grep -qiE '(^|[[:space:]])forge([[:space:]]|$)' <<<"$PKG_SCRIPTS"; then
   FOUNDRY_SCORE=$((FOUNDRY_SCORE + 2)); CORROBORATION=$((CORROBORATION + 1))
@@ -391,8 +397,11 @@ if [[ -n "$FOUNDRY_CONFIG" && "$CORROBORATION" -ge 1 ]]; then
   FOUNDRY_STRONG=1
 elif [[ -n "$FOUNDRY_CONFIG" ]]; then
   note_ambiguity "foundry.toml present with no corroborating forge signal; treated as configuration-only, not an active Foundry suite"
-elif [[ "$CORROBORATION" -ge 1 ]]; then
-  note_ambiguity "forge signals present without foundry.toml; verify whether a Foundry suite exists"
+elif [[ "$CORROBORATION" -ge 1 ]] &&
+     ! [[ "$HH_MAJOR" == "3" && "$CORROBORATION" -eq 1 && "$SOL_TESTS_ONLY_SIGNAL" -eq 1 ]]; then
+  # Skipped for Hardhat 3 whose only signal is .t.sol: those tests are native,
+  # and the note below says so precisely.
+  note_ambiguity "Foundry-style signals present without foundry.toml; verify whether a Foundry suite exists"
 fi
 
 # ----------------------------------------------------------- profile decision
@@ -430,8 +439,13 @@ fi
 if [[ "$FRAMEWORK" == "unknown" ]]; then
   note_ambiguity "no framework profile satisfies the evidence; do not guess — report evidence and stop"
 fi
-if [[ "$HH_MAJOR" == "3" && "$FOUNDRY_STRONG" -eq 0 ]] && has_file '*.t.sol' ${SOL_TEST_DIRS[@]+"${SOL_TEST_DIRS[@]}"}; then
+if [[ "$HH_MAJOR" == "3" && "$FOUNDRY_STRONG" -eq 0 && "$SOL_TESTS_ONLY_SIGNAL" -eq 1 ]]; then
   note_ambiguity "Solidity tests under Hardhat 3 are native; .t.sol alone does not make this repository hybrid"
+fi
+# Hardhat 3 runs .t.sol natively, so a hybrid verdict resting on nothing but
+# .t.sol plus a foundry.toml is the weakest hybrid evidence there is.
+if [[ "$FRAMEWORK" == hybrid-* && "$CORROBORATION" -eq 1 && "$SOL_TESTS_ONLY_SIGNAL" -eq 1 ]]; then
+  note_ambiguity "hybrid rests only on .t.sol next to a foundry.toml; confirm a Foundry suite actually runs before treating this as hybrid"
 fi
 [[ ${#EVIDENCE[@]} -eq 0 ]] && note_evidence "no framework evidence found"
 
