@@ -52,8 +52,47 @@ Do not collapse or migrate either side.
 
 ## Ambiguity rules
 
-- `foundry.toml` plus Hardhat package/config generally means hybrid.
-- Hardhat 3 plus `.t.sol` without `foundry.toml` is normally Hardhat 3, not hybrid.
+- `foundry.toml` alone does not make a repository hybrid. A Hardhat repository
+  often carries one purely for remappings. Hybrid requires `foundry.toml` plus at
+  least one corroborating signal: forge in package scripts, forge in CI,
+  vendored `forge-std`, or `.t.sol` under a Foundry-configured test path.
+- Hardhat 3 plus `.t.sol` without `foundry.toml` is Hardhat 3, not hybrid.
 - `forge-std` imports can occur in Hardhat 3 Solidity tests; they are not sufficient alone.
-- a stale config not referenced by scripts/CI may be dead tooling; report rather than guess.
-- an explicit `--framework` override is allowed but must be written to `STATUS.md` with rationale.
+- A Hardhat config with no resolvable Hardhat version is stale tooling. Where
+  Foundry evidence is corroborated, the profile is `foundry` and the stale config
+  is reported as ambiguity, not as a reason to return `unknown`.
+- Forge signals without `foundry.toml` are reported as ambiguity; confirm before
+  treating the repository as Foundry.
+- `forge` not being installed says nothing about the repository. `FOUNDRY_VERSION`
+  is simply empty.
+- An explicit `--framework` override is allowed but must be written to
+  `STATUS.md` with rationale.
+
+## Detector output
+
+`scripts/detect-project-stack.sh` supports `--format markdown|env|json` and exits
+0 even when the profile is `unknown`.
+
+Two fields carry the reasoning:
+
+- `DETECTION_EVIDENCE` — the signals that were found, semicolon separated.
+- `AMBIGUITY_REASON` — every reason the result may be wrong. Empty means none.
+
+When the profile is `unknown`, or `AMBIGUITY_REASON` is non-empty and material,
+stop before test implementation and report both fields verbatim. Do not guess.
+
+Prefer `--format json` when parsing. `--format env` is shell-quoted with `%q` and
+is intended for `eval` only by callers that control the input.
+
+## Preservation baseline
+
+The detector also emits the stack facts the preservation rules depend on:
+Foundry source/test/script paths, remappings source and count, `forge-std`
+version, FFI, `fs_permissions`, RPC aliases and the environment variables they
+reference, fuzz and invariant settings, package manager, module system, and the
+Foundry compiler settings.
+
+`SOLC_SOURCE` states where the Solidity compiler settings came from. The value
+`manual-inspection-required` means a Hardhat config holds them and they cannot be
+read statically, because the config is executable. Read the config and record
+them by hand; do not report Hardhat compiler settings as detected.
