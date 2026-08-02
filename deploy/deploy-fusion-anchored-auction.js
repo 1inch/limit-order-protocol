@@ -19,7 +19,9 @@ module.exports = async ({ deployments, getNamedAccounts }) => {
     }
 
     const orderRegistrator = constants.ORDER_REGISTRATOR[chainId];
-    if (!orderRegistrator) {
+    if (!orderRegistrator || orderRegistrator === ethers.ZeroAddress) {
+        // The registrator is immutable in the auction contract, and every anchored fill reads it, so an
+        // unset one produces a contract that can never price an anchored order.
         throw new Error(
             `No OrderRegistrator configured for chain ${chainId}. FusionAnchoredAuction reads announcements ` +
             'from it, so deploy the registrator first and record its address in config/constants.json.',

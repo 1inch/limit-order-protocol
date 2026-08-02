@@ -49,6 +49,27 @@ function scaleByFill (rateBump, { initialRateBump, fillScalingNumerator = 0 }, m
     return rateBump + unreleasedBump * k / 100n;
 }
 
+/** The auction encoding the deployed settlement reads, which is the anchored one without its flags byte. */
+function buildLegacyAuctionDetails ({
+    gasBumpEstimate = 0,
+    gasPriceEstimate = 0,
+    startTime = 0,
+    duration = 0,
+    initialRateBump = 0,
+    points = [],
+} = {}) {
+    const types = ['uint24', 'uint32', 'uint32', 'uint24', 'uint24', 'uint8'];
+    const values = [gasBumpEstimate, gasPriceEstimate, startTime, duration, initialRateBump, points.length];
+    for (const { coefficient, delay } of points) {
+        types.push('uint24', 'uint16');
+        values.push(coefficient, delay);
+    }
+    return ethers.solidityPacked(types, values);
+}
+
+/** Zero fees and an empty whitelist, so a settlement getter passes its input straight through. */
+const NO_FEE_DATA = ethers.solidityPacked(['uint16', 'uint8', 'uint16', 'uint8', 'uint8'], [0, 0, 0, 0, 0]);
+
 /** Taking amount a fill by making amount is priced at. */
 function takingAmountFor (order, auction, timestamp, makingAmount, remainingMakingAmount) {
     const rateBump = scaleByFill(auctionBumpAt(timestamp, auction), auction, makingAmount, remainingMakingAmount);
@@ -661,7 +682,118 @@ describe('FusionAnchoredAuction', function () {
         });
     });
 
+    describe('parity with the deployed settlement auction', function () {
+        it('prices an unanchored auction exactly as the settlement contract does', async function () {
+            const { dai, weth, inch, swap, auction } = await loadFixture(deployContractsAndInit);
+
+            const SimpleSettlementMock = await ethers.getContractFactory('SimpleSettlementMock');
+            const settlement = await SimpleSettlementMock.deploy(swap, inch, weth, maker);
+            await settlement.waitForDeployment();
+
+            const params = {
+                gasBumpEstimate: 100000,
+                gasPriceEstimate: 1000,
+                startTime: await time.latest() + 100,
+                duration: 200,
+                initialRateBump: Number(HALF_PERCENT),
+                points: [
+                    { coefficient: Number(HALF_PERCENT * 4n / 5n), delay: 30 },
+                    { coefficient: Number(HALF_PERCENT * 2n / 5n), delay: 30 },
+                ],
+            };
+            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
+            const orderHash = await swap.hashOrder(order);
+            const settlementExtraData = ethers.solidityPacked(['bytes', 'bytes'], [buildLegacyAuctionDetails(params), NO_FEE_DATA]);
+            const anchoredExtraData = buildAnchoredAuctionDetails(params);
+
+            // Before the auction, at each of its points, between them, and after it has finished.
+            for (const offset of [-10, 0, 15, 30, 45, 60, 120, 199, 200, 500]) {
+                await time.setNextBlockTimestamp(params.startTime + offset);
+                await hre.network.provider.send('evm_mine');
+
+                for (const amount of [MAKING_AMOUNT, MAKING_AMOUNT / 3n]) {
+                    const args = [order, order.extension, orderHash, taker.address, amount, MAKING_AMOUNT];
+                    expect(await auction.getTakingAmount(...args, anchoredExtraData))
+                        .to.equal(await settlement.getTakingAmount(...args, settlementExtraData));
+                    expect(await auction.getMakingAmount(...args, anchoredExtraData))
+                        .to.equal(await settlement.getMakingAmount(...args, settlementExtraData));
+                }
+            }
+        });
+    });
+
     describe('composition with a settlement contract', function () {
+        it('leaves the settlement auction contributing nothing when its curve is neutralized', async function () {
+            const { dai, weth, inch, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
+
+            const SimpleSettlementMock = await ethers.getContractFactory('SimpleSettlementMock');
+            const settlement = await SimpleSettlementMock.deploy(swap, inch, weth, maker);
+            await settlement.waitForDeployment();
+
+            const resolverFee = 1000n; // 1% in 1e5
+            const auctionParams = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 10, fillScalingNumerator: 100 };
+            const auctionTail = ethers.solidityPacked(
+                ['address', 'bytes'],
+                [await auction.getAddress(), buildAnchoredAuctionDetails(auctionParams)],
+            );
+            const exclusivityTail = ethers.solidityPacked(
+                ['address', 'bytes'],
+                [await auction.getAddress(), buildAnchoredExclusivity({ allowedTimeDelay: 30, whitelist: [{ address: taker.address }] })],
+            );
+
+            const order = buildOrder(
+                {
+                    maker: maker.address,
+                    receiver: await settlement.getAddress(),
+                    makerAsset: await dai.getAddress(),
+                    takerAsset: await weth.getAddress(),
+                    makingAmount: MAKING_AMOUNT,
+                    takingAmount: TAKING_AMOUNT,
+                },
+                buildFeeTakerExtensions({
+                    feeTaker: await settlement.getAddress(),
+                    // A curve that cannot move: no initial bump and no duration, so the settlement multiplies by one
+                    // and the chained auction is the only thing pricing the order.
+                    getterExtraPrefix: buildLegacyAuctionDetails(),
+                    protocolFeeRecipient: otherResolver.address,
+                    resolverFee,
+                    whitelistDiscount: 100,
+                    whitelist: '0x01' + taker.address.slice(-20),
+                    // The settlement's own whitelist is left open, so exclusivity is the chained contract's to enforce.
+                    whitelistPostInteraction: ethers.solidityPacked(
+                        ['uint32', 'uint8', 'uint80', 'uint16'],
+                        [0, 1, BigInt(taker.address) & ((1n << 80n) - 1n), 0],
+                    ),
+                    customMakingGetter: auctionTail,
+                    customTakingGetter: auctionTail,
+                    customPostInteraction: exclusivityTail,
+                }),
+            );
+            const sig = await signature(order, chainId, swap);
+            const announcedAt = await announce(registrator, swap, chainId, order);
+
+            // The exclusivity chained behind the settlement still bites, though the settlement let the taker in.
+            await time.setNextBlockTimestamp(announcedAt + 20);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.be.revertedWithCustomError(auction, 'AllowedTimeViolation');
+
+            const fillTime = announcedAt + 60;
+            await time.setNextBlockTimestamp(fillTime);
+            const fillTx = fill(swap, order, sig, MAKING_AMOUNT / 2n);
+
+            // The price is the anchored, fill-scaled curve with the resolver fee on top, and nothing else.
+            const auctionPrice = takingAmountFor(
+                order,
+                { ...auctionParams, startTime: announcedAt + auctionParams.startDelay },
+                fillTime,
+                MAKING_AMOUNT / 2n,
+                MAKING_AMOUNT,
+            );
+            const withFee = ceilDiv(auctionPrice * (100000n + resolverFee), 100000n);
+            const feeAmount = withFee - ceilDiv(withFee * 100000n, 100000n + resolverFee);
+            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker, otherResolver], [-withFee, withFee - feeAmount, feeAmount]);
+            await expect(fillTx).to.changeTokenBalances(dai, [taker, maker], [MAKING_AMOUNT / 2n, -MAKING_AMOUNT / 2n]);
+        });
+
         it('prices through the fee taker and the anchored auction together', async function () {
             const { dai, weth, swap, chainId, registrator, auction, feeTaker } = await loadFixture(deployContractsAndInit);
 
