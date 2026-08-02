@@ -484,6 +484,33 @@ describe('FusionAnchoredAuction', function () {
             await expect(fill(swap, order, sig, remaining)).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
         });
 
+        it('never lets a split fill undercut a single fill of the same size', async function () {
+            // Two takers buy the same total amount at the same auction state: one sweeps it in a single fill,
+            // the other splits it in two. The premium is superadditive under splitting, so the splitter must
+            // always pay more — otherwise takers would shred orders into parts and the penalty would price in
+            // nothing.
+            async function totalPaid (fills) {
+                const { weth, swap, order, sig, afterAuction } = await deployFilledOrder(100);
+                let paid = 0n;
+                let nextTime = afterAuction;
+                for (const makingAmount of fills) {
+                    await time.setNextBlockTimestamp(nextTime++);
+                    const before = await weth.balanceOf(taker);
+                    await fill(swap, order, sig, makingAmount);
+                    paid += before - await weth.balanceOf(taker);
+                }
+                return paid;
+            }
+
+            const single = await totalPaid([MAKING_AMOUNT / 2n]);
+            const split = await totalPaid([MAKING_AMOUNT / 4n, MAKING_AMOUNT / 4n]);
+            expect(split).to.be.greaterThan(single);
+
+            const singleFull = await totalPaid([MAKING_AMOUNT]);
+            const splitFull = await totalPaid([MAKING_AMOUNT / 2n, MAKING_AMOUNT / 2n]);
+            expect(splitFull).to.be.greaterThan(singleFull);
+        });
+
         it('mixes the auction and the fill share while the auction is running', async function () {
             const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
 

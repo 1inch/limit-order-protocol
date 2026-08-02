@@ -27,7 +27,7 @@ contract OrderRegistrator is IOrderRegistrator {
 
     IOrderMixin private immutable _LIMIT_ORDER_PROTOCOL;
 
-    /// @dev Announcement timestamp in the high 64 bits, announcement block number in the low 64 bits.
+    /// @dev Announcement timestamp shifted left by 64 bits, announcement block number in the low 64 bits.
     mapping(bytes32 orderHash => uint256 announcement) private _announcements;
 
     constructor(IOrderMixin limitOrderProtocol) {
