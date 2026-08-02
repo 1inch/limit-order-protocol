@@ -76,6 +76,7 @@ pass "SKILL.md frontmatter"
 # ----------------------------------------------------- 3. version agreement
 
 VERSION="$(manifest_query version)"
+BEFORE="$FAILURES"
 [[ -n "$VERSION" ]] || fail "manifest has no package_version"
 grep -q "version: \"$VERSION\"" "$SKILL_DIR/SKILL.md" \
   || fail "SKILL.md metadata.version is not $VERSION"
@@ -83,7 +84,9 @@ grep -q "^## $VERSION\$" "$SKILL_DIR/CHANGELOG.md" \
   || fail "CHANGELOG.md has no '## $VERSION' entry"
 grep -qE "^# .*v${VERSION%%.*}\b" "$SKILL_DIR/README.md" \
   || fail "README.md title does not carry major version v${VERSION%%.*}"
-[[ "$FAILURES" -eq 0 ]] && pass "version $VERSION agrees across manifest, SKILL.md, README.md, CHANGELOG.md"
+if [[ "$FAILURES" -eq "$BEFORE" ]]; then
+  pass "version $VERSION agrees across manifest, SKILL.md, README.md, CHANGELOG.md"
+fi
 
 # --------------------------------------- 4. manifest vs documentation parity
 
