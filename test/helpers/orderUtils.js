@@ -33,6 +33,11 @@ const _HAS_EXTENSION_FLAG = 249n;
 const _USE_PERMIT2_FLAG = 248n;
 const _UNWRAP_WETH_FLAG = 247n;
 
+// FusionAnchoredAuction feature flags
+const ANCHORED_FLAG = 0x01n;
+const FILL_SCALED_FLAG = 0x02n;
+const POST_AUCTION_DEADLINE_FLAG = 0x04n;
+
 const TakerTraitsConstants = {
     _MAKER_AMOUNT_FLAG: 1n << 255n,
     _UNWRAP_WETH_FLAG: 1n << 254n,
@@ -160,6 +165,82 @@ function buildFeeTakerExtensions ({
             ),
         ),
     };
+}
+
+/**
+ * Packs the auction details read by FusionAnchoredAuction. Optional fields are included, and their flag
+ * set, only when a value is passed for them.
+ */
+function buildAnchoredAuctionDetails ({
+    gasBumpEstimate = 0,
+    gasPriceEstimate = 0,
+    startTime = 0,
+    duration = 0,
+    initialRateBump = 0,
+    startDelay = undefined,
+    fillScalingNumerator = undefined,
+    postAuctionWindow = undefined,
+    points = [],
+} = {}) {
+    let flags = 0n;
+    const types = ['uint8', 'uint24', 'uint32', 'uint32', 'uint24', 'uint24'];
+    const values = [0, gasBumpEstimate, gasPriceEstimate, startTime, duration, initialRateBump];
+
+    if (startDelay !== undefined) {
+        flags |= ANCHORED_FLAG;
+        types.push('uint24');
+        values.push(startDelay);
+    }
+    if (fillScalingNumerator !== undefined) {
+        flags |= FILL_SCALED_FLAG;
+        types.push('uint8');
+        values.push(fillScalingNumerator);
+    }
+    if (postAuctionWindow !== undefined) {
+        flags |= POST_AUCTION_DEADLINE_FLAG;
+        types.push('uint24');
+        values.push(postAuctionWindow);
+    }
+
+    types.push('uint8');
+    values.push(points.length);
+    for (const { coefficient, delay } of points) {
+        types.push('uint24', 'uint16');
+        values.push(coefficient, delay);
+    }
+    values[0] = flags;
+
+    return ethers.solidityPacked(types, values);
+}
+
+/**
+ * Packs the resolver exclusivity read by FusionAnchoredAuction.postInteraction. `whitelist` entries are
+ * `{ address, delta }`, where `delta` is the wait until the next resolver may fill.
+ */
+function buildAnchoredExclusivity ({
+    allowedTime = 0,
+    allowedTimeDelay = undefined,
+    whitelist = [],
+} = {}) {
+    let flags = 0n;
+    const types = ['uint8', 'uint32'];
+    const values = [0, allowedTime];
+
+    if (allowedTimeDelay !== undefined) {
+        flags |= ANCHORED_FLAG;
+        types.push('uint24');
+        values.push(allowedTimeDelay);
+    }
+
+    types.push('uint8');
+    values.push(whitelist.length);
+    for (const { address, delta = 0 } of whitelist) {
+        types.push('uint80', 'uint16');
+        values.push(BigInt(address) & ((1n << 80n) - 1n), delta);
+    }
+    values[0] = flags;
+
+    return ethers.solidityPacked(types, values);
 }
 
 function buildOrderRFQ (
@@ -311,6 +392,8 @@ function skipMakerPermit (amount) {
 
 module.exports = {
     ABIOrder,
+    buildAnchoredAuctionDetails,
+    buildAnchoredExclusivity,
     buildTakerTraits,
     buildMakerTraits,
     buildMakerTraitsRFQ,

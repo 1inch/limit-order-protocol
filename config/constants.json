@@ -78,5 +78,8 @@
   },
   "feeTakerSalt": {
     "31337": "asdasd asdasd"
+  },
+  "fusionAnchoredAuctionSalt": {
+    "31337": "FusionAnchoredAuction"
   }
 }
