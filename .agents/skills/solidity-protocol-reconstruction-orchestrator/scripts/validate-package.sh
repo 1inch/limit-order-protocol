@@ -180,8 +180,10 @@ fi
 for script in "$SKILL_DIR"/scripts/*.sh "$SKILL_DIR"/scripts/lib/*.sh; do
   bash -n "$script" || fail "syntax error: ${script#"$SKILL_DIR"/}"
 done
-python3 -m py_compile "$SKILL_DIR/scripts/lib/manifest.py" \
-  || fail "syntax error: scripts/lib/manifest.py"
+# ast.parse rather than py_compile: py_compile writes __pycache__ into the skill
+# directory, and validation must not modify the tree.
+python3 -c 'import ast, sys; ast.parse(open(sys.argv[1], encoding="utf-8").read(), sys.argv[1])' \
+  "$SKILL_DIR/scripts/lib/manifest.py" || fail "syntax error: scripts/lib/manifest.py"
 pass "all scripts parse"
 
 # Assert, do not mutate. Validation that silently rewrites the tree hides the
