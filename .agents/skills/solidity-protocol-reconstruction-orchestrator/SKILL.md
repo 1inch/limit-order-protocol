@@ -55,7 +55,7 @@ Examples:
 | `check` | none | none | none |
 | `analyze` | 0, 1, 2, 3, 4, 5, 6A, 6 | A, B | none |
 | `implement-tests` | 7, 8, 9 | — | Gate B approved |
-| `security-review` | 11 | C | Gate C approved |
+| `security-review` | 11 | C | Gate C recorded in `STATUS.md` |
 | `full` | 0-11 | A, B, C | none |
 | `resume` | from `STATUS.md` | as recorded | `STATUS.md` exists |
 
