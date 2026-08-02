@@ -55,7 +55,8 @@
     "lint": "yarn run lint:js && yarn run lint:sol",
     "lint:fix": "yarn run lint:js:fix && yarn run lint:sol:fix",
     "test": "hardhat test --parallel",
-    "test:ci": "hardhat test"
+    "test:ci": "hardhat test",
+    "test:fork": "hardhat test test/FusionAnchoredAuctionFork.js"
   },
   "resolutions": {
     "elliptic": "6.6.1",
