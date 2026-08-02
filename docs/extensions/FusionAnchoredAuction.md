@@ -80,7 +80,10 @@ caller check would break the composition.
 3 bytes - allowed time delay, present when the anchored flag is set
 1 byte - size of the whitelist
 (bytes10,bytes2)[N] - whitelisted addresses and the time delta until the next one
-bytes - custom data to call an extra post-interaction (optional)_
+bytes - custom data to call an extra post-interaction (optional)
+
+Whitelisted addresses are compared by their lowest 10 bytes, the same trade-off the settlement
+contracts already make between calldata size and the cost of grinding a colliding address._
 
 ### _getMakingAmount
 

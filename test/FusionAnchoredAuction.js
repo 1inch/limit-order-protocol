@@ -400,6 +400,20 @@ describe('FusionAnchoredAuction', function () {
             await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
         });
 
+        it('does not outrank a cancellation by the maker', async function () {
+            const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
+
+            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(anchoredParams) });
+            const sig = await signature(order, chainId, swap);
+            const announcedAt = await announce(registrator, swap, chainId, order);
+
+            // The announcement is immutable, but the order itself stays cancellable at the protocol level.
+            await swap.connect(maker).cancelOrder(order.makerTraits, await swap.hashOrder(order));
+
+            await time.setNextBlockTimestamp(announcedAt + anchoredParams.startDelay + 50);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
+        });
+
         it('cannot resurrect an order past its own expiry', async function () {
             const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
 
