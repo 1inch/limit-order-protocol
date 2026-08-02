@@ -1,0 +1,190 @@
+{
+  "manifest_version": 4,
+  "package_version": "5.0.0",
+  "orchestrator": "solidity-protocol-reconstruction-orchestrator",
+  "source_form": "owner/repo",
+  "base_mandatory": [
+    {
+      "name": "spec-to-code-compliance",
+      "source": "trailofbits/skills",
+      "phase": "specification-compliance"
+    },
+    {
+      "name": "reverse-engineer",
+      "source": "TrevorEdris/fellowship-of-the-workflows",
+      "phase": "requirements-reconstruction"
+    },
+    {
+      "name": "audit-context-building",
+      "source": "trailofbits/skills",
+      "phase": "architecture-context"
+    },
+    {
+      "name": "entry-point-analyzer",
+      "source": "trailofbits/skills",
+      "phase": "entry-points-and-privileges"
+    },
+    {
+      "name": "working-with-legacy-code",
+      "source": "wondelai/skills",
+      "phase": "characterization-testing"
+    },
+    {
+      "name": "property-based-testing",
+      "source": "trailofbits/skills",
+      "phase": "invariants-and-stateful-testing"
+    },
+    {
+      "name": "secure-workflow-guide",
+      "source": "trailofbits/skills",
+      "phase": "security-readiness"
+    }
+  ],
+  "framework_mandatory": {
+    "hardhat2": [
+      {
+        "name": "web3-testing",
+        "source": "wshobson/agents",
+        "phase": "hardhat2-testing"
+      }
+    ],
+    "hardhat3": [
+      {
+        "name": "hardhat",
+        "source": "NomicFoundation/hardhat-skills",
+        "phase": "hardhat3-testing"
+      }
+    ],
+    "foundry": [
+      {
+        "name": "foundry-solidity",
+        "source": "tenequm/skills",
+        "phase": "foundry-testing"
+      }
+    ]
+  },
+  "framework_conditional": {
+    "hardhat3": [
+      {
+        "package": "@nomicfoundation/hardhat-toolbox-viem",
+        "detector_field": "TOOLBOX_VIEM_VERSION",
+        "name": "hardhat-toolbox-viem",
+        "source": "NomicFoundation/hardhat-skills"
+      },
+      {
+        "package": "@nomicfoundation/hardhat-toolbox-mocha-ethers",
+        "detector_field": "TOOLBOX_MOCHA_ETHERS_VERSION",
+        "name": "hardhat-toolbox-mocha-ethers",
+        "source": "NomicFoundation/hardhat-skills"
+      }
+    ]
+  },
+  "optional": [
+    {
+      "capability": "arc42-publication",
+      "name": "arc42-c4",
+      "source": "marvinrichter/clarc",
+      "flag": "--with-arc42"
+    },
+    {
+      "capability": "adr-writing",
+      "name": "documentation-and-adrs",
+      "aliases": [
+        "adr-writing",
+        "adr-skill",
+        "architecture-decision-records",
+        "create-architectural-decision-record",
+        "adr-creating"
+      ],
+      "source": "addyosmani/agent-skills",
+      "flag": "--with-adrs"
+    }
+  ],
+  "forbidden": [
+    {
+      "name": "migrate-hardhat2-to-hardhat3",
+      "source": "NomicFoundation/hardhat-skills",
+      "reason": "This orchestrator never migrates frameworks. Migration is a separate, explicitly requested task."
+    },
+    {
+      "name": "migrate-foundry-to-hardhat",
+      "source": "NomicFoundation/hardhat-skills",
+      "reason": "This orchestrator never migrates frameworks. Migration is a separate, explicitly requested task."
+    }
+  ],
+  "framework_profiles": [
+    "hardhat2",
+    "hardhat3",
+    "foundry",
+    "hybrid-hardhat2-foundry",
+    "hybrid-hardhat3-foundry"
+  ],
+  "modes": {
+    "check": {
+      "phases": "startup protocol only",
+      "base_required": [
+        "spec-to-code-compliance",
+        "reverse-engineer",
+        "audit-context-building",
+        "entry-point-analyzer",
+        "working-with-legacy-code",
+        "property-based-testing",
+        "secure-workflow-guide"
+      ],
+      "needs_framework_specialist": true
+    },
+    "analyze": {
+      "phases": "0-6A, Gate A, Gate B",
+      "base_required": [
+        "spec-to-code-compliance",
+        "reverse-engineer",
+        "audit-context-building",
+        "entry-point-analyzer",
+        "property-based-testing"
+      ],
+      "needs_framework_specialist": true
+    },
+    "implement-tests": {
+      "phases": "7-9",
+      "base_required": [
+        "working-with-legacy-code",
+        "property-based-testing"
+      ],
+      "needs_framework_specialist": true
+    },
+    "security-review": {
+      "phases": "Gate C, 11",
+      "base_required": [
+        "entry-point-analyzer",
+        "secure-workflow-guide"
+      ],
+      "needs_framework_specialist": true
+    },
+    "full": {
+      "phases": "0-11 with all gates",
+      "base_required": [
+        "spec-to-code-compliance",
+        "reverse-engineer",
+        "audit-context-building",
+        "entry-point-analyzer",
+        "working-with-legacy-code",
+        "property-based-testing",
+        "secure-workflow-guide"
+      ],
+      "needs_framework_specialist": true
+    },
+    "resume": {
+      "phases": "resolved from STATUS.md; require the union of every remaining phase",
+      "base_required": [
+        "spec-to-code-compliance",
+        "reverse-engineer",
+        "audit-context-building",
+        "entry-point-analyzer",
+        "working-with-legacy-code",
+        "property-based-testing",
+        "secure-workflow-guide"
+      ],
+      "needs_framework_specialist": true
+    }
+  }
+}
