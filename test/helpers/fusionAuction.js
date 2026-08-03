@@ -99,9 +99,9 @@ function makingAmountFor (order, auction, timestamp, takingAmount, remainingMaki
     const unbumped = order.makingAmount * takingAmount / order.takingAmount;
     let rateBump = bump;
     if (auction.fillScalingNumerator || auction.fillPremiums) {
+        // Premium curves are enforced non-increasing, so the initial premium is the worst one.
         const worstRateBump = auction.fillPremiums
-            ? bump + [BigInt(auction.fillPremiums.initial), ...auction.fillPremiums.points.map((p) => BigInt(p.premium))]
-                .reduce((a, b) => (a > b ? a : b))
+            ? bump + BigInt(auction.fillPremiums.initial)
             : scaleByFill(bump, auction, order.makingAmount, 0n, remainingMakingAmount);
         const estimate = unbumped * BASE_POINTS / (BASE_POINTS + worstRateBump);
         rateBump = rateBumpForFill(bump, auction, order.makingAmount, estimate, remainingMakingAmount);

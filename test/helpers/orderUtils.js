@@ -38,6 +38,8 @@ const ANCHORED_FLAG = 0x01n;
 const FILL_SCALED_FLAG = 0x02n;
 const POST_AUCTION_DEADLINE_FLAG = 0x04n;
 const FILL_CURVE_FLAG = 0x08n;
+// Exclusivity-blob flag namespace: 0x01 is shared with ANCHORED_FLAG, 0x02 is reserved.
+const ANNOUNCEMENT_DEADLINE_FLAG = 0x04n;
 
 const TakerTraitsConstants = {
     _MAKER_AMOUNT_FLAG: 1n << 255n,
@@ -231,6 +233,7 @@ function buildAnchoredAuctionDetails ({
 function buildAnchoredExclusivity ({
     allowedTime = 0,
     allowedTimeDelay = undefined,
+    announcementDeadlineDelay = undefined,
     whitelist = [],
 } = {}) {
     let flags = 0n;
@@ -241,6 +244,11 @@ function buildAnchoredExclusivity ({
         flags |= ANCHORED_FLAG;
         types.push('uint24');
         values.push(allowedTimeDelay);
+    }
+    if (announcementDeadlineDelay !== undefined) {
+        flags |= ANNOUNCEMENT_DEADLINE_FLAG;
+        types.push('uint24');
+        values.push(announcementDeadlineDelay);
     }
 
     types.push('uint8');

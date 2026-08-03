@@ -8,23 +8,34 @@ import { IOrderMixin } from "./IOrderMixin.sol";
  * @title IOrderRegistrator
  * @dev The interface defines the structure of the order registrator contract.
  * The registrator is responsible for registering orders and emitting an event when an order is registered.
+ * Registration is maker-only and signature-free: the transaction sender must be the order's maker,
+ * which is the sole authentication. Fill authorization is carried separately by each flow.
  */
 interface IOrderRegistrator {
     /**
-     * @notice Emitted when an order is registered.
+     * @notice Emitted when an order is registered. Emission proves the maker itself sent the order.
      * @param order The order that was registered.
      * @param extension The extension data associated with the order.
-     * @param signature The signature of the order.
      */
-    event OrderRegistered(IOrderMixin.Order order, bytes extension, bytes signature);
+    event OrderRegistered(IOrderMixin.Order order, bytes extension);
 
     /**
-     * @notice Registers an order.
+     * @notice Emitted on the first registration of an order — the single anchor write for
+     * announcement-anchored auctions. Never emitted again for the same order.
+     * @param orderHash The hash of the announced order.
+     * @param timestamp The block timestamp recorded as the announcement time.
+     * @param blockNumber The block number recorded for the announcement.
+     */
+    event OrderAnnounced(bytes32 indexed orderHash, uint256 timestamp, uint256 blockNumber);
+
+    /**
+     * @notice Registers an order. Callable only by the order's maker; reverts for any other sender.
+     * The first successful call records the announcement timestamp and block number; repeated calls
+     * re-emit {OrderRegistered} without moving the announcement.
      * @param order The order to be registered.
      * @param extension The extension data associated with the order.
-     * @param signature The signature of the order.
      */
-    function registerOrder(IOrderMixin.Order calldata order, bytes calldata extension, bytes calldata signature) external;
+    function registerOrder(IOrderMixin.Order calldata order, bytes calldata extension) external;
 
     /**
      * @notice Returns the block timestamp of the first registration of an order.

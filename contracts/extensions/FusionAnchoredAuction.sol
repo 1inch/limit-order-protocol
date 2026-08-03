@@ -24,6 +24,12 @@ import { AmountGetterBase } from "./AmountGetterBase.sol";
  * through the amount-getter and post-interaction chains, and so works with any deployed settlement version.
  * Every feature is opt-in per order through the flags byte; with no flags set the pricing matches an
  * unanchored Dutch auction.
+ *
+ * Getter-side features only run when the order's amount data actually routes through this contract: an
+ * order assembled with empty taking-amount data prices at its plain ratio and skips every check encoded
+ * here, which no amount getter can prevent. Order builders must treat the amount-getter fields as
+ * load-bearing, and makers who need a fill-by deadline that survives such mis-assembly should carry the
+ * announcement deadline in the post-interaction blob, which is not skippable.
  */
 contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
     uint256 private constant _BASE_POINTS = 10_000_000; // 100%
@@ -39,6 +45,11 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
     /// @dev Price a fill by a piecewise premium curve over the order's volume ladder.
     bytes1 private constant _FILL_CURVE_FLAG = 0x08;
 
+    /// @dev Exclusivity-blob flag: stop the order being fillable some time after its announcement.
+    /// Lives in the post-interaction's own flag byte; 0x02 is reserved there to keep the numbering
+    /// clear of the auction's fill-scaled slot.
+    bytes1 private constant _ANNOUNCEMENT_DEADLINE_FLAG = 0x04;
+
     /// @dev Fill shares are measured in 1e4.
     uint256 private constant _SHARE_BASE = 10_000;
 
@@ -52,6 +63,10 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
     error InvalidFillScalingNumerator();
     /// @dev The linear rule and the premium curve cannot price the same order.
     error ConflictingFillPricing();
+    /// @dev A premium that rises along the volume ladder would reward splitting a fill.
+    error NonMonotonicFillCurve();
+    /// @dev A flag was set that only means something in combination with another, absent one.
+    error InvalidFlagCombination();
 
     IOrderRegistrator private immutable _ORDER_REGISTRATOR;
 
@@ -86,12 +101,21 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
      * 1 byte - flags
      * 4 bytes - allowed time
      * 3 bytes - allowed time delay, present when the anchored flag is set
+     * 3 bytes - announcement deadline delay, present when the announcement deadline flag is set
      * 1 byte - size of the whitelist
      * (bytes10,bytes2)[N] - whitelisted addresses and the time delta until the next one
      * bytes - custom data to call an extra post-interaction (optional)
      *
      * Whitelisted addresses are compared by their lowest 10 bytes, the same trade-off the settlement
      * contracts already make between calldata size and the cost of grinding a colliding address.
+     *
+     * The announcement deadline stops the order being fillable once `announcedAt + delay` has passed.
+     * It requires the anchored flag — setting it alone reverts rather than silently doing nothing — and
+     * exists as defense in depth for the getter-side post-auction deadline: an order whose taking-amount
+     * data was assembled without routing through this contract skips every getter-side check, but a
+     * post-interaction is not skippable, so the deadline here bounds the damage. It is measured from the
+     * announcement rather than the auction finish, which the post-interaction does not know; to align the
+     * two, encode `announcementDeadlineDelay = auctionStartDelay + auctionDuration + postAuctionWindow`.
      */
     function postInteraction(
         IOrderMixin.Order calldata order,
@@ -109,9 +133,18 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
             uint256 offset = 5;
 
             if (flags & _ANCHORED_FLAG != 0) {
-                uint256 anchoredTime = _announcedAt(orderHash) + uint24(bytes3(extraData[offset:offset + 3]));
+                uint256 announcementTime = _announcedAt(orderHash);
+                uint256 anchoredTime = announcementTime + uint24(bytes3(extraData[offset:offset + 3]));
                 offset += 3;
                 if (anchoredTime > allowedTime) allowedTime = anchoredTime;
+
+                if (flags & _ANNOUNCEMENT_DEADLINE_FLAG != 0) {
+                    // solhint-disable-next-line not-rely-on-time
+                    if (block.timestamp > announcementTime + uint24(bytes3(extraData[offset:offset + 3]))) revert AuctionExpired();
+                    offset += 3;
+                }
+            } else if (flags & _ANNOUNCEMENT_DEADLINE_FLAG != 0) {
+                revert InvalidFlagCombination();
             }
 
             uint256 size = uint8(extraData[offset]);
@@ -162,8 +195,9 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
 
         uint256 rateBump = state.auctionBump;
         if (state.fillScalingNumerator != 0 || fillCurve.length != 0) {
+            // The curve is enforced non-increasing, so its initial premium is the worst it can price at.
             uint256 worstRateBump = fillCurve.length != 0
-                ? state.auctionBump + _maxFillPremium(fillCurve)
+                ? state.auctionBump + uint24(bytes3(fillCurve[0:3]))
                 : _scaleByFill(state, order.makingAmount, 0, remainingMakingAmount);
             uint256 estimatedMakingAmount = Math.mulDiv(unbumpedAmount, _BASE_POINTS, _BASE_POINTS + _applyGasBump(worstRateBump, state.gasBump));
             rateBump = _rateBumpForFill(state, fillCurve, order.makingAmount, estimatedMakingAmount, remainingMakingAmount);
@@ -297,8 +331,9 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
      * runs through `M` points, and ends at an implied final point of zero premium at the full amount. That
      * is how a quote's matrix of rates per size is carried into the order: one point per matrix row, hit
      * exactly at its share, interpolated linearly in between so there are no cliffs for a taker to game.
-     * A premium that does not increase along the ladder is the economically meaningful shape, and the
-     * conservative estimate on the making-amount path assumes shapes no stranger than that.
+     * The premium must not increase along the ladder, and the walk enforces that lazily — one comparison
+     * per visited point, validating exactly the prefix the fill is priced on. A rising stretch would make
+     * two fills cheaper than their sum and so pay takers to split; it reverts instead of pricing.
      * @param orderMakingAmount The order's original making amount, the ladder the curve is drawn over.
      * @param makingAmount The making amount of this fill, strictly below the remainder.
      * @param remainingMakingAmount The making amount left on the order before this fill.
@@ -316,6 +351,7 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
             bytes calldata points = fillCurve[4:];
             for (uint256 i = 0; i < pointsCount; i++) {
                 uint256 nextPremium = uint24(bytes3(points[:3]));
+                if (nextPremium > currentPremium) revert NonMonotonicFillCurve();
                 uint256 nextShare = currentShare + uint16(bytes2(points[3:5]));
                 if (share <= nextShare) {
                     return ((share - currentShare) * nextPremium + (nextShare - share) * currentPremium) / (nextShare - currentShare);
@@ -325,22 +361,6 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
                 points = points[5:];
             }
             return (_SHARE_BASE - share) * currentPremium / (_SHARE_BASE - currentShare);
-        }
-    }
-
-    /**
-     * @dev The largest premium anywhere on the curve, which caps the bump any fill can be priced at.
-     */
-    function _maxFillPremium(bytes calldata fillCurve) private pure returns (uint256 maxPremium) {
-        unchecked {
-            maxPremium = uint24(bytes3(fillCurve[0:3]));
-            uint256 pointsCount = uint8(fillCurve[3]);
-            bytes calldata points = fillCurve[4:];
-            for (uint256 i = 0; i < pointsCount; i++) {
-                uint256 premium = uint24(bytes3(points[:3]));
-                if (premium > maxPremium) maxPremium = premium;
-                points = points[5:];
-            }
         }
     }
 

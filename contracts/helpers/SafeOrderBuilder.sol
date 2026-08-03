@@ -69,7 +69,7 @@ contract SafeOrderBuilder is GnosisSafeStorage {
         bytes32 msgHash = _getMessageHash(abi.encode(_LIMIT_ORDER_PROTOCOL.hashOrder(order)));
         signedMessages[msgHash] = 1;
 
-        _ORDER_REGISTRATOR.registerOrder(order, extension, "");
+        _ORDER_REGISTRATOR.registerOrder(order, extension);
     }
 
 

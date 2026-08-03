@@ -81,5 +81,11 @@
   },
   "fusionAnchoredAuctionSalt": {
     "31337": "FusionAnchoredAuction"
+  },
+  "signAndAnnounceSalt": {
+    "31337": "SignAndAnnounce"
+  },
+  "delegatedMakerSalt": {
+    "31337": "DelegatedMaker"
   }
 }

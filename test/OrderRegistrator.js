@@ -1,15 +1,15 @@
 const { loadFixture, time } = require('@nomicfoundation/hardhat-network-helpers');
 const { expect, constants, ether } = require('@1inch/solidity-utils');
-const { signOrder, buildOrder } = require('./helpers/orderUtils');
+const { buildOrder } = require('./helpers/orderUtils');
 const { ethers } = require('hardhat');
 const { deploySwap, deployUSDC, deployUSDT } = require('./helpers/fixtures');
 const { executeContractCallWithSigners } = require('@gnosis.pm/safe-contracts/dist');
 
 describe('OrderRegistrator', function () {
-    let addr;
+    let addr, addr1;
 
     before(async function () {
-        [addr] = await ethers.getSigners();
+        [addr, addr1] = await ethers.getSigners();
     });
 
     async function deployAndInit () {
@@ -23,104 +23,84 @@ describe('OrderRegistrator', function () {
         return { swap, usdc, usdt, registrator, chainId };
     };
 
-    async function buildAndSignOrder (usdc, usdt, swap, chainId) {
-        const order = buildOrder({
+    async function buildTestOrder (usdc, usdt) {
+        return buildOrder({
             makerAsset: await usdc.getAddress(),
             takerAsset: await usdt.getAddress(),
             makingAmount: 1,
             takingAmount: 2,
             maker: addr.address,
         });
-        const signature = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr)).compactSerialized;
-        return { order, signature };
     }
 
     it('should emit OrderRegistered event', async function () {
-        const { usdc, usdt, swap, registrator, chainId } = await loadFixture(deployAndInit);
+        const { usdc, usdt, registrator } = await loadFixture(deployAndInit);
 
-        const order = buildOrder({
-            makerAsset: await usdc.getAddress(),
-            takerAsset: await usdt.getAddress(),
-            makingAmount: 1,
-            takingAmount: 2,
-            maker: addr.address,
-        });
-
+        const order = await buildTestOrder(usdc, usdt);
         const orderTuple = [order.salt, order.maker, order.receiver, order.makerAsset, order.takerAsset, order.makingAmount, order.takingAmount, order.makerTraits];
 
-        const signature = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr)).compactSerialized;
-
-        const tx = registrator.registerOrder(order, order.extension, signature);
-        await expect(tx).to.emit(registrator, 'OrderRegistered').withArgs(orderTuple, order.extension, signature);
+        const tx = registrator.registerOrder(order, order.extension);
+        await expect(tx).to.emit(registrator, 'OrderRegistered').withArgs(orderTuple, order.extension);
     });
 
-    it('should revert with wrong signature', async function () {
-        const { usdc, usdt, swap, registrator, chainId } = await loadFixture(deployAndInit);
+    it('should reject registration from anyone but the maker', async function () {
+        const { usdc, usdt, registrator } = await loadFixture(deployAndInit);
 
-        const order = buildOrder({
-            makerAsset: await usdc.getAddress(),
-            takerAsset: await usdt.getAddress(),
-            makingAmount: 1,
-            takingAmount: 2,
-            maker: addr.address,
-        });
-        const signature = ethers.Signature.from(await signOrder(order, chainId + 1n, await swap.getAddress(), addr)).compactSerialized;
-
-        const tx = registrator.registerOrder(order, order.extension, signature);
-        await expect(tx).to.be.revertedWithCustomError(swap, 'BadSignature');
+        // Nothing but the sender authenticates a registration, so a stranger's is refused outright —
+        // there is no signature to present and no state a maker could have prepared to let them in.
+        const order = await buildTestOrder(usdc, usdt);
+        const tx = registrator.connect(addr1).registerOrder(order, order.extension);
+        await expect(tx).to.be.revertedWithCustomError(registrator, 'AccessDenied');
     });
 
     it('should revert with wrong extension', async function () {
-        const { usdc, usdt, swap, registrator, chainId } = await loadFixture(deployAndInit);
+        const { usdc, usdt, registrator } = await loadFixture(deployAndInit);
 
-        const order = buildOrder({
-            makerAsset: await usdc.getAddress(),
-            takerAsset: await usdt.getAddress(),
-            makingAmount: 1,
-            takingAmount: 2,
-            maker: addr.address,
-        });
+        const order = await buildTestOrder(usdc, usdt);
         const orderLibFactory = await ethers.getContractFactory('OrderLib');
 
-        const signature = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), addr)).compactSerialized;
-        const tx = registrator.registerOrder(order, order.extension + '00', signature);
+        const tx = registrator.registerOrder(order, order.extension + '00');
         await expect(tx).to.be.revertedWithCustomError(orderLibFactory, 'UnexpectedOrderExtension');
     });
 
     describe('announcements', function () {
-        it('should record when an order was announced', async function () {
-            const { usdc, usdt, swap, registrator, chainId } = await loadFixture(deployAndInit);
-            const { order, signature } = await buildAndSignOrder(usdc, usdt, swap, chainId);
+        it('should record when an order was announced and emit OrderAnnounced', async function () {
+            const { usdc, usdt, swap, registrator } = await loadFixture(deployAndInit);
+            const order = await buildTestOrder(usdc, usdt);
             const orderHash = await swap.hashOrder(order);
 
-            const tx = await registrator.registerOrder(order, order.extension, signature);
+            const tx = await registrator.registerOrder(order, order.extension);
             const receipt = await tx.wait();
 
             expect(await registrator.announcedAt(orderHash)).to.equal(await time.latest());
             expect(await registrator.announcedAtBlock(orderHash)).to.equal(receipt.blockNumber);
+            await expect(tx).to.emit(registrator, 'OrderAnnounced').withArgs(orderHash, await time.latest(), receipt.blockNumber);
         });
 
         it('should report an order that was never announced as unannounced', async function () {
-            const { usdc, usdt, swap, registrator, chainId } = await loadFixture(deployAndInit);
-            const { order } = await buildAndSignOrder(usdc, usdt, swap, chainId);
+            const { usdc, usdt, swap, registrator } = await loadFixture(deployAndInit);
+            const order = await buildTestOrder(usdc, usdt);
 
             expect(await registrator.announcedAt(await swap.hashOrder(order))).to.equal(0);
             expect(await registrator.announcedAtBlock(await swap.hashOrder(order))).to.equal(0);
         });
 
         it('should keep the first announcement when the same order is registered again', async function () {
-            const { usdc, usdt, swap, registrator, chainId } = await loadFixture(deployAndInit);
-            const { order, signature } = await buildAndSignOrder(usdc, usdt, swap, chainId);
+            const { usdc, usdt, swap, registrator } = await loadFixture(deployAndInit);
+            const order = await buildTestOrder(usdc, usdt);
             const orderHash = await swap.hashOrder(order);
 
-            await registrator.registerOrder(order, order.extension, signature);
+            await registrator.registerOrder(order, order.extension);
             const announcedAt = await registrator.announcedAt(orderHash);
             const announcedAtBlock = await registrator.announcedAtBlock(orderHash);
 
             await time.increase(3600);
             // A repeated announcement is not an error — SafeOrderBuilder rebuilds an unchanged order this way —
-            // but it must not move an auction that is already anchored to the first one.
-            await expect(registrator.registerOrder(order, order.extension, signature)).to.emit(registrator, 'OrderRegistered');
+            // but it must not move an auction that is already anchored to the first one, and the anchor
+            // event must not fire a second time.
+            const tx = registrator.registerOrder(order, order.extension);
+            await expect(tx).to.emit(registrator, 'OrderRegistered');
+            await expect(tx).to.not.emit(registrator, 'OrderAnnounced');
 
             expect(await registrator.announcedAt(orderHash)).to.equal(announcedAt);
             expect(await registrator.announcedAtBlock(orderHash)).to.equal(announcedAtBlock);
@@ -173,8 +153,9 @@ describe('OrderRegistrator', function () {
         it('should record an announcement made with an on-chain signature', async function () {
             const { swap, registrator, safe, safeOrderBuilder, oracle, order } = await loadFixture(deploySafeAndInit);
 
-            // The Safe marks the order digest and announces it with an empty ERC-1271 signature — the flow a
-            // multisig maker uses, and the one the anchored auction has to price from.
+            // The Safe marks the order digest and announces it in one delegatecall — the flow a multisig
+            // maker uses, and the one the anchored auction has to price from. The registrator sees the
+            // Safe itself as the sender, which is exactly the maker-only rule.
             const oracleParams = [await oracle.getAddress(), ether('0.00025'), 1000];
             const tx = await executeContractCallWithSigners(
                 safe,
@@ -190,6 +171,34 @@ describe('OrderRegistrator', function () {
             const orderHash = await swap.hashOrder(order);
             expect(await registrator.announcedAt(orderHash)).to.equal(await time.latest());
             expect(await registrator.announcedAtBlock(orderHash)).to.equal(receipt.blockNumber);
+        });
+
+        it('should mark the digest and announce through SignAndAnnounce in one Safe execution', async function () {
+            const { swap, registrator, safe, order } = await loadFixture(deploySafeAndInit);
+
+            const SignAndAnnounce = await ethers.getContractFactory('SignAndAnnounce');
+            const signAndAnnounce = await SignAndAnnounce.deploy(swap, registrator);
+            await signAndAnnounce.waitForDeployment();
+            signAndAnnounce.address = await signAndAnnounce.getAddress();
+
+            const tx = await executeContractCallWithSigners(
+                safe,
+                signAndAnnounce,
+                'signAndAnnounce',
+                [order, order.extension],
+                [addr],
+                true,
+            );
+            const receipt = await tx.wait();
+
+            const orderHash = await swap.hashOrder(order);
+            await expect(tx).to.emit(registrator, 'OrderRegistered');
+            await expect(tx).to.emit(registrator, 'OrderAnnounced').withArgs(orderHash, await time.latest(), receipt.blockNumber);
+            expect(await registrator.announcedAt(orderHash)).to.equal(await time.latest());
+
+            // The digest marking is what later lets the protocol fill this order with an empty signature.
+            const validator = await ethers.getContractAt('CompatibilityFallbackHandler', safe.address);
+            expect(await validator['isValidSignature(bytes32,bytes)'](orderHash, '0x')).to.equal('0x1626ba7e');
         });
     });
 });

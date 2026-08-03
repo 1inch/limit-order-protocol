@@ -25,7 +25,6 @@ const MAINNET = {
     // Gnosis Safe 1.3.0 deployments, the ones sub-wallet makers run on.
     safeSingleton: '0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552',
     safeProxyFactory: '0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2',
-    signMessageLib: '0xA65387F16B013cf2Af4605Ad8aA5ec25a2cbA3a2',
     fallbackHandler: '0xf48f2B2d2a534e402487b3ee7C18c33Aec0Fe5e4',
 };
 
@@ -123,15 +122,16 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
             { makingAmountData: auctionData, takingAmountData: auctionData },
         );
 
+        // The fill signature's domain has to be the live router's, or nothing below would validate. The
+        // registration itself takes no signature — the maker sending it is the authentication.
         const signature = await signRouterOrder(order, maker);
-        // The signing domain has to be the live router's, or nothing below would validate.
         expect(await router.hashOrder(order)).to.equal(ethers.TypedDataEncoder.hash(
             { name: '1inch Aggregation Router', version: '6', chainId, verifyingContract: MAINNET.router },
             { Order: ABIOrder.components },
             order,
         ));
 
-        await registrator.registerOrder(order, order.extension, ethers.Signature.from(signature).compactSerialized);
+        await registrator.connect(maker).registerOrder(order, order.extension);
         const announcedAt = await time.latest();
         expect(await registrator.announcedAt(await router.hashOrder(order))).to.equal(announcedAt);
 
@@ -195,8 +195,8 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
             { makingAmountData: getterData, takingAmountData: getterData, postInteraction: postInteractionData },
         );
 
-        const { r, yParityAndS: vs, compactSerialized } = ethers.Signature.from(await signRouterOrder(order, maker));
-        await registrator.registerOrder(order, order.extension, compactSerialized);
+        const { r, yParityAndS: vs } = ethers.Signature.from(await signRouterOrder(order, maker));
+        await registrator.connect(maker).registerOrder(order, order.extension);
         const announcedAt = await time.latest();
 
         // The live settlement validates the resolver's priority fee, so tip nothing.
@@ -224,9 +224,10 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
         await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
     });
 
-    it('announces through a live Safe with the empty ERC-1271 signature', async function () {
-        // The multisig maker flow: a Safe on the live 1.3.0 contracts marks the order digest, anyone announces
-        // it with an empty signature, and the auction prices from that announcement.
+    it('marks the digest and announces through SignAndAnnounce on a live Safe', async function () {
+        // The multisig maker flow: a Safe on the live 1.3.0 contracts delegatecalls SignAndAnnounce once,
+        // marking the order digest and starting the anchored clock in the same co-signed execution —
+        // nothing signed off-chain — and the auction prices from that announcement.
         const GnosisSafe = await ethers.getContractFactory('GnosisSafe');
         const factory = await ethers.getContractAt('GnosisSafeProxyFactory', MAINNET.safeProxyFactory);
         const setupData = GnosisSafe.interface.encodeFunctionData(
@@ -238,12 +239,15 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
             .map((log) => { try { return factory.interface.parseLog(log); } catch { return null; } })
             .find((parsed) => parsed?.name === 'ProxyCreation');
         const safe = GnosisSafe.attach(proxyCreation.args.proxy);
-        const signMessageLib = new ethers.Contract(MAINNET.signMessageLib, ['function signMessage(bytes _data)'], maker);
+
+        const SignAndAnnounce = await ethers.getContractFactory('SignAndAnnounce');
+        const signAndAnnounce = await SignAndAnnounce.deploy(router, registrator);
+        await signAndAnnounce.waitForDeployment();
 
         // workaround as safe lib expects old version of ethers
         safe.address = await safe.getAddress();
         dai.address = MAINNET.dai;
-        signMessageLib.address = MAINNET.signMessageLib;
+        signAndAnnounce.address = await signAndAnnounce.getAddress();
         maker._signTypedData = maker.signTypedData;
 
         await setDaiBalance(safe.address, MAKING_AMOUNT);
@@ -266,12 +270,11 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
         );
         const orderHash = await router.hashOrder(order);
 
-        // Before the digest is marked the announcement has nothing to validate against.
-        await expect(registrator.registerOrder(order, order.extension, '0x'))
-            .to.be.revertedWithCustomError(router, 'BadSignature');
+        // Only the Safe itself can start its orders' clocks; its owner EOA is a stranger to the registrator.
+        await expect(registrator.connect(maker).registerOrder(order, order.extension))
+            .to.be.revertedWithCustomError(registrator, 'AccessDenied');
 
-        await executeContractCallWithSigners(safe, signMessageLib, 'signMessage', [orderHash], [maker], true);
-        await registrator.registerOrder(order, order.extension, '0x');
+        await executeContractCallWithSigners(safe, signAndAnnounce, 'signAndAnnounce', [order, order.extension], [maker], true);
         const announcedAt = await time.latest();
         expect(await registrator.announcedAt(orderHash)).to.equal(announcedAt);
 
