@@ -480,6 +480,43 @@ describe('FusionAnchoredAuction', function () {
             await expect(fill(swap, order, sig, MAKING_AMOUNT / 10n)).to.be.revertedWithCustomError(auction, 'AuctionExpired');
         });
 
+        it('prices a fill announced in the same block at the top of the curve', async function () {
+            const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
+
+            const order = await buildAuctionOrder({
+                dai,
+                weth,
+                auction,
+                auctionDetails: buildAnchoredAuctionDetails({ ...anchoredParams, startDelay: 0 }),
+            });
+            const sig = await signature(order, chainId, swap);
+
+            // A resolver may announce and fill atomically; the fill sees the announcement written earlier in
+            // the same block and prices at the very start of the curve.
+            const compact = ethers.Signature.from(await signOrder(order, chainId, await swap.getAddress(), maker)).compactSerialized;
+            await hre.network.provider.send('evm_setAutomine', [false]);
+            let announceTx, fillTx;
+            try {
+                announceTx = await registrator.connect(taker).registerOrder(order, order.extension, compact, { gasLimit: 300000 });
+                const takerTraits = buildTakerTraits({ makingAmount: true, extension: order.extension });
+                fillTx = await swap.connect(taker).fillOrderArgs(
+                    order, sig.r, sig.yParityAndS, MAKING_AMOUNT, takerTraits.traits, takerTraits.args, { gasLimit: 500000 },
+                );
+            } finally {
+                await hre.network.provider.send('evm_setAutomine', [true]);
+                await hre.network.provider.send('evm_mine');
+            }
+
+            const announceReceipt = await announceTx.wait();
+            const fillReceipt = await fillTx.wait();
+            expect(announceReceipt.blockNumber).to.equal(fillReceipt.blockNumber);
+
+            const expected = ceilDiv(TAKING_AMOUNT * (BASE_POINTS + HALF_PERCENT), BASE_POINTS);
+            expect(await weth.balanceOf(maker)).to.equal(expected);
+            expect(await dai.balanceOf(taker)).to.equal(MAKING_AMOUNT);
+            expect(await registrator.announcedAt(await swap.hashOrder(order))).to.equal(await time.latest());
+        });
+
         it('gives a slow announcement the same curve a prompt one gets', async function () {
             const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
 
@@ -933,6 +970,115 @@ describe('FusionAnchoredAuction', function () {
             const midRowBump = BigInt(MATRIX[0] + MATRIX[1]) / 2n;
             expect(expected).to.equal(ceilDiv(ceilDiv(TAKING_AMOUNT * 15n, 100n) * (BASE_POINTS + midRowBump), BASE_POINTS));
             await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+        });
+
+        it('interpolates past the last row toward zero at completion', async function () {
+            const { swap, auction, order, params, afterAuction } = await deployMatrixOrder();
+
+            await time.setNextBlockTimestamp(afterAuction);
+            await hre.network.provider.send('evm_mine');
+
+            // The last explicit row sits at 9/10; a fill ending at 95% lands on the implied final segment,
+            // halfway between that row and the zero premium of completion.
+            const makingAmount = MAKING_AMOUNT * 95n / 100n;
+            const taking = await auction.getTakingAmount(
+                order, order.extension, await swap.hashOrder(order), taker.address, makingAmount, MAKING_AMOUNT, buildAnchoredAuctionDetails(params),
+            );
+            const halfLastRow = BigInt(MATRIX[8]) / 2n;
+            expect(taking).to.equal(ceilDiv(ceilDiv(TAKING_AMOUNT * 95n, 100n) * (BASE_POINTS + halfLastRow), BASE_POINTS));
+        });
+
+        it('offsets the gas bump from the matrix premium', async function () {
+            const contracts = await loadFixture(deployContractsAndInit);
+            const { dai, weth, swap, chainId, auction } = contracts;
+
+            const startTime = await time.latest() + 10;
+            const baseFee = 1000000000n; // 1 gwei, exactly the estimate below
+            const params = {
+                startTime,
+                duration: 100,
+                initialRateBump: Number(HALF_PERCENT),
+                fillPremiums: FILL_PREMIUMS,
+                gasBumpEstimate: Number(HALF_PERCENT * 4n), // 2%
+                gasPriceEstimate: 1000,
+            };
+            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
+            const sig = await signature(order, chainId, swap);
+
+            // After the auction the first decile carries the 4% row, and the 2% gas bump comes off it.
+            await hre.network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x' + baseFee.toString(16)]);
+            await time.setNextBlockTimestamp(startTime + 200);
+            const fillTx = fill(swap, order, sig, MAKING_AMOUNT / 10n, { overrides: { gasPrice: baseFee * 2n } });
+
+            const expected = ceilDiv((TAKING_AMOUNT / 10n) * (BASE_POINTS + BigInt(MATRIX[0]) - HALF_PERCENT * 4n), BASE_POINTS);
+            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+        });
+
+        it('parses and prices a matrix with the maximum number of rows', async function () {
+            const contracts = await loadFixture(deployContractsAndInit);
+            const { dai, weth, swap, chainId, auction } = contracts;
+
+            // 255 rows, the count byte's ceiling: premiums stepping down 39 units of share apart.
+            const fillPremiums = {
+                initial: 255_000,
+                points: Array.from({ length: 255 }, (_, i) => ({ premium: (254 - i) * 1000, shareDelta: 39 })),
+            };
+            const startTime = await time.latest() + 10;
+            const params = { startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), fillPremiums };
+            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
+            await signature(order, chainId, swap);
+
+            await time.setNextBlockTimestamp(startTime + 200);
+            await hre.network.provider.send('evm_mine');
+
+            const orderHash = await swap.hashOrder(order);
+            const extraData = buildAnchoredAuctionDetails(params);
+            for (const makingAmount of [MAKING_AMOUNT / 100n, MAKING_AMOUNT / 3n, MAKING_AMOUNT * 99n / 100n]) {
+                const taking = await auction.getTakingAmount(order, order.extension, orderHash, taker.address, makingAmount, MAKING_AMOUNT, extraData);
+                expect(taking).to.equal(takingAmountFor(order, params, startTime + 200, makingAmount, MAKING_AMOUNT));
+            }
+        });
+
+        it('never lets any split of the order undercut a single sweep', async function () {
+            const { swap, auction, order, params, afterAuction } = await deployMatrixOrder();
+            const linear = await deployMatrixOrder({ fillPremiums: undefined, fillScalingNumerator: 100 });
+
+            await time.setNextBlockTimestamp(afterAuction + 1000);
+            await hre.network.provider.send('evm_mine');
+
+            // A seeded sweep over random partitions, priced through the contract's own view methods: for
+            // both encodings, no way of slicing the order may cost less in total than one full sweep.
+            let seed = 0xdead4351n;
+            const nextRand = (bound) => {
+                seed = (seed * 6364136223846793005n + 1442695040888963407n) & ((1n << 64n) - 1n);
+                return seed % bound;
+            };
+
+            for (const { o, p } of [{ o: order, p: params }, { o: linear.order, p: linear.params }]) {
+                const orderHash = await swap.hashOrder(o);
+                const extraData = buildAnchoredAuctionDetails(p);
+                const sweep = await auction.getTakingAmount(o, o.extension, orderHash, taker.address, MAKING_AMOUNT, MAKING_AMOUNT, extraData);
+
+                for (let trial = 0; trial < 8; trial++) {
+                    const chunks = [];
+                    let remaining = MAKING_AMOUNT;
+                    const parts = 2n + nextRand(4n);
+                    for (let i = 1n; i < parts; i++) {
+                        const chunk = 1n + nextRand(remaining - (parts - i));
+                        chunks.push(chunk);
+                        remaining -= chunk;
+                    }
+                    chunks.push(remaining);
+
+                    let total = 0n;
+                    let left = MAKING_AMOUNT;
+                    for (const chunk of chunks) {
+                        total += await auction.getTakingAmount(o, o.extension, orderHash, taker.address, chunk, left, extraData);
+                        left -= chunk;
+                    }
+                    expect(total, `partition ${chunks.join('+')}`).to.be.greaterThanOrEqual(sweep);
+                }
+            }
         });
 
         it('adds the matrix premium on top of the running time curve', async function () {
@@ -1405,6 +1551,61 @@ describe('FusionAnchoredAuction', function () {
             const feeAmount = withFee - ceilDiv(withFee * 100000n, 100000n + resolverFee);
             await expect(fillTx).to.changeTokenBalances(weth, [taker, maker, otherResolver], [-withFee, withFee - feeAmount, feeAmount]);
             await expect(fillTx).to.changeTokenBalances(dai, [taker, maker], [MAKING_AMOUNT / 2n, -MAKING_AMOUNT / 2n]);
+        });
+
+        it('prices a matrix order chained behind the fee taker', async function () {
+            const { dai, weth, swap, chainId, registrator, auction, feeTaker } = await loadFixture(deployContractsAndInit);
+
+            const resolverFee = 1000n; // 1% in 1e5
+            const auctionParams = {
+                startTime: 0,
+                duration: 100,
+                initialRateBump: Number(HALF_PERCENT),
+                startDelay: 10,
+                fillPremiums: { initial: 400_000, points: [{ premium: 100_000, shareDelta: 5000 }] },
+            };
+            const auctionTail = ethers.solidityPacked(
+                ['address', 'bytes'],
+                [await auction.getAddress(), buildAnchoredAuctionDetails(auctionParams)],
+            );
+
+            const order = buildOrder(
+                {
+                    maker: maker.address,
+                    receiver: await feeTaker.getAddress(),
+                    makerAsset: await dai.getAddress(),
+                    takerAsset: await weth.getAddress(),
+                    makingAmount: MAKING_AMOUNT,
+                    takingAmount: TAKING_AMOUNT,
+                },
+                buildFeeTakerExtensions({
+                    feeTaker: await feeTaker.getAddress(),
+                    protocolFeeRecipient: otherResolver.address,
+                    resolverFee,
+                    whitelistDiscount: 100,
+                    customMakingGetter: auctionTail,
+                    customTakingGetter: auctionTail,
+                }),
+            );
+            const sig = await signature(order, chainId, swap);
+            const announcedAt = await announce(registrator, swap, chainId, order);
+
+            // A quarter-sized fill lands halfway up the matrix's first segment, on top of the fee.
+            const fillTime = announcedAt + 200;
+            await time.setNextBlockTimestamp(fillTime);
+            const fillTx = fill(swap, order, sig, MAKING_AMOUNT / 4n);
+
+            const auctionPrice = takingAmountFor(
+                order,
+                { ...auctionParams, startTime: announcedAt + auctionParams.startDelay },
+                fillTime,
+                MAKING_AMOUNT / 4n,
+                MAKING_AMOUNT,
+            );
+            const withFee = ceilDiv(auctionPrice * (100000n + resolverFee), 100000n);
+            const feeAmount = withFee - ceilDiv(withFee * 100000n, 100000n + resolverFee);
+            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker, otherResolver], [-withFee, withFee - feeAmount, feeAmount]);
+            await expect(fillTx).to.changeTokenBalances(dai, [taker, maker], [MAKING_AMOUNT / 4n, -MAKING_AMOUNT / 4n]);
         });
 
         it('prices through the fee taker and the anchored auction together', async function () {
