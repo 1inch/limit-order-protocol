@@ -13,7 +13,13 @@ The contract is a standalone amount getter and post-interaction rather than a se
 referenced by address from the order extension, either directly or chained after a settlement contract
 through the amount-getter and post-interaction chains, and so works with any deployed settlement version.
 Every feature is opt-in per order through the flags byte; with no flags set the pricing matches an
-unanchored Dutch auction._
+unanchored Dutch auction.
+
+Getter-side features only run when the order's amount data actually routes through this contract: an
+order assembled with empty taking-amount data prices at its plain ratio and skips every check encoded
+here, which no amount getter can prevent. Order builders must treat the amount-getter fields as
+load-bearing, and makers who need a fill-by deadline that survives such mis-assembly should carry the
+announcement deadline in the post-interaction blob, which is not skippable._
 
 ### Types list
 - [AuctionState](#auctionstate)
@@ -30,6 +36,8 @@ unanchored Dutch auction._
 - [AllowedTimeViolation() ](#allowedtimeviolation)
 - [InvalidFillScalingNumerator() ](#invalidfillscalingnumerator)
 - [ConflictingFillPricing() ](#conflictingfillpricing)
+- [NonMonotonicFillCurve() ](#nonmonotonicfillcurve)
+- [InvalidFlagCombination() ](#invalidflagcombination)
 
 ### Types
 ### AuctionState
@@ -79,12 +87,21 @@ caller check would break the composition.
 1 byte - flags
 4 bytes - allowed time
 3 bytes - allowed time delay, present when the anchored flag is set
+3 bytes - announcement deadline delay, present when the announcement deadline flag is set
 1 byte - size of the whitelist
 (bytes10,bytes2)[N] - whitelisted addresses and the time delta until the next one
 bytes - custom data to call an extra post-interaction (optional)
 
 Whitelisted addresses are compared by their lowest 10 bytes, the same trade-off the settlement
-contracts already make between calldata size and the cost of grinding a colliding address._
+contracts already make between calldata size and the cost of grinding a colliding address.
+
+The announcement deadline stops the order being fillable once `announcedAt + delay` has passed.
+It requires the anchored flag — setting it alone reverts rather than silently doing nothing — and
+exists as defense in depth for the getter-side post-auction deadline: an order whose taking-amount
+data was assembled without routing through this contract skips every getter-side check, but a
+post-interaction is not skippable, so the deadline here bounds the damage. It is measured from the
+announcement rather than the auction finish, which the post-interaction does not know; to align the
+two, encode `announcementDeadlineDelay = auctionStartDelay + auctionDuration + postAuctionWindow`._
 
 ### _getMakingAmount
 
@@ -145,4 +162,20 @@ error ConflictingFillPricing()
 ```
 
 _The linear rule and the premium curve cannot price the same order._
+
+### NonMonotonicFillCurve
+
+```solidity
+error NonMonotonicFillCurve()
+```
+
+_A premium that rises along the volume ladder would reward splitting a fill._
+
+### InvalidFlagCombination
+
+```solidity
+error InvalidFlagCombination()
+```
+
+_A flag was set that only means something in combination with another, absent one._
 

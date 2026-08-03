@@ -2,23 +2,28 @@
 ## IOrderRegistrator
 
 _The interface defines the structure of the order registrator contract.
-The registrator is responsible for registering orders and emitting an event when an order is registered._
+The registrator is responsible for registering orders and emitting an event when an order is registered.
+Registration is maker-only and signature-free: the transaction sender must be the order's maker,
+which is the sole authentication. Fill authorization is carried separately by each flow._
 
 ### Functions list
-- [registerOrder(order, extension, signature) external](#registerorder)
+- [registerOrder(order, extension) external](#registerorder)
 - [announcedAt(orderHash) external](#announcedat)
 - [announcedAtBlock(orderHash) external](#announcedatblock)
 
 ### Events list
-- [OrderRegistered(order, extension, signature) ](#orderregistered)
+- [OrderRegistered(order, extension) ](#orderregistered)
+- [OrderAnnounced(orderHash, timestamp, blockNumber) ](#orderannounced)
 
 ### Functions
 ### registerOrder
 
 ```solidity
-function registerOrder(struct IOrderMixin.Order order, bytes extension, bytes signature) external
+function registerOrder(struct IOrderMixin.Order order, bytes extension) external
 ```
-Registers an order.
+Registers an order. Callable only by the order's maker; reverts for any other sender.
+The first successful call records the announcement timestamp and block number; repeated calls
+re-emit {OrderRegistered} without moving the announcement.
 
 #### Parameters
 
@@ -26,7 +31,6 @@ Registers an order.
 | ---- | ---- | ----------- |
 | order | struct IOrderMixin.Order | The order to be registered. |
 | extension | bytes | The extension data associated with the order. |
-| signature | bytes | The signature of the order. |
 
 ### announcedAt
 
@@ -70,9 +74,9 @@ blockNumber | uint256 | The block number of the first registration, or 0 if the 
 ### OrderRegistered
 
 ```solidity
-event OrderRegistered(struct IOrderMixin.Order order, bytes extension, bytes signature)
+event OrderRegistered(struct IOrderMixin.Order order, bytes extension)
 ```
-Emitted when an order is registered.
+Emitted when an order is registered. Emission proves the maker itself sent the order.
 
 #### Parameters
 
@@ -80,5 +84,20 @@ Emitted when an order is registered.
 | ---- | ---- | ----------- |
 | order | struct IOrderMixin.Order | The order that was registered. |
 | extension | bytes | The extension data associated with the order. |
-| signature | bytes | The signature of the order. |
+
+### OrderAnnounced
+
+```solidity
+event OrderAnnounced(bytes32 orderHash, uint256 timestamp, uint256 blockNumber)
+```
+Emitted on the first registration of an order — the single anchor write for
+announcement-anchored auctions. Never emitted again for the same order.
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| orderHash | bytes32 | The hash of the announced order. |
+| timestamp | uint256 | The block timestamp recorded as the announcement time. |
+| blockNumber | uint256 | The block number recorded for the announcement. |
 
