@@ -1227,6 +1227,105 @@ describe('FusionAnchoredAuction', function () {
         });
     });
 
+    describe('adversarial fills', function () {
+        it('rejects a taker who swaps in cheaper auction bytes', async function () {
+            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
+            const orderLib = await ethers.getContractFactory('OrderLib');
+
+            const startTime = await time.latest() + 10;
+            const expensive = { startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), fillPremiums: { initial: 400_000, points: [] } };
+            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(expensive) });
+            const sig = await signature(order, chainId, swap);
+
+            // The attacker rebuilds the same order with a free curve and presents that extension instead;
+            // the salt commits to the extension hash, so the fill never reaches the pricing at all.
+            const forged = await buildAuctionOrder({
+                dai,
+                weth,
+                auction,
+                auctionDetails: buildAnchoredAuctionDetails({ startTime, duration: 100, initialRateBump: 0 }),
+            });
+            await time.setNextBlockTimestamp(startTime + 200);
+
+            const forgedTraits = buildTakerTraits({ makingAmount: true, extension: forged.extension });
+            await expect(swap.connect(taker).fillOrderArgs(order, sig.r, sig.yParityAndS, MAKING_AMOUNT / 10n, forgedTraits.traits, forgedTraits.args))
+                .to.be.revertedWithCustomError(orderLib, 'InvalidExtensionHash');
+
+            // Dropping the extension entirely does not help either.
+            const strippedTraits = buildTakerTraits({ makingAmount: true });
+            await expect(swap.connect(taker).fillOrderArgs(order, sig.r, sig.yParityAndS, MAKING_AMOUNT / 10n, strippedTraits.traits, strippedTraits.args))
+                .to.be.revertedWithCustomError(orderLib, 'MissingOrderExtension');
+        });
+
+        it('cannot take more than the order holds across fills', async function () {
+            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
+
+            const startTime = await time.latest() + 10;
+            const order = await buildAuctionOrder({
+                dai,
+                weth,
+                auction,
+                auctionDetails: buildAnchoredAuctionDetails({ startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), fillScalingNumerator: 100 }),
+            });
+            const sig = await signature(order, chainId, swap);
+
+            await time.setNextBlockTimestamp(startTime + 200);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.changeTokenBalances(dai, [taker, maker], [MAKING_AMOUNT, -MAKING_AMOUNT]);
+
+            // The order is spent; no crafted amount squeezes another wei out of the maker.
+            await expect(fill(swap, order, sig, 1n)).to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
+            await expect(fill(swap, order, sig, TAKING_AMOUNT, { byMakingAmount: false })).to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
+        });
+
+        it('never prices the maker below the min return, whatever the fill', async function () {
+            const { dai, weth, swap, auction } = await loadFixture(deployContractsAndInit);
+
+            const startTime = await time.latest() + 100;
+            const modes = [];
+            for (const extra of [
+                { fillScalingNumerator: 100 },
+                { fillPremiums: { initial: 400_000, points: [{ premium: 150_000, shareDelta: 3000 }, { premium: 30_000, shareDelta: 4000 }] } },
+            ]) {
+                const params = { startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), ...extra };
+                const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
+                modes.push({ order, extraData: buildAnchoredAuctionDetails(params), orderHash: await swap.hashOrder(order) });
+            }
+
+            // Sample the whole surface: before, during and after the auction, random fill sizes and random
+            // remainders. The rate bump only ever moves the price against the taker, so the maker's floor —
+            // the plain proportional rate — must hold everywhere, in both directions and both encodings.
+            await time.setNextBlockTimestamp(startTime + 150);
+            await hre.network.provider.send('evm_mine');
+
+            let seed = 0xfee1dead1n;
+            const nextRand = (bound) => {
+                seed = (seed * 6364136223846793005n + 1442695040888963407n) & ((1n << 64n) - 1n);
+                return seed % bound;
+            };
+
+            for (const { order, extraData, orderHash } of modes) {
+                for (let trial = 0; trial < 12; trial++) {
+                    const remaining = 1n + nextRand(MAKING_AMOUNT);
+                    const makingAmount = 1n + nextRand(remaining);
+                    const taking = await auction.getTakingAmount(order, order.extension, orderHash, taker.address, makingAmount, remaining, extraData);
+                    expect(taking, 'taker paying below the base rate').to.be.greaterThanOrEqual(ceilDiv(TAKING_AMOUNT * makingAmount, MAKING_AMOUNT));
+
+                    const takingAmount = 1000n + nextRand(TAKING_AMOUNT - 1000n);
+                    const making = await auction.getMakingAmount(order, order.extension, orderHash, taker.address, takingAmount, remaining, extraData);
+                    expect(making, 'taker receiving above the base rate').to.be.lessThanOrEqual(takingAmount * MAKING_AMOUNT / TAKING_AMOUNT);
+
+                    // Round-tripping the directions must not manufacture a discount either. The price passes
+                    // through two ceiling divisions on the way back, so up to two wei of rounding dust is the
+                    // whole allowance.
+                    if (making !== 0n && making < remaining) {
+                        const roundTrip = await auction.getTakingAmount(order, order.extension, orderHash, taker.address, making, remaining, extraData);
+                        expect(roundTrip, 'direction round trip').to.be.lessThanOrEqual(takingAmount + 2n);
+                    }
+                }
+            }
+        });
+    });
+
     describe('announcement-anchored resolver exclusivity', function () {
         const auctionParams = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 0 };
 
