@@ -106,7 +106,7 @@ describe('SafeOrderBuilder', function () {
             order.takingAmount = order.takingAmount * numerator / denominator;
 
             const orderTuple = [order.salt, order.maker, order.receiver, order.makerAsset, order.takerAsset, order.makingAmount, order.takingAmount, order.makerTraits];
-            await expect(tx).to.emit(registrator, 'OrderRegistered').withArgs(orderTuple, order.extension, '0x');
+            await expect(tx).to.emit(registrator, 'OrderRegistered').withArgs(orderTuple, order.extension);
 
             const takerTraits = buildTakerTraits({
                 makingAmount: true,
