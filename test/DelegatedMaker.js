@@ -5,6 +5,7 @@ const { loadFixture, time } = require('@nomicfoundation/hardhat-network-helpers'
 const { deploySwapTokens } = require('./helpers/fixtures');
 const {
     buildAnchoredAuctionDetails,
+    buildAnchoredExclusivity,
     buildMakerTraitsRFQ,
     buildOrder,
     buildTakerTraits,
@@ -351,6 +352,65 @@ describe('DelegatedMaker', function () {
             const fillTx = fill(swap, order, makingAmount);
             await expect(fillTx).to.changeTokenBalances(dai, [user, taker, delegatedMaker], [-makingAmount, makingAmount, 0]);
             await expect(fillTx).to.changeTokenBalances(weth, [taker, user], [-expected, expected]);
+        });
+
+        it('carries resolver exclusivity alongside the pull in one order', async function () {
+            const { dai, weth, swap, auction, registrator, delegatedMaker } = await loadFixture(deployContractsAndInit);
+
+            // The production shape: the pre-interaction pulls and the post-interaction gates resolvers,
+            // both hooks on the same order, both anchored to the create transaction.
+            const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 0 };
+            const auctionAddress = await auction.getAddress();
+            const delegatedMakerAddress = await delegatedMaker.getAddress();
+            const order = buildOrder(
+                {
+                    maker: delegatedMakerAddress,
+                    receiver: user.address,
+                    makerAsset: await dai.getAddress(),
+                    takerAsset: await weth.getAddress(),
+                    makingAmount: MAKING_AMOUNT,
+                    takingAmount: TAKING_AMOUNT,
+                },
+                {
+                    makingAmountData: ethers.solidityPacked(['address', 'bytes'], [auctionAddress, buildAnchoredAuctionDetails(params)]),
+                    takingAmountData: ethers.solidityPacked(['address', 'bytes'], [auctionAddress, buildAnchoredAuctionDetails(params)]),
+                    preInteraction: delegatedMakerAddress,
+                    postInteraction: ethers.solidityPacked(
+                        ['address', 'bytes'],
+                        [auctionAddress, buildAnchoredExclusivity({ allowedTimeDelay: 30, whitelist: [{ address: taker.address }] })],
+                    ),
+                },
+            );
+
+            await delegatedMaker.approveRouter(dai);
+            await delegatedMaker.connect(user).createOrder(order, order.extension);
+            const announcedAt = Number(await registrator.announcedAt(await swap.hashOrder(order)));
+
+            await time.setNextBlockTimestamp(announcedAt + 29);
+            await expect(fill(swap, order, MAKING_AMOUNT)).to.be.revertedWithCustomError(auction, 'AllowedTimeViolation');
+
+            const fillTime = announcedAt + 30;
+            await time.setNextBlockTimestamp(fillTime);
+            const expected = takingAmountFor(order, { ...params, startTime: announcedAt }, fillTime, MAKING_AMOUNT, MAKING_AMOUNT);
+            const fillTx = fill(swap, order, MAKING_AMOUNT);
+            await expect(fillTx).to.changeTokenBalances(dai, [user, taker, delegatedMaker], [-MAKING_AMOUNT, MAKING_AMOUNT, 0]);
+            await expect(fillTx).to.changeTokenBalances(weth, [taker, user], [-expected, expected]);
+        });
+
+        it('refuses an order that routes proceeds to a fee taker', async function () {
+            const { dai, weth, swap, delegatedMaker } = await loadFixture(deployContractsAndInit);
+
+            // A fee-collecting order names the fee taker as receiver, and the fee taker pays the maker's
+            // share to the order's maker — this contract, which has no way to withdraw. The receiver rule
+            // refuses the order rather than let a fill strand the proceeds here forever.
+            const FeeTaker = await ethers.getContractFactory('FeeTaker');
+            const feeTaker = await FeeTaker.deploy(swap, await dai.getAddress(), weth, user);
+            await feeTaker.waitForDeployment();
+
+            const order = await buildDelegatedOrder({ dai, weth, delegatedMaker });
+            order.receiver = await feeTaker.getAddress();
+            await expect(delegatedMaker.connect(user).createOrder(order, order.extension))
+                .to.be.revertedWithCustomError(delegatedMaker, 'InvalidReceiver');
         });
     });
 });

@@ -18,7 +18,14 @@ unbounded since the protocol only transfers within valid fills of orders this co
 
 The contract concentrates standing allowances, the same trust shape as the protocol itself; it holds
 no balances between transactions and has no owner powers over user funds. Contract wallets can use it
-the same way EOAs do, though a Safe keeps cleaner provenance staying its own maker via SignAndAnnounce._
+the same way EOAs do, though a Safe keeps cleaner provenance staying its own maker via SignAndAnnounce.
+
+Pinning the receiver to the creating wallet rules out fee-collecting settlement: {FeeTaker} only takes
+fees when the order's receiver is the fee taker itself, and it pays the maker's share to the order's
+maker — this contract, which cannot withdraw — unless the fee data carries a custom receiver. Rather
+than parse a fee layout it does not own, this contract keeps proceeds flowing straight to the wallet
+that funded them, so its orders price through the auction directly and take no integrator, protocol
+or resolver fee. Makers who need those keep custody of their own order, by signature or ERC-1271._
 
 ### Functions list
 - [constructor(limitOrderProtocol, orderRegistrator) public](#constructor)
