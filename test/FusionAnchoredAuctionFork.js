@@ -293,4 +293,47 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
         await expect(fillTx).to.changeTokenBalances(dai, [taker, safe], [MAKING_AMOUNT, -MAKING_AMOUNT]);
         await expect(fillTx).to.changeTokenBalances(weth, [taker, safe], [-expected, expected]);
     });
+
+    it('runs the DelegatedMaker flow end to end through the live router', async function () {
+        // The EOA flow with nothing signed and nothing escrowed: one createOrder transaction presigns and
+        // announces, the maker asset stays in the wallet until the live router's fill pulls it just in time.
+        const DelegatedMaker = await ethers.getContractFactory('DelegatedMaker');
+        const delegatedMaker = await DelegatedMaker.deploy(router, registrator);
+        await delegatedMaker.waitForDeployment();
+
+        await dai.connect(maker).approve(delegatedMaker, MAKING_AMOUNT);
+        await delegatedMaker.approveRouter(MAINNET.dai);
+
+        const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 0 };
+        const auctionData = ethers.solidityPacked(
+            ['address', 'bytes'],
+            [await auction.getAddress(), buildAnchoredAuctionDetails(params)],
+        );
+        const delegatedMakerAddress = await delegatedMaker.getAddress();
+        const order = buildOrder(
+            {
+                maker: delegatedMakerAddress,
+                receiver: maker.address,
+                makerAsset: MAINNET.dai,
+                takerAsset: MAINNET.weth,
+                makingAmount: MAKING_AMOUNT,
+                takingAmount: TAKING_AMOUNT,
+            },
+            { makingAmountData: auctionData, takingAmountData: auctionData, preInteraction: delegatedMakerAddress },
+        );
+        const orderHash = await router.hashOrder(order);
+
+        await delegatedMaker.connect(maker).createOrder(order, order.extension);
+        const announcedAt = await time.latest();
+        expect(await registrator.announcedAt(orderHash)).to.equal(announcedAt);
+
+        const fillTime = announcedAt + 60;
+        await time.setNextBlockTimestamp(fillTime);
+        const takerTraits = buildTakerTraits({ makingAmount: true, extension: order.extension });
+        const fillTx = router.connect(taker).fillContractOrderArgs(order, '0x', MAKING_AMOUNT, takerTraits.traits, takerTraits.args);
+
+        const expected = takingAmountFor(order, { ...params, startTime: announcedAt }, fillTime, MAKING_AMOUNT, MAKING_AMOUNT);
+        await expect(fillTx).to.changeTokenBalances(dai, [maker, taker, delegatedMaker], [-MAKING_AMOUNT, MAKING_AMOUNT, 0n]);
+        await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+    });
 });
