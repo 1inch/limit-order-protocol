@@ -18,6 +18,7 @@ const {
     NO_FEE_DATA,
     ceilDiv,
     buildLegacyAuctionDetails,
+    fillPremiumAt,
     scaleByFill,
     takingAmountFor,
     makingAmountFor,
@@ -853,6 +854,202 @@ describe('FusionAnchoredAuction', function () {
             const sig = await signature(order, chainId, swap);
 
             await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.be.revertedWithCustomError(auction, 'InvalidFillScalingNumerator');
+        });
+    });
+
+    describe('fill-priced by a matrix of rates', function () {
+        // The quote's matrix for 1/10 … 10/10 of the amount, expressed as the premium each size pays over
+        // the rate for the full amount. Deliberately convex, the shape a depth-based quote produces and the
+        // linear rule cannot: small sizes are worth far more per unit than mid sizes.
+        const MATRIX = [400_000, 250_000, 160_000, 105_000, 70_000, 45_000, 26_000, 12_000, 4_000, 0];
+        const FILL_PREMIUMS = {
+            initial: 500_000, // 5% for a vanishing fill
+            // Nine points at each decile up to 9/10; the implied final point is zero premium at a full sweep.
+            points: MATRIX.slice(0, 9).map((premium) => ({ premium, shareDelta: 1000 })),
+        };
+
+        async function deployMatrixOrder (extra = {}) {
+            const contracts = await loadFixture(deployContractsAndInit);
+            const { dai, weth, swap, chainId, auction } = contracts;
+            const startTime = await time.latest() + 10;
+            const params = { startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), fillPremiums: FILL_PREMIUMS, ...extra };
+            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
+            const sig = await signature(order, chainId, swap);
+            return { ...contracts, order, sig, params, afterAuction: startTime + 200 };
+        }
+
+        it('prices every decile exactly at its matrix row', async function () {
+            const { swap, auction, order, params, afterAuction } = await deployMatrixOrder();
+
+            await time.setNextBlockTimestamp(afterAuction);
+            await hre.network.provider.send('evm_mine');
+
+            const orderHash = await swap.hashOrder(order);
+            const extraData = buildAnchoredAuctionDetails(params);
+            for (let decile = 1; decile <= 10; decile++) {
+                const makingAmount = MAKING_AMOUNT * BigInt(decile) / 10n;
+                const taking = await auction.getTakingAmount(order, order.extension, orderHash, taker.address, makingAmount, MAKING_AMOUNT, extraData);
+                const expectedBump = BigInt(MATRIX[decile - 1]);
+                expect(taking).to.equal(ceilDiv(ceilDiv(TAKING_AMOUNT * BigInt(decile), 10n) * (BASE_POINTS + expectedBump), BASE_POINTS));
+            }
+        });
+
+        it('interpolates between matrix rows instead of stepping', async function () {
+            const { weth, swap, order, sig, params, afterAuction } = await deployMatrixOrder();
+
+            await time.setNextBlockTimestamp(afterAuction);
+            const makingAmount = MAKING_AMOUNT * 15n / 100n; // halfway between the 1/10 and 2/10 rows
+            const fillTx = fill(swap, order, sig, makingAmount);
+
+            const expected = takingAmountFor(order, params, afterAuction, makingAmount, MAKING_AMOUNT);
+            const midRowBump = BigInt(MATRIX[0] + MATRIX[1]) / 2n;
+            expect(expected).to.equal(ceilDiv(ceilDiv(TAKING_AMOUNT * 15n, 100n) * (BASE_POINTS + midRowBump), BASE_POINTS));
+            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+        });
+
+        it('adds the matrix premium on top of the running time curve', async function () {
+            const { weth, swap, order, sig, params } = await deployMatrixOrder();
+
+            // Halfway through the auction the time curve still carries half the initial bump, and the
+            // 3/10-sized fill pays its matrix row on top of it.
+            const fillTime = params.startTime + 50;
+            await time.setNextBlockTimestamp(fillTime);
+            const makingAmount = MAKING_AMOUNT * 3n / 10n;
+            const fillTx = fill(swap, order, sig, makingAmount);
+
+            const expected = takingAmountFor(order, params, fillTime, makingAmount, MAKING_AMOUNT);
+            expect(expected).to.equal(ceilDiv(ceilDiv(TAKING_AMOUNT * 3n, 10n) * (BASE_POINTS + HALF_PERCENT / 2n + BigInt(MATRIX[2])), BASE_POINTS));
+            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+        });
+
+        it('sweeps the remainder at the plain curve price', async function () {
+            const { weth, swap, order, sig, afterAuction } = await deployMatrixOrder();
+
+            await time.setNextBlockTimestamp(afterAuction);
+            await fill(swap, order, sig, MAKING_AMOUNT * 3n / 5n);
+
+            // Whatever its absolute size, taking everything that is left costs no premium at all.
+            await time.setNextBlockTimestamp(afterAuction + 10);
+            const remainder = MAKING_AMOUNT * 2n / 5n;
+            await expect(fill(swap, order, sig, remainder)).to.changeTokenBalances(
+                weth, [taker, maker], [-TAKING_AMOUNT * 2n / 5n, TAKING_AMOUNT * 2n / 5n],
+            );
+        });
+
+        it('charges a vanishing fill the full initial premium', async function () {
+            const { swap, auction, order, params, afterAuction } = await deployMatrixOrder();
+
+            await time.setNextBlockTimestamp(afterAuction);
+            await hre.network.provider.send('evm_mine');
+
+            // One wei of a hundred-ether order rounds to a zero share, which sits at the top of the curve.
+            const taking = await auction.getTakingAmount(
+                order, order.extension, await swap.hashOrder(order), taker.address, 1n, MAKING_AMOUNT, buildAnchoredAuctionDetails(params),
+            );
+            expect(taking).to.equal(ceilDiv(ceilDiv(TAKING_AMOUNT, MAKING_AMOUNT) * (BASE_POINTS + BigInt(FILL_PREMIUMS.initial)), BASE_POINTS));
+        });
+
+        it('prices a fill by taking amount no better than an exact solution would', async function () {
+            const { dai, swap, order, sig, params, afterAuction } = await deployMatrixOrder();
+
+            await time.setNextBlockTimestamp(afterAuction);
+            const takingAmount = TAKING_AMOUNT / 4n;
+            const fillTx = fill(swap, order, sig, takingAmount, { byMakingAmount: false });
+
+            const expected = makingAmountFor(order, params, afterAuction, takingAmount, MAKING_AMOUNT);
+            await expect(fillTx).to.changeTokenBalances(dai, [taker, maker], [expected, -expected]);
+
+            const exact = (() => {
+                let amount = expected;
+                for (let i = 0; i < 64; i++) {
+                    const rateBump = amount >= MAKING_AMOUNT ? 0n : fillPremiumAt(amount, MAKING_AMOUNT, FILL_PREMIUMS);
+                    amount = (order.makingAmount * takingAmount / order.takingAmount) * BASE_POINTS / (BASE_POINTS + rateBump);
+                }
+                return amount;
+            })();
+            expect(expected).to.be.lessThanOrEqual(exact);
+        });
+
+        it('works alongside anchoring and the post-auction deadline', async function () {
+            const { weth, swap, chainId, registrator, auction, order, sig, params } = await deployMatrixOrder({
+                startTime: 0,
+                startDelay: 10,
+                postAuctionWindow: 60,
+            });
+
+            const announcedAt = await announce(registrator, swap, chainId, order);
+            const resolved = { ...params, startTime: announcedAt + 10 };
+
+            const fillTime = announcedAt + 120; // past the anchored auction, inside the deadline window
+            await time.setNextBlockTimestamp(fillTime);
+            const makingAmount = MAKING_AMOUNT / 2n;
+            const expected = takingAmountFor(order, resolved, fillTime, makingAmount, MAKING_AMOUNT);
+            expect(expected).to.equal(ceilDiv((TAKING_AMOUNT / 2n) * (BASE_POINTS + BigInt(MATRIX[4])), BASE_POINTS));
+            await expect(fill(swap, order, sig, makingAmount)).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+
+            await time.setNextBlockTimestamp(announcedAt + 10 + 100 + 60 + 1);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n)).to.be.revertedWithCustomError(auction, 'AuctionExpired');
+        });
+
+        it('collapses to a linear premium when the matrix has a single row', async function () {
+            const { weth, swap, order, sig, params, afterAuction } = await deployMatrixOrder({
+                fillPremiums: { initial: Number(HALF_PERCENT), points: [] },
+            });
+
+            await time.setNextBlockTimestamp(afterAuction);
+            const makingAmount = MAKING_AMOUNT / 4n;
+            const fillTx = fill(swap, order, sig, makingAmount);
+
+            // A single-entry curve runs straight from the initial premium to zero, matching the linear rule.
+            const expected = takingAmountFor(order, params, afterAuction, makingAmount, MAKING_AMOUNT);
+            expect(expected).to.equal(ceilDiv((TAKING_AMOUNT / 4n) * (BASE_POINTS + HALF_PERCENT * 3n / 4n), BASE_POINTS));
+            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+        });
+
+        it('stays conservative when the matrix peaks at an interior row', async function () {
+            // A hump-shaped matrix: mid-sized fills pay the most. Odd economically, but encodable, and the
+            // making-amount estimate must anchor on the curve's true peak rather than its first value.
+            const humpPremiums = {
+                initial: 100_000,
+                points: [
+                    { premium: 400_000, shareDelta: 3000 },
+                    { premium: 50_000, shareDelta: 4000 },
+                ],
+            };
+            const { dai, weth, swap, order, sig, params, afterAuction } = await deployMatrixOrder({ fillPremiums: humpPremiums });
+
+            await time.setNextBlockTimestamp(afterAuction);
+            const makingAmount = MAKING_AMOUNT * 3n / 10n; // exactly at the peak
+            const atPeak = takingAmountFor(order, params, afterAuction, makingAmount, MAKING_AMOUNT);
+            expect(atPeak).to.equal(ceilDiv(ceilDiv(TAKING_AMOUNT * 3n, 10n) * (BASE_POINTS + 400_000n), BASE_POINTS));
+            await expect(fill(swap, order, sig, makingAmount)).to.changeTokenBalances(weth, [taker, maker], [-atPeak, atPeak]);
+
+            await time.setNextBlockTimestamp(afterAuction + 10);
+            const takingAmount = TAKING_AMOUNT / 10n;
+            const expected = makingAmountFor(order, params, afterAuction + 10, takingAmount, MAKING_AMOUNT - makingAmount);
+            await expect(fill(swap, order, sig, takingAmount, { byMakingAmount: false }))
+                .to.changeTokenBalances(dai, [taker, maker], [expected, -expected]);
+        });
+
+        it('rejects an order that carries both the linear rule and a matrix', async function () {
+            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
+
+            const startTime = await time.latest() + 10;
+            const order = await buildAuctionOrder({
+                dai,
+                weth,
+                auction,
+                auctionDetails: buildAnchoredAuctionDetails({
+                    startTime,
+                    duration: 100,
+                    initialRateBump: Number(HALF_PERCENT),
+                    fillScalingNumerator: 100,
+                    fillPremiums: { initial: 100_000, points: [] },
+                }),
+            });
+            const sig = await signature(order, chainId, swap);
+
+            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.be.revertedWithCustomError(auction, 'ConflictingFillPricing');
         });
     });
 

@@ -32,10 +32,15 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
 
     /// @dev Derive the auction start from the announcement instead of the timestamp baked into the order.
     bytes1 private constant _ANCHORED_FLAG = 0x01;
-    /// @dev Price a fill according to the share of the order it takes.
+    /// @dev Price a fill according to the share of the order it takes, linearly in the share.
     bytes1 private constant _FILL_SCALED_FLAG = 0x02;
     /// @dev Stop the order being fillable some time after its auction ends.
     bytes1 private constant _POST_AUCTION_DEADLINE_FLAG = 0x04;
+    /// @dev Price a fill according to a piecewise premium curve over the share of the order it takes.
+    bytes1 private constant _FILL_CURVE_FLAG = 0x08;
+
+    /// @dev Fill shares are measured in 1e4.
+    uint256 private constant _SHARE_BASE = 10_000;
 
     /// @dev The order relies on its announcement but has never been announced.
     error OrderNotAnnounced();
@@ -45,6 +50,8 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
     error AllowedTimeViolation();
     /// @dev Fill scaling is expressed in 1e2 and cannot exceed 100%.
     error InvalidFillScalingNumerator();
+    /// @dev The linear rule and the premium curve cannot price the same order.
+    error ConflictingFillPricing();
 
     IOrderRegistrator private immutable _ORDER_REGISTRATOR;
 
@@ -150,14 +157,16 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
         uint256 remainingMakingAmount,
         bytes calldata extraData
     ) internal view override returns (uint256) {
-        (AuctionState memory state, bytes calldata tail) = _parseAuctionDetails(extraData, orderHash);
+        (AuctionState memory state, bytes calldata fillCurve, bytes calldata tail) = _parseAuctionDetails(extraData, orderHash);
         uint256 unbumpedAmount = super._getMakingAmount(order, extension, orderHash, taker, takingAmount, remainingMakingAmount, tail);
 
         uint256 rateBump = state.auctionBump;
-        if (state.fillScalingNumerator != 0) {
-            uint256 worstRateBump = _scaleByFill(state, 0, remainingMakingAmount);
+        if (state.fillScalingNumerator != 0 || fillCurve.length != 0) {
+            uint256 worstRateBump = fillCurve.length != 0
+                ? state.auctionBump + _maxFillPremium(fillCurve)
+                : _scaleByFill(state, 0, remainingMakingAmount);
             uint256 estimatedMakingAmount = Math.mulDiv(unbumpedAmount, _BASE_POINTS, _BASE_POINTS + _applyGasBump(worstRateBump, state.gasBump));
-            rateBump = _scaleByFill(state, estimatedMakingAmount, remainingMakingAmount);
+            rateBump = _rateBumpForFill(state, fillCurve, estimatedMakingAmount, remainingMakingAmount);
         }
 
         return Math.mulDiv(unbumpedAmount, _BASE_POINTS, _BASE_POINTS + _applyGasBump(rateBump, state.gasBump));
@@ -175,8 +184,8 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
         uint256 remainingMakingAmount,
         bytes calldata extraData
     ) internal view override returns (uint256) {
-        (AuctionState memory state, bytes calldata tail) = _parseAuctionDetails(extraData, orderHash);
-        uint256 rateBump = _applyGasBump(_scaleByFill(state, makingAmount, remainingMakingAmount), state.gasBump);
+        (AuctionState memory state, bytes calldata fillCurve, bytes calldata tail) = _parseAuctionDetails(extraData, orderHash);
+        uint256 rateBump = _applyGasBump(_rateBumpForFill(state, fillCurve, makingAmount, remainingMakingAmount), state.gasBump);
         return Math.mulDiv(
             super._getTakingAmount(order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail),
             _BASE_POINTS + rateBump,
@@ -199,16 +208,26 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
      *     bytes3 auctionStartDelay;      // present when the anchored flag is set
      *     bytes1 fillScalingNumerator;   // present when the fill scaled flag is set
      *     bytes3 postAuctionWindow;      // present when the post auction deadline flag is set
+     *     FillCurve fillCurve;           // present when the fill curve flag is set
      *     bytes1 pointsCount;
      *     (bytes3,bytes2)[N] pointsAndTimeDeltas;
+     * }
+     *
+     * struct FillCurve {
+     *     bytes3 initialFillPremium;
+     *     bytes1 fillPointsCount;
+     *     (bytes3,bytes2)[M] premiumsAndShareDeltas;
      * }
      * ```
      * An anchored auction starts at the later of its announcement plus the start delay and the timestamp
      * baked into the order, so a maker may still ask for an auction that begins some time after it announces.
+     * The linear rule and the premium curve are two encodings of the same feature, so an order may carry
+     * only one of them.
      * @return state The parsed auction.
+     * @return fillCurve The premium curve over fill shares, empty when the order does not carry one.
      * @return tail Remaining calldata after the auction.
      */
-    function _parseAuctionDetails(bytes calldata auctionDetails, bytes32 orderHash) private view returns (AuctionState memory state, bytes calldata tail) {
+    function _parseAuctionDetails(bytes calldata auctionDetails, bytes32 orderHash) private view returns (AuctionState memory state, bytes calldata fillCurve, bytes calldata tail) {
         unchecked {
             bytes1 flags = auctionDetails[0];
             uint256 gasBumpEstimate = uint24(bytes3(auctionDetails[1:4]));
@@ -225,6 +244,7 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
             }
 
             if (flags & _FILL_SCALED_FLAG != 0) {
+                if (flags & _FILL_CURVE_FLAG != 0) revert ConflictingFillPricing();
                 uint256 fillScalingNumerator = uint8(auctionDetails[offset]);
                 offset += 1;
                 if (fillScalingNumerator > _BASE_1E2) revert InvalidFillScalingNumerator();
@@ -240,9 +260,84 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
                 if (block.timestamp > auctionFinishTime + postAuctionWindow) revert AuctionExpired();
             }
 
+            if (flags & _FILL_CURVE_FLAG != 0) {
+                uint256 fillCurveLength = 4 + 5 * uint256(uint8(auctionDetails[offset + 3]));
+                fillCurve = auctionDetails[offset:offset + fillCurveLength];
+                offset += fillCurveLength;
+            } else {
+                fillCurve = auctionDetails[0:0];
+            }
+
             state.gasBump = gasBumpEstimate == 0 || gasPriceEstimate == 0 ? 0 : gasBumpEstimate * block.basefee / gasPriceEstimate / _GAS_PRICE_BASE;
             state.initialRateBump = initialRateBump;
             (state.auctionBump, tail) = _getAuctionBump(auctionStartTime, auctionFinishTime, initialRateBump, auctionDetails[offset:]);
+        }
+    }
+
+    /**
+     * @dev Routes a fill to whichever share-dependent pricing the order carries, or to the plain curve.
+     */
+    function _rateBumpForFill(AuctionState memory state, bytes calldata fillCurve, uint256 makingAmount, uint256 remainingMakingAmount) private pure returns (uint256) {
+        unchecked {
+            if (fillCurve.length != 0) {
+                if (makingAmount >= remainingMakingAmount) return state.auctionBump;
+                return state.auctionBump + _fillPremium(makingAmount, remainingMakingAmount, fillCurve);
+            }
+            return _scaleByFill(state, makingAmount, remainingMakingAmount);
+        }
+    }
+
+    /**
+     * @dev Reads the premium a fill pays from the piecewise curve over the share of the remainder it takes.
+     * The curve is built the way the auction's own time curve is: it starts at `initialFillPremium` for a
+     * vanishing fill, runs through `M` points whose share deltas are measured in 1e4 of the remaining
+     * amount, and ends at an implied final point of zero premium for a full sweep. This is how a quote's
+     * matrix of rates per size — different rates for 1/10, 2/10 and so on of the amount — is carried into
+     * the order: one point per matrix row, hit exactly at its share, interpolated linearly in between so
+     * there are no cliffs for a taker to game. A premium that does not increase as the share shrinks is
+     * the economically meaningful shape, and the conservative estimate on the making-amount path assumes
+     * shapes no stranger than that.
+     * @param makingAmount The making amount of this fill, strictly below the remainder.
+     * @param remainingMakingAmount The making amount left on the order before this fill.
+     * @param fillCurve The packed curve: 3 bytes initial premium, 1 byte count, (3 bytes, 2 bytes) points.
+     * @return The premium this fill pays on top of the time curve's rate bump.
+     */
+    function _fillPremium(uint256 makingAmount, uint256 remainingMakingAmount, bytes calldata fillCurve) private pure returns (uint256) {
+        unchecked {
+            uint256 currentPremium = uint24(bytes3(fillCurve[0:3]));
+            uint256 share = Math.mulDiv(makingAmount, _SHARE_BASE, remainingMakingAmount);
+            if (share == 0) return currentPremium;
+
+            uint256 currentShare = 0;
+            uint256 pointsCount = uint8(fillCurve[3]);
+            bytes calldata points = fillCurve[4:];
+            for (uint256 i = 0; i < pointsCount; i++) {
+                uint256 nextPremium = uint24(bytes3(points[:3]));
+                uint256 nextShare = currentShare + uint16(bytes2(points[3:5]));
+                if (share <= nextShare) {
+                    return ((share - currentShare) * nextPremium + (nextShare - share) * currentPremium) / (nextShare - currentShare);
+                }
+                currentPremium = nextPremium;
+                currentShare = nextShare;
+                points = points[5:];
+            }
+            return (_SHARE_BASE - share) * currentPremium / (_SHARE_BASE - currentShare);
+        }
+    }
+
+    /**
+     * @dev The largest premium anywhere on the curve, which caps the bump any fill can be priced at.
+     */
+    function _maxFillPremium(bytes calldata fillCurve) private pure returns (uint256 maxPremium) {
+        unchecked {
+            maxPremium = uint24(bytes3(fillCurve[0:3]));
+            uint256 pointsCount = uint8(fillCurve[3]);
+            bytes calldata points = fillCurve[4:];
+            for (uint256 i = 0; i < pointsCount; i++) {
+                uint256 premium = uint24(bytes3(points[:3]));
+                if (premium > maxPremium) maxPremium = premium;
+                points = points[5:];
+            }
         }
     }
 

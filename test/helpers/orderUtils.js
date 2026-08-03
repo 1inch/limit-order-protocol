@@ -37,6 +37,7 @@ const _UNWRAP_WETH_FLAG = 247n;
 const ANCHORED_FLAG = 0x01n;
 const FILL_SCALED_FLAG = 0x02n;
 const POST_AUCTION_DEADLINE_FLAG = 0x04n;
+const FILL_CURVE_FLAG = 0x08n;
 
 const TakerTraitsConstants = {
     _MAKER_AMOUNT_FLAG: 1n << 255n,
@@ -180,6 +181,7 @@ function buildAnchoredAuctionDetails ({
     startDelay = undefined,
     fillScalingNumerator = undefined,
     postAuctionWindow = undefined,
+    fillPremiums = undefined,
     points = [],
 } = {}) {
     let flags = 0n;
@@ -200,6 +202,15 @@ function buildAnchoredAuctionDetails ({
         flags |= POST_AUCTION_DEADLINE_FLAG;
         types.push('uint24');
         values.push(postAuctionWindow);
+    }
+    if (fillPremiums !== undefined) {
+        flags |= FILL_CURVE_FLAG;
+        types.push('uint24', 'uint8');
+        values.push(fillPremiums.initial, fillPremiums.points.length);
+        for (const { premium, shareDelta } of fillPremiums.points) {
+            types.push('uint24', 'uint16');
+            values.push(premium, shareDelta);
+        }
     }
 
     types.push('uint8');

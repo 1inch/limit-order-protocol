@@ -56,9 +56,39 @@ function scaleByFill (rateBump, { initialRateBump, fillScalingNumerator = 0 }, m
     return rateBump + unreleasedBump * k / 100n;
 }
 
+const SHARE_BASE = 10_000n;
+
+/** Mirrors FusionAnchoredAuction._fillPremium. */
+function fillPremiumAt (makingAmount, remainingMakingAmount, { initial, points = [] }) {
+    let currentPremium = BigInt(initial);
+    const share = makingAmount * SHARE_BASE / remainingMakingAmount;
+    if (share === 0n) return currentPremium;
+
+    let currentShare = 0n;
+    for (const { premium, shareDelta } of points) {
+        const nextPremium = BigInt(premium);
+        const nextShare = currentShare + BigInt(shareDelta);
+        if (share <= nextShare) {
+            return ((share - currentShare) * nextPremium + (nextShare - share) * currentPremium) / (nextShare - currentShare);
+        }
+        currentPremium = nextPremium;
+        currentShare = nextShare;
+    }
+    return (SHARE_BASE - share) * currentPremium / (SHARE_BASE - currentShare);
+}
+
+/** Mirrors FusionAnchoredAuction._rateBumpForFill. */
+function rateBumpForFill (rateBump, auction, makingAmount, remainingMakingAmount) {
+    if (auction.fillPremiums) {
+        if (makingAmount >= remainingMakingAmount) return rateBump;
+        return rateBump + fillPremiumAt(makingAmount, remainingMakingAmount, auction.fillPremiums);
+    }
+    return scaleByFill(rateBump, auction, makingAmount, remainingMakingAmount);
+}
+
 /** Taking amount a fill by making amount is priced at. */
 function takingAmountFor (order, auction, timestamp, makingAmount, remainingMakingAmount) {
-    const rateBump = scaleByFill(auctionBumpAt(timestamp, auction), auction, makingAmount, remainingMakingAmount);
+    const rateBump = rateBumpForFill(auctionBumpAt(timestamp, auction), auction, makingAmount, remainingMakingAmount);
     const unbumped = ceilDiv(order.takingAmount * makingAmount, order.makingAmount);
     return ceilDiv(unbumped * (BASE_POINTS + rateBump), BASE_POINTS);
 }
@@ -68,10 +98,13 @@ function makingAmountFor (order, auction, timestamp, takingAmount, remainingMaki
     const bump = auctionBumpAt(timestamp, auction);
     const unbumped = order.makingAmount * takingAmount / order.takingAmount;
     let rateBump = bump;
-    if (auction.fillScalingNumerator) {
-        const worstRateBump = scaleByFill(bump, auction, 0n, remainingMakingAmount);
+    if (auction.fillScalingNumerator || auction.fillPremiums) {
+        const worstRateBump = auction.fillPremiums
+            ? bump + [BigInt(auction.fillPremiums.initial), ...auction.fillPremiums.points.map((p) => BigInt(p.premium))]
+                .reduce((a, b) => (a > b ? a : b))
+            : scaleByFill(bump, auction, 0n, remainingMakingAmount);
         const estimate = unbumped * BASE_POINTS / (BASE_POINTS + worstRateBump);
-        rateBump = scaleByFill(bump, auction, estimate, remainingMakingAmount);
+        rateBump = rateBumpForFill(bump, auction, estimate, remainingMakingAmount);
     }
     return unbumped * BASE_POINTS / (BASE_POINTS + rateBump);
 }
@@ -79,9 +112,11 @@ function makingAmountFor (order, auction, timestamp, takingAmount, remainingMaki
 module.exports = {
     BASE_POINTS,
     NO_FEE_DATA,
+    SHARE_BASE,
     ceilDiv,
     auctionBumpAt,
     buildLegacyAuctionDetails,
+    fillPremiumAt,
     scaleByFill,
     takingAmountFor,
     makingAmountFor,

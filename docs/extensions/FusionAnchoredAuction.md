@@ -29,6 +29,7 @@ unanchored Dutch auction._
 - [AuctionExpired() ](#auctionexpired)
 - [AllowedTimeViolation() ](#allowedtimeviolation)
 - [InvalidFillScalingNumerator() ](#invalidfillscalingnumerator)
+- [ConflictingFillPricing() ](#conflictingfillpricing)
 
 ### Types
 ### AuctionState
@@ -136,4 +137,12 @@ error InvalidFillScalingNumerator()
 ```
 
 _Fill scaling is expressed in 1e2 and cannot exceed 100%._
+
+### ConflictingFillPricing
+
+```solidity
+error ConflictingFillPricing()
+```
+
+_The linear rule and the premium curve cannot price the same order._
 
