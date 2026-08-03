@@ -10,12 +10,13 @@ import { FeeTaker } from "../extensions/FeeTaker.sol";
 
 /**
  * @title SimpleSettlementMock
- * @dev Mirrors the auction and resolver whitelist of the SimpleSettlement contract deployed from
- * `limit-order-settlement`, which cannot be imported here because it compiles at an older Solidity version.
- * It exists so that {FusionAnchoredAuction} can be tested in the position it actually occupies in a Fusion
- * order — chained behind the settlement contract — and so that its unanchored pricing can be compared
- * against the pricing it has to reproduce. Surplus fees and the priority fee check are left out; they do
- * not participate in either.
+ * @dev Mirrors the auction and resolver whitelist of the SimpleSettlement contract deployed from the
+ * fusion-protocol repository (the `limit-order-settlement` npm package), which cannot be imported here
+ * because it compiles at an older Solidity version. The mirrored functions are copied from that repo's
+ * master. It exists so that {FusionAnchoredAuction} can be tested in the position it actually occupies
+ * in a Fusion order — chained behind the settlement contract — and so that its unanchored pricing can
+ * be compared against the pricing it has to reproduce. Surplus fees and the priority fee check are left
+ * out; they do not participate in either.
  */
 contract SimpleSettlementMock is FeeTaker {
     uint256 private constant _BASE_POINTS = 10_000_000; // 100%

@@ -18,7 +18,8 @@ const FORK_RPC_URL = process.env.MAINNET_RPC_URL || process.env.FORK_RPC_URL;
 const MAINNET = {
     // 1inch Aggregation Router V6, which embeds this limit order protocol.
     router: '0x111111125421ca6dc452d289314280a0f8842a65',
-    // The Fusion settlement (limit-order-settlement's Settlement contract) resolvers fill through today.
+    // The Fusion settlement resolvers fill through today — fusion-protocol's Settlement contract,
+    // the address its deployments/mainnet/Settlement.json records.
     settlement: '0x2Ad5004c60e16E54d5007C80CE329Adde5B51Ef5',
     dai: '0x6B175474E89094C44Da98b954EedeAC495271d0F',
     weth: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
