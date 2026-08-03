@@ -48,20 +48,20 @@ function auctionBumpAt (timestamp, { startTime, duration, initialRateBump, point
 }
 
 /** Mirrors FusionAnchoredAuction._scaleByFill. */
-function scaleByFill (rateBump, { initialRateBump, fillScalingNumerator = 0 }, makingAmount, remainingMakingAmount) {
+function scaleByFill (rateBump, { initialRateBump, fillScalingNumerator = 0 }, orderMakingAmount, makingAmount, remainingMakingAmount) {
     const initial = BigInt(initialRateBump);
     const k = BigInt(fillScalingNumerator);
     if (k === 0n || makingAmount >= remainingMakingAmount || initial <= rateBump) return rateBump;
-    const unreleasedBump = (initial - rateBump) * (remainingMakingAmount - makingAmount) / remainingMakingAmount;
+    const unreleasedBump = (initial - rateBump) * (remainingMakingAmount - makingAmount) / orderMakingAmount;
     return rateBump + unreleasedBump * k / 100n;
 }
 
 const SHARE_BASE = 10_000n;
 
 /** Mirrors FusionAnchoredAuction._fillPremium. */
-function fillPremiumAt (makingAmount, remainingMakingAmount, { initial, points = [] }) {
+function fillPremiumAt (orderMakingAmount, makingAmount, remainingMakingAmount, { initial, points = [] }) {
     let currentPremium = BigInt(initial);
-    const share = makingAmount * SHARE_BASE / remainingMakingAmount;
+    const share = (orderMakingAmount - remainingMakingAmount + makingAmount) * SHARE_BASE / orderMakingAmount;
     if (share === 0n) return currentPremium;
 
     let currentShare = 0n;
@@ -78,17 +78,17 @@ function fillPremiumAt (makingAmount, remainingMakingAmount, { initial, points =
 }
 
 /** Mirrors FusionAnchoredAuction._rateBumpForFill. */
-function rateBumpForFill (rateBump, auction, makingAmount, remainingMakingAmount) {
+function rateBumpForFill (rateBump, auction, orderMakingAmount, makingAmount, remainingMakingAmount) {
     if (auction.fillPremiums) {
         if (makingAmount >= remainingMakingAmount) return rateBump;
-        return rateBump + fillPremiumAt(makingAmount, remainingMakingAmount, auction.fillPremiums);
+        return rateBump + fillPremiumAt(orderMakingAmount, makingAmount, remainingMakingAmount, auction.fillPremiums);
     }
-    return scaleByFill(rateBump, auction, makingAmount, remainingMakingAmount);
+    return scaleByFill(rateBump, auction, orderMakingAmount, makingAmount, remainingMakingAmount);
 }
 
 /** Taking amount a fill by making amount is priced at. */
 function takingAmountFor (order, auction, timestamp, makingAmount, remainingMakingAmount) {
-    const rateBump = rateBumpForFill(auctionBumpAt(timestamp, auction), auction, makingAmount, remainingMakingAmount);
+    const rateBump = rateBumpForFill(auctionBumpAt(timestamp, auction), auction, order.makingAmount, makingAmount, remainingMakingAmount);
     const unbumped = ceilDiv(order.takingAmount * makingAmount, order.makingAmount);
     return ceilDiv(unbumped * (BASE_POINTS + rateBump), BASE_POINTS);
 }
@@ -102,9 +102,9 @@ function makingAmountFor (order, auction, timestamp, takingAmount, remainingMaki
         const worstRateBump = auction.fillPremiums
             ? bump + [BigInt(auction.fillPremiums.initial), ...auction.fillPremiums.points.map((p) => BigInt(p.premium))]
                 .reduce((a, b) => (a > b ? a : b))
-            : scaleByFill(bump, auction, 0n, remainingMakingAmount);
+            : scaleByFill(bump, auction, order.makingAmount, 0n, remainingMakingAmount);
         const estimate = unbumped * BASE_POINTS / (BASE_POINTS + worstRateBump);
-        rateBump = rateBumpForFill(bump, auction, estimate, remainingMakingAmount);
+        rateBump = rateBumpForFill(bump, auction, order.makingAmount, estimate, remainingMakingAmount);
     }
     return unbumped * BASE_POINTS / (BASE_POINTS + rateBump);
 }

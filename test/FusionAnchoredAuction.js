@@ -606,7 +606,7 @@ describe('FusionAnchoredAuction', function () {
             await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
         });
 
-        it('measures the share against what is left, so a remainder still clears at the auction price', async function () {
+        it('prices whoever completes the order at the plain auction price', async function () {
             const { weth, swap, order, sig, params, afterAuction } = await deployFilledOrder(100);
 
             await time.setNextBlockTimestamp(afterAuction);
@@ -626,6 +626,20 @@ describe('FusionAnchoredAuction', function () {
             const expected = takingAmountFor(order, params, secondFillTime, remaining, remaining);
             expect(expected).to.equal(TAKING_AMOUNT / 2n);
             await expect(fill(swap, order, sig, remaining)).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+        });
+
+        it('walks successive fills down the ladder of the original amount', async function () {
+            const { weth, swap, order, sig, afterAuction } = await deployFilledOrder(100);
+
+            // Each tenth-sized fill is priced by where it ends on the order's own volume ladder: the first
+            // withholds nine tenths of the released discount, the second eight tenths, and so on.
+            let fillTime = afterAuction;
+            for (const laddersLeft of [9n, 8n, 7n]) {
+                await time.setNextBlockTimestamp(fillTime++);
+                const expected = ceilDiv((TAKING_AMOUNT / 10n) * (BASE_POINTS + HALF_PERCENT * laddersLeft / 10n), BASE_POINTS);
+                await expect(fill(swap, order, sig, MAKING_AMOUNT / 10n))
+                    .to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+            }
         });
 
         it('never lets a split fill undercut a single fill of the same size', async function () {
@@ -694,7 +708,7 @@ describe('FusionAnchoredAuction', function () {
             const exact = (() => {
                 let amount = expected;
                 for (let i = 0; i < 64; i++) {
-                    const rateBump = scaleByFill(0n, params, amount, MAKING_AMOUNT);
+                    const rateBump = scaleByFill(0n, params, MAKING_AMOUNT, amount, MAKING_AMOUNT);
                     amount = (order.makingAmount * takingAmount / order.takingAmount) * BASE_POINTS / (BASE_POINTS + rateBump);
                 }
                 return amount;
@@ -894,6 +908,20 @@ describe('FusionAnchoredAuction', function () {
             }
         });
 
+        it('prices successive fills at successive matrix rows', async function () {
+            const { weth, swap, order, sig, afterAuction } = await deployMatrixOrder();
+
+            // The first taker's tenth prices at the 1/10 row, the next taker's tenth at the 2/10 row, and
+            // so on down the ladder — the rows are consumed cumulatively, not re-measured per fill.
+            let fillTime = afterAuction;
+            for (const row of [0, 1, 2]) {
+                await time.setNextBlockTimestamp(fillTime++);
+                const expected = ceilDiv((TAKING_AMOUNT / 10n) * (BASE_POINTS + BigInt(MATRIX[row])), BASE_POINTS);
+                await expect(fill(swap, order, sig, MAKING_AMOUNT / 10n))
+                    .to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+            }
+        });
+
         it('interpolates between matrix rows instead of stepping', async function () {
             const { weth, swap, order, sig, params, afterAuction } = await deployMatrixOrder();
 
@@ -962,7 +990,7 @@ describe('FusionAnchoredAuction', function () {
             const exact = (() => {
                 let amount = expected;
                 for (let i = 0; i < 64; i++) {
-                    const rateBump = amount >= MAKING_AMOUNT ? 0n : fillPremiumAt(amount, MAKING_AMOUNT, FILL_PREMIUMS);
+                    const rateBump = amount >= MAKING_AMOUNT ? 0n : fillPremiumAt(MAKING_AMOUNT, amount, MAKING_AMOUNT, FILL_PREMIUMS);
                     amount = (order.makingAmount * takingAmount / order.takingAmount) * BASE_POINTS / (BASE_POINTS + rateBump);
                 }
                 return amount;

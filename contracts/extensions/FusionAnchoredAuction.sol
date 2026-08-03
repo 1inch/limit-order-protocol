@@ -32,11 +32,11 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
 
     /// @dev Derive the auction start from the announcement instead of the timestamp baked into the order.
     bytes1 private constant _ANCHORED_FLAG = 0x01;
-    /// @dev Price a fill according to the share of the order it takes, linearly in the share.
+    /// @dev Price a fill by how much of the order it leaves unfilled, linearly.
     bytes1 private constant _FILL_SCALED_FLAG = 0x02;
     /// @dev Stop the order being fillable some time after its auction ends.
     bytes1 private constant _POST_AUCTION_DEADLINE_FLAG = 0x04;
-    /// @dev Price a fill according to a piecewise premium curve over the share of the order it takes.
+    /// @dev Price a fill by a piecewise premium curve over the order's volume ladder.
     bytes1 private constant _FILL_CURVE_FLAG = 0x08;
 
     /// @dev Fill shares are measured in 1e4.
@@ -164,9 +164,9 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
         if (state.fillScalingNumerator != 0 || fillCurve.length != 0) {
             uint256 worstRateBump = fillCurve.length != 0
                 ? state.auctionBump + _maxFillPremium(fillCurve)
-                : _scaleByFill(state, 0, remainingMakingAmount);
+                : _scaleByFill(state, order.makingAmount, 0, remainingMakingAmount);
             uint256 estimatedMakingAmount = Math.mulDiv(unbumpedAmount, _BASE_POINTS, _BASE_POINTS + _applyGasBump(worstRateBump, state.gasBump));
-            rateBump = _rateBumpForFill(state, fillCurve, estimatedMakingAmount, remainingMakingAmount);
+            rateBump = _rateBumpForFill(state, fillCurve, order.makingAmount, estimatedMakingAmount, remainingMakingAmount);
         }
 
         return Math.mulDiv(unbumpedAmount, _BASE_POINTS, _BASE_POINTS + _applyGasBump(rateBump, state.gasBump));
@@ -185,7 +185,7 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
         bytes calldata extraData
     ) internal view override returns (uint256) {
         (AuctionState memory state, bytes calldata fillCurve, bytes calldata tail) = _parseAuctionDetails(extraData, orderHash);
-        uint256 rateBump = _applyGasBump(_rateBumpForFill(state, fillCurve, makingAmount, remainingMakingAmount), state.gasBump);
+        uint256 rateBump = _applyGasBump(_rateBumpForFill(state, fillCurve, order.makingAmount, makingAmount, remainingMakingAmount), state.gasBump);
         return Math.mulDiv(
             super._getTakingAmount(order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail),
             _BASE_POINTS + rateBump,
@@ -277,35 +277,38 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
     /**
      * @dev Routes a fill to whichever share-dependent pricing the order carries, or to the plain curve.
      */
-    function _rateBumpForFill(AuctionState memory state, bytes calldata fillCurve, uint256 makingAmount, uint256 remainingMakingAmount) private pure returns (uint256) {
+    function _rateBumpForFill(AuctionState memory state, bytes calldata fillCurve, uint256 orderMakingAmount, uint256 makingAmount, uint256 remainingMakingAmount) private pure returns (uint256) {
         unchecked {
             if (fillCurve.length != 0) {
                 if (makingAmount >= remainingMakingAmount) return state.auctionBump;
-                return state.auctionBump + _fillPremium(makingAmount, remainingMakingAmount, fillCurve);
+                return state.auctionBump + _fillPremium(orderMakingAmount, makingAmount, remainingMakingAmount, fillCurve);
             }
-            return _scaleByFill(state, makingAmount, remainingMakingAmount);
+            return _scaleByFill(state, orderMakingAmount, makingAmount, remainingMakingAmount);
         }
     }
 
     /**
-     * @dev Reads the premium a fill pays from the piecewise curve over the share of the remainder it takes.
-     * The curve is built the way the auction's own time curve is: it starts at `initialFillPremium` for a
-     * vanishing fill, runs through `M` points whose share deltas are measured in 1e4 of the remaining
-     * amount, and ends at an implied final point of zero premium for a full sweep. This is how a quote's
-     * matrix of rates per size — different rates for 1/10, 2/10 and so on of the amount — is carried into
-     * the order: one point per matrix row, hit exactly at its share, interpolated linearly in between so
-     * there are no cliffs for a taker to game. A premium that does not increase as the share shrinks is
-     * the economically meaningful shape, and the conservative estimate on the making-amount path assumes
-     * shapes no stranger than that.
+     * @dev Reads the premium a fill pays from the piecewise curve over the order's own volume ladder.
+     * A fill is priced at the rung its cumulative end lands on: shares are measured in 1e4 of the order's
+     * original making amount, counted from everything filled before, so on a matrix with rows every tenth
+     * the first tenth prices at the 1/10 row, the next tenth at the 2/10 row, and whoever completes the
+     * order — in one sweep or as the last of many fills — pays no premium at all. The curve is built the
+     * way the auction's own time curve is: it starts at `initialFillPremium` for a vanishing first fill,
+     * runs through `M` points, and ends at an implied final point of zero premium at the full amount. That
+     * is how a quote's matrix of rates per size is carried into the order: one point per matrix row, hit
+     * exactly at its share, interpolated linearly in between so there are no cliffs for a taker to game.
+     * A premium that does not increase along the ladder is the economically meaningful shape, and the
+     * conservative estimate on the making-amount path assumes shapes no stranger than that.
+     * @param orderMakingAmount The order's original making amount, the ladder the curve is drawn over.
      * @param makingAmount The making amount of this fill, strictly below the remainder.
      * @param remainingMakingAmount The making amount left on the order before this fill.
      * @param fillCurve The packed curve: 3 bytes initial premium, 1 byte count, (3 bytes, 2 bytes) points.
      * @return The premium this fill pays on top of the time curve's rate bump.
      */
-    function _fillPremium(uint256 makingAmount, uint256 remainingMakingAmount, bytes calldata fillCurve) private pure returns (uint256) {
+    function _fillPremium(uint256 orderMakingAmount, uint256 makingAmount, uint256 remainingMakingAmount, bytes calldata fillCurve) private pure returns (uint256) {
         unchecked {
             uint256 currentPremium = uint24(bytes3(fillCurve[0:3]));
-            uint256 share = Math.mulDiv(makingAmount, _SHARE_BASE, remainingMakingAmount);
+            uint256 share = Math.mulDiv(orderMakingAmount - remainingMakingAmount + makingAmount, _SHARE_BASE, orderMakingAmount);
             if (share == 0) return currentPremium;
 
             uint256 currentShare = 0;
@@ -342,21 +345,23 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
     }
 
     /**
-     * @dev Prices a fill according to the share of the order it takes: a taker sweeping everything that is
-     * left pays the auction price, and a taker filling a fraction `p` of it gets only that fraction of the
-     * discount the auction has released so far, which is worse for the taker the smaller the fill is.
+     * @dev Prices a fill by where its cumulative end lands on the order's volume: a fill that leaves a
+     * share `u` of the order unfilled keeps that share of the auction's released discount withheld, which
+     * is worse for the taker the less of the order its fill completes.
      *
      * ```
-     * effectiveBump = auctionBump + (initialRateBump - auctionBump) * (1 - p) * fillScalingNumerator
+     * effectiveBump = auctionBump + (initialRateBump - auctionBump) * u * fillScalingNumerator
+     * u = (remainingMakingAmount - makingAmount) / order.makingAmount
      * ```
      *
-     * The share is measured against the amount remaining rather than the original size, so an order that has
-     * been partially filled can still be completed at the auction price.
+     * Successive fills therefore walk down the ladder — each pays less premium than the one before — and
+     * whoever completes the order, in one sweep or as the last of many fills, pays the plain auction price.
+     * @param orderMakingAmount The order's original making amount, the ladder the premium is drawn over.
      * @param makingAmount The making amount of this fill.
      * @param remainingMakingAmount The making amount left on the order before this fill.
      * @return The rate bump this fill is priced at, before gas costs are offset.
      */
-    function _scaleByFill(AuctionState memory state, uint256 makingAmount, uint256 remainingMakingAmount) private pure returns (uint256) {
+    function _scaleByFill(AuctionState memory state, uint256 orderMakingAmount, uint256 makingAmount, uint256 remainingMakingAmount) private pure returns (uint256) {
         unchecked {
             uint256 rateBump = state.auctionBump;
             if (state.fillScalingNumerator == 0 || makingAmount >= remainingMakingAmount || state.initialRateBump <= rateBump) {
@@ -365,7 +370,7 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
             uint256 unreleasedBump = Math.mulDiv(
                 state.initialRateBump - rateBump,
                 remainingMakingAmount - makingAmount,
-                remainingMakingAmount
+                orderMakingAmount
             );
             return rateBump + unreleasedBump * state.fillScalingNumerator / _BASE_1E2;
         }
