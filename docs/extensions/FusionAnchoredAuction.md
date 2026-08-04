@@ -19,7 +19,13 @@ Getter-side features only run when the order's amount data actually routes throu
 order assembled with empty taking-amount data prices at its plain ratio and skips every check encoded
 here, which no amount getter can prevent. Order builders must treat the amount-getter fields as
 load-bearing, and makers who need a fill-by deadline that survives such mis-assembly should carry the
-announcement deadline in the post-interaction blob, which is not skippable._
+announcement deadline in the post-interaction blob, which is not skippable.
+
+When chained behind a settlement that takes a surplus fee, the fill premium counts toward that
+surplus: anything a fill pays above the settlement's scaled estimated taking amount is taxed at its
+surplus percentage, and the estimate scales linearly with fill size while the premium does not, so a
+quoter cannot pad it away exactly. Either accept that the protocol takes its surplus share of the
+premium, or set the estimate with that in mind._
 
 ### Types list
 - [AuctionState](#auctionstate)

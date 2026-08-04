@@ -20,16 +20,20 @@ The contract concentrates standing allowances, the same trust shape as the proto
 no balances between transactions and has no owner powers over user funds. Contract wallets can use it
 the same way EOAs do, though a Safe keeps cleaner provenance staying its own maker via SignAndAnnounce.
 
-Pinning the receiver to the creating wallet rules out fee-collecting settlement: {FeeTaker} only takes
-fees when the order's receiver is the fee taker itself, and it pays the maker's share to the order's
-maker — this contract, which cannot withdraw — unless the fee data carries a custom receiver. Rather
-than parse a fee layout it does not own, this contract keeps proceeds flowing straight to the wallet
-that funded them, so its orders price through the auction directly and take no integrator, protocol
-or resolver fee. Makers who need those keep custody of their own order, by signature or ERC-1271._
+A non-creator receiver is accepted in exactly one shape: fee collection. {FeeTaker}-layout settlement
+contracts only take fees when the order's receiver is the fee contract itself, and they pay the
+maker's share to the order's maker — this contract, which cannot withdraw — unless their fee data
+carries a custom receiver. So a fee-collecting order is allowed when the order's own bytes route the
+proceeds home: the post-interaction must target the receiver (which is {FeeTaker}'s own distribution
+condition) and must carry the custom-receiver flag naming the creator. That guarantees a conforming
+fee contract forwards the net to the wallet that funded the order; the fee contract itself is the
+creator's choice and trust, and naming a hostile one harms only the creator, whose funds alone back
+the order._
 
 ### Functions list
 - [constructor(limitOrderProtocol, orderRegistrator) public](#constructor)
 - [createOrder(order, extension) external](#createorder)
+- [createOrderWithPermit(order, extension, permit) external](#createorderwithpermit)
 - [cancelOrder(order) external](#cancelorder)
 - [approveRouter(token) external](#approverouter)
 - [isValidSignature(hash, ) external](#isvalidsignature)
@@ -43,6 +47,7 @@ or resolver fee. Makers who need those keep custody of their own order, by signa
 - [OnlyLimitOrderProtocol() ](#onlylimitorderprotocol)
 - [InvalidMaker() ](#invalidmaker)
 - [InvalidReceiver() ](#invalidreceiver)
+- [InvalidFeeReceiver() ](#invalidfeereceiver)
 - [InvalidMakerTraits() ](#invalidmakertraits)
 - [InvalidPreInteractionTarget() ](#invalidpreinteractiontarget)
 - [OrderAlreadyRegistered() ](#orderalreadyregistered)
@@ -63,12 +68,13 @@ function createOrder(struct IOrderMixin.Order order, bytes extension) external
 Creates, presigns and announces an order on behalf of the caller — the only per-order
 transaction, with nothing signed off-chain.
 
-_The order must name this contract as maker and the caller as receiver, must use the
-remaining invalidator (partial and multiple fills allowed — the bit-invalidator nonce space would
-be shared across users), and must route its pre-interaction to this contract (an absent
-pre-interaction target defaults to the order's maker, which is this contract). The duplicate check
-reads the registrator rather than local state: a cancelled order deletes its local approval, but
-its protocol-level invalidation is permanent, so re-creating it would only produce a dead order._
+_The order must name this contract as maker, must use the remaining invalidator (partial and
+multiple fills allowed — the bit-invalidator nonce space would be shared across users), and must
+route its pre-interaction to this contract (an absent pre-interaction target defaults to the
+order's maker, which is this contract). The receiver is the caller, or a fee contract in the
+verified fee-collection shape (see {_createOrder}). The duplicate check reads the registrator
+rather than local state: a cancelled order deletes its local approval, but its protocol-level
+invalidation is permanent, so re-creating it would only produce a dead order._
 
 #### Parameters
 
@@ -76,6 +82,28 @@ its protocol-level invalidation is permanent, so re-creating it would only produ
 | ---- | ---- | ----------- |
 | order | struct IOrderMixin.Order | The order to create; its maker is this contract, its funds are the caller's. |
 | extension | bytes | The extension data associated with the order. |
+
+### createOrderWithPermit
+
+```solidity
+function createOrderWithPermit(struct IOrderMixin.Order order, bytes extension, bytes permit) external
+```
+{createOrder}, with the maker-asset allowance folded into the same transaction for
+EIP-2612 tokens — the first order needs no separate approval.
+
+_The permit's owner is pinned to the caller and its spender is this contract, so a foreign
+permit cannot be attached to a foreign order. Permit failure is swallowed deliberately, the same
+way the protocol treats maker permits: a front-run permit has already granted the allowance, and
+a wrong one leaves the order created and anchored but unfillable until an allowance exists — a
+later approval revives it, and nothing needs refunding because nothing moved._
+
+#### Parameters
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+| order | struct IOrderMixin.Order | The order to create; its maker is this contract, its funds are the caller's. |
+| extension | bytes | The extension data associated with the order. |
+| permit | bytes | The EIP-2612 permit for the order's maker asset, spender being this contract. |
 
 ### cancelOrder
 
@@ -185,6 +213,15 @@ error InvalidReceiver()
 ```
 
 _The order's receiver must be the creating owner, so proceeds bypass the shared contract._
+
+### InvalidFeeReceiver
+
+```solidity
+error InvalidFeeReceiver()
+```
+
+_A non-creator receiver is only allowed when the post-interaction targets that receiver and
+its fee data names the creator as the custom receiver — the verified fee-collection shape._
 
 ### InvalidMakerTraits
 
