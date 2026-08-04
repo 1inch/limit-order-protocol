@@ -70,11 +70,9 @@ describe('OrderRegistrator', function () {
             const orderHash = await swap.hashOrder(order);
 
             const tx = await registrator.registerOrder(order, order.extension);
-            const receipt = await tx.wait();
 
             expect(await registrator.announcedAt(orderHash)).to.equal(await time.latest());
-            expect(await registrator.announcedAtBlock(orderHash)).to.equal(receipt.blockNumber);
-            await expect(tx).to.emit(registrator, 'OrderAnnounced').withArgs(orderHash, await time.latest(), receipt.blockNumber);
+            await expect(tx).to.emit(registrator, 'OrderAnnounced').withArgs(orderHash, await time.latest());
         });
 
         it('should report an order that was never announced as unannounced', async function () {
@@ -82,7 +80,6 @@ describe('OrderRegistrator', function () {
             const order = await buildTestOrder(usdc, usdt);
 
             expect(await registrator.announcedAt(await swap.hashOrder(order))).to.equal(0);
-            expect(await registrator.announcedAtBlock(await swap.hashOrder(order))).to.equal(0);
         });
 
         it('should keep the first announcement when the same order is registered again', async function () {
@@ -92,7 +89,6 @@ describe('OrderRegistrator', function () {
 
             await registrator.registerOrder(order, order.extension);
             const announcedAt = await registrator.announcedAt(orderHash);
-            const announcedAtBlock = await registrator.announcedAtBlock(orderHash);
 
             await time.increase(3600);
             // A repeated announcement is not an error — SafeOrderBuilder rebuilds an unchanged order this way —
@@ -103,7 +99,6 @@ describe('OrderRegistrator', function () {
             await expect(tx).to.not.emit(registrator, 'OrderAnnounced');
 
             expect(await registrator.announcedAt(orderHash)).to.equal(announcedAt);
-            expect(await registrator.announcedAtBlock(orderHash)).to.equal(announcedAtBlock);
         });
     });
 
@@ -165,12 +160,11 @@ describe('OrderRegistrator', function () {
                 [addr],
                 true,
             );
-            const receipt = await tx.wait();
+            await tx.wait();
 
             await expect(tx).to.emit(registrator, 'OrderRegistered');
             const orderHash = await swap.hashOrder(order);
             expect(await registrator.announcedAt(orderHash)).to.equal(await time.latest());
-            expect(await registrator.announcedAtBlock(orderHash)).to.equal(receipt.blockNumber);
         });
 
         it('should mark the digest and announce through SignAndAnnounce in one Safe execution', async function () {
@@ -189,11 +183,11 @@ describe('OrderRegistrator', function () {
                 [addr],
                 true,
             );
-            const receipt = await tx.wait();
+            await tx.wait();
 
             const orderHash = await swap.hashOrder(order);
             await expect(tx).to.emit(registrator, 'OrderRegistered');
-            await expect(tx).to.emit(registrator, 'OrderAnnounced').withArgs(orderHash, await time.latest(), receipt.blockNumber);
+            await expect(tx).to.emit(registrator, 'OrderAnnounced').withArgs(orderHash, await time.latest());
             expect(await registrator.announcedAt(orderHash)).to.equal(await time.latest());
 
             // The digest marking is what later lets the protocol fill this order with an empty signature.

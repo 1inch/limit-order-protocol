@@ -27,13 +27,10 @@ contract OrderRegistrator is IOrderRegistrator {
 
     error AccessDenied();
 
-    uint256 private constant _TIMESTAMP_OFFSET = 64;
-    uint256 private constant _BLOCK_NUMBER_MASK = type(uint64).max;
-
     IOrderMixin private immutable _LIMIT_ORDER_PROTOCOL;
 
-    /// @dev Announcement timestamp shifted left by 64 bits, announcement block number in the low 64 bits.
-    mapping(bytes32 orderHash => uint256 announcement) private _announcements;
+    /// @notice See {IOrderRegistrator-announcedAt}.
+    mapping(bytes32 orderHash => uint256 timestamp) public announcedAt;
 
     constructor(IOrderMixin limitOrderProtocol) {
         _LIMIT_ORDER_PROTOCOL = limitOrderProtocol;
@@ -59,27 +56,13 @@ contract OrderRegistrator is IOrderRegistrator {
 
         bytes32 orderHash = _LIMIT_ORDER_PROTOCOL.hashOrder(order);
 
-        if (_announcements[orderHash] == 0) {
+        if (announcedAt[orderHash] == 0) {
             // solhint-disable-next-line not-rely-on-time
-            _announcements[orderHash] = (block.timestamp << _TIMESTAMP_OFFSET) | block.number;
+            announcedAt[orderHash] = block.timestamp;
             // solhint-disable-next-line not-rely-on-time
-            emit OrderAnnounced(orderHash, block.timestamp, block.number);
+            emit OrderAnnounced(orderHash, block.timestamp);
         }
 
         emit OrderRegistered(order, extension);
-    }
-
-    /**
-     * @notice See {IOrderRegistrator-announcedAt}.
-     */
-    function announcedAt(bytes32 orderHash) external view returns (uint256 timestamp) {
-        return _announcements[orderHash] >> _TIMESTAMP_OFFSET;
-    }
-
-    /**
-     * @notice See {IOrderRegistrator-announcedAtBlock}.
-     */
-    function announcedAtBlock(bytes32 orderHash) external view returns (uint256 blockNumber) {
-        return _announcements[orderHash] & _BLOCK_NUMBER_MASK;
     }
 }

@@ -23,10 +23,10 @@ interface IOrderRegistrator {
      * @notice Emitted on the first registration of an order — the single anchor write for
      * announcement-anchored auctions. Never emitted again for the same order.
      * @param orderHash The hash of the announced order.
-     * @param timestamp The block timestamp recorded as the announcement time.
-     * @param blockNumber The block number recorded for the announcement.
+     * @param timestamp The block timestamp recorded as the announcement time. Carried in the event so
+     * indexers need no extra block lookup; the emitting block itself is on the log already.
      */
-    event OrderAnnounced(bytes32 indexed orderHash, uint256 timestamp, uint256 blockNumber);
+    event OrderAnnounced(bytes32 indexed orderHash, uint256 timestamp);
 
     /**
      * @notice Registers an order. Callable only by the order's maker; reverts for any other sender.
@@ -43,11 +43,4 @@ interface IOrderRegistrator {
      * @return timestamp The timestamp of the first registration, or 0 if the order was never registered.
      */
     function announcedAt(bytes32 orderHash) external view returns (uint256 timestamp);
-
-    /**
-     * @notice Returns the block number of the first registration of an order.
-     * @param orderHash The hash of the order.
-     * @return blockNumber The block number of the first registration, or 0 if the order was never registered.
-     */
-    function announcedAtBlock(bytes32 orderHash) external view returns (uint256 blockNumber);
 }
