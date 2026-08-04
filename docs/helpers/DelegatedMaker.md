@@ -18,7 +18,8 @@ unbounded since the protocol only transfers within valid fills of orders this co
 
 The contract concentrates standing allowances, the same trust shape as the protocol itself; it holds
 no balances between transactions and has no owner powers over user funds. Contract wallets can use it
-the same way EOAs do, though a Safe keeps cleaner provenance staying its own maker via SignAndAnnounce.
+the same way EOAs do, though a Safe keeps cleaner provenance staying its own maker — one MultiSend
+batch marking the digest through SignMessageLib and calling {OrderRegistrator-registerOrder}.
 
 A non-creator receiver is accepted in exactly one shape: fee collection. {FeeTaker}-layout settlement
 contracts only take fees when the order's receiver is the fee contract itself, and they pay the

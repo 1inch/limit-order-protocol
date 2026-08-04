@@ -5,6 +5,11 @@ const { ethers } = require('hardhat');
 const { deploySwap, deployUSDC, deployUSDT } = require('./helpers/fixtures');
 const { executeContractCallWithSigners } = require('@gnosis.pm/safe-contracts/dist');
 
+/** Packs one transaction of a MultiSend batch: operation, target, value, data length, data. */
+function encodeMultiSendTx (operation, to, data) {
+    return ethers.solidityPacked(['uint8', 'address', 'uint256', 'uint256', 'bytes'], [operation, to, 0, ethers.dataLength(data), data]);
+}
+
 describe('OrderRegistrator', function () {
     let addr, addr1;
 
@@ -167,25 +172,30 @@ describe('OrderRegistrator', function () {
             expect(await registrator.announcedAt(orderHash)).to.equal(await time.latest());
         });
 
-        it('should mark the digest and announce through SignAndAnnounce in one Safe execution', async function () {
+        it('should mark the digest and announce through one MultiSend batch', async function () {
             const { swap, registrator, safe, order } = await loadFixture(deploySafeAndInit);
 
-            const SignAndAnnounce = await ethers.getContractFactory('SignAndAnnounce');
-            const signAndAnnounce = await SignAndAnnounce.deploy(swap, registrator);
-            await signAndAnnounce.waitForDeployment();
-            signAndAnnounce.address = await signAndAnnounce.getAddress();
+            // The Safe flow needs no bespoke helper: one co-signed execution delegatecalls the official
+            // MultiSend, whose batch marks the digest through the already-audited SignMessageLib and
+            // then registers the order — an inner call, so the registrator sees the Safe as the maker.
+            const MultiSend = await ethers.getContractFactory('MultiSend');
+            const multiSend = await MultiSend.deploy();
+            await multiSend.waitForDeployment();
+            const SignMessageLib = await ethers.getContractFactory('SignMessageLib');
+            const signMessageLib = await SignMessageLib.deploy();
+            await signMessageLib.waitForDeployment();
 
-            const tx = await executeContractCallWithSigners(
-                safe,
-                signAndAnnounce,
-                'signAndAnnounce',
-                [order, order.extension],
-                [addr],
-                true,
-            );
-            await tx.wait();
+            // workaround as safe lib expects old version of ethers
+            multiSend.address = await multiSend.getAddress();
 
             const orderHash = await swap.hashOrder(order);
+            const batch = ethers.concat([
+                encodeMultiSendTx(1, await signMessageLib.getAddress(), signMessageLib.interface.encodeFunctionData('signMessage', [orderHash])),
+                encodeMultiSendTx(0, await registrator.getAddress(), registrator.interface.encodeFunctionData('registerOrder', [order, order.extension])),
+            ]);
+            const tx = await executeContractCallWithSigners(safe, multiSend, 'multiSend', [batch], [addr], true);
+            await tx.wait();
+
             await expect(tx).to.emit(registrator, 'OrderRegistered');
             await expect(tx).to.emit(registrator, 'OrderAnnounced').withArgs(orderHash, await time.latest());
             expect(await registrator.announcedAt(orderHash)).to.equal(await time.latest());

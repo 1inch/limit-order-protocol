@@ -27,9 +27,16 @@ const MAINNET = {
     safeSingleton: '0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552',
     safeProxyFactory: '0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2',
     fallbackHandler: '0xf48f2B2d2a534e402487b3ee7C18c33Aec0Fe5e4',
+    signMessageLib: '0xA65387F16B013cf2Af4605Ad8aA5ec25a2cbA3a2',
+    multiSend: '0xA238CBeb142c10Ef7Ad8442C6D1f9E89e07e7761',
 };
 
 const DAI_BALANCE_SLOT = 2n;
+
+/** Packs one transaction of a MultiSend batch: operation, target, value, data length, data. */
+function encodeMultiSendTx (operation, to, data) {
+    return ethers.solidityPacked(['uint8', 'address', 'uint256', 'uint256', 'bytes'], [operation, to, 0, ethers.dataLength(data), data]);
+}
 const HALF_PERCENT = 50_000n; // 0.5% in 1e7
 const MAKING_AMOUNT = ether('100');
 const TAKING_AMOUNT = ether('0.03');
@@ -231,10 +238,11 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
         await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
     });
 
-    it('marks the digest and announces through SignAndAnnounce on a live Safe', async function () {
-        // The multisig maker flow: a Safe on the live 1.3.0 contracts delegatecalls SignAndAnnounce once,
-        // marking the order digest and starting the anchored clock in the same co-signed execution —
-        // nothing signed off-chain — and the auction prices from that announcement.
+    it('marks the digest and announces through one MultiSend batch on a live Safe', async function () {
+        // The multisig maker flow: a Safe on the live 1.3.0 contracts co-signs one MultiSend execution,
+        // marking the order digest through the already-deployed SignMessageLib and starting the anchored
+        // clock in the same co-signed execution — nothing signed off-chain, no bespoke helper — and the
+        // auction prices from that announcement.
         const GnosisSafe = await ethers.getContractFactory('GnosisSafe');
         const factory = await ethers.getContractAt('GnosisSafeProxyFactory', MAINNET.safeProxyFactory);
         const setupData = GnosisSafe.interface.encodeFunctionData(
@@ -247,14 +255,13 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
             .find((parsed) => parsed?.name === 'ProxyCreation');
         const safe = GnosisSafe.attach(proxyCreation.args.proxy);
 
-        const SignAndAnnounce = await ethers.getContractFactory('SignAndAnnounce');
-        const signAndAnnounce = await SignAndAnnounce.deploy(router, registrator);
-        await signAndAnnounce.waitForDeployment();
+        const multiSend = await ethers.getContractAt('MultiSend', MAINNET.multiSend);
+        const signMessageLib = await ethers.getContractAt('SignMessageLib', MAINNET.signMessageLib);
 
         // workaround as safe lib expects old version of ethers
         safe.address = await safe.getAddress();
         dai.address = MAINNET.dai;
-        signAndAnnounce.address = await signAndAnnounce.getAddress();
+        multiSend.address = MAINNET.multiSend;
         maker._signTypedData = maker.signTypedData;
 
         await setDaiBalance(safe.address, MAKING_AMOUNT);
@@ -281,7 +288,11 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
         await expect(registrator.connect(maker).registerOrder(order, order.extension))
             .to.be.revertedWithCustomError(registrator, 'AccessDenied');
 
-        await executeContractCallWithSigners(safe, signAndAnnounce, 'signAndAnnounce', [order, order.extension], [maker], true);
+        const batch = ethers.concat([
+            encodeMultiSendTx(1, MAINNET.signMessageLib, signMessageLib.interface.encodeFunctionData('signMessage', [orderHash])),
+            encodeMultiSendTx(0, await registrator.getAddress(), registrator.interface.encodeFunctionData('registerOrder', [order, order.extension])),
+        ]);
+        await executeContractCallWithSigners(safe, multiSend, 'multiSend', [batch], [maker], true);
         const announcedAt = await time.latest();
         expect(await registrator.announcedAt(orderHash)).to.equal(announcedAt);
 

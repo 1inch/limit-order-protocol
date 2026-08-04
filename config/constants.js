@@ -8,7 +8,6 @@ module.exports = {
     ORDER_REGISTRATOR: constants.orderRegistrator || {},
     FEE_TAKER_SALT: constants.feeTakerSalt || {},
     FUSION_ANCHORED_AUCTION_SALT: constants.fusionAnchoredAuctionSalt || {},
-    SIGN_AND_ANNOUNCE_SALT: constants.signAndAnnounceSalt || {},
     DELEGATED_MAKER_SALT: constants.delegatedMakerSalt || {},
     PERMIT2_PROXY_SALT: constants.permit2ProxySalt || {},
     PERMIT2_WITNESS_PROXY_SALT: constants.permit2WitnessProxySalt || {},
