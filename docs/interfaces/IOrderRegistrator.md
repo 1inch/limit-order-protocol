@@ -11,8 +11,7 @@ which is the sole authentication. Fill authorization is carried separately by ea
 - [announcedAt(orderHash) external](#announcedat)
 
 ### Events list
-- [OrderRegistered(order, extension) ](#orderregistered)
-- [OrderAnnounced(orderHash, timestamp) ](#orderannounced)
+- [OrderAnnounced(orderHash, timestamp, order, extension) ](#orderannounced)
 
 ### Functions
 ### registerOrder
@@ -21,8 +20,8 @@ which is the sole authentication. Fill authorization is carried separately by ea
 function registerOrder(struct IOrderMixin.Order order, bytes extension) external
 ```
 Registers an order. Callable only by the order's maker; reverts for any other sender.
-The first successful call records the announcement timestamp and block number; repeated calls
-re-emit {OrderRegistered} without moving the announcement.
+Registration is idempotent: the first successful call records the announcement timestamp and
+emits {OrderAnnounced}, and a repeated call is a silent success that changes nothing.
 
 #### Parameters
 
@@ -51,27 +50,14 @@ Returns the block timestamp of the first registration of an order.
 timestamp | uint256 | The timestamp of the first registration, or 0 if the order was never registered. |
 
 ### Events
-### OrderRegistered
-
-```solidity
-event OrderRegistered(struct IOrderMixin.Order order, bytes extension)
-```
-Emitted when an order is registered. Emission proves the maker itself sent the order.
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| order | struct IOrderMixin.Order | The order that was registered. |
-| extension | bytes | The extension data associated with the order. |
-
 ### OrderAnnounced
 
 ```solidity
-event OrderAnnounced(bytes32 orderHash, uint256 timestamp)
+event OrderAnnounced(bytes32 orderHash, uint256 timestamp, struct IOrderMixin.Order order, bytes extension)
 ```
 Emitted on the first registration of an order — the single anchor write for
-announcement-anchored auctions. Never emitted again for the same order.
+announcement-anchored auctions, and the broadcast resolvers read the order from. Emission proves
+the maker itself sent the order, and it never fires again for the same one.
 
 #### Parameters
 
@@ -79,4 +65,6 @@ announcement-anchored auctions. Never emitted again for the same order.
 | ---- | ---- | ----------- |
 | orderHash | bytes32 | The hash of the announced order. |
 | timestamp | uint256 | The block timestamp recorded as the announcement time. Carried in the event so indexers need no extra block lookup; the emitting block itself is on the log already. |
+| order | struct IOrderMixin.Order | The announced order. |
+| extension | bytes | The extension data associated with the order. |
 

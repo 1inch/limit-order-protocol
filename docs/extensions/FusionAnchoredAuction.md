@@ -87,8 +87,8 @@ the fill-by mechanism for anchored orders, bounding the floor-price tail an abso
 once the start is anchored. It requires the anchored flag: setting it alone reverts rather than
 silently doing nothing. It lives here rather than in the amount getters because a post-interaction
 is not skippable — an order whose amount data was mis-assembled skips every getter-side check but
-still dies at its deadline. Conceptually the delay is `auctionStartDelay + auctionDuration + the
-tail window the maker tolerates`. An order that wants the deadline without resolver exclusivity
+still dies at its deadline. Conceptually the delay is `auctionDuration + the tail window the
+maker tolerates`. An order that wants the deadline without resolver exclusivity
 carries this blob with an empty whitelist. Note the deadline only reverts the fill itself; quoting
 through the amount getters does not read it, which resolver fill simulations account for._
 

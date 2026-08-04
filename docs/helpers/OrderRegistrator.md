@@ -10,9 +10,8 @@ originates from its maker, but carries no fill authorization — that lives wher
 EOA fill signatures). Neither the broadcast nor the clock can be delegated to a relayer.
 
 The recorded announcement is what {FusionAnchoredAuction} anchors an auction to, so it is written
-once and never moved: a repeated registration of the same order keeps the original announcement and
-only re-emits {OrderRegistered}. The announcement is keyed by order hash alone, which already
-commits to the maker._
+once and never moved: a repeated registration of the same order is a silent success that changes
+nothing. The announcement is keyed by order hash alone, which already commits to the maker._
 
 ### Functions list
 - [constructor(limitOrderProtocol) public](#constructor)
