@@ -333,7 +333,7 @@ describe('FusionAnchoredAuction', function () {
     });
 
     describe('announcement-anchored auction', function () {
-        const anchoredParams = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 10 };
+        const anchoredParams = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), anchored: true };
 
         it('reverts when the order was never announced', async function () {
             const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
@@ -352,7 +352,7 @@ describe('FusionAnchoredAuction', function () {
 
             // A build-time start of 0 is long past; the announcement is what the auction runs from.
             const announcedAt = await announce(registrator, order);
-            const resolved = { ...anchoredParams, startTime: announcedAt + anchoredParams.startDelay };
+            const resolved = { ...anchoredParams, startTime: announcedAt };
 
             const fillTime = resolved.startTime + 50;
             await time.setNextBlockTimestamp(fillTime);
@@ -372,7 +372,7 @@ describe('FusionAnchoredAuction', function () {
             const sig = await signature(order, chainId, swap);
 
             const announcedAt = await announce(registrator, order);
-            expect(announcedAt + params.startDelay).to.be.lessThan(startTime);
+            expect(announcedAt).to.be.lessThan(startTime);
 
             // Anchoring may only move the start later, so the auction has not begun yet.
             const fillTime = announcedAt + 20;
@@ -398,8 +398,9 @@ describe('FusionAnchoredAuction', function () {
 
             // The maker's own registration is what starts the clock, and the fill prices from it.
             const announcedAt = await announce(registrator, order);
-            await time.setNextBlockTimestamp(announcedAt + anchoredParams.startDelay);
-            const expected = ceilDiv(TAKING_AMOUNT * (BASE_POINTS + HALF_PERCENT), BASE_POINTS);
+            const fillTime = announcedAt + 1;
+            await time.setNextBlockTimestamp(fillTime);
+            const expected = takingAmountFor(order, { ...anchoredParams, startTime: announcedAt }, fillTime, MAKING_AMOUNT, MAKING_AMOUNT);
             await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
         });
 
@@ -413,7 +414,7 @@ describe('FusionAnchoredAuction', function () {
             // The announcement is immutable, but the order itself stays cancellable at the protocol level.
             await swap.connect(maker).cancelOrder(order.makerTraits, await swap.hashOrder(order));
 
-            await time.setNextBlockTimestamp(announcedAt + anchoredParams.startDelay + 50);
+            await time.setNextBlockTimestamp(announcedAt + 50);
             await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.be.revertedWithCustomError(swap, 'InvalidatedOrder');
         });
 
@@ -453,7 +454,7 @@ describe('FusionAnchoredAuction', function () {
                 startTime: 0,
                 duration: 100,
                 initialRateBump: Number(HALF_PERCENT),
-                startDelay: 10,
+                anchored: true,
                 fillPremiums: { initial: Number(HALF_PERCENT), points: [] },
             };
             const order = await buildAuctionOrder({
@@ -463,14 +464,14 @@ describe('FusionAnchoredAuction', function () {
                 auctionDetails: buildAnchoredAuctionDetails(params),
                 // The fill-by deadline rides in the post-interaction blob: an anchored exclusivity with
                 // an empty whitelist is exactly "a deadline without exclusivity".
-                exclusivity: buildAnchoredExclusivity({ allowedTimeDelay: 0, announcementDeadlineDelay: 170, whitelist: [] }),
+                exclusivity: buildAnchoredExclusivity({ allowedTimeDelay: 0, announcementDeadlineDelay: 160, whitelist: [] }),
             });
             const sig = await signature(order, chainId, swap);
             const announcedAt = await announce(registrator, order);
-            const resolved = { ...params, startTime: announcedAt + params.startDelay };
+            const resolved = { ...params, startTime: announcedAt };
 
             // A fill by making amount halfway through the anchored auction, its curve premium on top.
-            const firstFillTime = announcedAt + 60;
+            const firstFillTime = announcedAt + 50;
             await time.setNextBlockTimestamp(firstFillTime);
             const firstExpected = takingAmountFor(order, resolved, firstFillTime, MAKING_AMOUNT / 2n, MAKING_AMOUNT);
             expect(firstExpected).to.equal(ceilDiv((TAKING_AMOUNT / 2n) * (BASE_POINTS + HALF_PERCENT), BASE_POINTS));
@@ -485,7 +486,7 @@ describe('FusionAnchoredAuction', function () {
                 .to.changeTokenBalances(dai, [taker, maker], [secondExpected, -secondExpected]);
 
             // And past the anchored deadline nothing fills at all.
-            await time.setNextBlockTimestamp(announcedAt + 170 + 1);
+            await time.setNextBlockTimestamp(announcedAt + 160 + 1);
             await expect(fill(swap, order, sig, MAKING_AMOUNT / 10n)).to.be.revertedWithCustomError(auction, 'AuctionExpired');
         });
 
@@ -496,7 +497,7 @@ describe('FusionAnchoredAuction', function () {
                 dai,
                 weth,
                 auction,
-                auctionDetails: buildAnchoredAuctionDetails({ ...anchoredParams, startDelay: 0 }),
+                auctionDetails: buildAnchoredAuctionDetails(anchoredParams),
             });
             const sig = await signature(order, chainId, swap);
 
@@ -535,12 +536,14 @@ describe('FusionAnchoredAuction', function () {
             await time.increase(6 * 60 * 60);
             const announcedAt = await announce(registrator, order);
 
-            const fillTime = announcedAt + anchoredParams.startDelay;
+            const fillTime = announcedAt + 1;
             await time.setNextBlockTimestamp(fillTime);
             const fillTx = fill(swap, order, sig, MAKING_AMOUNT);
 
-            // Still the top of the curve rather than the floor price an unanchored order would have decayed to.
-            const expected = ceilDiv(TAKING_AMOUNT * (BASE_POINTS + HALF_PERCENT), BASE_POINTS);
+            // One second into the anchored curve — essentially the top, rather than the floor price an
+            // unanchored order would have decayed to hours ago.
+            const expected = takingAmountFor(order, { ...anchoredParams, startTime: announcedAt }, fillTime, MAKING_AMOUNT, MAKING_AMOUNT);
+            expect(expected).to.be.greaterThan(ceilDiv(TAKING_AMOUNT * (BASE_POINTS + HALF_PERCENT * 9n / 10n), BASE_POINTS));
             await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
         });
     });
@@ -784,11 +787,11 @@ describe('FusionAnchoredAuction', function () {
         it('works alongside anchoring', async function () {
             const { weth, swap, registrator, order, sig, params } = await deployMatrixOrder({
                 startTime: 0,
-                startDelay: 10,
+                anchored: true,
             });
 
             const announcedAt = await announce(registrator, order);
-            const resolved = { ...params, startTime: announcedAt + 10 };
+            const resolved = { ...params, startTime: announcedAt };
 
             const fillTime = announcedAt + 120; // past the anchored auction
             await time.setNextBlockTimestamp(fillTime);
@@ -1062,7 +1065,7 @@ describe('FusionAnchoredAuction', function () {
     });
 
     describe('announcement-anchored resolver exclusivity', function () {
-        const auctionParams = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 0 };
+        const auctionParams = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), anchored: true };
 
         it('holds the exclusive window open relative to the announcement', async function () {
             const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
@@ -1413,7 +1416,7 @@ describe('FusionAnchoredAuction', function () {
                 startTime: 0,
                 duration: 100,
                 initialRateBump: Number(HALF_PERCENT),
-                startDelay: 10,
+                anchored: true,
                 fillPremiums: { initial: Number(HALF_PERCENT), points: [] },
             };
             const auctionTail = ethers.solidityPacked(
@@ -1467,7 +1470,7 @@ describe('FusionAnchoredAuction', function () {
             // The price is the anchored, fill-scaled curve with the resolver fee on top, and nothing else.
             const auctionPrice = takingAmountFor(
                 order,
-                { ...auctionParams, startTime: announcedAt + auctionParams.startDelay },
+                { ...auctionParams, startTime: announcedAt },
                 fillTime,
                 MAKING_AMOUNT / 2n,
                 MAKING_AMOUNT,
@@ -1485,7 +1488,7 @@ describe('FusionAnchoredAuction', function () {
             const settlement = await SimpleSettlementMock.deploy(swap, inch, weth, maker);
             await settlement.waitForDeployment();
 
-            const auctionParams = { startTime: 0, duration: 100, initialRateBump: 0, startDelay: 0 };
+            const auctionParams = { startTime: 0, duration: 100, initialRateBump: 0, anchored: true };
             const auctionTail = ethers.solidityPacked(
                 ['address', 'bytes'],
                 [await auction.getAddress(), buildAnchoredAuctionDetails(auctionParams)],
@@ -1546,7 +1549,7 @@ describe('FusionAnchoredAuction', function () {
                 startTime: 0,
                 duration: 100,
                 initialRateBump: Number(HALF_PERCENT),
-                startDelay: 10,
+                anchored: true,
                 fillPremiums: { initial: 400_000, points: [{ premium: 100_000, shareDelta: 5000 }] },
             };
             const auctionTail = ethers.solidityPacked(
@@ -1582,7 +1585,7 @@ describe('FusionAnchoredAuction', function () {
 
             const auctionPrice = takingAmountFor(
                 order,
-                { ...auctionParams, startTime: announcedAt + auctionParams.startDelay },
+                { ...auctionParams, startTime: announcedAt },
                 fillTime,
                 MAKING_AMOUNT / 4n,
                 MAKING_AMOUNT,
@@ -1597,7 +1600,7 @@ describe('FusionAnchoredAuction', function () {
             const { dai, weth, swap, chainId, registrator, auction, feeTaker } = await loadFixture(deployContractsAndInit);
 
             const resolverFee = 1000n; // 1% in 1e5
-            const auctionParams = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 10 };
+            const auctionParams = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), anchored: true };
             const auctionTail = ethers.solidityPacked(
                 ['address', 'bytes'],
                 [await auction.getAddress(), buildAnchoredAuctionDetails(auctionParams)],
@@ -1637,7 +1640,7 @@ describe('FusionAnchoredAuction', function () {
             await time.setNextBlockTimestamp(fillTime);
             const fillTx = fill(swap, order, sig, MAKING_AMOUNT);
 
-            const auctionPrice = takingAmountFor(order, { ...auctionParams, startTime: announcedAt + 10 }, fillTime, MAKING_AMOUNT, MAKING_AMOUNT);
+            const auctionPrice = takingAmountFor(order, { ...auctionParams, startTime: announcedAt }, fillTime, MAKING_AMOUNT, MAKING_AMOUNT);
             const withFee = ceilDiv(auctionPrice * (100000n + resolverFee), 100000n);
             const feeAmount = withFee - ceilDiv(withFee * 100000n, 100000n + resolverFee);
             await expect(fillTx).to.changeTokenBalances(weth, [taker, maker, otherResolver], [-withFee, withFee - feeAmount, feeAmount]);

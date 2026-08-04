@@ -118,7 +118,7 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
             startTime: 0,
             duration: 100,
             initialRateBump: Number(HALF_PERCENT),
-            startDelay: 10,
+            anchored: true,
             fillPremiums: { initial: Number(HALF_PERCENT), points: [] },
         };
         const auctionData = ethers.solidityPacked(
@@ -158,7 +158,7 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
 
         const expected = takingAmountFor(
             order,
-            { ...params, startTime: announcedAt + params.startDelay },
+            { ...params, startTime: announcedAt },
             fillTime,
             fillAmount,
             MAKING_AMOUNT,
@@ -168,7 +168,7 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
     });
 
     it('composes behind the live Fusion settlement', async function () {
-        const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 10 };
+        const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), anchored: true };
         const auctionTail = ethers.solidityPacked(
             ['address', 'bytes'],
             [await auction.getAddress(), buildAnchoredAuctionDetails(params)],
@@ -229,7 +229,7 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
         // The price is the anchored curve alone: the live settlement contributed a factor of one and no fees.
         const expected = takingAmountFor(
             order,
-            { ...params, startTime: announcedAt + params.startDelay },
+            { ...params, startTime: announcedAt },
             fillTime,
             MAKING_AMOUNT,
             MAKING_AMOUNT,
@@ -267,7 +267,7 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
         await setDaiBalance(safe.address, MAKING_AMOUNT);
         await executeContractCallWithSigners(safe, dai, 'approve', [MAINNET.router, MAKING_AMOUNT], [maker], false);
 
-        const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 10 };
+        const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), anchored: true };
         const auctionData = ethers.solidityPacked(
             ['address', 'bytes'],
             [await auction.getAddress(), buildAnchoredAuctionDetails(params)],
@@ -296,14 +296,14 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
         const announcedAt = await time.latest();
         expect(await registrator.announcedAt(orderHash)).to.equal(announcedAt);
 
-        const fillTime = announcedAt + params.startDelay + 50;
+        const fillTime = announcedAt + 50;
         await time.setNextBlockTimestamp(fillTime);
         const takerTraits = buildTakerTraits({ makingAmount: true, extension: order.extension });
         const fillTx = router.connect(taker).fillContractOrderArgs(order, '0x', MAKING_AMOUNT, takerTraits.traits, takerTraits.args);
 
         const expected = takingAmountFor(
             order,
-            { ...params, startTime: announcedAt + params.startDelay },
+            { ...params, startTime: announcedAt },
             fillTime,
             MAKING_AMOUNT,
             MAKING_AMOUNT,
@@ -321,7 +321,7 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
 
         await dai.connect(maker).approve(delegatedMaker, MAKING_AMOUNT);
 
-        const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 0 };
+        const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), anchored: true };
         const auctionData = ethers.solidityPacked(
             ['address', 'bytes'],
             [await auction.getAddress(), buildAnchoredAuctionDetails(params)],
@@ -370,7 +370,7 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
             startTime: 0,
             duration: 100,
             initialRateBump: Number(HALF_PERCENT),
-            startDelay: 0,
+            anchored: true,
             fillPremiums: { initial: Number(HALF_PERCENT), points: [] },
         };
         const auctionTail = ethers.solidityPacked(

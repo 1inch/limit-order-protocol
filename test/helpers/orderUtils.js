@@ -178,7 +178,7 @@ function buildAnchoredAuctionDetails ({
     startTime = 0,
     duration = 0,
     initialRateBump = 0,
-    startDelay = undefined,
+    anchored = false,
     fillPremiums = undefined,
     points = [],
 } = {}) {
@@ -186,10 +186,8 @@ function buildAnchoredAuctionDetails ({
     const types = ['uint8', 'uint24', 'uint32', 'uint32', 'uint24', 'uint24'];
     const values = [0, gasBumpEstimate, gasPriceEstimate, startTime, duration, initialRateBump];
 
-    if (startDelay !== undefined) {
+    if (anchored) {
         flags |= ANCHORED_FLAG;
-        types.push('uint24');
-        values.push(startDelay);
     }
     if (fillPremiums !== undefined) {
         flags |= FILL_CURVE_FLAG;

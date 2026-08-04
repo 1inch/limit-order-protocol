@@ -102,8 +102,8 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
      * once the start is anchored. It requires the anchored flag: setting it alone reverts rather than
      * silently doing nothing. It lives here rather than in the amount getters because a post-interaction
      * is not skippable — an order whose amount data was mis-assembled skips every getter-side check but
-     * still dies at its deadline. Conceptually the delay is `auctionStartDelay + auctionDuration + the
-     * tail window the maker tolerates`. An order that wants the deadline without resolver exclusivity
+     * still dies at its deadline. Conceptually the delay is `auctionDuration + the tail window the
+     * maker tolerates`. An order that wants the deadline without resolver exclusivity
      * carries this blob with an empty whitelist. Note the deadline only reverts the fill itself; quoting
      * through the amount getters does not read it, which resolver fill simulations account for.
      */
@@ -227,7 +227,6 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
      *     bytes4 auctionStartTime;
      *     bytes3 auctionDuration;
      *     bytes3 initialRateBump;
-     *     bytes3 auctionStartDelay;      // present when the anchored flag is set
      *     FillCurve fillCurve;           // present when the fill curve flag is set
      *     bytes1 pointsCount;
      *     (bytes3,bytes2)[N] pointsAndTimeDeltas;
@@ -239,8 +238,8 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
      *     (bytes3,bytes2)[M] premiumsAndShareDeltas;
      * }
      * ```
-     * An anchored auction starts at the later of its announcement plus the start delay and the timestamp
-     * baked into the order, so a maker may still ask for an auction that begins some time after it announces.
+     * An anchored auction starts at the later of its announcement and the timestamp baked into the
+     * order, so an absolute start may still push the auction past its announcement.
      * @return auctionBump The time curve's rate bump at the current moment.
      * @return gasBump The rate-bump offset estimating the taker's transaction costs.
      * @return fillCurve The premium curve over fill shares, empty when the order does not carry one.
@@ -257,8 +256,7 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
             uint256 offset = 18;
 
             if (flags & _ANCHORED_FLAG != 0) {
-                uint256 anchoredStartTime = _announcedAt(orderHash) + uint24(bytes3(auctionDetails[offset:offset + 3]));
-                offset += 3;
+                uint256 anchoredStartTime = _announcedAt(orderHash);
                 if (anchoredStartTime > auctionStartTime) auctionStartTime = anchoredStartTime;
             }
 

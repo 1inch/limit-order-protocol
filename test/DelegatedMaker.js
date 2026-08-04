@@ -315,7 +315,7 @@ describe('DelegatedMaker', function () {
                 startTime: 0,
                 duration: 100,
                 initialRateBump: Number(HALF_PERCENT),
-                startDelay: 0,
+                anchored: true,
                 fillPremiums: { initial: 400_000, points: [{ premium: 100_000, shareDelta: 5000 }] },
             };
             const auctionData = ethers.solidityPacked(
@@ -347,7 +347,7 @@ describe('DelegatedMaker', function () {
 
             // The production shape: the pre-interaction pulls and the post-interaction gates resolvers,
             // both hooks on the same order, both anchored to the create transaction.
-            const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 0 };
+            const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), anchored: true };
             const auctionAddress = await auction.getAddress();
             const delegatedMakerAddress = await delegatedMaker.getAddress();
             const order = buildOrder(
@@ -394,7 +394,7 @@ describe('DelegatedMaker', function () {
             // auction prices through the fee taker's getters, and the anchored exclusivity rides the
             // fee taker's post-interaction tail.
             const resolverFee = 1000n; // 1% in 1e5
-            const auctionParams = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 10 };
+            const auctionParams = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), anchored: true };
             const auctionTail = ethers.solidityPacked(
                 ['address', 'bytes'],
                 [await auction.getAddress(), buildAnchoredAuctionDetails(auctionParams)],
@@ -438,7 +438,7 @@ describe('DelegatedMaker', function () {
 
             const fillTime = announcedAt + 60;
             await time.setNextBlockTimestamp(fillTime);
-            const auctionPrice = takingAmountFor(order, { ...auctionParams, startTime: announcedAt + 10 }, fillTime, MAKING_AMOUNT, MAKING_AMOUNT);
+            const auctionPrice = takingAmountFor(order, { ...auctionParams, startTime: announcedAt }, fillTime, MAKING_AMOUNT, MAKING_AMOUNT);
             const withFee = ceilDiv(auctionPrice * (100000n + resolverFee), 100000n);
             const feeAmount = withFee - ceilDiv(withFee * 100000n, 100000n + resolverFee);
 
