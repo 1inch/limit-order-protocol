@@ -1,4 +1,4 @@
-const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
+const { loadFixture, time } = require('@nomicfoundation/hardhat-network-helpers');
 const { expect, constants, ether } = require('@1inch/solidity-utils');
 const { buildOrder, buildTakerTraits } = require('./helpers/orderUtils');
 const { ethers } = require('hardhat');
@@ -106,7 +106,8 @@ describe('SafeOrderBuilder', function () {
             order.takingAmount = order.takingAmount * numerator / denominator;
 
             const orderTuple = [order.salt, order.maker, order.receiver, order.makerAsset, order.takerAsset, order.makingAmount, order.takingAmount, order.makerTraits];
-            await expect(tx).to.emit(registrator, 'OrderRegistered').withArgs(orderTuple, order.extension);
+            await expect(tx).to.emit(registrator, 'OrderAnnounced')
+                .withArgs(await swap.hashOrder(order), await time.latest(), orderTuple, order.extension);
 
             const takerTraits = buildTakerTraits({
                 makingAmount: true,

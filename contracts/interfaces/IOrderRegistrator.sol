@@ -13,25 +13,21 @@ import { IOrderMixin } from "./IOrderMixin.sol";
  */
 interface IOrderRegistrator {
     /**
-     * @notice Emitted when an order is registered. Emission proves the maker itself sent the order.
-     * @param order The order that was registered.
-     * @param extension The extension data associated with the order.
-     */
-    event OrderRegistered(IOrderMixin.Order order, bytes extension);
-
-    /**
      * @notice Emitted on the first registration of an order — the single anchor write for
-     * announcement-anchored auctions. Never emitted again for the same order.
+     * announcement-anchored auctions, and the broadcast resolvers read the order from. Emission proves
+     * the maker itself sent the order, and it never fires again for the same one.
      * @param orderHash The hash of the announced order.
      * @param timestamp The block timestamp recorded as the announcement time. Carried in the event so
      * indexers need no extra block lookup; the emitting block itself is on the log already.
+     * @param order The announced order.
+     * @param extension The extension data associated with the order.
      */
-    event OrderAnnounced(bytes32 indexed orderHash, uint256 timestamp);
+    event OrderAnnounced(bytes32 indexed orderHash, uint256 timestamp, IOrderMixin.Order order, bytes extension);
 
     /**
      * @notice Registers an order. Callable only by the order's maker; reverts for any other sender.
-     * The first successful call records the announcement timestamp and block number; repeated calls
-     * re-emit {OrderRegistered} without moving the announcement.
+     * Registration is idempotent: the first successful call records the announcement timestamp and
+     * emits {OrderAnnounced}, and a repeated call is a silent success that changes nothing.
      * @param order The order to be registered.
      * @param extension The extension data associated with the order.
      */

@@ -38,14 +38,15 @@ describe('OrderRegistrator', function () {
         });
     }
 
-    it('should emit OrderRegistered event', async function () {
-        const { usdc, usdt, registrator } = await loadFixture(deployAndInit);
+    it('should emit OrderAnnounced with the full order payload', async function () {
+        const { usdc, usdt, swap, registrator } = await loadFixture(deployAndInit);
 
         const order = await buildTestOrder(usdc, usdt);
         const orderTuple = [order.salt, order.maker, order.receiver, order.makerAsset, order.takerAsset, order.makingAmount, order.takingAmount, order.makerTraits];
 
-        const tx = registrator.registerOrder(order, order.extension);
-        await expect(tx).to.emit(registrator, 'OrderRegistered').withArgs(orderTuple, order.extension);
+        const tx = await registrator.registerOrder(order, order.extension);
+        await expect(tx).to.emit(registrator, 'OrderAnnounced')
+            .withArgs(await swap.hashOrder(order), await time.latest(), orderTuple, order.extension);
     });
 
     it('should reject registration from anyone but the maker', async function () {
@@ -77,7 +78,7 @@ describe('OrderRegistrator', function () {
             const tx = await registrator.registerOrder(order, order.extension);
 
             expect(await registrator.announcedAt(orderHash)).to.equal(await time.latest());
-            await expect(tx).to.emit(registrator, 'OrderAnnounced').withArgs(orderHash, await time.latest());
+            await expect(tx).to.emit(registrator, 'OrderAnnounced');
         });
 
         it('should report an order that was never announced as unannounced', async function () {
@@ -96,11 +97,9 @@ describe('OrderRegistrator', function () {
             const announcedAt = await registrator.announcedAt(orderHash);
 
             await time.increase(3600);
-            // A repeated announcement is not an error — SafeOrderBuilder rebuilds an unchanged order this way —
-            // but it must not move an auction that is already anchored to the first one, and the anchor
-            // event must not fire a second time.
+            // A repeated announcement is not an error — SafeOrderBuilder rebuilds an unchanged order this
+            // way — but it is a silent no-op: nothing moves and nothing fires a second time.
             const tx = registrator.registerOrder(order, order.extension);
-            await expect(tx).to.emit(registrator, 'OrderRegistered');
             await expect(tx).to.not.emit(registrator, 'OrderAnnounced');
 
             expect(await registrator.announcedAt(orderHash)).to.equal(announcedAt);
@@ -167,8 +166,8 @@ describe('OrderRegistrator', function () {
             );
             await tx.wait();
 
-            await expect(tx).to.emit(registrator, 'OrderRegistered');
             const orderHash = await swap.hashOrder(order);
+            await expect(tx).to.emit(registrator, 'OrderAnnounced');
             expect(await registrator.announcedAt(orderHash)).to.equal(await time.latest());
         });
 
@@ -196,8 +195,7 @@ describe('OrderRegistrator', function () {
             const tx = await executeContractCallWithSigners(safe, multiSend, 'multiSend', [batch], [addr], true);
             await tx.wait();
 
-            await expect(tx).to.emit(registrator, 'OrderRegistered');
-            await expect(tx).to.emit(registrator, 'OrderAnnounced').withArgs(orderHash, await time.latest());
+            await expect(tx).to.emit(registrator, 'OrderAnnounced');
             expect(await registrator.announcedAt(orderHash)).to.equal(await time.latest());
 
             // The digest marking is what later lets the protocol fill this order with an empty signature.

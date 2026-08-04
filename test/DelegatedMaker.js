@@ -97,8 +97,7 @@ describe('DelegatedMaker', function () {
             await tx.wait();
 
             await expect(tx).to.emit(delegatedMaker, 'DelegatedOrderCreated').withArgs(orderHash, user.address);
-            await expect(tx).to.emit(registrator, 'OrderRegistered');
-            await expect(tx).to.emit(registrator, 'OrderAnnounced').withArgs(orderHash, await time.latest());
+            await expect(tx).to.emit(registrator, 'OrderAnnounced');
 
             expect(await delegatedMaker.approvedOrders(orderHash)).to.equal(user.address);
             expect(await registrator.announcedAt(orderHash)).to.equal(await time.latest());

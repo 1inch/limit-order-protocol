@@ -17,9 +17,8 @@ import { OrderLib } from "../OrderLib.sol";
  * EOA fill signatures). Neither the broadcast nor the clock can be delegated to a relayer.
  *
  * The recorded announcement is what {FusionAnchoredAuction} anchors an auction to, so it is written
- * once and never moved: a repeated registration of the same order keeps the original announcement and
- * only re-emits {OrderRegistered}. The announcement is keyed by order hash alone, which already
- * commits to the maker.
+ * once and never moved: a repeated registration of the same order is a silent success that changes
+ * nothing. The announcement is keyed by order hash alone, which already commits to the maker.
  */
 contract OrderRegistrator is IOrderRegistrator {
     using AddressLib for Address;
@@ -60,9 +59,7 @@ contract OrderRegistrator is IOrderRegistrator {
             // solhint-disable-next-line not-rely-on-time
             announcedAt[orderHash] = block.timestamp;
             // solhint-disable-next-line not-rely-on-time
-            emit OrderAnnounced(orderHash, block.timestamp);
+            emit OrderAnnounced(orderHash, block.timestamp, order, extension);
         }
-
-        emit OrderRegistered(order, extension);
     }
 }
