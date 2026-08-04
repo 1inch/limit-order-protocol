@@ -9,11 +9,10 @@ which is the sole authentication. Fill authorization is carried separately by ea
 ### Functions list
 - [registerOrder(order, extension) external](#registerorder)
 - [announcedAt(orderHash) external](#announcedat)
-- [announcedAtBlock(orderHash) external](#announcedatblock)
 
 ### Events list
 - [OrderRegistered(order, extension) ](#orderregistered)
-- [OrderAnnounced(orderHash, timestamp, blockNumber) ](#orderannounced)
+- [OrderAnnounced(orderHash, timestamp) ](#orderannounced)
 
 ### Functions
 ### registerOrder
@@ -51,25 +50,6 @@ Returns the block timestamp of the first registration of an order.
 | ---- | ---- | ----------- |
 timestamp | uint256 | The timestamp of the first registration, or 0 if the order was never registered. |
 
-### announcedAtBlock
-
-```solidity
-function announcedAtBlock(bytes32 orderHash) external view returns (uint256 blockNumber)
-```
-Returns the block number of the first registration of an order.
-
-#### Parameters
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-| orderHash | bytes32 | The hash of the order. |
-
-#### Return Values
-
-| Name | Type | Description |
-| ---- | ---- | ----------- |
-blockNumber | uint256 | The block number of the first registration, or 0 if the order was never registered. |
-
 ### Events
 ### OrderRegistered
 
@@ -88,7 +68,7 @@ Emitted when an order is registered. Emission proves the maker itself sent the o
 ### OrderAnnounced
 
 ```solidity
-event OrderAnnounced(bytes32 orderHash, uint256 timestamp, uint256 blockNumber)
+event OrderAnnounced(bytes32 orderHash, uint256 timestamp)
 ```
 Emitted on the first registration of an order — the single anchor write for
 announcement-anchored auctions. Never emitted again for the same order.
@@ -98,6 +78,5 @@ announcement-anchored auctions. Never emitted again for the same order.
 | Name | Type | Description |
 | ---- | ---- | ----------- |
 | orderHash | bytes32 | The hash of the announced order. |
-| timestamp | uint256 | The block timestamp recorded as the announcement time. |
-| blockNumber | uint256 | The block number recorded for the announcement. |
+| timestamp | uint256 | The block timestamp recorded as the announcement time. Carried in the event so indexers need no extra block lookup; the emitting block itself is on the log already. |
 

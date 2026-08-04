@@ -18,17 +18,14 @@ unanchored Dutch auction.
 Getter-side features only run when the order's amount data actually routes through this contract: an
 order assembled with empty taking-amount data prices at its plain ratio and skips every check encoded
 here, which no amount getter can prevent. Order builders must treat the amount-getter fields as
-load-bearing, and makers who need a fill-by deadline that survives such mis-assembly should carry the
-announcement deadline in the post-interaction blob, which is not skippable.
+load-bearing. The fill-by deadline therefore lives in the post-interaction blob, which is not
+skippable, rather than in the getters.
 
 When chained behind a settlement that takes a surplus fee, the fill premium counts toward that
 surplus: anything a fill pays above the settlement's scaled estimated taking amount is taxed at its
 surplus percentage, and the estimate scales linearly with fill size while the premium does not, so a
 quoter cannot pad it away exactly. Either accept that the protocol takes its surplus share of the
 premium, or set the estimate with that in mind._
-
-### Types list
-- [AuctionState](#auctionstate)
 
 ### Functions list
 - [constructor(orderRegistrator) public](#constructor)
@@ -40,24 +37,8 @@ premium, or set the estimate with that in mind._
 - [OrderNotAnnounced() ](#ordernotannounced)
 - [AuctionExpired() ](#auctionexpired)
 - [AllowedTimeViolation() ](#allowedtimeviolation)
-- [InvalidFillScalingNumerator() ](#invalidfillscalingnumerator)
-- [ConflictingFillPricing() ](#conflictingfillpricing)
 - [NonMonotonicFillCurve() ](#nonmonotonicfillcurve)
 - [InvalidFlagCombination() ](#invalidflagcombination)
-
-### Types
-### AuctionState
-
-_State parsed out of the auction details, in the form the rate bump is computed from._
-
-```solidity
-struct AuctionState {
-  uint256 auctionBump;
-  uint256 initialRateBump;
-  uint256 gasBump;
-  uint256 fillScalingNumerator;
-}
-```
 
 ### Functions
 ### constructor
@@ -101,13 +82,15 @@ bytes - custom data to call an extra post-interaction (optional)
 Whitelisted addresses are compared by their lowest 10 bytes, the same trade-off the settlement
 contracts already make between calldata size and the cost of grinding a colliding address.
 
-The announcement deadline stops the order being fillable once `announcedAt + delay` has passed.
-It requires the anchored flag — setting it alone reverts rather than silently doing nothing — and
-exists as defense in depth for the getter-side post-auction deadline: an order whose taking-amount
-data was assembled without routing through this contract skips every getter-side check, but a
-post-interaction is not skippable, so the deadline here bounds the damage. It is measured from the
-announcement rather than the auction finish, which the post-interaction does not know; to align the
-two, encode `announcementDeadlineDelay = auctionStartDelay + auctionDuration + postAuctionWindow`._
+The announcement deadline stops the order being fillable once `announcedAt + delay` has passed —
+the fill-by mechanism for anchored orders, bounding the floor-price tail an absolute expiry cannot
+once the start is anchored. It requires the anchored flag: setting it alone reverts rather than
+silently doing nothing. It lives here rather than in the amount getters because a post-interaction
+is not skippable — an order whose amount data was mis-assembled skips every getter-side check but
+still dies at its deadline. Conceptually the delay is `auctionStartDelay + auctionDuration + the
+tail window the maker tolerates`. An order that wants the deadline without resolver exclusivity
+carries this blob with an empty whitelist. Note the deadline only reverts the fill itself; quoting
+through the amount getters does not read it, which resolver fill simulations account for._
 
 ### _getMakingAmount
 
@@ -152,22 +135,6 @@ error AllowedTimeViolation()
 ```
 
 _The taker may not fill the order yet._
-
-### InvalidFillScalingNumerator
-
-```solidity
-error InvalidFillScalingNumerator()
-```
-
-_Fill scaling is expressed in 1e2 and cannot exceed 100%._
-
-### ConflictingFillPricing
-
-```solidity
-error ConflictingFillPricing()
-```
-
-_The linear rule and the premium curve cannot price the same order._
 
 ### NonMonotonicFillCurve
 

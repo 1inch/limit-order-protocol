@@ -17,8 +17,6 @@ commits to the maker._
 ### Functions list
 - [constructor(limitOrderProtocol) public](#constructor)
 - [registerOrder(order, extension) external](#registerorder)
-- [announcedAt(orderHash) external](#announcedat)
-- [announcedAtBlock(orderHash) external](#announcedatblock)
 
 ### Errors list
 - [AccessDenied() ](#accessdenied)
@@ -36,20 +34,6 @@ constructor(contract IOrderMixin limitOrderProtocol) public
 function registerOrder(struct IOrderMixin.Order order, bytes extension) external
 ```
 See {IOrderRegistrator-registerOrder}.
-
-### announcedAt
-
-```solidity
-function announcedAt(bytes32 orderHash) external view returns (uint256 timestamp)
-```
-See {IOrderRegistrator-announcedAt}.
-
-### announcedAtBlock
-
-```solidity
-function announcedAtBlock(bytes32 orderHash) external view returns (uint256 blockNumber)
-```
-See {IOrderRegistrator-announcedAtBlock}.
 
 ### Errors
 ### AccessDenied
