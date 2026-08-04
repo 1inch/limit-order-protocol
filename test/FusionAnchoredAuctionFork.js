@@ -53,7 +53,7 @@ const TAKING_AMOUNT = ether('0.03');
 describe('FusionAnchoredAuction (mainnet fork)', function () {
     this.timeout(600000);
 
-    let maker, taker, protocolRecipient;
+    let maker, taker;
     let router, dai, weth, registrator, auction;
     let chainId;
 
@@ -73,7 +73,7 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
         // Fail loudly if the reset silently produced a pristine chain instead of a fork.
         expect(await ethers.provider.getBlockNumber()).to.be.greaterThan(20_000_000);
 
-        [maker, taker, protocolRecipient] = await ethers.getSigners();
+        [maker, taker] = await ethers.getSigners();
         chainId = (await ethers.provider.getNetwork()).chainId;
         router = await ethers.getContractAt('LimitOrderProtocol', MAINNET.router);
         dai = await ethers.getContractAt('TokenMock', MAINNET.dai);
@@ -310,133 +310,5 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
         );
         await expect(fillTx).to.changeTokenBalances(dai, [taker, safe], [MAKING_AMOUNT, -MAKING_AMOUNT]);
         await expect(fillTx).to.changeTokenBalances(weth, [taker, safe], [-expected, expected]);
-    });
-
-    it('runs the DelegatedMaker flow end to end through the live router', async function () {
-        // The EOA flow with nothing signed and nothing escrowed: one createOrder transaction presigns and
-        // announces, the maker asset stays in the wallet until the live router's fill pulls it just in time.
-        const DelegatedMaker = await ethers.getContractFactory('DelegatedMaker');
-        const delegatedMaker = await DelegatedMaker.deploy(router, registrator);
-        await delegatedMaker.waitForDeployment();
-
-        await dai.connect(maker).approve(delegatedMaker, MAKING_AMOUNT);
-
-        const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), anchored: true };
-        const auctionData = ethers.solidityPacked(
-            ['address', 'bytes'],
-            [await auction.getAddress(), buildAnchoredAuctionDetails(params)],
-        );
-        const delegatedMakerAddress = await delegatedMaker.getAddress();
-        const order = buildOrder(
-            {
-                maker: delegatedMakerAddress,
-                receiver: maker.address,
-                makerAsset: MAINNET.dai,
-                takerAsset: MAINNET.weth,
-                makingAmount: MAKING_AMOUNT,
-                takingAmount: TAKING_AMOUNT,
-            },
-            { makingAmountData: auctionData, takingAmountData: auctionData, preInteraction: delegatedMakerAddress },
-        );
-        const orderHash = await router.hashOrder(order);
-
-        await delegatedMaker.connect(maker).createOrder(order, order.extension);
-        const announcedAt = await time.latest();
-        expect(await registrator.announcedAt(orderHash)).to.equal(announcedAt);
-
-        const fillTime = announcedAt + 60;
-        await time.setNextBlockTimestamp(fillTime);
-        const takerTraits = buildTakerTraits({ makingAmount: true, extension: order.extension });
-        const fillTx = router.connect(taker).fillContractOrderArgs(order, '0x', MAKING_AMOUNT, takerTraits.traits, takerTraits.args);
-
-        const expected = takingAmountFor(order, { ...params, startTime: announcedAt }, fillTime, MAKING_AMOUNT, MAKING_AMOUNT);
-        await expect(fillTx).to.changeTokenBalances(dai, [maker, taker, delegatedMaker], [-MAKING_AMOUNT, MAKING_AMOUNT, 0n]);
-        await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
-    });
-
-    it('collects the live settlement surplus fee on a DelegatedMaker fill premium', async function () {
-        // The fee-collecting production shape end to end: the live Settlement is the order's receiver
-        // and pays the creator as its custom receiver. The surplus fee is set on purpose — the ladder
-        // premium lands above the quoted estimate, so the settlement taxes surplusFee% of it, pinning
-        // the number behind the rollout note that partial-fill premiums count as settlement surplus.
-        const DelegatedMaker = await ethers.getContractFactory('DelegatedMaker');
-        const delegatedMaker = await DelegatedMaker.deploy(router, registrator);
-        await delegatedMaker.waitForDeployment();
-        const delegatedMakerAddress = await delegatedMaker.getAddress();
-
-        await dai.connect(maker).approve(delegatedMaker, MAKING_AMOUNT);
-
-        const params = {
-            startTime: 0,
-            duration: 100,
-            initialRateBump: Number(HALF_PERCENT),
-            anchored: true,
-            fillPremiums: { initial: Number(HALF_PERCENT), points: [] },
-        };
-        const auctionTail = ethers.solidityPacked(
-            ['address', 'bytes'],
-            [await auction.getAddress(), buildAnchoredAuctionDetails(params)],
-        );
-        const getterData = ethers.solidityPacked(
-            ['address', 'bytes', 'bytes', 'bytes'],
-            [MAINNET.settlement, buildLegacyAuctionDetails(), NO_FEE_DATA, auctionTail],
-        );
-        const surplusFee = 50n; // in 1e2: half of anything above the estimate goes to the protocol
-        const postInteractionData = ethers.solidityPacked(
-            ['address', 'bytes1', 'address', 'address', 'address', 'uint16', 'uint8', 'uint16', 'uint8', 'uint32', 'uint8', 'uint80', 'uint16', 'uint256', 'uint8'],
-            [
-                MAINNET.settlement,
-                '0x01', // custom receiver follows the fee recipients
-                constants.ZERO_ADDRESS, // integrator fee recipient
-                protocolRecipient.address,
-                maker.address, // custom receiver: the creator, enforced by DelegatedMaker
-                0, 0, 0, 0, // no integrator fee, share, resolver fee or whitelist discount
-                0, 1, BigInt(taker.address) & ((1n << 80n) - 1n), 0, // whitelist open from time zero
-                TAKING_AMOUNT, surplusFee, // the quoted estimate and the surplus cut
-            ],
-        );
-        const order = buildOrder(
-            {
-                maker: delegatedMakerAddress,
-                receiver: MAINNET.settlement,
-                makerAsset: MAINNET.dai,
-                takerAsset: MAINNET.weth,
-                makingAmount: MAKING_AMOUNT,
-                takingAmount: TAKING_AMOUNT,
-            },
-            {
-                makingAmountData: getterData,
-                takingAmountData: getterData,
-                preInteraction: delegatedMakerAddress,
-                postInteraction: postInteractionData,
-            },
-        );
-
-        await delegatedMaker.connect(maker).createOrder(order, order.extension);
-        const announcedAt = await time.latest();
-
-        // Half the order after the auction: the price is the plain rate plus the ladder premium.
-        const fillTime = announcedAt + 200;
-        await time.setNextBlockTimestamp(fillTime);
-        const fillAmount = MAKING_AMOUNT / 2n;
-        const actualTaking = takingAmountFor(order, { ...params, startTime: announcedAt }, fillTime, fillAmount, MAKING_AMOUNT);
-
-        // The settlement compares against the estimate scaled to the fill, so the whole premium counts
-        // as surplus here and half of it is taxed.
-        const scaledEstimate = (TAKING_AMOUNT * fillAmount + MAKING_AMOUNT - 1n) / MAKING_AMOUNT;
-        const surplusCut = (actualTaking - scaledEstimate) * surplusFee / 100n;
-        expect(surplusCut).to.be.greaterThan(0n);
-
-        const takerTraits = buildTakerTraits({ makingAmount: true, extension: order.extension });
-        const fillTx = router.connect(taker).fillContractOrderArgs(
-            order, '0x', fillAmount, takerTraits.traits, takerTraits.args, { maxPriorityFeePerGas: 0 },
-        );
-
-        await expect(fillTx).to.changeTokenBalances(dai, [maker, taker, delegatedMaker], [-fillAmount, fillAmount, 0n]);
-        await expect(fillTx).to.changeTokenBalances(
-            weth,
-            [taker, maker, protocolRecipient],
-            [-actualTaking, actualTaking - surplusCut, surplusCut],
-        );
     });
 });

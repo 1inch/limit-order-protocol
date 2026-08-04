@@ -98,9 +98,7 @@ function makingAmountFor (order, auction, timestamp, takingAmount, remainingMaki
 module.exports = {
     BASE_POINTS,
     NO_FEE_DATA,
-    SHARE_BASE,
     ceilDiv,
-    auctionBumpAt,
     buildLegacyAuctionDetails,
     fillPremiumAt,
     takingAmountFor,
