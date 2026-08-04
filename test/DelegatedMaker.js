@@ -113,7 +113,6 @@ describe('DelegatedMaker', function () {
 
             const order = await buildDelegatedOrder({ dai, weth, delegatedMaker });
             await delegatedMaker.connect(user).createOrder(order, order.extension);
-            await delegatedMaker.approveRouter(dai);
 
             const fillTx = fill(swap, order, MAKING_AMOUNT);
             // The pull, the fill and the payout are one transaction: the wallet funds the order at the
@@ -127,7 +126,6 @@ describe('DelegatedMaker', function () {
 
             const order = await buildDelegatedOrder({ dai, weth, delegatedMaker });
             await delegatedMaker.connect(user).createOrder(order, order.extension);
-            await delegatedMaker.approveRouter(dai);
 
             const first = MAKING_AMOUNT * 2n / 5n;
             await expect(fill(swap, order, first))
@@ -137,22 +135,6 @@ describe('DelegatedMaker', function () {
             const restTx = fill(swap, order, rest);
             await expect(restTx).to.changeTokenBalances(dai, [user, taker, delegatedMaker], [-rest, rest, 0]);
             await expect(restTx).to.changeTokenBalances(weth, [taker, user], [-TAKING_AMOUNT * 3n / 5n, TAKING_AMOUNT * 3n / 5n]);
-        });
-
-        it('cannot fill until someone approves the router for the maker asset', async function () {
-            const { dai, weth, swap, delegatedMaker } = await loadFixture(deployContractsAndInit);
-
-            const order = await buildDelegatedOrder({ dai, weth, delegatedMaker });
-            await delegatedMaker.connect(user).createOrder(order, order.extension);
-
-            // The pull succeeds but the protocol cannot move the pulled funds on without the contract's
-            // own allowance — the second leg of the token path.
-            await expect(fill(swap, order, MAKING_AMOUNT)).to.be.revertedWithCustomError(swap, 'TransferFromMakerToTakerFailed');
-
-            // The approval is permissionless: any stranger may switch the token on.
-            await delegatedMaker.connect(stranger).approveRouter(dai);
-            await expect(fill(swap, order, MAKING_AMOUNT))
-                .to.changeTokenBalances(dai, [user, taker], [-MAKING_AMOUNT, MAKING_AMOUNT]);
         });
     });
 
@@ -255,7 +237,6 @@ describe('DelegatedMaker', function () {
             const order = await buildDelegatedOrder({ dai, weth, delegatedMaker });
             const orderHash = await swap.hashOrder(order);
             await delegatedMaker.connect(user).createOrder(order, order.extension);
-            await delegatedMaker.approveRouter(dai);
 
             const first = MAKING_AMOUNT / 2n;
             await expect(fill(swap, order, first)).to.changeTokenBalances(dai, [user, taker], [-first, first]);
@@ -316,7 +297,6 @@ describe('DelegatedMaker', function () {
             const second = await buildDelegatedOrder({ dai, weth, delegatedMaker, owner: user2 });
             await delegatedMaker.connect(user).createOrder(first, first.extension);
             await delegatedMaker.connect(user2).createOrder(second, second.extension);
-            await delegatedMaker.approveRouter(dai);
 
             // The first user's cancellation touches nothing of the second user's order.
             await delegatedMaker.connect(user).cancelOrder(first);
@@ -346,7 +326,6 @@ describe('DelegatedMaker', function () {
             const order = await buildDelegatedOrder({ dai, weth, delegatedMaker, auctionData });
             const orderHash = await swap.hashOrder(order);
 
-            await delegatedMaker.approveRouter(dai);
             await delegatedMaker.connect(user).createOrder(order, order.extension);
             const announcedAt = Number(await registrator.announcedAt(orderHash));
             expect(announcedAt).to.equal(await time.latest());
@@ -392,7 +371,6 @@ describe('DelegatedMaker', function () {
                 },
             );
 
-            await delegatedMaker.approveRouter(dai);
             await delegatedMaker.connect(user).createOrder(order, order.extension);
             const announcedAt = Number(await registrator.announcedAt(await swap.hashOrder(order)));
 
@@ -452,7 +430,6 @@ describe('DelegatedMaker', function () {
                 },
             );
 
-            await delegatedMaker.approveRouter(dai);
             await delegatedMaker.connect(user).createOrder(order, order.extension);
             const announcedAt = Number(await registrator.announcedAt(await swap.hashOrder(order)));
 
@@ -537,7 +514,6 @@ describe('DelegatedMaker', function () {
 
             // The maker asset is the permit-capable WETH; the user holds funds but has approved nothing.
             await weth.connect(user).deposit({ value: ether('1') });
-            await delegatedMaker.approveRouter(weth);
 
             const order = buildOrder(
                 {
@@ -569,7 +545,6 @@ describe('DelegatedMaker', function () {
             const delegatedMakerAddress = await delegatedMaker.getAddress();
 
             await weth.connect(user).deposit({ value: ether('1') });
-            await delegatedMaker.approveRouter(weth);
 
             const order = buildOrder(
                 {

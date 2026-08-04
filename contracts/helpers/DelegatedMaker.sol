@@ -24,9 +24,11 @@ import { ExtensionLib } from "../libraries/ExtensionLib.sol";
  * because {createOrder} requires the order's receiver to be the owner.
  *
  * The token path has two allowances: the owner's allowance to this contract feeds the just-in-time pull,
- * and this contract's own allowance to the protocol — granted once per token by the permissionless
- * {approveRouter} — lets the protocol move the pulled funds to the taker. The latter is safe to leave
- * unbounded since the protocol only transfers within valid fills of orders this contract has presigned.
+ * and this contract's own allowance to the protocol lets the protocol move the pulled funds to the
+ * taker. The latter is self-provisioned: {preInteraction} tops it up to the maximum whenever it runs
+ * short, which is once per token for tokens that leave infinite allowances undecremented and
+ * automatically again for tokens that spend them down. Unbounded is safe here because the protocol
+ * only transfers within valid fills of orders this contract has presigned.
  *
  * The contract concentrates standing allowances, the same trust shape as the protocol itself; it holds
  * no balances between transactions and has no owner powers over user funds. Contract wallets can use it
@@ -186,17 +188,6 @@ contract DelegatedMaker is IERC1271, IPreInteraction {
     }
 
     /**
-     * @notice Grants the limit order protocol an unlimited allowance for a token this contract makes with.
-     * @dev Permissionless and required once per maker asset: the protocol transfers the pulled funds out
-     * of this contract with `transferFrom`, which needs this allowance. Unbounded is safe here because
-     * the protocol only transfers within valid fills of presigned orders.
-     * @param token The token to approve.
-     */
-    function approveRouter(IERC20 token) external {
-        token.forceApprove(address(_LIMIT_ORDER_PROTOCOL), type(uint256).max);
-    }
-
-    /**
      * @notice See {IERC1271-isValidSignature}. The presign: a hash is signed while its order is approved.
      * @dev The signature bytes are ignored — authorization was given on-chain in {createOrder} — so fills
      * pass an empty signature.
@@ -209,7 +200,9 @@ contract DelegatedMaker is IERC1271, IPreInteraction {
      * @notice See {IPreInteraction-preInteraction}. Pulls exactly the filled amount from the order's
      * owner immediately before the protocol moves the maker asset to the taker.
      * @dev Checked on every fill, not just the first: a cancelled order has no owner on record and
-     * cannot pull, whatever state the fill reached the protocol in.
+     * cannot pull, whatever state the fill reached the protocol in. The protocol's own allowance for
+     * the maker asset is topped up here when it runs short, so a token's first fill provisions it and
+     * nothing else has to.
      */
     function preInteraction(
         IOrderMixin.Order calldata order,
@@ -225,6 +218,10 @@ contract DelegatedMaker is IERC1271, IPreInteraction {
         address owner = approvedOrders[orderHash];
         if (owner == address(0)) revert AccessDenied();
 
-        IERC20(order.makerAsset.get()).safeTransferFrom(owner, address(this), makingAmount);
+        IERC20 makerAsset = IERC20(order.makerAsset.get());
+        if (makerAsset.allowance(address(this), address(_LIMIT_ORDER_PROTOCOL)) < makingAmount) {
+            makerAsset.forceApprove(address(_LIMIT_ORDER_PROTOCOL), type(uint256).max);
+        }
+        makerAsset.safeTransferFrom(owner, address(this), makingAmount);
     }
 }

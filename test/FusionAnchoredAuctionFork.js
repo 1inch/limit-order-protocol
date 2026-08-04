@@ -320,7 +320,6 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
         await delegatedMaker.waitForDeployment();
 
         await dai.connect(maker).approve(delegatedMaker, MAKING_AMOUNT);
-        await delegatedMaker.approveRouter(MAINNET.dai);
 
         const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 0 };
         const auctionData = ethers.solidityPacked(
@@ -366,7 +365,6 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
         const delegatedMakerAddress = await delegatedMaker.getAddress();
 
         await dai.connect(maker).approve(delegatedMaker, MAKING_AMOUNT);
-        await delegatedMaker.approveRouter(MAINNET.dai);
 
         const params = {
             startTime: 0,
