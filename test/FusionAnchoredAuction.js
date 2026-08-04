@@ -19,7 +19,6 @@ const {
     ceilDiv,
     buildLegacyAuctionDetails,
     fillPremiumAt,
-    scaleByFill,
     takingAmountFor,
     makingAmountFor,
 } = require('./helpers/fusionAuction');
@@ -455,7 +454,7 @@ describe('FusionAnchoredAuction', function () {
                 duration: 100,
                 initialRateBump: Number(HALF_PERCENT),
                 startDelay: 10,
-                fillScalingNumerator: 100,
+                fillPremiums: { initial: Number(HALF_PERCENT), points: [] },
                 postAuctionWindow: 60,
             };
             const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
@@ -463,11 +462,11 @@ describe('FusionAnchoredAuction', function () {
             const announcedAt = await announce(registrator, order);
             const resolved = { ...params, startTime: announcedAt + params.startDelay };
 
-            // A fill by making amount halfway through the anchored auction, penalized for its half share.
+            // A fill by making amount halfway through the anchored auction, its curve premium on top.
             const firstFillTime = announcedAt + 60;
             await time.setNextBlockTimestamp(firstFillTime);
             const firstExpected = takingAmountFor(order, resolved, firstFillTime, MAKING_AMOUNT / 2n, MAKING_AMOUNT);
-            expect(firstExpected).to.equal(ceilDiv((TAKING_AMOUNT / 2n) * (BASE_POINTS + HALF_PERCENT * 3n / 4n), BASE_POINTS));
+            expect(firstExpected).to.equal(ceilDiv((TAKING_AMOUNT / 2n) * (BASE_POINTS + HALF_PERCENT), BASE_POINTS));
             await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n)).to.changeTokenBalances(weth, [taker, maker], [-firstExpected, firstExpected]);
 
             // A fill by taking amount after the auction, priced through the conservative estimate.
@@ -582,331 +581,6 @@ describe('FusionAnchoredAuction', function () {
             await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.changeTokenBalances(
                 weth, [taker, maker], [-TAKING_AMOUNT, TAKING_AMOUNT],
             );
-        });
-    });
-
-    describe('fill-scaled pricing', function () {
-        // Filled after the auction has run its course, so the whole rate bump on offer comes from fill scaling.
-        async function deployFilledOrder (fillScalingNumerator) {
-            const contracts = await loadFixture(deployContractsAndInit);
-            const { dai, weth, swap, chainId, auction } = contracts;
-            const startTime = await time.latest() + 10;
-            const params = { startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), fillScalingNumerator };
-            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
-            const sig = await signature(order, chainId, swap);
-            return { ...contracts, order, sig, params, afterAuction: startTime + 200 };
-        }
-
-        it('prices a full fill at the auction price', async function () {
-            const { weth, swap, order, sig, params, afterAuction } = await deployFilledOrder(100);
-
-            await time.setNextBlockTimestamp(afterAuction);
-            const fillTx = fill(swap, order, sig, MAKING_AMOUNT);
-
-            const expected = takingAmountFor(order, params, afterAuction, MAKING_AMOUNT, MAKING_AMOUNT);
-            expect(expected).to.equal(TAKING_AMOUNT);
-            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
-        });
-
-        it('charges a tenth-sized fill nine tenths of the way back to the start price', async function () {
-            const { weth, swap, order, sig, params, afterAuction } = await deployFilledOrder(100);
-
-            await time.setNextBlockTimestamp(afterAuction);
-            const makingAmount = MAKING_AMOUNT / 10n;
-            const fillTx = fill(swap, order, sig, makingAmount);
-
-            const expected = takingAmountFor(order, params, afterAuction, makingAmount, MAKING_AMOUNT);
-            expect(expected).to.equal(ceilDiv((TAKING_AMOUNT / 10n) * (BASE_POINTS + HALF_PERCENT * 9n / 10n), BASE_POINTS));
-            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
-        });
-
-        it('scales the penalty by the configured strength', async function () {
-            const { weth, swap, order, sig, params, afterAuction } = await deployFilledOrder(50);
-
-            await time.setNextBlockTimestamp(afterAuction);
-            const makingAmount = MAKING_AMOUNT / 10n;
-            const fillTx = fill(swap, order, sig, makingAmount);
-
-            const expected = takingAmountFor(order, params, afterAuction, makingAmount, MAKING_AMOUNT);
-            // Half the strength, so half the premium of the previous case.
-            expect(expected).to.equal(ceilDiv((TAKING_AMOUNT / 10n) * (BASE_POINTS + HALF_PERCENT * 9n / 20n), BASE_POINTS));
-            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
-        });
-
-        it('charges nothing extra at zero strength', async function () {
-            const { weth, swap, order, sig, params, afterAuction } = await deployFilledOrder(0);
-
-            await time.setNextBlockTimestamp(afterAuction);
-            const makingAmount = MAKING_AMOUNT / 10n;
-            const fillTx = fill(swap, order, sig, makingAmount);
-
-            const expected = takingAmountFor(order, params, afterAuction, makingAmount, MAKING_AMOUNT);
-            expect(expected).to.equal(TAKING_AMOUNT / 10n);
-            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
-        });
-
-        it('prices whoever completes the order at the plain auction price', async function () {
-            const { weth, swap, order, sig, params, afterAuction } = await deployFilledOrder(100);
-
-            await time.setNextBlockTimestamp(afterAuction);
-            const firstFill = MAKING_AMOUNT / 2n;
-            await expect(fill(swap, order, sig, firstFill)).to.changeTokenBalances(
-                weth,
-                [taker, maker],
-                (() => {
-                    const paid = takingAmountFor(order, params, afterAuction, firstFill, MAKING_AMOUNT);
-                    return [-paid, paid];
-                })(),
-            );
-
-            const secondFillTime = afterAuction + 10;
-            await time.setNextBlockTimestamp(secondFillTime);
-            const remaining = MAKING_AMOUNT - firstFill;
-            const expected = takingAmountFor(order, params, secondFillTime, remaining, remaining);
-            expect(expected).to.equal(TAKING_AMOUNT / 2n);
-            await expect(fill(swap, order, sig, remaining)).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
-        });
-
-        it('walks successive fills down the ladder of the original amount', async function () {
-            const { weth, swap, order, sig, afterAuction } = await deployFilledOrder(100);
-
-            // Each tenth-sized fill is priced by where it ends on the order's own volume ladder: the first
-            // withholds nine tenths of the released discount, the second eight tenths, and so on.
-            let fillTime = afterAuction;
-            for (const laddersLeft of [9n, 8n, 7n]) {
-                await time.setNextBlockTimestamp(fillTime++);
-                const expected = ceilDiv((TAKING_AMOUNT / 10n) * (BASE_POINTS + HALF_PERCENT * laddersLeft / 10n), BASE_POINTS);
-                await expect(fill(swap, order, sig, MAKING_AMOUNT / 10n))
-                    .to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
-            }
-        });
-
-        it('never lets a split fill undercut a single fill of the same size', async function () {
-            // Two takers buy the same total amount at the same auction state: one sweeps it in a single fill,
-            // the other splits it in two. The premium is superadditive under splitting, so the splitter must
-            // always pay more — otherwise takers would shred orders into parts and the penalty would price in
-            // nothing.
-            async function totalPaid (fills) {
-                const { weth, swap, order, sig, afterAuction } = await deployFilledOrder(100);
-                let paid = 0n;
-                let nextTime = afterAuction;
-                for (const makingAmount of fills) {
-                    await time.setNextBlockTimestamp(nextTime++);
-                    const before = await weth.balanceOf(taker);
-                    await fill(swap, order, sig, makingAmount);
-                    paid += before - await weth.balanceOf(taker);
-                }
-                return paid;
-            }
-
-            const single = await totalPaid([MAKING_AMOUNT / 2n]);
-            const split = await totalPaid([MAKING_AMOUNT / 4n, MAKING_AMOUNT / 4n]);
-            expect(split).to.be.greaterThan(single);
-
-            const singleFull = await totalPaid([MAKING_AMOUNT]);
-            const splitFull = await totalPaid([MAKING_AMOUNT / 2n, MAKING_AMOUNT / 2n]);
-            expect(splitFull).to.be.greaterThan(singleFull);
-        });
-
-        it('mixes the auction and the fill share while the auction is running', async function () {
-            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
-
-            const startTime = await time.latest() + 10;
-            const params = { startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), fillScalingNumerator: 100 };
-            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
-            const sig = await signature(order, chainId, swap);
-
-            const halfway = startTime + 50;
-            await time.setNextBlockTimestamp(halfway);
-            const makingAmount = MAKING_AMOUNT / 2n;
-            const fillTx = fill(swap, order, sig, makingAmount);
-
-            const expected = takingAmountFor(order, params, halfway, makingAmount, MAKING_AMOUNT);
-            // Half the auction elapsed leaves half the bump, and half of the rest is restored by the half fill.
-            expect(expected).to.equal(ceilDiv((TAKING_AMOUNT / 2n) * (BASE_POINTS + HALF_PERCENT * 3n / 4n), BASE_POINTS));
-            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
-        });
-
-        it('prices a fill by taking amount no better than an exact solution would', async function () {
-            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
-
-            const startTime = await time.latest() + 10;
-            const params = { startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), fillScalingNumerator: 100 };
-            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
-            const sig = await signature(order, chainId, swap);
-
-            const afterAuction = startTime + 200;
-            await time.setNextBlockTimestamp(afterAuction);
-            const takingAmount = TAKING_AMOUNT / 10n;
-            const fillTx = fill(swap, order, sig, takingAmount, { byMakingAmount: false });
-
-            const expected = makingAmountFor(order, params, afterAuction, takingAmount, MAKING_AMOUNT);
-            await expect(fillTx).to.changeTokenBalances(dai, [taker, maker], [expected, -expected]);
-
-            // The estimate is conservative: never more making tokens than the exact fixed point would hand out.
-            const exact = (() => {
-                let amount = expected;
-                for (let i = 0; i < 64; i++) {
-                    const rateBump = scaleByFill(0n, params, MAKING_AMOUNT, amount, MAKING_AMOUNT);
-                    amount = (order.makingAmount * takingAmount / order.takingAmount) * BASE_POINTS / (BASE_POINTS + rateBump);
-                }
-                return amount;
-            })();
-            expect(expected).to.be.lessThanOrEqual(exact);
-        });
-
-        it('applies no penalty while the curve sits above the initial bump', async function () {
-            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
-
-            const startTime = await time.latest() + 100;
-            const params = {
-                startTime,
-                duration: 100,
-                initialRateBump: Number(HALF_PERCENT),
-                fillScalingNumerator: 100,
-                points: [{ coefficient: Number(HALF_PERCENT * 2n), delay: 50 }],
-            };
-            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
-            const sig = await signature(order, chainId, swap);
-
-            // A rising curve has released no discount to withhold, so a small fill pays the curve and no more.
-            const fillTime = startTime + 25;
-            await time.setNextBlockTimestamp(fillTime);
-            const makingAmount = MAKING_AMOUNT / 10n;
-            const fillTx = fill(swap, order, sig, makingAmount);
-
-            const expected = takingAmountFor(order, params, fillTime, makingAmount, MAKING_AMOUNT);
-            expect(expected).to.equal(ceilDiv((TAKING_AMOUNT / 10n) * (BASE_POINTS + HALF_PERCENT * 3n / 2n), BASE_POINTS));
-            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
-        });
-
-        it('offsets the gas bump from the already-scaled bump', async function () {
-            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
-
-            const startTime = await time.latest() + 100;
-            const baseFee = 1000000000n; // 1 gwei, exactly the estimate below
-            const order = await buildAuctionOrder({
-                dai,
-                weth,
-                auction,
-                auctionDetails: buildAnchoredAuctionDetails({
-                    startTime,
-                    duration: 100,
-                    initialRateBump: Number(HALF_PERCENT),
-                    fillScalingNumerator: 100,
-                    gasBumpEstimate: Number(HALF_PERCENT / 2n),
-                    gasPriceEstimate: 1000,
-                }),
-            });
-            const sig = await signature(order, chainId, swap);
-
-            await hre.network.provider.send('hardhat_setNextBlockBaseFeePerGas', ['0x' + baseFee.toString(16)]);
-            await time.setNextBlockTimestamp(startTime + 200);
-            const fillTx = fill(swap, order, sig, MAKING_AMOUNT / 10n, { overrides: { gasPrice: baseFee * 2n } });
-
-            // After the auction the tenth-sized fill is scaled up to 0.9 of the initial bump and the gas bump
-            // of half the initial bump comes off that, leaving 0.4 — the ordering this contract commits to.
-            const expected = ceilDiv((TAKING_AMOUNT / 10n) * (BASE_POINTS + HALF_PERCENT * 4n / 10n), BASE_POINTS);
-            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
-        });
-
-        it('caps an oversized taking-amount fill at the remainder priced as a full fill', async function () {
-            const { dai, weth, swap, order, sig, afterAuction } = await deployFilledOrder(100);
-
-            await time.setNextBlockTimestamp(afterAuction);
-            const fillTx = fill(swap, order, sig, TAKING_AMOUNT * 2n, { byMakingAmount: false });
-
-            // The protocol caps the fill at what is left and reprices it through getTakingAmount, so the taker
-            // sweeps the order at the full-fill price instead of paying the amount they offered.
-            await expect(fillTx).to.changeTokenBalances(dai, [taker, maker], [MAKING_AMOUNT, -MAKING_AMOUNT]);
-            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-TAKING_AMOUNT, TAKING_AMOUNT]);
-        });
-
-        it('is inert for an order that forbids partial fills', async function () {
-            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
-
-            const startTime = await time.latest() + 10;
-            const auctionData = ethers.solidityPacked(
-                ['address', 'bytes'],
-                [await auction.getAddress(), buildAnchoredAuctionDetails({ startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), fillScalingNumerator: 100 })],
-            );
-            const order = buildOrder(
-                {
-                    maker: maker.address,
-                    makerAsset: await dai.getAddress(),
-                    takerAsset: await weth.getAddress(),
-                    makingAmount: MAKING_AMOUNT,
-                    takingAmount: TAKING_AMOUNT,
-                    makerTraits: buildMakerTraits({ allowPartialFill: false }),
-                },
-                { makingAmountData: auctionData, takingAmountData: auctionData },
-            );
-            const sig = await signature(order, chainId, swap);
-
-            await time.setNextBlockTimestamp(startTime + 150);
-            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n)).to.be.revertedWithCustomError(swap, 'PartialFillNotAllowed');
-
-            // The only fill such an order allows is the full one, which fill scaling prices at the plain curve.
-            await time.setNextBlockTimestamp(startTime + 151);
-            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.changeTokenBalances(
-                weth, [taker, maker], [-TAKING_AMOUNT, TAKING_AMOUNT],
-            );
-        });
-
-        it('keeps its rounding directions at dust-sized amounts', async function () {
-            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
-
-            const startTime = await time.latest() + 10;
-            const params = { startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), fillScalingNumerator: 100 };
-            const auctionData = ethers.solidityPacked(
-                ['address', 'bytes'],
-                [await auction.getAddress(), buildAnchoredAuctionDetails(params)],
-            );
-            const order = buildOrder(
-                {
-                    maker: maker.address,
-                    makerAsset: await dai.getAddress(),
-                    takerAsset: await weth.getAddress(),
-                    makingAmount: 3n,
-                    takingAmount: 1n,
-                },
-                { makingAmountData: auctionData, takingAmountData: auctionData },
-            );
-            const sig = await signature(order, chainId, swap);
-
-            // One wei of a three-wei order: the taking amount rounds up twice, so the penalized dust fill
-            // costs two wei rather than a rounded-down zero premium.
-            const fillTime = startTime + 200;
-            await time.setNextBlockTimestamp(fillTime);
-            const expected = takingAmountFor(order, params, fillTime, 1n, 3n);
-            expect(expected).to.equal(2n);
-            await expect(fill(swap, order, sig, 1n)).to.changeTokenBalances(weth, [taker, maker], [-2n, 2n]);
-
-            // A fill by taking amount rounds the making amount down and the cap reprices the sweep exactly.
-            await time.setNextBlockTimestamp(fillTime + 1);
-            await expect(fill(swap, order, sig, 1n, { byMakingAmount: false })).to.changeTokenBalances(
-                dai, [taker, maker], [2n, -2n],
-            );
-        });
-
-        it('rejects a strength above 100%', async function () {
-            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
-
-            const startTime = await time.latest() + 10;
-            const order = await buildAuctionOrder({
-                dai,
-                weth,
-                auction,
-                auctionDetails: buildAnchoredAuctionDetails({
-                    startTime,
-                    duration: 100,
-                    initialRateBump: Number(HALF_PERCENT),
-                    fillScalingNumerator: 101,
-                }),
-            });
-            const sig = await signature(order, chainId, swap);
-
-            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.be.revertedWithCustomError(auction, 'InvalidFillScalingNumerator');
         });
     });
 
@@ -1043,20 +717,20 @@ describe('FusionAnchoredAuction', function () {
 
         it('never lets any split of the order undercut a single sweep', async function () {
             const { swap, auction, order, params, afterAuction } = await deployMatrixOrder();
-            const linear = await deployMatrixOrder({ fillPremiums: undefined, fillScalingNumerator: 100 });
+            const singleRow = await deployMatrixOrder({ fillPremiums: { initial: Number(HALF_PERCENT), points: [] } });
 
             await time.setNextBlockTimestamp(afterAuction + 1000);
             await hre.network.provider.send('evm_mine');
 
             // A seeded sweep over random partitions, priced through the contract's own view methods: for
-            // both encodings, no way of slicing the order may cost less in total than one full sweep.
+            // both curve shapes, no way of slicing the order may cost less in total than one full sweep.
             let seed = 0xdead4351n;
             const nextRand = (bound) => {
                 seed = (seed * 6364136223846793005n + 1442695040888963407n) & ((1n << 64n) - 1n);
                 return seed % bound;
             };
 
-            for (const { o, p } of [{ o: order, p: params }, { o: linear.order, p: linear.params }]) {
+            for (const { o, p } of [{ o: order, p: params }, { o: singleRow.order, p: singleRow.params }]) {
                 const orderHash = await swap.hashOrder(o);
                 const extraData = buildAnchoredAuctionDetails(p);
                 const sweep = await auction.getTakingAmount(o, o.extension, orderHash, taker.address, MAKING_AMOUNT, MAKING_AMOUNT, extraData);
@@ -1167,7 +841,7 @@ describe('FusionAnchoredAuction', function () {
             await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n)).to.be.revertedWithCustomError(auction, 'AuctionExpired');
         });
 
-        it('collapses to a linear premium when the matrix has a single row', async function () {
+        it('prices a pointless curve straight from the initial premium to zero', async function () {
             const { weth, swap, order, sig, params, afterAuction } = await deployMatrixOrder({
                 fillPremiums: { initial: Number(HALF_PERCENT), points: [] },
             });
@@ -1176,7 +850,8 @@ describe('FusionAnchoredAuction', function () {
             const makingAmount = MAKING_AMOUNT / 4n;
             const fillTx = fill(swap, order, sig, makingAmount);
 
-            // A single-entry curve runs straight from the initial premium to zero, matching the linear rule.
+            // A curve with no interior points is the one-parameter schedule: the premium falls linearly
+            // from the initial value to zero at completion.
             const expected = takingAmountFor(order, params, afterAuction, makingAmount, MAKING_AMOUNT);
             expect(expected).to.equal(ceilDiv((TAKING_AMOUNT / 4n) * (BASE_POINTS + HALF_PERCENT * 3n / 4n), BASE_POINTS));
             await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
@@ -1245,25 +920,83 @@ describe('FusionAnchoredAuction', function () {
             await expect(fill(swap, order, sig, rest)).to.changeTokenBalances(weth, [taker, maker], [-completing, completing]);
         });
 
-        it('rejects an order that carries both the linear rule and a matrix', async function () {
+        it('caps an oversized taking-amount fill at the remainder priced as a full fill', async function () {
+            const { dai, weth, swap, order, sig, afterAuction } = await deployMatrixOrder();
+
+            await time.setNextBlockTimestamp(afterAuction);
+            const fillTx = fill(swap, order, sig, TAKING_AMOUNT * 2n, { byMakingAmount: false });
+
+            // The protocol caps the fill at what is left and reprices it through getTakingAmount, so the taker
+            // sweeps the order at the full-fill price instead of paying the amount they offered.
+            await expect(fillTx).to.changeTokenBalances(dai, [taker, maker], [MAKING_AMOUNT, -MAKING_AMOUNT]);
+            await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-TAKING_AMOUNT, TAKING_AMOUNT]);
+        });
+
+        it('is inert for an order that forbids partial fills', async function () {
             const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
 
             const startTime = await time.latest() + 10;
-            const order = await buildAuctionOrder({
-                dai,
-                weth,
-                auction,
-                auctionDetails: buildAnchoredAuctionDetails({
-                    startTime,
-                    duration: 100,
-                    initialRateBump: Number(HALF_PERCENT),
-                    fillScalingNumerator: 100,
-                    fillPremiums: { initial: 100_000, points: [] },
-                }),
-            });
+            const auctionData = ethers.solidityPacked(
+                ['address', 'bytes'],
+                [await auction.getAddress(), buildAnchoredAuctionDetails({ startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), fillPremiums: FILL_PREMIUMS })],
+            );
+            const order = buildOrder(
+                {
+                    maker: maker.address,
+                    makerAsset: await dai.getAddress(),
+                    takerAsset: await weth.getAddress(),
+                    makingAmount: MAKING_AMOUNT,
+                    takingAmount: TAKING_AMOUNT,
+                    makerTraits: buildMakerTraits({ allowPartialFill: false }),
+                },
+                { makingAmountData: auctionData, takingAmountData: auctionData },
+            );
             const sig = await signature(order, chainId, swap);
 
-            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.be.revertedWithCustomError(auction, 'ConflictingFillPricing');
+            await time.setNextBlockTimestamp(startTime + 150);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n)).to.be.revertedWithCustomError(swap, 'PartialFillNotAllowed');
+
+            // The only fill such an order allows is the full one, which the curve prices at the plain rate.
+            await time.setNextBlockTimestamp(startTime + 151);
+            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.changeTokenBalances(
+                weth, [taker, maker], [-TAKING_AMOUNT, TAKING_AMOUNT],
+            );
+        });
+
+        it('keeps its rounding directions at dust-sized amounts', async function () {
+            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
+
+            const startTime = await time.latest() + 10;
+            const params = { startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), fillPremiums: FILL_PREMIUMS };
+            const auctionData = ethers.solidityPacked(
+                ['address', 'bytes'],
+                [await auction.getAddress(), buildAnchoredAuctionDetails(params)],
+            );
+            const order = buildOrder(
+                {
+                    maker: maker.address,
+                    makerAsset: await dai.getAddress(),
+                    takerAsset: await weth.getAddress(),
+                    makingAmount: 3n,
+                    takingAmount: 1n,
+                },
+                { makingAmountData: auctionData, takingAmountData: auctionData },
+            );
+            const sig = await signature(order, chainId, swap);
+
+            // One wei of a three-wei order: the taking amount rounds up twice, so the penalized dust fill
+            // costs two wei rather than a rounded-down zero premium.
+            const fillTime = startTime + 200;
+            await time.setNextBlockTimestamp(fillTime);
+            const expected = takingAmountFor(order, params, fillTime, 1n, 3n);
+            expect(expected).to.equal(2n);
+            await expect(fill(swap, order, sig, 1n)).to.changeTokenBalances(weth, [taker, maker], [-2n, 2n]);
+
+            // A fill by taking amount rounds the making amount down and the cap reprices the sweep exactly.
+            await time.setNextBlockTimestamp(fillTime + 1);
+            await expect(fill(swap, order, sig, 1n, { byMakingAmount: false })).to.changeTokenBalances(
+                dai, [taker, maker], [2n, -2n],
+            );
         });
     });
 
@@ -1305,7 +1038,12 @@ describe('FusionAnchoredAuction', function () {
                 dai,
                 weth,
                 auction,
-                auctionDetails: buildAnchoredAuctionDetails({ startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), fillScalingNumerator: 100 }),
+                auctionDetails: buildAnchoredAuctionDetails({
+                    startTime,
+                    duration: 100,
+                    initialRateBump: Number(HALF_PERCENT),
+                    fillPremiums: { initial: Number(HALF_PERCENT), points: [] },
+                }),
             });
             const sig = await signature(order, chainId, swap);
 
@@ -1323,7 +1061,7 @@ describe('FusionAnchoredAuction', function () {
             const startTime = await time.latest() + 100;
             const modes = [];
             for (const extra of [
-                { fillScalingNumerator: 100 },
+                { fillPremiums: { initial: Number(HALF_PERCENT), points: [] } },
                 { fillPremiums: { initial: 400_000, points: [{ premium: 150_000, shareDelta: 3000 }, { premium: 30_000, shareDelta: 4000 }] } },
             ]) {
                 const params = { startTime, duration: 100, initialRateBump: Number(HALF_PERCENT), ...extra };
@@ -1333,7 +1071,7 @@ describe('FusionAnchoredAuction', function () {
 
             // Sample the whole surface: before, during and after the auction, random fill sizes and random
             // remainders. The rate bump only ever moves the price against the taker, so the maker's floor —
-            // the plain proportional rate — must hold everywhere, in both directions and both encodings.
+            // the plain proportional rate — must hold everywhere, in both directions and both curve shapes.
             await time.setNextBlockTimestamp(startTime + 150);
             await hre.network.provider.send('evm_mine');
 
@@ -1714,7 +1452,13 @@ describe('FusionAnchoredAuction', function () {
             await settlement.waitForDeployment();
 
             const resolverFee = 1000n; // 1% in 1e5
-            const auctionParams = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 10, fillScalingNumerator: 100 };
+            const auctionParams = {
+                startTime: 0,
+                duration: 100,
+                initialRateBump: Number(HALF_PERCENT),
+                startDelay: 10,
+                fillPremiums: { initial: Number(HALF_PERCENT), points: [] },
+            };
             const auctionTail = ethers.solidityPacked(
                 ['address', 'bytes'],
                 [await auction.getAddress(), buildAnchoredAuctionDetails(auctionParams)],

@@ -47,15 +47,6 @@ function auctionBumpAt (timestamp, { startTime, duration, initialRateBump, point
     return (finish - now) * currentRateBump / (finish - currentPointTime);
 }
 
-/** Mirrors FusionAnchoredAuction._scaleByFill. */
-function scaleByFill (rateBump, { initialRateBump, fillScalingNumerator = 0 }, orderMakingAmount, makingAmount, remainingMakingAmount) {
-    const initial = BigInt(initialRateBump);
-    const k = BigInt(fillScalingNumerator);
-    if (k === 0n || makingAmount >= remainingMakingAmount || initial <= rateBump) return rateBump;
-    const unreleasedBump = (initial - rateBump) * (remainingMakingAmount - makingAmount) / orderMakingAmount;
-    return rateBump + unreleasedBump * k / 100n;
-}
-
 const SHARE_BASE = 10_000n;
 
 /** Mirrors FusionAnchoredAuction._fillPremium. */
@@ -79,11 +70,8 @@ function fillPremiumAt (orderMakingAmount, makingAmount, remainingMakingAmount, 
 
 /** Mirrors FusionAnchoredAuction._rateBumpForFill. */
 function rateBumpForFill (rateBump, auction, orderMakingAmount, makingAmount, remainingMakingAmount) {
-    if (auction.fillPremiums) {
-        if (makingAmount >= remainingMakingAmount) return rateBump;
-        return rateBump + fillPremiumAt(orderMakingAmount, makingAmount, remainingMakingAmount, auction.fillPremiums);
-    }
-    return scaleByFill(rateBump, auction, orderMakingAmount, makingAmount, remainingMakingAmount);
+    if (!auction.fillPremiums || makingAmount >= remainingMakingAmount) return rateBump;
+    return rateBump + fillPremiumAt(orderMakingAmount, makingAmount, remainingMakingAmount, auction.fillPremiums);
 }
 
 /** Taking amount a fill by making amount is priced at. */
@@ -98,11 +86,9 @@ function makingAmountFor (order, auction, timestamp, takingAmount, remainingMaki
     const bump = auctionBumpAt(timestamp, auction);
     const unbumped = order.makingAmount * takingAmount / order.takingAmount;
     let rateBump = bump;
-    if (auction.fillScalingNumerator || auction.fillPremiums) {
+    if (auction.fillPremiums) {
         // Premium curves are enforced non-increasing, so the initial premium is the worst one.
-        const worstRateBump = auction.fillPremiums
-            ? bump + BigInt(auction.fillPremiums.initial)
-            : scaleByFill(bump, auction, order.makingAmount, 0n, remainingMakingAmount);
+        const worstRateBump = bump + BigInt(auction.fillPremiums.initial);
         const estimate = unbumped * BASE_POINTS / (BASE_POINTS + worstRateBump);
         rateBump = rateBumpForFill(bump, auction, order.makingAmount, estimate, remainingMakingAmount);
     }
@@ -117,7 +103,6 @@ module.exports = {
     auctionBumpAt,
     buildLegacyAuctionDetails,
     fillPremiumAt,
-    scaleByFill,
     takingAmountFor,
     makingAmountFor,
 };

@@ -40,20 +40,16 @@ import { AmountGetterBase } from "./AmountGetterBase.sol";
 contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
     uint256 private constant _BASE_POINTS = 10_000_000; // 100%
     uint256 private constant _GAS_PRICE_BASE = 1_000_000; // 1000 means 1 Gwei
-    uint256 private constant _BASE_1E2 = 100;
 
     /// @dev Derive the auction start from the announcement instead of the timestamp baked into the order.
     bytes1 private constant _ANCHORED_FLAG = 0x01;
-    /// @dev Price a fill by how much of the order it leaves unfilled, linearly.
-    bytes1 private constant _FILL_SCALED_FLAG = 0x02;
+    /// @dev Price a fill by a piecewise premium curve over the order's volume ladder.
+    bytes1 private constant _FILL_CURVE_FLAG = 0x02;
     /// @dev Stop the order being fillable some time after its auction ends.
     bytes1 private constant _POST_AUCTION_DEADLINE_FLAG = 0x04;
-    /// @dev Price a fill by a piecewise premium curve over the order's volume ladder.
-    bytes1 private constant _FILL_CURVE_FLAG = 0x08;
 
     /// @dev Exclusivity-blob flag: stop the order being fillable some time after its announcement.
-    /// Lives in the post-interaction's own flag byte; 0x02 is reserved there to keep the numbering
-    /// clear of the auction's fill-scaled slot.
+    /// Lives in the post-interaction's own flag byte.
     bytes1 private constant _ANNOUNCEMENT_DEADLINE_FLAG = 0x04;
 
     /// @dev Fill shares are measured in 1e4.
@@ -65,24 +61,12 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
     error AuctionExpired();
     /// @dev The taker may not fill the order yet.
     error AllowedTimeViolation();
-    /// @dev Fill scaling is expressed in 1e2 and cannot exceed 100%.
-    error InvalidFillScalingNumerator();
-    /// @dev The linear rule and the premium curve cannot price the same order.
-    error ConflictingFillPricing();
     /// @dev A premium that rises along the volume ladder would reward splitting a fill.
     error NonMonotonicFillCurve();
     /// @dev A flag was set that only means something in combination with another, absent one.
     error InvalidFlagCombination();
 
     IOrderRegistrator private immutable _ORDER_REGISTRATOR;
-
-    /// @dev State parsed out of the auction details, in the form the rate bump is computed from.
-    struct AuctionState {
-        uint256 auctionBump;
-        uint256 initialRateBump;
-        uint256 gasBump;
-        uint256 fillScalingNumerator;
-    }
 
     /**
      * @notice Initializes the contract.
@@ -196,20 +180,18 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
         uint256 remainingMakingAmount,
         bytes calldata extraData
     ) internal view override returns (uint256) {
-        (AuctionState memory state, bytes calldata fillCurve, bytes calldata tail) = _parseAuctionDetails(extraData, orderHash);
+        (uint256 auctionBump, uint256 gasBump, bytes calldata fillCurve, bytes calldata tail) = _parseAuctionDetails(extraData, orderHash);
         uint256 unbumpedAmount = super._getMakingAmount(order, extension, orderHash, taker, takingAmount, remainingMakingAmount, tail);
 
-        uint256 rateBump = state.auctionBump;
-        if (state.fillScalingNumerator != 0 || fillCurve.length != 0) {
+        uint256 rateBump = auctionBump;
+        if (fillCurve.length != 0) {
             // The curve is enforced non-increasing, so its initial premium is the worst it can price at.
-            uint256 worstRateBump = fillCurve.length != 0
-                ? state.auctionBump + uint24(bytes3(fillCurve[0:3]))
-                : _scaleByFill(state, order.makingAmount, 0, remainingMakingAmount);
-            uint256 estimatedMakingAmount = Math.mulDiv(unbumpedAmount, _BASE_POINTS, _BASE_POINTS + _applyGasBump(worstRateBump, state.gasBump));
-            rateBump = _rateBumpForFill(state, fillCurve, order.makingAmount, estimatedMakingAmount, remainingMakingAmount);
+            uint256 worstRateBump = auctionBump + uint24(bytes3(fillCurve[0:3]));
+            uint256 estimatedMakingAmount = Math.mulDiv(unbumpedAmount, _BASE_POINTS, _BASE_POINTS + _applyGasBump(worstRateBump, gasBump));
+            rateBump = _rateBumpForFill(auctionBump, fillCurve, order.makingAmount, estimatedMakingAmount, remainingMakingAmount);
         }
 
-        return Math.mulDiv(unbumpedAmount, _BASE_POINTS, _BASE_POINTS + _applyGasBump(rateBump, state.gasBump));
+        return Math.mulDiv(unbumpedAmount, _BASE_POINTS, _BASE_POINTS + _applyGasBump(rateBump, gasBump));
     }
 
     /**
@@ -224,8 +206,8 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
         uint256 remainingMakingAmount,
         bytes calldata extraData
     ) internal view override returns (uint256) {
-        (AuctionState memory state, bytes calldata fillCurve, bytes calldata tail) = _parseAuctionDetails(extraData, orderHash);
-        uint256 rateBump = _applyGasBump(_rateBumpForFill(state, fillCurve, order.makingAmount, makingAmount, remainingMakingAmount), state.gasBump);
+        (uint256 auctionBump, uint256 gasBump, bytes calldata fillCurve, bytes calldata tail) = _parseAuctionDetails(extraData, orderHash);
+        uint256 rateBump = _applyGasBump(_rateBumpForFill(auctionBump, fillCurve, order.makingAmount, makingAmount, remainingMakingAmount), gasBump);
         return Math.mulDiv(
             super._getTakingAmount(order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail),
             _BASE_POINTS + rateBump,
@@ -246,7 +228,6 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
      *     bytes3 auctionDuration;
      *     bytes3 initialRateBump;
      *     bytes3 auctionStartDelay;      // present when the anchored flag is set
-     *     bytes1 fillScalingNumerator;   // present when the fill scaled flag is set
      *     bytes3 postAuctionWindow;      // present when the post auction deadline flag is set
      *     FillCurve fillCurve;           // present when the fill curve flag is set
      *     bytes1 pointsCount;
@@ -261,13 +242,12 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
      * ```
      * An anchored auction starts at the later of its announcement plus the start delay and the timestamp
      * baked into the order, so a maker may still ask for an auction that begins some time after it announces.
-     * The linear rule and the premium curve are two encodings of the same feature, so an order may carry
-     * only one of them.
-     * @return state The parsed auction.
+     * @return auctionBump The time curve's rate bump at the current moment.
+     * @return gasBump The rate-bump offset estimating the taker's transaction costs.
      * @return fillCurve The premium curve over fill shares, empty when the order does not carry one.
      * @return tail Remaining calldata after the auction.
      */
-    function _parseAuctionDetails(bytes calldata auctionDetails, bytes32 orderHash) private view returns (AuctionState memory state, bytes calldata fillCurve, bytes calldata tail) {
+    function _parseAuctionDetails(bytes calldata auctionDetails, bytes32 orderHash) private view returns (uint256 auctionBump, uint256 gasBump, bytes calldata fillCurve, bytes calldata tail) {
         unchecked {
             bytes1 flags = auctionDetails[0];
             uint256 gasBumpEstimate = uint24(bytes3(auctionDetails[1:4]));
@@ -281,14 +261,6 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
                 uint256 anchoredStartTime = _announcedAt(orderHash) + uint24(bytes3(auctionDetails[offset:offset + 3]));
                 offset += 3;
                 if (anchoredStartTime > auctionStartTime) auctionStartTime = anchoredStartTime;
-            }
-
-            if (flags & _FILL_SCALED_FLAG != 0) {
-                if (flags & _FILL_CURVE_FLAG != 0) revert ConflictingFillPricing();
-                uint256 fillScalingNumerator = uint8(auctionDetails[offset]);
-                offset += 1;
-                if (fillScalingNumerator > _BASE_1E2) revert InvalidFillScalingNumerator();
-                state.fillScalingNumerator = fillScalingNumerator;
             }
 
             uint256 auctionFinishTime = auctionStartTime + auctionDuration;
@@ -308,22 +280,19 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
                 fillCurve = auctionDetails[0:0];
             }
 
-            state.gasBump = gasBumpEstimate == 0 || gasPriceEstimate == 0 ? 0 : gasBumpEstimate * block.basefee / gasPriceEstimate / _GAS_PRICE_BASE;
-            state.initialRateBump = initialRateBump;
-            (state.auctionBump, tail) = _getAuctionBump(auctionStartTime, auctionFinishTime, initialRateBump, auctionDetails[offset:]);
+            gasBump = gasBumpEstimate == 0 || gasPriceEstimate == 0 ? 0 : gasBumpEstimate * block.basefee / gasPriceEstimate / _GAS_PRICE_BASE;
+            (auctionBump, tail) = _getAuctionBump(auctionStartTime, auctionFinishTime, initialRateBump, auctionDetails[offset:]);
         }
     }
 
     /**
-     * @dev Routes a fill to whichever share-dependent pricing the order carries, or to the plain curve.
+     * @dev The rate bump a fill is priced at: the time curve's bump, plus the fill premium for a fill
+     * that leaves part of the order behind. A completing fill never reads the curve.
      */
-    function _rateBumpForFill(AuctionState memory state, bytes calldata fillCurve, uint256 orderMakingAmount, uint256 makingAmount, uint256 remainingMakingAmount) private pure returns (uint256) {
+    function _rateBumpForFill(uint256 auctionBump, bytes calldata fillCurve, uint256 orderMakingAmount, uint256 makingAmount, uint256 remainingMakingAmount) private pure returns (uint256) {
         unchecked {
-            if (fillCurve.length != 0) {
-                if (makingAmount >= remainingMakingAmount) return state.auctionBump;
-                return state.auctionBump + _fillPremium(orderMakingAmount, makingAmount, remainingMakingAmount, fillCurve);
-            }
-            return _scaleByFill(state, orderMakingAmount, makingAmount, remainingMakingAmount);
+            if (fillCurve.length == 0 || makingAmount >= remainingMakingAmount) return auctionBump;
+            return auctionBump + _fillPremium(orderMakingAmount, makingAmount, remainingMakingAmount, fillCurve);
         }
     }
 
@@ -367,38 +336,6 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
                 points = points[5:];
             }
             return (_SHARE_BASE - share) * currentPremium / (_SHARE_BASE - currentShare);
-        }
-    }
-
-    /**
-     * @dev Prices a fill by where its cumulative end lands on the order's volume: a fill that leaves a
-     * share `u` of the order unfilled keeps that share of the auction's released discount withheld, which
-     * is worse for the taker the less of the order its fill completes.
-     *
-     * ```
-     * effectiveBump = auctionBump + (initialRateBump - auctionBump) * u * fillScalingNumerator
-     * u = (remainingMakingAmount - makingAmount) / order.makingAmount
-     * ```
-     *
-     * Successive fills therefore walk down the ladder — each pays less premium than the one before — and
-     * whoever completes the order, in one sweep or as the last of many fills, pays the plain auction price.
-     * @param orderMakingAmount The order's original making amount, the ladder the premium is drawn over.
-     * @param makingAmount The making amount of this fill.
-     * @param remainingMakingAmount The making amount left on the order before this fill.
-     * @return The rate bump this fill is priced at, before gas costs are offset.
-     */
-    function _scaleByFill(AuctionState memory state, uint256 orderMakingAmount, uint256 makingAmount, uint256 remainingMakingAmount) private pure returns (uint256) {
-        unchecked {
-            uint256 rateBump = state.auctionBump;
-            if (state.fillScalingNumerator == 0 || makingAmount >= remainingMakingAmount || state.initialRateBump <= rateBump) {
-                return rateBump;
-            }
-            uint256 unreleasedBump = Math.mulDiv(
-                state.initialRateBump - rateBump,
-                remainingMakingAmount - makingAmount,
-                orderMakingAmount
-            );
-            return rateBump + unreleasedBump * state.fillScalingNumerator / _BASE_1E2;
         }
     }
 

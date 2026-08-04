@@ -107,7 +107,13 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
     }
 
     it('prices an announced order through the live router', async function () {
-        const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 10, fillScalingNumerator: 100 };
+        const params = {
+            startTime: 0,
+            duration: 100,
+            initialRateBump: Number(HALF_PERCENT),
+            startDelay: 10,
+            fillPremiums: { initial: Number(HALF_PERCENT), points: [] },
+        };
         const auctionData = ethers.solidityPacked(
             ['address', 'bytes'],
             [await auction.getAddress(), buildAnchoredAuctionDetails(params)],
@@ -351,7 +357,13 @@ describe('FusionAnchoredAuction (mainnet fork)', function () {
         await dai.connect(maker).approve(delegatedMaker, MAKING_AMOUNT);
         await delegatedMaker.approveRouter(MAINNET.dai);
 
-        const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 0, fillScalingNumerator: 100 };
+        const params = {
+            startTime: 0,
+            duration: 100,
+            initialRateBump: Number(HALF_PERCENT),
+            startDelay: 0,
+            fillPremiums: { initial: Number(HALF_PERCENT), points: [] },
+        };
         const auctionTail = ethers.solidityPacked(
             ['address', 'bytes'],
             [await auction.getAddress(), buildAnchoredAuctionDetails(params)],
