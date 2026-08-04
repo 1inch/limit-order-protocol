@@ -455,9 +455,16 @@ describe('FusionAnchoredAuction', function () {
                 initialRateBump: Number(HALF_PERCENT),
                 startDelay: 10,
                 fillPremiums: { initial: Number(HALF_PERCENT), points: [] },
-                postAuctionWindow: 60,
             };
-            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
+            const order = await buildAuctionOrder({
+                dai,
+                weth,
+                auction,
+                auctionDetails: buildAnchoredAuctionDetails(params),
+                // The fill-by deadline rides in the post-interaction blob: an anchored exclusivity with
+                // an empty whitelist is exactly "a deadline without exclusivity".
+                exclusivity: buildAnchoredExclusivity({ allowedTimeDelay: 0, announcementDeadlineDelay: 170, whitelist: [] }),
+            });
             const sig = await signature(order, chainId, swap);
             const announcedAt = await announce(registrator, order);
             const resolved = { ...params, startTime: announcedAt + params.startDelay };
@@ -478,7 +485,7 @@ describe('FusionAnchoredAuction', function () {
                 .to.changeTokenBalances(dai, [taker, maker], [secondExpected, -secondExpected]);
 
             // And past the anchored deadline nothing fills at all.
-            await time.setNextBlockTimestamp(announcedAt + params.startDelay + params.duration + params.postAuctionWindow + 1);
+            await time.setNextBlockTimestamp(announcedAt + 170 + 1);
             await expect(fill(swap, order, sig, MAKING_AMOUNT / 10n)).to.be.revertedWithCustomError(auction, 'AuctionExpired');
         });
 
@@ -535,52 +542,6 @@ describe('FusionAnchoredAuction', function () {
             // Still the top of the curve rather than the floor price an unanchored order would have decayed to.
             const expected = ceilDiv(TAKING_AMOUNT * (BASE_POINTS + HALF_PERCENT), BASE_POINTS);
             await expect(fillTx).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
-        });
-    });
-
-    describe('post-auction deadline', function () {
-        const params = { startTime: 0, duration: 100, initialRateBump: Number(HALF_PERCENT), startDelay: 0, postAuctionWindow: 60 };
-
-        it('allows a fill up to the very last second of the window', async function () {
-            const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
-
-            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
-            const sig = await signature(order, chainId, swap);
-            const announcedAt = await announce(registrator, order);
-
-            await time.setNextBlockTimestamp(announcedAt + params.duration + params.postAuctionWindow);
-            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.changeTokenBalances(
-                weth, [taker, maker], [-TAKING_AMOUNT, TAKING_AMOUNT],
-            );
-        });
-
-        it('reverts once the window has passed', async function () {
-            const { dai, weth, swap, chainId, registrator, auction } = await loadFixture(deployContractsAndInit);
-
-            const order = await buildAuctionOrder({ dai, weth, auction, auctionDetails: buildAnchoredAuctionDetails(params) });
-            const sig = await signature(order, chainId, swap);
-            const announcedAt = await announce(registrator, order);
-
-            await time.setNextBlockTimestamp(announcedAt + params.duration + params.postAuctionWindow + 1);
-            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.be.revertedWithCustomError(auction, 'AuctionExpired');
-        });
-
-        it('leaves an order without the deadline fillable indefinitely', async function () {
-            const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
-
-            const startTime = await time.latest() + 10;
-            const order = await buildAuctionOrder({
-                dai,
-                weth,
-                auction,
-                auctionDetails: buildAnchoredAuctionDetails({ startTime, duration: 100, initialRateBump: Number(HALF_PERCENT) }),
-            });
-            const sig = await signature(order, chainId, swap);
-
-            await time.setNextBlockTimestamp(startTime + 100000);
-            await expect(fill(swap, order, sig, MAKING_AMOUNT)).to.changeTokenBalances(
-                weth, [taker, maker], [-TAKING_AMOUNT, TAKING_AMOUNT],
-            );
         });
     });
 
@@ -820,25 +781,21 @@ describe('FusionAnchoredAuction', function () {
             expect(expected).to.be.lessThanOrEqual(exact);
         });
 
-        it('works alongside anchoring and the post-auction deadline', async function () {
-            const { weth, swap, registrator, auction, order, sig, params } = await deployMatrixOrder({
+        it('works alongside anchoring', async function () {
+            const { weth, swap, registrator, order, sig, params } = await deployMatrixOrder({
                 startTime: 0,
                 startDelay: 10,
-                postAuctionWindow: 60,
             });
 
             const announcedAt = await announce(registrator, order);
             const resolved = { ...params, startTime: announcedAt + 10 };
 
-            const fillTime = announcedAt + 120; // past the anchored auction, inside the deadline window
+            const fillTime = announcedAt + 120; // past the anchored auction
             await time.setNextBlockTimestamp(fillTime);
             const makingAmount = MAKING_AMOUNT / 2n;
             const expected = takingAmountFor(order, resolved, fillTime, makingAmount, MAKING_AMOUNT);
             expect(expected).to.equal(ceilDiv((TAKING_AMOUNT / 2n) * (BASE_POINTS + BigInt(MATRIX[4])), BASE_POINTS));
             await expect(fill(swap, order, sig, makingAmount)).to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
-
-            await time.setNextBlockTimestamp(announcedAt + 10 + 100 + 60 + 1);
-            await expect(fill(swap, order, sig, MAKING_AMOUNT / 2n)).to.be.revertedWithCustomError(auction, 'AuctionExpired');
         });
 
         it('prices a pointless curve straight from the initial premium to zero', async function () {

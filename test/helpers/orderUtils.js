@@ -36,9 +36,8 @@ const _UNWRAP_WETH_FLAG = 247n;
 // FusionAnchoredAuction feature flags
 const ANCHORED_FLAG = 0x01n;
 const FILL_CURVE_FLAG = 0x02n;
-const POST_AUCTION_DEADLINE_FLAG = 0x04n;
 // Exclusivity-blob flag namespace: 0x01 is shared with ANCHORED_FLAG.
-const ANNOUNCEMENT_DEADLINE_FLAG = 0x04n;
+const ANNOUNCEMENT_DEADLINE_FLAG = 0x02n;
 
 const TakerTraitsConstants = {
     _MAKER_AMOUNT_FLAG: 1n << 255n,
@@ -180,7 +179,6 @@ function buildAnchoredAuctionDetails ({
     duration = 0,
     initialRateBump = 0,
     startDelay = undefined,
-    postAuctionWindow = undefined,
     fillPremiums = undefined,
     points = [],
 } = {}) {
@@ -192,11 +190,6 @@ function buildAnchoredAuctionDetails ({
         flags |= ANCHORED_FLAG;
         types.push('uint24');
         values.push(startDelay);
-    }
-    if (postAuctionWindow !== undefined) {
-        flags |= POST_AUCTION_DEADLINE_FLAG;
-        types.push('uint24');
-        values.push(postAuctionWindow);
     }
     if (fillPremiums !== undefined) {
         flags |= FILL_CURVE_FLAG;
