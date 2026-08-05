@@ -88,6 +88,22 @@ describe('OrderRegistrator', function () {
             expect(await registrator.announcedAt(await swap.hashOrder(order))).to.equal(0);
         });
 
+        it('should return the protocol order hash and whether the registration was the first', async function () {
+            const { usdc, usdt, swap, registrator } = await loadFixture(deployAndInit);
+            const order = await buildTestOrder(usdc, usdt);
+
+            // The hash is computed locally from the ERC-5267 domain captured at construction, so it
+            // must match the protocol's own to the bit — everything downstream is keyed by it.
+            const [orderHash, first] = await registrator.registerOrder.staticCall(order, order.extension);
+            expect(orderHash).to.equal(await swap.hashOrder(order));
+            expect(first).to.be.true;
+
+            await registrator.registerOrder(order, order.extension);
+            const [repeatHash, repeatFirst] = await registrator.registerOrder.staticCall(order, order.extension);
+            expect(repeatHash).to.equal(orderHash);
+            expect(repeatFirst).to.be.false;
+        });
+
         it('should keep the first announcement when the same order is registered again', async function () {
             const { usdc, usdt, swap, registrator } = await loadFixture(deployAndInit);
             const order = await buildTestOrder(usdc, usdt);

@@ -960,6 +960,62 @@ describe('FusionAnchoredAuction', function () {
         });
     });
 
+    describe('full-width amounts', function () {
+        // The fixed-point scaling takes a guarded fast path for amounts below 2**128 and falls back to
+        // full-width mulDiv above it. These pin the fallback branches — unreachable through fills of any
+        // realistic order — against the same exact formula the fast path uses, straddling the boundary.
+        const BUMP = HALF_PERCENT;
+        // The auction has not started yet, so the bump is exactly the initial one and no clock is read.
+        const params = { startTime: 4000000000, duration: 100, initialRateBump: Number(BUMP) };
+
+        async function priceHugeOrder (auction, swap, orderFields, method, amount, remaining, extraParams = params) {
+            const order = buildOrder({ maker: maker.address, ...orderFields });
+            return auction[method](
+                order, order.extension, await swap.hashOrder(order), taker.address,
+                amount, remaining, buildAnchoredAuctionDetails(extraParams),
+            );
+        }
+
+        it('prices a taking amount past 2**128 through the full-width fallback', async function () {
+            const { dai, weth, swap, auction } = await loadFixture(deployContractsAndInit);
+            const fields = { makerAsset: await dai.getAddress(), takerAsset: await weth.getAddress(), makingAmount: 1n << 127n, takingAmount: 1n << 128n };
+
+            // The full fill's base taking amount is exactly 2**128, one past the fast path's ceiling.
+            const fallback = await priceHugeOrder(auction, swap, fields, 'getTakingAmount', 1n << 127n, 1n << 127n);
+            expect(fallback).to.equal(ceilDiv((1n << 128n) * (BASE_POINTS + BUMP), BASE_POINTS));
+
+            // One making-amount step down, the base lands at 2**128 - 2 and the fast path prices it —
+            // by the identical formula.
+            const fast = await priceHugeOrder(auction, swap, fields, 'getTakingAmount', (1n << 127n) - 1n, 1n << 127n);
+            expect(fast).to.equal(ceilDiv(((1n << 128n) - 2n) * (BASE_POINTS + BUMP), BASE_POINTS));
+        });
+
+        it('prices a making amount past 2**128 through the full-width fallback', async function () {
+            const { dai, weth, swap, auction } = await loadFixture(deployContractsAndInit);
+            const fields = { makerAsset: await dai.getAddress(), takerAsset: await weth.getAddress(), makingAmount: 1n << 128n, takingAmount: 1n << 127n };
+
+            const fallback = await priceHugeOrder(auction, swap, fields, 'getMakingAmount', 1n << 127n, 1n << 128n);
+            expect(fallback).to.equal((1n << 128n) * BASE_POINTS / (BASE_POINTS + BUMP));
+
+            const fast = await priceHugeOrder(auction, swap, fields, 'getMakingAmount', (1n << 127n) - 1n, 1n << 128n);
+            expect(fast).to.equal(((1n << 128n) - 2n) * BASE_POINTS / (BASE_POINTS + BUMP));
+        });
+
+        it('measures a cumulative fill share past 2**128 through the full-width fallback', async function () {
+            const { dai, weth, swap, auction } = await loadFixture(deployContractsAndInit);
+            const curveParams = { ...params, fillPremiums: { initial: Number(BUMP), points: [] } };
+            // The taking side stays tiny so the share computation is the only branch near the boundary.
+            const fields = { makerAsset: await dai.getAddress(), takerAsset: await weth.getAddress(), makingAmount: 1n << 129n, takingAmount: 1n << 100n };
+
+            // A partial fill whose cumulative end is 2**128 of a 2**129 order: the share is measured
+            // through the fallback as exactly half the ladder, so the single-row premium reads half its
+            // initial value on top of the time curve's bump.
+            const taking = await priceHugeOrder(auction, swap, fields, 'getTakingAmount', 1n << 128n, 1n << 129n, curveParams);
+            const base = ceilDiv((1n << 128n) * (1n << 100n), 1n << 129n);
+            expect(taking).to.equal(ceilDiv(base * (BASE_POINTS + BUMP + BUMP / 2n), BASE_POINTS));
+        });
+    });
+
     describe('adversarial fills', function () {
         it('rejects a taker who swaps in cheaper auction bytes', async function () {
             const { dai, weth, swap, chainId, auction } = await loadFixture(deployContractsAndInit);
