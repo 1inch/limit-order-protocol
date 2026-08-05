@@ -39,6 +39,10 @@ async function withTrace (tracer, fn, level = 1) {
     }
 }
 
+// hardhat-tracer's recorder lives in the main process, so under mocha's parallel workers
+// (`hardhat test --parallel`) it collects nothing and findTrace has no trace to return.
+const tracingAvailable = () => process.env.MOCHA_WORKER_ID === undefined;
+
 // findTrace(tracer, 'CALL', exchange.address)
 function findTrace (tracer, opcode, address) {
     return tracer.allTraces().filter(
@@ -131,6 +135,7 @@ module.exports = {
     calculateGasUsed,
     withTrace,
     findTrace,
+    tracingAvailable,
     flattenTree,
     countAllItems,
     treeForEach,
