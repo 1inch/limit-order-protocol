@@ -30,6 +30,9 @@ interface IOrderRegistrator {
      * emits {OrderAnnounced}, and a repeated call is a silent success that changes nothing.
      * @param order The order to be registered.
      * @param extension The extension data associated with the order.
+     * @return orderHash The protocol's EIP-712 hash of the order — the key everything downstream reads.
+     * @return firstRegistration True when this call wrote the announcement, false for a silent repeat,
+     * so contract callers can enforce first-registration semantics without a separate lookup.
      */
     function registerOrder(IOrderMixin.Order calldata order, bytes calldata extension) external returns (bytes32 orderHash, bool firstRegistration);
 

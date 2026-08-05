@@ -17,7 +17,7 @@ which is the sole authentication. Fill authorization is carried separately by ea
 ### registerOrder
 
 ```solidity
-function registerOrder(struct IOrderMixin.Order order, bytes extension) external
+function registerOrder(struct IOrderMixin.Order order, bytes extension) external returns (bytes32 orderHash, bool firstRegistration)
 ```
 Registers an order. Callable only by the order's maker; reverts for any other sender.
 Registration is idempotent: the first successful call records the announcement timestamp and
@@ -29,6 +29,13 @@ emits {OrderAnnounced}, and a repeated call is a silent success that changes not
 | ---- | ---- | ----------- |
 | order | struct IOrderMixin.Order | The order to be registered. |
 | extension | bytes | The extension data associated with the order. |
+
+#### Return Values
+
+| Name | Type | Description |
+| ---- | ---- | ----------- |
+orderHash | bytes32 | The protocol's EIP-712 hash of the order — the key everything downstream reads. |
+firstRegistration | bool | True when this call wrote the announcement, false for a silent repeat, so contract callers can enforce first-registration semantics without a separate lookup. |
 
 ### announcedAt
 

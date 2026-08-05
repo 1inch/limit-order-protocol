@@ -30,7 +30,7 @@ constructor(contract IOrderMixin limitOrderProtocol) public
 ### registerOrder
 
 ```solidity
-function registerOrder(struct IOrderMixin.Order order, bytes extension) external
+function registerOrder(struct IOrderMixin.Order order, bytes extension) external returns (bytes32 orderHash, bool firstRegistration)
 ```
 See {IOrderRegistrator-registerOrder}.
 
