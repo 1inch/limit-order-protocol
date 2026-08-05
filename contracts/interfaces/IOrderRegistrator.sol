@@ -31,7 +31,7 @@ interface IOrderRegistrator {
      * @param order The order to be registered.
      * @param extension The extension data associated with the order.
      */
-    function registerOrder(IOrderMixin.Order calldata order, bytes calldata extension) external;
+    function registerOrder(IOrderMixin.Order calldata order, bytes calldata extension) external returns (bytes32 orderHash, bool firstRegistration);
 
     /**
      * @notice Returns the block timestamp of the first registration of an order.

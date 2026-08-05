@@ -3,6 +3,7 @@
 pragma solidity 0.8.30;
 
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import { IERC5267 } from "@openzeppelin/contracts/interfaces/IERC5267.sol";
 import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
 import { SafeERC20, IERC20 } from "@1inch/solidity-utils/contracts/libraries/SafeERC20.sol";
 
@@ -11,6 +12,7 @@ import { IOrderRegistrator } from "../interfaces/IOrderRegistrator.sol";
 import { IPreInteraction } from "../interfaces/IPreInteraction.sol";
 import { MakerTraits, MakerTraitsLib } from "../libraries/MakerTraitsLib.sol";
 import { ExtensionLib } from "../libraries/ExtensionLib.sol";
+import { OrderLib } from "../OrderLib.sol";
 
 /**
  * @title DelegatedMaker
@@ -50,6 +52,7 @@ contract DelegatedMaker is IERC1271, IPreInteraction {
     using SafeERC20 for IERC20;
     using MakerTraitsLib for MakerTraits;
     using ExtensionLib for bytes;
+    using OrderLib for IOrderMixin.Order;
 
     /// @dev The function may only be called by the limit order protocol.
     error OnlyLimitOrderProtocol();
@@ -89,8 +92,12 @@ contract DelegatedMaker is IERC1271, IPreInteraction {
      */
     event DelegatedOrderCancelled(bytes32 indexed orderHash);
 
+    bytes32 private constant _DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+
     IOrderMixin private immutable _LIMIT_ORDER_PROTOCOL;
     IOrderRegistrator private immutable _ORDER_REGISTRATOR;
+    bytes32 private immutable _HASHED_NAME;
+    bytes32 private immutable _HASHED_VERSION;
 
     /// @notice The wallet each order draws funds from — the presign, deleted on cancellation.
     mapping(bytes32 orderHash => address owner) public approvedOrders;
@@ -98,6 +105,18 @@ contract DelegatedMaker is IERC1271, IPreInteraction {
     constructor(IOrderMixin limitOrderProtocol, IOrderRegistrator orderRegistrator) {
         _LIMIT_ORDER_PROTOCOL = limitOrderProtocol;
         _ORDER_REGISTRATOR = orderRegistrator;
+        (, string memory name, string memory version,,,,) = IERC5267(address(limitOrderProtocol)).eip712Domain();
+        _HASHED_NAME = keccak256(bytes(name));
+        _HASHED_VERSION = keccak256(bytes(version));
+    }
+
+    /// @dev The protocol's order hash, computed locally: the domain is rebuilt from immutables captured
+    /// at construction (fork-safe via block.chainid), so no cross-contract call carries the order.
+    function _hashOrder(IOrderMixin.Order calldata order) private view returns (bytes32) {
+        bytes32 domainSeparator = keccak256(abi.encode(
+            _DOMAIN_TYPEHASH, _HASHED_NAME, _HASHED_VERSION, block.chainid, address(_LIMIT_ORDER_PROTOCOL)
+        ));
+        return order.hash(domainSeparator);
     }
 
     /**
@@ -161,13 +180,13 @@ contract DelegatedMaker is IERC1271, IPreInteraction {
         bytes calldata preInteractionData = extension.preInteractionTargetAndData();
         if (preInteractionData.length >= 20 && address(bytes20(preInteractionData)) != address(this)) revert InvalidPreInteractionTarget();
 
-        bytes32 orderHash = _LIMIT_ORDER_PROTOCOL.hashOrder(order);
-        if (_ORDER_REGISTRATOR.announcedAt(orderHash) != 0) revert OrderAlreadyRegistered();
+        (bytes32 orderHash, bool firstRegistration) = _ORDER_REGISTRATOR.registerOrder(order, extension);
+        // The registrator's ever-registered state doubles as the duplicate check, so a cancelled order
+        // cannot be re-created into a presigned-but-protocol-dead shell.
+        if (!firstRegistration) revert OrderAlreadyRegistered();
 
         approvedOrders[orderHash] = msg.sender;
         emit DelegatedOrderCreated(orderHash, msg.sender);
-
-        _ORDER_REGISTRATOR.registerOrder(order, extension);
     }
 
     /**
@@ -179,7 +198,7 @@ contract DelegatedMaker is IERC1271, IPreInteraction {
      * @param order The order to cancel.
      */
     function cancelOrder(IOrderMixin.Order calldata order) external {
-        bytes32 orderHash = _LIMIT_ORDER_PROTOCOL.hashOrder(order);
+        bytes32 orderHash = _hashOrder(order);
         if (approvedOrders[orderHash] != msg.sender) revert AccessDenied();
         delete approvedOrders[orderHash];
         emit DelegatedOrderCancelled(orderHash);

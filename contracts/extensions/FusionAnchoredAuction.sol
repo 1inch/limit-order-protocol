@@ -187,11 +187,11 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
         if (fillCurve.length != 0) {
             // The curve is enforced non-increasing, so its initial premium is the worst it can price at.
             uint256 worstRateBump = auctionBump + uint24(bytes3(fillCurve[0:3]));
-            uint256 estimatedMakingAmount = Math.mulDiv(unbumpedAmount, _BASE_POINTS, _BASE_POINTS + _applyGasBump(worstRateBump, gasBump));
+            uint256 estimatedMakingAmount = _deflate(unbumpedAmount, _applyGasBump(worstRateBump, gasBump));
             rateBump = _rateBumpForFill(auctionBump, fillCurve, order.makingAmount, estimatedMakingAmount, remainingMakingAmount);
         }
 
-        return Math.mulDiv(unbumpedAmount, _BASE_POINTS, _BASE_POINTS + _applyGasBump(rateBump, gasBump));
+        return _deflate(unbumpedAmount, _applyGasBump(rateBump, gasBump));
     }
 
     /**
@@ -208,12 +208,33 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
     ) internal view override returns (uint256) {
         (uint256 auctionBump, uint256 gasBump, bytes calldata fillCurve, bytes calldata tail) = _parseAuctionDetails(extraData, orderHash);
         uint256 rateBump = _applyGasBump(_rateBumpForFill(auctionBump, fillCurve, order.makingAmount, makingAmount, remainingMakingAmount), gasBump);
-        return Math.mulDiv(
-            super._getTakingAmount(order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail),
-            _BASE_POINTS + rateBump,
-            _BASE_POINTS,
-            Math.Rounding.Ceil
-        );
+        return _inflate(super._getTakingAmount(order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail), rateBump);
+    }
+
+    /**
+     * @dev `amount * (base + bump) / base`, rounded up. The rate bump never exceeds 2**25, so for any
+     * amount below 2**128 the product fits 256 bits and the full-width `mulDiv` is skipped — the same
+     * guard {AmountCalculatorLib} uses. Both branches round identically.
+     */
+    function _inflate(uint256 amount, uint256 rateBump) private pure returns (uint256) {
+        unchecked {
+            if (amount >> 128 == 0) {
+                return (amount * (_BASE_POINTS + rateBump) + _BASE_POINTS - 1) / _BASE_POINTS;
+            }
+        }
+        return Math.mulDiv(amount, _BASE_POINTS + rateBump, _BASE_POINTS, Math.Rounding.Ceil);
+    }
+
+    /**
+     * @dev `amount * base / (base + bump)`, rounded down, with the same fast path as {_inflate}.
+     */
+    function _deflate(uint256 amount, uint256 rateBump) private pure returns (uint256) {
+        unchecked {
+            if (amount >> 128 == 0) {
+                return amount * _BASE_POINTS / (_BASE_POINTS + rateBump);
+            }
+        }
+        return Math.mulDiv(amount, _BASE_POINTS, _BASE_POINTS + rateBump);
     }
 
     /**
@@ -308,7 +329,10 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
     function _fillPremium(uint256 orderMakingAmount, uint256 makingAmount, uint256 remainingMakingAmount, bytes calldata fillCurve) private pure returns (uint256) {
         unchecked {
             uint256 currentPremium = uint24(bytes3(fillCurve[0:3]));
-            uint256 share = Math.mulDiv(orderMakingAmount - remainingMakingAmount + makingAmount, _SHARE_BASE, orderMakingAmount);
+            uint256 cumulative = orderMakingAmount - remainingMakingAmount + makingAmount;
+            uint256 share = cumulative >> 128 == 0
+                ? cumulative * _SHARE_BASE / orderMakingAmount
+                : Math.mulDiv(cumulative, _SHARE_BASE, orderMakingAmount);
             if (share == 0) return currentPremium;
 
             uint256 currentShare = 0;

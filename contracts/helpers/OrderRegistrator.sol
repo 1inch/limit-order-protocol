@@ -3,6 +3,7 @@
 pragma solidity 0.8.30;
 
 import { Address, AddressLib } from "@1inch/solidity-utils/contracts/libraries/AddressLib.sol";
+import { IERC5267 } from "@openzeppelin/contracts/interfaces/IERC5267.sol";
 import { IOrderMixin } from "../interfaces/IOrderMixin.sol";
 import { IOrderRegistrator } from "../interfaces/IOrderRegistrator.sol";
 import { OrderLib } from "../OrderLib.sol";
@@ -26,19 +27,35 @@ contract OrderRegistrator is IOrderRegistrator {
 
     error AccessDenied();
 
+    bytes32 private constant _DOMAIN_TYPEHASH = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+
     IOrderMixin private immutable _LIMIT_ORDER_PROTOCOL;
+    bytes32 private immutable _HASHED_NAME;
+    bytes32 private immutable _HASHED_VERSION;
 
     /// @notice See {IOrderRegistrator-announcedAt}.
     mapping(bytes32 orderHash => uint256 timestamp) public announcedAt;
 
     constructor(IOrderMixin limitOrderProtocol) {
         _LIMIT_ORDER_PROTOCOL = limitOrderProtocol;
+        (, string memory name, string memory version,,,,) = IERC5267(address(limitOrderProtocol)).eip712Domain();
+        _HASHED_NAME = keccak256(bytes(name));
+        _HASHED_VERSION = keccak256(bytes(version));
+    }
+
+    /// @dev The protocol's order hash, computed locally: the domain is rebuilt from immutables captured
+    /// at construction (fork-safe via block.chainid), so no cross-contract call carries the order.
+    function _hashOrder(IOrderMixin.Order calldata order) private view returns (bytes32) {
+        bytes32 domainSeparator = keccak256(abi.encode(
+            _DOMAIN_TYPEHASH, _HASHED_NAME, _HASHED_VERSION, block.chainid, address(_LIMIT_ORDER_PROTOCOL)
+        ));
+        return order.hash(domainSeparator);
     }
 
     /**
      * @notice See {IOrderRegistrator-registerOrder}.
      */
-    function registerOrder(IOrderMixin.Order calldata order, bytes calldata extension) external {
+    function registerOrder(IOrderMixin.Order calldata order, bytes calldata extension) external returns (bytes32 orderHash, bool firstRegistration) {
         // Validate order
         {
             (bool valid, bytes4 validationResult) = order.isValidExtension(extension);
@@ -53,9 +70,10 @@ contract OrderRegistrator is IOrderRegistrator {
 
         if (msg.sender != order.maker.get()) revert AccessDenied();
 
-        bytes32 orderHash = _LIMIT_ORDER_PROTOCOL.hashOrder(order);
+        orderHash = _hashOrder(order);
 
         if (announcedAt[orderHash] == 0) {
+            firstRegistration = true;
             // solhint-disable-next-line not-rely-on-time
             announcedAt[orderHash] = block.timestamp;
             // solhint-disable-next-line not-rely-on-time
