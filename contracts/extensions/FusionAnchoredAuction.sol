@@ -188,7 +188,7 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
             // The curve is enforced non-increasing, so its initial premium is the worst it can price at.
             uint256 worstRateBump = auctionBump + uint24(bytes3(fillCurve[0:3]));
             uint256 estimatedMakingAmount = _deflate(unbumpedAmount, _applyGasBump(worstRateBump, gasBump));
-            rateBump = _rateBumpForFill(auctionBump, fillCurve, order.makingAmount, estimatedMakingAmount, remainingMakingAmount);
+            rateBump = _rateBumpForFill(auctionBump, fillCurve, estimatedMakingAmount, remainingMakingAmount);
         }
 
         return _deflate(unbumpedAmount, _applyGasBump(rateBump, gasBump));
@@ -207,7 +207,7 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
         bytes calldata extraData
     ) internal view override returns (uint256) {
         (uint256 auctionBump, uint256 gasBump, bytes calldata fillCurve, bytes calldata tail) = _parseAuctionDetails(extraData, orderHash);
-        uint256 rateBump = _applyGasBump(_rateBumpForFill(auctionBump, fillCurve, order.makingAmount, makingAmount, remainingMakingAmount), gasBump);
+        uint256 rateBump = _applyGasBump(_rateBumpForFill(auctionBump, fillCurve, makingAmount, remainingMakingAmount), gasBump);
         return _inflate(super._getTakingAmount(order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail), rateBump);
     }
 
@@ -300,39 +300,40 @@ contract FusionAnchoredAuction is AmountGetterBase, IPostInteraction {
      * @dev The rate bump a fill is priced at: the time curve's bump, plus the fill premium for a fill
      * that leaves part of the order behind. A completing fill never reads the curve.
      */
-    function _rateBumpForFill(uint256 auctionBump, bytes calldata fillCurve, uint256 orderMakingAmount, uint256 makingAmount, uint256 remainingMakingAmount) private pure returns (uint256) {
+    function _rateBumpForFill(uint256 auctionBump, bytes calldata fillCurve, uint256 makingAmount, uint256 remainingMakingAmount) private pure returns (uint256) {
         unchecked {
             if (fillCurve.length == 0 || makingAmount >= remainingMakingAmount) return auctionBump;
-            return auctionBump + _fillPremium(orderMakingAmount, makingAmount, remainingMakingAmount, fillCurve);
+            return auctionBump + _fillPremium(makingAmount, remainingMakingAmount, fillCurve);
         }
     }
 
     /**
-     * @dev Reads the premium a fill pays from the piecewise curve over the order's own volume ladder.
-     * A fill is priced at the rung its cumulative end lands on: shares are measured in 1e4 of the order's
-     * original making amount, counted from everything filled before, so on a matrix with rows every tenth
-     * the first tenth prices at the 1/10 row, the next tenth at the 2/10 row, and whoever completes the
-     * order — in one sweep or as the last of many fills — pays no premium at all. The curve is built the
-     * way the auction's own time curve is: it starts at `initialFillPremium` for a vanishing first fill,
-     * runs through `M` points, and ends at an implied final point of zero premium at the full amount. That
-     * is how a quote's matrix of rates per size is carried into the order: one point per matrix row, hit
-     * exactly at its share, interpolated linearly in between so there are no cliffs for a taker to game.
-     * The premium must not increase along the ladder, and the walk enforces that lazily — one comparison
-     * per visited point, validating exactly the prefix the fill is priced on. A rising stretch would make
-     * two fills cheaper than their sum and so pay takers to split; it reverts instead of pricing.
-     * @param orderMakingAmount The order's original making amount, the ladder the curve is drawn over.
+     * @dev Reads the premium a fill pays from the piecewise curve over the order's volume ladder.
+     * A fill is priced by its own share of what remains: shares are measured in 1e4 of the remaining
+     * making amount, so every fill sees the remainder as a fresh ladder — a tenth of what is left prices
+     * at the 1/10 row whether it is the first fill or the fifth — and whoever completes the order, in one
+     * sweep or as the last of many fills, pays no premium at all. Team review caught the earlier
+     * cumulative-on-original indexing under-paying makers on late partial fills; the remainder share is
+     * never smaller than the cumulative end was, so on a non-increasing curve this premium is never lower.
+     * The curve is built the way the auction's own time curve is: it starts at `initialFillPremium` for a
+     * vanishing fill, runs through `M` points, and ends at an implied final point of zero premium at the
+     * full remainder. A quote's matrix of rates per size maps onto it exactly for a fresh order, and each
+     * row is interpolated linearly so there are no cliffs for a taker to game. The premium must not
+     * increase along the ladder, and the walk enforces that lazily — one comparison per visited point,
+     * validating exactly the prefix the fill is priced on. A rising stretch would make two fills cheaper
+     * than their sum and so pay takers to split; it reverts instead of pricing.
      * @param makingAmount The making amount of this fill, strictly below the remainder.
-     * @param remainingMakingAmount The making amount left on the order before this fill.
+     * @param remainingMakingAmount The making amount left on the order before this fill, the ladder the
+     * curve is drawn over.
      * @param fillCurve The packed curve: 3 bytes initial premium, 1 byte count, (3 bytes, 2 bytes) points.
      * @return The premium this fill pays on top of the time curve's rate bump.
      */
-    function _fillPremium(uint256 orderMakingAmount, uint256 makingAmount, uint256 remainingMakingAmount, bytes calldata fillCurve) private pure returns (uint256) {
+    function _fillPremium(uint256 makingAmount, uint256 remainingMakingAmount, bytes calldata fillCurve) private pure returns (uint256) {
         unchecked {
             uint256 currentPremium = uint24(bytes3(fillCurve[0:3]));
-            uint256 cumulative = orderMakingAmount - remainingMakingAmount + makingAmount;
-            uint256 share = cumulative >> 128 == 0
-                ? cumulative * _SHARE_BASE / orderMakingAmount
-                : Math.mulDiv(cumulative, _SHARE_BASE, orderMakingAmount);
+            uint256 share = makingAmount >> 128 == 0
+                ? makingAmount * _SHARE_BASE / remainingMakingAmount
+                : Math.mulDiv(makingAmount, _SHARE_BASE, remainingMakingAmount);
             if (share == 0) return currentPremium;
 
             uint256 currentShare = 0;

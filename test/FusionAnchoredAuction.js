@@ -585,18 +585,44 @@ describe('FusionAnchoredAuction', function () {
             }
         });
 
-        it('prices successive fills at successive matrix rows', async function () {
-            const { weth, swap, order, sig, afterAuction } = await deployMatrixOrder();
+        it('prices successive fills by their share of what remains', async function () {
+            const { weth, swap, order, sig, params, afterAuction } = await deployMatrixOrder();
 
-            // The first taker's tenth prices at the 1/10 row, the next taker's tenth at the 2/10 row, and
-            // so on down the ladder — the rows are consumed cumulatively, not re-measured per fill.
+            // Every fill sees the remainder as a fresh ladder: the first tenth is a 10% slice of a whole
+            // order, the next tenth is a 10/90 slice of what is left, and so on — each priced by its own
+            // share of the remainder rather than by where it lands on the original amount.
             let fillTime = afterAuction;
-            for (const row of [0, 1, 2]) {
-                await time.setNextBlockTimestamp(fillTime++);
-                const expected = ceilDiv((TAKING_AMOUNT / 10n) * (BASE_POINTS + BigInt(MATRIX[row])), BASE_POINTS);
+            let remaining = MAKING_AMOUNT;
+            for (let i = 0; i < 3; i++) {
+                await time.setNextBlockTimestamp(fillTime);
+                const expected = takingAmountFor(order, params, fillTime, MAKING_AMOUNT / 10n, remaining);
+                const share = (MAKING_AMOUNT / 10n) * 10000n / remaining;
+                const interpolated = (share - 1000n) * BigInt(MATRIX[1]) + (2000n - share) * BigInt(MATRIX[0]);
+                const premium = i === 0 ? BigInt(MATRIX[0]) : interpolated / 1000n;
+                expect(expected).to.equal(ceilDiv((TAKING_AMOUNT / 10n) * (BASE_POINTS + premium), BASE_POINTS));
                 await expect(fill(swap, order, sig, MAKING_AMOUNT / 10n))
                     .to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
+                remaining -= MAKING_AMOUNT / 10n;
+                fillTime++;
             }
+        });
+
+        it('charges a late small fill by its share of the remainder, not its place on the original', async function () {
+            const { weth, swap, order, sig, params, afterAuction } = await deployMatrixOrder();
+
+            // The scenario team review caught under the earlier cumulative indexing: with 80% already
+            // filled, a fill of 10% of the original order is half of what remains, so it prices at the
+            // 5/10 row — not at the nearly-free 9/10 row its cumulative end would have landed on.
+            await time.setNextBlockTimestamp(afterAuction);
+            await fill(swap, order, sig, MAKING_AMOUNT * 8n / 10n);
+
+            const fillTime = afterAuction + 1;
+            await time.setNextBlockTimestamp(fillTime);
+            const remaining = MAKING_AMOUNT * 2n / 10n;
+            const expected = takingAmountFor(order, params, fillTime, MAKING_AMOUNT / 10n, remaining);
+            expect(expected).to.equal(ceilDiv((TAKING_AMOUNT / 10n) * (BASE_POINTS + BigInt(MATRIX[4])), BASE_POINTS));
+            await expect(fill(swap, order, sig, MAKING_AMOUNT / 10n))
+                .to.changeTokenBalances(weth, [taker, maker], [-expected, expected]);
         });
 
         it('interpolates between matrix rows instead of stepping', async function () {
@@ -776,7 +802,7 @@ describe('FusionAnchoredAuction', function () {
             const exact = (() => {
                 let amount = expected;
                 for (let i = 0; i < 64; i++) {
-                    const rateBump = amount >= MAKING_AMOUNT ? 0n : fillPremiumAt(MAKING_AMOUNT, amount, MAKING_AMOUNT, FILL_PREMIUMS);
+                    const rateBump = amount >= MAKING_AMOUNT ? 0n : fillPremiumAt(amount, MAKING_AMOUNT, FILL_PREMIUMS);
                     amount = (order.makingAmount * takingAmount / order.takingAmount) * BASE_POINTS / (BASE_POINTS + rateBump);
                 }
                 return amount;

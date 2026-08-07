@@ -49,10 +49,10 @@ function auctionBumpAt (timestamp, { startTime, duration, initialRateBump, point
 
 const SHARE_BASE = 10_000n;
 
-/** Mirrors FusionAnchoredAuction._fillPremium. */
-function fillPremiumAt (orderMakingAmount, makingAmount, remainingMakingAmount, { initial, points = [] }) {
+/** Mirrors FusionAnchoredAuction._fillPremium: the fill's share of what remains, on a fresh ladder. */
+function fillPremiumAt (makingAmount, remainingMakingAmount, { initial, points = [] }) {
     let currentPremium = BigInt(initial);
-    const share = (orderMakingAmount - remainingMakingAmount + makingAmount) * SHARE_BASE / orderMakingAmount;
+    const share = makingAmount * SHARE_BASE / remainingMakingAmount;
     if (share === 0n) return currentPremium;
 
     let currentShare = 0n;
@@ -69,14 +69,14 @@ function fillPremiumAt (orderMakingAmount, makingAmount, remainingMakingAmount, 
 }
 
 /** Mirrors FusionAnchoredAuction._rateBumpForFill. */
-function rateBumpForFill (rateBump, auction, orderMakingAmount, makingAmount, remainingMakingAmount) {
+function rateBumpForFill (rateBump, auction, makingAmount, remainingMakingAmount) {
     if (!auction.fillPremiums || makingAmount >= remainingMakingAmount) return rateBump;
-    return rateBump + fillPremiumAt(orderMakingAmount, makingAmount, remainingMakingAmount, auction.fillPremiums);
+    return rateBump + fillPremiumAt(makingAmount, remainingMakingAmount, auction.fillPremiums);
 }
 
 /** Taking amount a fill by making amount is priced at. */
 function takingAmountFor (order, auction, timestamp, makingAmount, remainingMakingAmount) {
-    const rateBump = rateBumpForFill(auctionBumpAt(timestamp, auction), auction, order.makingAmount, makingAmount, remainingMakingAmount);
+    const rateBump = rateBumpForFill(auctionBumpAt(timestamp, auction), auction, makingAmount, remainingMakingAmount);
     const unbumped = ceilDiv(order.takingAmount * makingAmount, order.makingAmount);
     return ceilDiv(unbumped * (BASE_POINTS + rateBump), BASE_POINTS);
 }
@@ -90,7 +90,7 @@ function makingAmountFor (order, auction, timestamp, takingAmount, remainingMaki
         // Premium curves are enforced non-increasing, so the initial premium is the worst one.
         const worstRateBump = bump + BigInt(auction.fillPremiums.initial);
         const estimate = unbumped * BASE_POINTS / (BASE_POINTS + worstRateBump);
-        rateBump = rateBumpForFill(bump, auction, order.makingAmount, estimate, remainingMakingAmount);
+        rateBump = rateBumpForFill(bump, auction, estimate, remainingMakingAmount);
     }
     return unbumped * BASE_POINTS / (BASE_POINTS + rateBump);
 }
