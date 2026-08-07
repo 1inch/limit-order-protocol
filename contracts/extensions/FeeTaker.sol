@@ -184,6 +184,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
     /**
      * @dev Parses fee data from `extraData`.
      * Override this function if whitelist structure in postInteraction is different from getters.
+     * Kept as view since some inheriting contracts (e.g. Fusion Settlement) use state like block.timestamp.
      */
     function _isWhitelistedPostInteractionImpl(bytes calldata whitelistData, address taker) internal view virtual returns (bool isWhitelisted, bytes calldata tail) {
         return _isWhitelistedGetterImpl(whitelistData, taker);
