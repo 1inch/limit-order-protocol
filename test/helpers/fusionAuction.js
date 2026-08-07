@@ -74,25 +74,30 @@ function rateBumpForFill (rateBump, auction, makingAmount, remainingMakingAmount
     return rateBump + fillPremiumAt(makingAmount, remainingMakingAmount, auction.fillPremiums);
 }
 
+/** Mirrors FusionAnchoredAuction._applyGasBump. */
+function applyGasBump (rateBump, gasBump) {
+    return rateBump > gasBump ? rateBump - gasBump : 0n;
+}
+
 /** Taking amount a fill by making amount is priced at. */
-function takingAmountFor (order, auction, timestamp, makingAmount, remainingMakingAmount) {
-    const rateBump = rateBumpForFill(auctionBumpAt(timestamp, auction), auction, makingAmount, remainingMakingAmount);
+function takingAmountFor (order, auction, timestamp, makingAmount, remainingMakingAmount, gasBump = 0n) {
+    const rateBump = applyGasBump(rateBumpForFill(auctionBumpAt(timestamp, auction), auction, makingAmount, remainingMakingAmount), gasBump);
     const unbumped = ceilDiv(order.takingAmount * makingAmount, order.makingAmount);
     return ceilDiv(unbumped * (BASE_POINTS + rateBump), BASE_POINTS);
 }
 
 /** Making amount a fill by taking amount is priced at, including the conservative fill-share estimate. */
-function makingAmountFor (order, auction, timestamp, takingAmount, remainingMakingAmount) {
+function makingAmountFor (order, auction, timestamp, takingAmount, remainingMakingAmount, gasBump = 0n) {
     const bump = auctionBumpAt(timestamp, auction);
     const unbumped = order.makingAmount * takingAmount / order.takingAmount;
     let rateBump = bump;
     if (auction.fillPremiums) {
         // Premium curves are enforced non-increasing, so the initial premium is the worst one.
         const worstRateBump = bump + BigInt(auction.fillPremiums.initial);
-        const estimate = unbumped * BASE_POINTS / (BASE_POINTS + worstRateBump);
+        const estimate = unbumped * BASE_POINTS / (BASE_POINTS + applyGasBump(worstRateBump, gasBump));
         rateBump = rateBumpForFill(bump, auction, estimate, remainingMakingAmount);
     }
-    return unbumped * BASE_POINTS / (BASE_POINTS + rateBump);
+    return unbumped * BASE_POINTS / (BASE_POINTS + applyGasBump(rateBump, gasBump));
 }
 
 module.exports = {
