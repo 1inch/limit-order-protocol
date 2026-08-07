@@ -191,6 +191,13 @@ describe('OrderRegistrator', function () {
             expect(await registrator.announcedAt(orderHash)).to.equal(await time.latest());
         });
 
+        it('should reject an empty signature for a contract maker that has not presigned', async function () {
+            const { swap, registrator, order } = await loadFixture(deploySafeAndInit);
+
+            const tx = registrator.registerOrder(order, order.extension, '0x');
+            await expect(tx).to.be.revertedWithCustomError(swap, 'BadSignature');
+        });
+
         it('should record an announcement made through a MultiSend batch with an empty signature', async function () {
             const { swap, registrator, safe, order } = await loadFixture(deploySafeAndInit);
 
