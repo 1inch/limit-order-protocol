@@ -48,7 +48,6 @@ contract OrderRegistrator is IOrderRegistrator {
         if(!ECDSA.recoverOrIsValidSignature(order.maker.get(), orderHash, signature)) revert IOrderMixin.BadSignature();
 
         if (announcedAt[orderHash] == 0) {
-            // solhint-disable-next-line not-rely-on-time
             announcedAt[orderHash] = block.timestamp;
         }
 
