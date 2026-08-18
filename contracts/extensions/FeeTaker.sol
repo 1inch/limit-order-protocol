@@ -131,7 +131,7 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
                 extraData = extraData[20:];
             }
 
-            (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) = _getFeeAmounts(order, taker, takingAmount, makingAmount, extraData);
+            (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) = _getFeeAmounts(order, orderHash, taker, takingAmount, makingAmount, extraData);
 
             if (order.receiver.get() == address(this)) {
                 if (order.takerAsset.get() == address(_WETH) && order.makerTraits.unwrapWeth()) {
@@ -170,8 +170,8 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
      * bytes — whitelist structure determined by `_isWhitelistedPostInteractionImpl` implementation
      * Override this function if the calculation of integratorFee and protocolFee differs from the existing logic and requires a different parsing of extraData.
      */
-    function _getFeeAmounts(IOrderMixin.Order calldata /* order */, address taker, uint256 takingAmount, uint256 /* makingAmount */, bytes calldata extraData) internal virtual returns (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) {
-        (bool isWhitelisted, uint256 integratorFee, uint256 integratorShare, uint256 resolverFee, bytes calldata parsedTail) = _parseFeeData(extraData, taker, _isWhitelistedPostInteractionImpl);
+    function _getFeeAmounts(IOrderMixin.Order calldata /* order */, bytes32 orderHash, address taker, uint256 takingAmount, uint256 /* makingAmount */, bytes calldata extraData) internal virtual returns (uint256 integratorFeeAmount, uint256 protocolFeeAmount, bytes calldata tail) {
+        (bool isWhitelisted, uint256 integratorFee, uint256 integratorShare, uint256 resolverFee, bytes calldata parsedTail) = _parseFeeData(extraData, taker, orderHash, _isWhitelistedPostInteractionImpl);
         tail = parsedTail;
         if (!isWhitelisted && _ACCESS_TOKEN.balanceOf(taker) == 0) revert OnlyWhitelistOrAccessToken();
 
@@ -185,8 +185,8 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
      * @dev Parses fee data from `extraData`.
      * Override this function if whitelist structure in postInteraction is different from getters.
      */
-    function _isWhitelistedPostInteractionImpl(bytes calldata whitelistData, address taker) internal view virtual returns (bool isWhitelisted, bytes calldata tail) {
-        return _isWhitelistedGetterImpl(whitelistData, taker);
+    function _isWhitelistedPostInteractionImpl(bytes calldata whitelistData, address taker, bytes32 orderHash) internal view virtual returns (bool isWhitelisted, bytes calldata tail) {
+        return _isWhitelistedGetterImpl(whitelistData, taker, orderHash);
     }
 
     function _sendEth(address target, uint256 amount) private {

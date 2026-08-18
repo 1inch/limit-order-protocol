@@ -31,7 +31,7 @@ contract AmountGetterWithFee is AmountGetterBase {
         bytes calldata extraData
     ) internal view virtual override returns (uint256) {
         unchecked {
-            (, uint256 integratorFee, , uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, _isWhitelistedGetterImpl);
+            (, uint256 integratorFee, , uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, orderHash, _isWhitelistedGetterImpl);
             return super._getMakingAmount(order, extension, orderHash, taker, takingAmount, remainingMakingAmount, tail).mulDiv(
                 _BASE_1E5,
                 _BASE_1E5 + integratorFee + resolverFee
@@ -52,7 +52,7 @@ contract AmountGetterWithFee is AmountGetterBase {
         bytes calldata extraData
     ) internal view virtual override returns (uint256) {
         unchecked {
-            (, uint256 integratorFee, , uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, _isWhitelistedGetterImpl);
+            (, uint256 integratorFee, , uint256 resolverFee, bytes calldata tail) = _parseFeeData(extraData, taker, orderHash, _isWhitelistedGetterImpl);
             return super._getTakingAmount(order, extension, orderHash, taker, makingAmount, remainingMakingAmount, tail).mulDiv(
                 _BASE_1E5 + integratorFee + resolverFee,
                 _BASE_1E5,
@@ -74,7 +74,8 @@ contract AmountGetterWithFee is AmountGetterBase {
     function _parseFeeData(
         bytes calldata extraData,
         address taker,
-        function (bytes calldata, address) internal view returns (bool, bytes calldata) _isWhitelisted
+        bytes32 orderHash,
+        function (bytes calldata, address, bytes32) internal view returns (bool, bytes calldata) _isWhitelisted
     ) internal view returns (bool isWhitelisted, uint256 integratorFee, uint256 integratorShare, uint256 resolverFee, bytes calldata tail) {
         unchecked {
             integratorFee = uint256(uint16(bytes2(extraData)));
@@ -83,7 +84,7 @@ contract AmountGetterWithFee is AmountGetterBase {
             resolverFee = uint256(uint16(bytes2(extraData[3:])));
             uint256 whitelistDiscountNumerator = uint256(uint8(extraData[5]));
             if (whitelistDiscountNumerator > _BASE_1E2) revert InvalidWhitelistDiscountNumerator();
-            (isWhitelisted, tail) = _isWhitelisted(extraData[6:], taker);
+            (isWhitelisted, tail) = _isWhitelisted(extraData[6:], taker, orderHash);
             if (isWhitelisted) {
                 resolverFee = resolverFee * whitelistDiscountNumerator / _BASE_1E2;
             }
@@ -102,7 +103,7 @@ contract AmountGetterWithFee is AmountGetterBase {
      * @return isWhitelisted Whether the taker is whitelisted.
      * @return tail Remaining calldata.
      */
-    function _isWhitelistedGetterImpl(bytes calldata whitelistData, address taker) internal pure returns (bool isWhitelisted, bytes calldata tail) {
+    function _isWhitelistedGetterImpl(bytes calldata whitelistData, address taker, bytes32 /* orderHash */) internal pure returns (bool isWhitelisted, bytes calldata tail) {
         unchecked {
             uint80 maskedTakerAddress = uint80(uint160(taker));
             uint256 size = uint8(whitelistData[0]);
