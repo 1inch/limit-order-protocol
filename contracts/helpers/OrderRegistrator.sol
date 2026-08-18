@@ -17,6 +17,11 @@ contract OrderRegistrator is IOrderRegistrator {
 
     IOrderMixin private immutable _LIMIT_ORDER_PROTOCOL;
 
+    /**
+     * @notice See {IOrderRegistrator-announcedAt}.
+     */
+    mapping(bytes32 orderHash => uint256 timestamp) public announcedAt;
+
     constructor(IOrderMixin limitOrderProtocol) {
         _LIMIT_ORDER_PROTOCOL = limitOrderProtocol;
     }
@@ -37,8 +42,14 @@ contract OrderRegistrator is IOrderRegistrator {
             }
         }
 
+        bytes32 orderHash = _LIMIT_ORDER_PROTOCOL.hashOrder(order);
+
         // Validate signature
-        if(!ECDSA.recoverOrIsValidSignature(order.maker.get(), _LIMIT_ORDER_PROTOCOL.hashOrder(order), signature)) revert IOrderMixin.BadSignature();
+        if(!ECDSA.recoverOrIsValidSignature(order.maker.get(), orderHash, signature)) revert IOrderMixin.BadSignature();
+
+        if (announcedAt[orderHash] == 0) {
+            announcedAt[orderHash] = block.timestamp;
+        }
 
         emit OrderRegistered(order, extension, signature);
     }
