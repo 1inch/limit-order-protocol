@@ -3,9 +3,9 @@ name: Setup
 runs:
   using: composite
   steps:
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v6
       with:
-        node-version: 20
+        node-version: 22
 
     - run: npm install -g yarn
       shell: bash
@@ -14,7 +14,7 @@ runs:
       run: echo "::set-output name=dir::$(yarn cache dir)"
       shell: bash
 
-    - uses: actions/cache@v3
+    - uses: actions/cache@v6
       with:
         path: ${{ steps.yarn-cache.outputs.dir }}
         key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
