@@ -104,18 +104,15 @@ describe('OrderRegistrator', function () {
             expect(await registrator.announcedAt(orderHash)).to.equal(await time.latest());
         });
 
-        it('should keep the first timestamp and still emit on a repeated registration', async function () {
+        it('should revert with OrderAlreadyRegistered on a repeated registration', async function () {
             const { usdc, usdt, swap, registrator, chainId } = await loadFixture(deployAndInit);
             const { order, signature } = await buildSignedOrder(usdc, usdt, swap, chainId);
             const orderHash = await swap.hashOrder(order);
 
             await registrator.registerOrder(order, order.extension, signature);
-            const announcedAt = await registrator.announcedAt(orderHash);
 
-            await time.increase(3600);
             const tx = registrator.registerOrder(order, order.extension, signature);
-            await expect(tx).to.emit(registrator, 'OrderRegistered');
-            expect(await registrator.announcedAt(orderHash)).to.equal(announcedAt);
+            await expect(tx).to.be.revertedWithCustomError(registrator, 'OrderAlreadyRegistered').withArgs(orderHash);
         });
 
         it('should accept a registration relayed by anyone with a valid signature', async function () {
