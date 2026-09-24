@@ -216,6 +216,46 @@ Coverage targets from `07-test-strategy.md`: statements 93.97% against a ≥95%
 target, branches 79.53% against ≥90%. Both improved substantially and neither
 is met. The remaining distance is concentrated in the items above.
 
+## Follow-up work, 2026-08-03 (post-Gate C)
+
+Four items were picked up after the workflow's phases closed. All authorised
+explicitly; none changes a production contract.
+
+| Item | Result |
+|---|---|
+| `OQ-5` / `P-04` — the disabled example suite | **Resolved.** Git archaeology showed `describe.only` was swapped for `describe.skip` by mistake in 2023. Re-enabling required a rewrite to the current `fillOrderArgs`/`TakerTraits` API and ethers v6. All 5 examples pass; **0 pending tests remain**. Detail in `06-existing-test-audit.md` `GAP-Q02` |
+| `GAP-013`, `GAP-016` — callback safety | **Closed** under `OQ-8`. `ReentrantPermitMock` reaches `ReentrancyDetected` for the first time; `ReturningTakerInteractionMock` shows the taker-interaction return value is ignored. 6 tests in `test/Reentrancy.js` |
+| `GAP-019` — the two 0% contracts | **Closed.** `ERC1155Proxy` and `ERC721ProxySafe` both go from 0% to **100% statements**, with real ERC-721 and ERC-1155 mocks. 6 tests in `test/AssetProxies.js` |
+| The stateful invariant harness | **Written.** `test/invariant/OrderFill.invariant.js` replays randomized action sequences (fill, cancel, advance epoch) against a fresh fixture and checks `INV-001`, `INV-002`, `INV-003`, `INV-004`, `INV-005`, `INV-006` and `INV-011` after every action |
+| `GAP-Q06` — `yarn lint` red on master | **Fixed.** `deploy/deploy-Permit2Proxy.js` was missing `getNamedAccounts`; the script would have thrown at deployment. `yarn lint` now passes |
+
+### Final numbers
+
+| Metric | Baseline | After Phase 9 | After follow-up |
+|---|---|---|---|
+| Passing | 173 | 242 | **261** |
+| Failing | 0 | 0 | 0 |
+| Pending | 5 | 5 | **0** |
+| Statements | 91.88% | 93.97% | **94.90%** |
+| Branches | 75.44% | 79.82% | **81.87%** |
+| Functions | 93.67% | 96.20% | **98.73%** |
+| Lines | 92.56% | 94.37% | **95.10%** |
+| Contracts at 0% coverage | 2 | 2 | **0** |
+| `yarn lint` | failing | failing | **passing** |
+
+The `≥95%` statement target from `07-test-strategy.md` is within 0.1 points;
+the `≥90%` branch target is not met at 81.87%. The remaining branch coverage
+sits mostly in `ChainlinkCalculator` (56.25%, the untested inverse-price and
+decimals-scale paths, `GAP-008`) and `AmountGetterBase` (50%, the external
+getter delegation branches, `GAP-017`).
+
+Writing the invariant harness produced one more self-correction worth
+recording: the first version asserted `remaining + filled == makingAmount`
+unconditionally, and fast-check immediately found a single `cancel` action
+that breaks it. Cancellation writes the fully-filled marker without any asset
+moving, so the identity only holds before cancellation. The harness now tracks
+that and asserts the weaker, correct property after a cancel.
+
 ## Hard rules observed
 
 - No production contract changed.

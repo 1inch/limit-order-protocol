@@ -74,19 +74,21 @@ one-authoritative-harness rule is satisfied by construction.
 | `INV-008` | `SEC-001` | Hardhat | `test/Simulation.js` | Deterministic, 9 cases | **IMPLEMENTED** | — |
 | `INV-009` | `OPS-001`, `FR-CANCEL-001` | Hardhat | `test/characterization/OrderMixin.characterization.js` | Deterministic | **IMPLEMENTED** | — |
 | `INV-010` | `ECON-001` | Hardhat | `test/characterization/FeeTaker.characterization.js` | Deterministic | **IMPLEMENTED** (single-fill conservation only) | — |
-| `INV-011` | `FR-FILL-001` | Hardhat | `test/invariant/` | — | NOT IMPLEMENTED | — |
+| `INV-011` | `FR-FILL-001` | Hardhat | `test/invariant/OrderFill.invariant.js` | 25 sequences | **IMPLEMENTED** | — |
 | `INV-012` | `SEC-003` | Hardhat | `test/PredicatesAndBoundaries.js` | Deterministic, 5 cases | **IMPLEMENTED** | — |
-| `INV-013` | `FR-ORDER-002`, `INT-005` | Hardhat | `test/invariant/` | — | NOT IMPLEMENTED | — |
+| `INV-013` | `FR-ORDER-002`, `INT-005` | Hardhat | `test/invariant/` | — | NOT IMPLEMENTED — extension-offset fuzzing, `GAP-018` | — |
 | `INV-014` | `MATH-005`, `MATH-006`, `INT-007` | Hardhat | `test/property/AmountCalculators.property.js` | 40 runs + 3 pins | **VIOLATED for `MATH-006`**; holds for Dutch auction | `REG-001` `-1924954020`, `REG-002` `-771726958`, `REG-003` `-1830898547` |
 | `INV-015` | `FR-ORDER-001` | Hardhat | `test/OrderIdentity.js` | Deterministic, 8 fields | **IMPLEMENTED** | — |
-| `INV-016` | `MATH-003`, `MATH-004`, `INT-003` | Hardhat | `test/invariant/` | — | NOT IMPLEMENTED | — |
+| `INV-016` | `MATH-003`, `MATH-004`, `INT-003` | Hardhat | `test/invariant/` | — | NOT IMPLEMENTED — needs an adversarial amount getter | — |
 
-Six invariants are implemented, two are violated and reported, and eight remain
-without a harness because no `test/invariant/` stateful suite was written in
-Phase 9. Those eight — `INV-001`, `INV-002`, `INV-003`, `INV-004` (partly
-covered deterministically), `INV-005`, `INV-006`, `INV-011`, `INV-013`,
-`INV-016` — need multi-transaction action sequences and are the largest
-remaining piece of work.
+**Updated after the post-Gate C follow-up.** `test/invariant/OrderFill.invariant.js`
+now replays randomized action sequences and checks `INV-001`, `INV-002`,
+`INV-003`, `INV-004`, `INV-005`, `INV-006` and `INV-011` after every action.
+
+That leaves **13 of 16 invariants implemented**, two violated and reported
+(`INV-007` and `INV-014` for `MATH-006`), and two without a harness:
+`INV-013` needs extension-offset fuzzing (`GAP-018`) and `INV-016` needs an
+adversarial amount getter to attack the threshold check.
 
 ## Unverifiable requirements
 
@@ -118,8 +120,8 @@ Updated after Phases 7-9.
 
 | Status | At Gate B | After Phase 9 |
 |---|---|---|
-| `IMPLEMENTED` | 23 | 33 |
-| `PLANNED` | 23 | 12 |
+| `IMPLEMENTED` | 23 | 37 |
+| `PLANNED` | 23 | 8 |
 | `FAILING` (reported, not normalised) | 0 | **1** — `MATH-006` |
 | `NOT_VERIFIABLE` | 0 | 0 |
 | `CRITICAL` requirements verified | 9 of 11 | **11 of 11** |
@@ -138,8 +140,9 @@ envelope and states the ideal invariant as false in its own comments. See
 Plus quality gaps `GAP-Q01` (three assertion-free files) and `GAP-Q04`
 (`SafeOrderBuilder`), via proposals `P-01`, `P-02`, `P-03` and `P-05`.
 
-Still open: `GAP-003`, `GAP-004`, `GAP-008`, `GAP-013`, `GAP-015`, `GAP-016`,
-`GAP-017`, `GAP-018`, `GAP-019`, `GAP-020`, `GAP-022`, `GAP-025`, `GAP-026`,
-and quality gaps `GAP-Q02` (`P-04`, held), `GAP-Q03` (`P-06`, held), `GAP-Q05`.
+Closed in the post-Gate C follow-up: `GAP-013`, `GAP-016`, `GAP-019`, and the
+quality gaps `GAP-Q02` (via `P-04`) and `GAP-Q06` (the lint failure).
 
-`GAP-013` and `GAP-016` are blocked on `OQ-8`: both need a new mock contract.
+Still open: `GAP-003`, `GAP-004`, `GAP-008`, `GAP-015`, `GAP-017`, `GAP-018`,
+`GAP-020`, `GAP-022`, `GAP-025`, `GAP-026`, and `GAP-Q03` (`P-06`, held by
+decision) and `GAP-Q05` (parallel vs serial test commands).

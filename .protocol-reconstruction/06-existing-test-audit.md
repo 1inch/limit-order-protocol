@@ -200,11 +200,46 @@ are the sole coverage of `Permit2Proxy`, `Permit2WitnessProxy` and
 result — a precise illustration of why the policy calls coverage a gap signal
 rather than proof.
 
-### `GAP-Q02` — The example suite is permanently disabled
+### `GAP-Q02` — The example suite is permanently disabled — RESOLVED 2026-08-03
 
 `test/examples/LimitOrderProtocol-example.js:8` is `describe.skip`. 283 lines
 and 11 assertions have never run in CI. They are the documented usage examples,
 so they are also the most likely place for documentation drift to be caught.
+
+**`OQ-5` answered by git archaeology.** The suite was disabled in commit
+`245d4df` ("clean up examples", Gleb Alekseev, 2023-09-04). The diff is:
+
+```
+-describe.only('LimitOrderProtocol usage example', function () {
++describe.skip('LimitOrderProtocol usage example', function () {
+```
+
+A stray `describe.only` from local development — which would have made CI run
+*only* that suite — was swapped for `.skip` instead of having the modifier
+removed. **Nobody decided these examples should stop running.** It is a slip
+that stood for two years.
+
+**Re-enabling turned out to be a rewrite, not a flag change.** Two years
+unexecuted left the file calling an API that no longer exists: `fillOrderExt`
+and `fillOrderToExt` predate the v4 `TakerTraits` interface, and the file was
+still on ethers v5 (`.deployed()`, `.address`, `ethers.utils.*`). It also
+carried its own duplicated copies of fixtures that `test/helpers/fixtures.js`
+already provides.
+
+Proposal `P-04` was therefore applied as a rewrite against the current API,
+keeping all five examples and their educational intent. One expectation was
+corrected in the process: the interactions example asserted a `-4/+4` WETH
+movement, but the current `InteractionMock` is an assertion mock that moves no
+tokens and does not implement `ITakerInteraction` at all. The example now
+demonstrates the maker's two callbacks and asserts the order's real amounts.
+
+All five pass. **The suite now has zero pending tests.**
+
+A related find in the same archaeology: commit `da3e187` ("remove remainings of
+improveRate", 2023-10-04) stripped `improveRate` from `MakerTraitsLib.sol` and
+`test/helpers/orderUtils.js`. That is independent historical confirmation that
+`DIV-001` was correctly classified a `DOCUMENTATION_BUG` — the feature was real,
+was deliberately removed, and `description.md` was never updated.
 
 ### `GAP-Q03` — Gas measurements assert nothing
 
