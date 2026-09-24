@@ -10,6 +10,12 @@ import { IOrderMixin } from "./IOrderMixin.sol";
  * The registrator is responsible for registering orders and emitting an event when an order is registered.
  */
 interface IOrderRegistrator {
+
+    /**
+     * @notice Error thrown when an order is already registered.
+     * @param orderHash The hash of the order.
+     */
+    error OrderAlreadyRegistered(bytes32 orderHash);
     /**
      * @notice Emitted when an order is registered.
      * @param order The order that was registered.

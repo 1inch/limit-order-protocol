@@ -45,12 +45,13 @@ contract OrderRegistrator is IOrderRegistrator {
         bytes32 orderHash = _LIMIT_ORDER_PROTOCOL.hashOrder(order);
 
         // Validate signature
-        if(!ECDSA.recoverOrIsValidSignature(order.maker.get(), orderHash, signature)) revert IOrderMixin.BadSignature();
+        require(ECDSA.recoverOrIsValidSignature(order.maker.get(), orderHash, signature), IOrderMixin.BadSignature());
 
-        if (announcedAt[orderHash] == 0) {
-            announcedAt[orderHash] = block.timestamp;
-        }
+        // Validate order has not been registered yet
+        require(announcedAt[orderHash] == 0, OrderAlreadyRegistered(orderHash));
 
+        // Register order
+        announcedAt[orderHash] = block.timestamp;
         emit OrderRegistered(order, extension, signature);
     }
 }
