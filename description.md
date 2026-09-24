@@ -749,7 +749,7 @@ function takerInteraction(
         uint256 takingAmount,
         uint256 remainingMakingAmount,
         bytes calldata extraData
-    ) external returns(uint256 offeredTakingAmount);
+    ) external;
 ```
 
 In all cases, the callback function receives an order, its parameters, and additional calldata for interaction.
@@ -763,8 +763,6 @@ In all cases, the callback function receives an order, its parameters, and addit
 | takingAmount | `uint256` | The actual amount of the taking asset to fill. It may differ from Order.takingAmount if partial fills are allowed. |
 | remainingMakingAmount | `uint256` | The remaining amount left to fill for the order. It may differ from Order.makingAmount if the order has already been partially filled |
 | extraData | `bytes` | Additional calldata passed to interaction.   |
-
-The `offeredTakingAmount` is also returned in the taker’s interaction. This value can be used to improve the rate for the maker, provided that the `NO_IMPROVE_RATE` flag is not set in the order. If the returned value is less than the required `takingAmount`, the protocol ignores it and fills the order using the calculated `takingAmount`. 
 
 The maker's interactions are defined in the order extensions `PreInteractionData` and `PostInteractionData`. The calldata is structured as follows:
 
