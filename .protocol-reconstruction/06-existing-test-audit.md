@@ -222,6 +222,30 @@ behaviour under test.
 
 `yarn test` is parallel, `yarn test:ci` is serial. See §2.
 
+### `GAP-Q06` — `yarn lint` already fails at the baseline commit
+
+**Added 2026-08-03 during Phase 9, and a gap in this audit's own coverage: I did
+not run `yarn lint` in Phase 0 or Phase 6A, and should have. CI does.**
+
+```
+$ npx eslint deploy/deploy-Permit2Proxy.js
+  deploy/deploy-Permit2Proxy.js
+    24:32  error  'getNamedAccounts' is not defined  no-undef
+  ✖ 1 problem (1 error, 0 warnings)
+```
+
+The file is byte-identical to `origin/master` and was not touched by this
+workflow, so the failure predates it. `.github/workflows/test.yml` runs
+`yarn lint` as a required job, which means **the lint gate is red on master**.
+
+`solhint` passes cleanly at `--max-warnings 0`; the failure is eslint only, and
+it is a single missing `hardhat-deploy` global in the `env` or `globals` section
+of `.eslintrc`.
+
+Per the test-audit policy a failing existing check is a finding, not a task:
+recorded here with its command and output, and **not fixed** inside this
+workflow.
+
 ### Heuristics checked and not triggered
 
 Shared mutable state: not present, `loadFixture` throughout. Unpinned fork:

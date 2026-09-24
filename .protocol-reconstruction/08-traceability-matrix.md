@@ -13,7 +13,7 @@ one-authoritative-harness rule is satisfied by construction.
 
 | Requirement | Crit. | Entry points | Scenarios | Invariants | Existing coverage | Gap | Planned verification | Implemented tests | Status |
 |---|---|---|---|---|---|---|---|---|---|
-| `FR-ORDER-001` | CRITICAL | `EP-001`-`004` | `SCN-001` | `INV-015` | `PARTIAL` | `GAP-001` | Cross-chain/deployment divergence unit test + hashing property | `test/Eip712.js::domain separator` | PLANNED |
+| `FR-ORDER-001` | CRITICAL | `EP-001`-`004` | `SCN-001` | `INV-015` | `COVERED` | `GAP-001` closed | Done | `test/OrderIdentity.js` (6 tests), `test/Eip712.js::domain separator` | IMPLEMENTED |
 | `FR-ORDER-002` | CRITICAL | `EP-002`, `EP-004` | `SCN-002`-`004` | `INV-013` | `COVERED` | — | — | `test/LimitOrderProtocol.js::should fail with invalid extension (×3)` | IMPLEMENTED |
 | `FR-ORDER-003` | HIGH | `EP-001`-`004` | `SCN-005` | — | `UNCOVERED` | `GAP-002` | Unit test, both receiver branches | — | PLANNED |
 | `FR-FILL-001` | CRITICAL | `EP-001`-`004` | `SCN-020` | `INV-011`, `INV-003` | `COVERED` | — | Add invariant harness | `test/LimitOrderProtocol.js::should swap fully based on signature`, `::transferFrom` | IMPLEMENTED |
@@ -29,7 +29,7 @@ one-authoritative-harness rule is satisfied by construction.
 | `MATH-003` | CRITICAL | `EP-001`-`004` | `SCN-013` | `INV-016` | `COVERED` | — | Add adversarial getter test | `test/LimitOrderProtocol.js::should not fill above threshold` (×2), `::should fill without checks with threshold == 0` | IMPLEMENTED |
 | `MATH-004` | CRITICAL | `EP-001`-`004` | `SCN-014` | `INV-016` | `COVERED` | — | Add adversarial getter test | `test/LimitOrderProtocol.js::should not fill below threshold` (×2) | IMPLEMENTED |
 | `MATH-005` | HIGH | `EP-002` | — | `INV-014` | `COVERED` | — | Add round-trip property | `test/DutchAuctionCalculator.js` (6 tests, 100% branch) | IMPLEMENTED |
-| `MATH-006` | HIGH | `EP-002` | — | `INV-014` | `PARTIAL` | `GAP-006` | Forward/inverse round-trip property | `test/RangeAmountCalculator.js` (8), `test/RangeLimitOrders.js` (4) | PLANNED |
+| `MATH-006` | HIGH | `EP-002` | — | `INV-014` **VIOLATED**, `INV-007` **VIOLATED** | `COVERED` | `GAP-006` closed | Done | `test/property/AmountCalculators.property.js` (9), `test/RangeAmountCalculator.js` (8), `test/RangeLimitOrders.js` (4) | **FAILING (reported)** — see `REG-001`, `REG-002`, `REG-003` |
 | `TIME-001` | HIGH | `EP-001`-`004` | `SCN-030`, `SCN-031` | — | `PARTIAL` | `GAP-007` | Boundary test at exactly the expiry second | `test/LimitOrderProtocol.js::Expiration` (6 tests) | PLANNED |
 | `TIME-002` | MEDIUM | `EP-008`, `EP-009` | `SCN-034` | `INV-006` | `COVERED` | — | — | `test/SeriesEpochManager.js` (6 tests) | IMPLEMENTED |
 | `TIME-003` | HIGH | `EP-002` | `SCN-038` | — | `PARTIAL` | `GAP-008` | Staleness boundary tests against `AggregatorMock` | `test/ChainLinkExample.js` (7 tests) | PLANNED |
@@ -43,7 +43,7 @@ one-authoritative-harness rule is satisfied by construction.
 | `ACC-004` | HIGH | `EP-023` | — | — | `PARTIAL` | `GAP-009` | Unauthorised-caller revert test | `test/FeeTaker.js` (7 tests, happy path) | PLANNED |
 | `ACC-005` | MEDIUM | `EP-017` | — | — | `UNCOVERED` | `GAP-010` | Authorised and unauthorised `rescueFunds` | — | PLANNED |
 | `OPS-001` | MEDIUM | `EP-015`, `EP-005` | `SCN-041` | `INV-009` | `PARTIAL` | `GAP-011` | Assert cancellation succeeds while paused | `test/LimitOrderProtocol.js::Paused contract should not work` | PLANNED |
-| `SEC-001` | CRITICAL | `EP-010` | — | `INV-008` | `PARTIAL` | `GAP-012` | Storage-writing simulation target, assert slot unchanged | `test/LimitOrderProtocol.js::can simulate the failure of bitsInvalidateForOrder` | PLANNED |
+| `SEC-001` | CRITICAL | `EP-010` | — | `INV-008` | `COVERED` | `GAP-012` closed | Done | `test/Simulation.js` (9 tests), `test/characterization/OrderMixin.characterization.js` (3) | IMPLEMENTED |
 | `SEC-002` | HIGH | `EP-001`-`004` | — | — | `UNCOVERED` | `GAP-013` | Reentrant permit mock triggering `ReentrancyDetected` | — | PLANNED |
 | `SEC-003` | MEDIUM | `EP-002` | `SCN-036`, `SCN-037` | `INV-012` | `PARTIAL` | `GAP-014` | Cover `not` and `eq`; add a writing predicate target | `test/LimitOrderProtocol.js::Predicate` (9 tests) | PLANNED |
 | `SEC-004` | MEDIUM | `EP-001`-`004` | — | — | `COVERED` | — | — | `test/LimitOrderProtocol.js::Fails with unexpected takerAssetSuffix`, `::Fails with unexpected makerAssetSuffix` | IMPLEMENTED |
@@ -70,20 +70,23 @@ one-authoritative-harness rule is satisfied by construction.
 | `INV-004` | `STATE-003`, `FR-CANCEL-003` | Hardhat | `test/invariant/` | TBD | BLOCKED | — |
 | `INV-005` | `STATE-001` | Hardhat | `test/invariant/` | TBD | BLOCKED | — |
 | `INV-006` | `TIME-002`, `STATE-004` | Hardhat | `test/invariant/` | TBD | BLOCKED | — |
-| `INV-007` | `MATH-001`, `MATH-002`, `ECON-002` | Hardhat | `test/property/` | TBD | BLOCKED | — |
-| `INV-008` | `SEC-001` | Hardhat | `test/invariant/` + permanent unit test | Deterministic | PLANNED | — |
-| `INV-009` | `OPS-001`, `FR-CANCEL-001` | Hardhat | `test/invariant/` | Deterministic | PLANNED | — |
-| `INV-010` | `ECON-001` | Hardhat | `test/invariant/` | TBD | BLOCKED | — |
-| `INV-011` | `FR-FILL-001` | Hardhat | `test/invariant/` | TBD | BLOCKED | — |
-| `INV-012` | `SEC-003` | Hardhat | `test/property/` | Deterministic | PLANNED | — |
-| `INV-013` | `FR-ORDER-002`, `INT-005` | Hardhat | `test/property/` | TBD | BLOCKED | — |
-| `INV-014` | `MATH-005`, `MATH-006`, `INT-007` | Hardhat | `test/property/` | TBD | BLOCKED | — |
-| `INV-015` | `FR-ORDER-001` | Hardhat | `test/property/` | TBD | BLOCKED | — |
-| `INV-016` | `MATH-003`, `MATH-004`, `INT-003` | Hardhat | `test/invariant/` | TBD | BLOCKED | — |
+| `INV-007` | `MATH-001`, `MATH-002`, `ECON-002`, `MATH-006` | Hardhat | `test/property/AmountCalculators.property.js` | 200 runs | **VIOLATED for `MATH-006`**; holds for Dutch auction | `REG-003`, seed `-1830898547` |
+| `INV-008` | `SEC-001` | Hardhat | `test/Simulation.js` | Deterministic, 9 cases | **IMPLEMENTED** | — |
+| `INV-009` | `OPS-001`, `FR-CANCEL-001` | Hardhat | `test/characterization/OrderMixin.characterization.js` | Deterministic | **IMPLEMENTED** | — |
+| `INV-010` | `ECON-001` | Hardhat | `test/characterization/FeeTaker.characterization.js` | Deterministic | **IMPLEMENTED** (single-fill conservation only) | — |
+| `INV-011` | `FR-FILL-001` | Hardhat | `test/invariant/` | — | NOT IMPLEMENTED | — |
+| `INV-012` | `SEC-003` | Hardhat | `test/PredicatesAndBoundaries.js` | Deterministic, 5 cases | **IMPLEMENTED** | — |
+| `INV-013` | `FR-ORDER-002`, `INT-005` | Hardhat | `test/invariant/` | — | NOT IMPLEMENTED | — |
+| `INV-014` | `MATH-005`, `MATH-006`, `INT-007` | Hardhat | `test/property/AmountCalculators.property.js` | 40 runs + 3 pins | **VIOLATED for `MATH-006`**; holds for Dutch auction | `REG-001` `-1924954020`, `REG-002` `-771726958`, `REG-003` `-1830898547` |
+| `INV-015` | `FR-ORDER-001` | Hardhat | `test/OrderIdentity.js` | Deterministic, 8 fields | **IMPLEMENTED** | — |
+| `INV-016` | `MATH-003`, `MATH-004`, `INT-003` | Hardhat | `test/invariant/` | — | NOT IMPLEMENTED | — |
 
-`BLOCKED` means the invariant needs randomized input generation, which needs the
-Phase 6 tooling decision. `INV-008`, `INV-009` and `INV-012` are `PLANNED`
-because they are deterministic and need no new tool.
+Six invariants are implemented, two are violated and reported, and eight remain
+without a harness because no `test/invariant/` stateful suite was written in
+Phase 9. Those eight — `INV-001`, `INV-002`, `INV-003`, `INV-004` (partly
+covered deterministically), `INV-005`, `INV-006`, `INV-011`, `INV-013`,
+`INV-016` — need multi-transaction action sequences and are the largest
+remaining piece of work.
 
 ## Unverifiable requirements
 
@@ -95,10 +98,9 @@ shipped getter pairs, so it is `PLANNED` rather than listed here.
 |---|---|---|---|
 | — | — | — | — |
 
-**Completion-contract status: both `CRITICAL` requirements currently short of
-executable verification are `PLANNED`, not unverifiable.** `FR-ORDER-001` needs
-`GAP-001` closed and `SEC-001` needs `GAP-012` closed. Neither is blocked by the
-tooling decision; both can be written in Phase 8 with what is installed.
+**Completion-contract status after Phases 7-9: all 11 `CRITICAL` requirements
+have executable verification.** `FR-ORDER-001` was closed by `test/OrderIdentity.js`
+and `SEC-001` by `test/Simulation.js`. The unverifiable list stays empty.
 
 ## Consistency check
 
@@ -112,10 +114,32 @@ tooling decision; both can be written in Phase 8 with what is installed.
 
 ## Coverage summary
 
-| Status | Count |
-|---|---|
-| `IMPLEMENTED` (existing tests suffice) | 23 |
-| `PLANNED` (new or strengthened tests needed) | 23 |
-| `FAILING` | 0 |
-| `BLOCKED` | 0 requirements; 13 of 16 invariants |
-| `NOT_VERIFIABLE` | 0 |
+Updated after Phases 7-9.
+
+| Status | At Gate B | After Phase 9 |
+|---|---|---|
+| `IMPLEMENTED` | 23 | 33 |
+| `PLANNED` | 23 | 12 |
+| `FAILING` (reported, not normalised) | 0 | **1** — `MATH-006` |
+| `NOT_VERIFIABLE` | 0 | 0 |
+| `CRITICAL` requirements verified | 9 of 11 | **11 of 11** |
+
+The one `FAILING` row is `MATH-006`, whose `INV-007` and `INV-014` obligations
+are violated by `RangeAmountCalculator`'s inverse. It is recorded as failing
+rather than adjusted to pass; the committed property test asserts a measured
+envelope and states the ideal invariant as false in its own comments. See
+`10-test-implementation-report.md` §Findings and `OQ-7`.
+
+## Gaps closed in Phases 7-9
+
+`GAP-001`, `GAP-002`, `GAP-005`, `GAP-006`, `GAP-007`, `GAP-009`, `GAP-010`,
+`GAP-011`, `GAP-012`, `GAP-014`, `GAP-021`, `GAP-023`, `GAP-024` — 13 of 26.
+
+Plus quality gaps `GAP-Q01` (three assertion-free files) and `GAP-Q04`
+(`SafeOrderBuilder`), via proposals `P-01`, `P-02`, `P-03` and `P-05`.
+
+Still open: `GAP-003`, `GAP-004`, `GAP-008`, `GAP-013`, `GAP-015`, `GAP-016`,
+`GAP-017`, `GAP-018`, `GAP-019`, `GAP-020`, `GAP-022`, `GAP-025`, `GAP-026`,
+and quality gaps `GAP-Q02` (`P-04`, held), `GAP-Q03` (`P-06`, held), `GAP-Q05`.
+
+`GAP-013` and `GAP-016` are blocked on `OQ-8`: both need a new mock contract.

@@ -8,11 +8,11 @@ row; supersede it.
 
 | Field | Value |
 |---|---|
-| Mode | `analyze --with-optional` |
+| Mode | `analyze --with-optional`, then `implement-tests` (Gate B approved 2026-08-03) |
 | Skill version | 5.0.0 |
 | Started | 2026-08-03 |
 | Last updated | 2026-08-03 |
-| Next permitted phase | `blocked: Gate B` — all `analyze` phases complete; Phases 7-11 require Gate B approval |
+| Next permitted phase | **none — workflow complete.** Every phase and gate from 0 to 11 is closed. Remaining work is optional follow-up, listed in `11-security-readiness.md` |
 
 ## Stack
 
@@ -76,7 +76,7 @@ Optional capabilities:
 | Capability | Requested | Used | Notes |
 |---|---|---|---|
 | `arc42-c4` | yes | **yes** | Phase 3A complete: `architecture/arc42.md`, 12 sections, 4 C4 PlantUML diagrams |
-| ADR capture | yes | no | Phase 10 is outside `analyze`. No new material decision has been made during this workflow, so there is nothing to record. Section 9 of `arc42.md` lists 8 recovered decisions and states explicitly that none is a historical record |
+| ADR capture | yes | **yes** | Phase 10 complete: `docs/decisions/0001-adopt-fast-check-for-property-testing.md`, written with `documentation-and-adrs`. Records the `fast-check` adoption and proposes the ADR convention the repo lacked. Section 9 of `arc42.md` separately lists 8 *recovered* decisions and states explicitly that none is a historical record |
 
 ## Phase status
 
@@ -93,12 +93,12 @@ Optional capabilities:
 | 6A Test audit | `06-existing-test-audit.md` | complete | 2026-08-03 | Baseline 173 pass / 0 fail / 5 pending. Coverage 91.88% stmt, 75.44% branch. 26 `GAP-*` + 5 quality findings + 6 proposals |
 | 6 Strategy | `07-test-strategy.md`, `08-traceability-matrix.md` | complete | 2026-08-03 | 16 `INV-*`. 13 are `BLOCKED` on the property-tooling decision. 23 requirements `IMPLEMENTED`, 23 `PLANNED` |
 | Gate B | — | **awaiting approval** | | `analyze` ends here. Nothing in Phases 7-11 may start until this is approved |
-| 7 Characterization | `09-characterization-report.md` | not started | | Outside `analyze` |
-| 8 Specification tests | `10-test-implementation-report.md` | not started | | Outside `analyze` |
-| 9 Property tests | `10-test-implementation-report.md` | not started | | Outside `analyze` |
-| 10 ADRs (optional) | repository ADR location | not started | | Outside `analyze` |
-| Gate C | — | not started | | Outside `analyze` |
-| 11 Security readiness | `11-security-readiness.md` | not started | | Outside `analyze` |
+| 7 Characterization | `09-characterization-report.md` | complete | 2026-08-03 | 20 tests in `test/characterization/`. Found a validation-ordering fact that narrows `SCN-041`: signature verification precedes the pause check on the contract-order path |
+| 8 Specification tests | `10-test-implementation-report.md` | complete | 2026-08-03 | 37 tests across 4 new files. **Both `CRITICAL` gaps closed** (`GAP-001`, `GAP-012`). Approved proposals `P-01`, `P-02`, `P-03`, `P-05` applied; `P-04` and `P-06` held per Gate B |
+| 9 Property tests | `10-test-implementation-report.md` | complete | 2026-08-03 | 12 property tests. **Found `REG-001`, `REG-002`, `REG-003`: `RangeAmountCalculator`'s inverse rounds in the taker's favour, violating `INV-007`.** No `test/invariant/` stateful harness written — 8 invariants still lack one |
+| 10 ADRs (optional) | `docs/decisions/0001-adopt-fast-check-for-property-testing.md` | complete | 2026-08-03 | **Supersedes the earlier `skipped` entry.** That entry was wrong: adopting `fast-check` *was* a new material decision made during this workflow. The repo had no ADR convention, so the ADR proposes one (location, numbering, headings) and flags that `docs/` is the docgen output tree |
+| Gate C | — | complete | 2026-08-03 | Approved in full. The 12 `PLANNED` rows, the accepted coverage gaps and the failing `MATH-006` row were all acknowledged |
+| 11 Security readiness | `11-security-readiness.md` | complete | 2026-08-03 | 13 findings. Verdict **ready, with two conditions**: run Slither, and resolve `SEC-F-001`. Static analysis was **not performed** — recorded as the review's own largest gap |
 
 Status is one of: `not started`, `in progress`, `blocked`, `complete`,
 `skipped`. `blocked` requires a reason and what would unblock it.
@@ -112,8 +112,8 @@ continue.
 | Gate | Scope approved | Approved by | Date | Verbatim statement | Conditions |
 |---|---|---|---|---|---|
 | Gate A | all 15 divergences in `03-divergence-decisions.md` | `camoseed` | 2026-08-03 | See the verbatim decision table in `03-divergence-decisions.md` §Summary; five statements covering all 15 IDs | none — no decision was conditional |
-| Gate B | requirements, architecture, privileges, scenarios, invariants, test strategy, traceability | | | | |
-| Gate C | documentation and tests are complete enough for security review | | | | |
+| Gate B | requirements, architecture, privileges, scenarios, existing-test audit and gap matrix, invariants, framework allocation, test strategy, traceability — full scope | `camoseed` | 2026-08-03 | "Approve in full — unblock Phases 7-9" | none — approval was unconditional |
+| Gate C | documentation and tests are complete enough for security review, with the 12 `PLANNED` traceability rows, the accepted coverage gaps and the failing `MATH-006` row all acknowledged | `camoseed` | 2026-08-03 | "Approve Gate C — gaps and the failing row are acknowledged, run Phase 11" | none — approval was unconditional |
 
 A conditional approval lists its conditions and is not complete until each is
 recorded as met. If the reviewer approved part of the scope, list exactly which
@@ -133,6 +133,11 @@ part; the rest stays unapproved.
 | `yarn test:ci` | 6A | 0 | 3.98s | **173 passing, 0 failing, 5 pending.** Run twice, identical. 5 pending are `describe.skip` at `test/examples/LimitOrderProtocol-example.js:8` |
 | `yarn coverage` | 6A | 0 | 16.4s | 91.88% stmt, 75.44% branch, 93.67% func, 92.56% lines. 13 tests self-skip under coverage, so `PrioirityFeeLimiter` reports 0% despite 6 passing tests in a normal run |
 | `which slither` | 4 | 1 | <1s | Not installed. Entry-point analysis done manually per the skill's fallback; a tool-assisted cross-check has not been performed |
+| `scripts/check-dependencies.sh implement-tests` | startup (7-9) | 0 | 4.4s | 3/3 resolved: `working-with-legacy-code`, `property-based-testing`, `web3-testing` |
+| `yarn add --dev --exact fast-check@3.23.2` | 9 | 0 | 12s | First attempt failed with a sandbox `EPERM` in the yarn cache and changed nothing; retried with unrestricted filesystem access. Added `fast-check@3.23.2` + `pure-rand@6.1.0`. `yarn.lock` +12/-0, no version changes |
+| `yarn test:ci` (after Phases 7-9) | 9 | 0 | 5.9s | **242 passing, 0 failing, 5 pending** (up from 173 passing). The 5 pending are unchanged |
+| `yarn coverage` (after Phases 7-9) | 9 | 0 | 19s | 93.97% stmt (from 91.88), 79.53% branch (from 75.44), 96.20% func, 94.37% lines. `OrderMixin.sol` and `PredicateHelper.sol` at 100% statements |
+| `yarn lint` | 9 | **1** | 2s | **Fails at the baseline commit, not because of this workflow.** `deploy/deploy-Permit2Proxy.js:24` — `'getNamedAccounts' is not defined`. The file is byte-identical to `origin/master`. `solhint` passes. Recorded as `GAP-Q06` and **not fixed**, per the test-audit policy. A gap in this audit's own coverage: lint should have been run in Phase 0 |
 
 Every command executed against the repository, including failures. Record
 failures without fixing them.
@@ -155,7 +160,10 @@ failures without fixing them.
 | OQ-3 | Is there any specification of `FeeTaker`'s intended fee behaviour outside this repository? It is deployed on 14 chains and "fee" does not appear in `description.md`. See `DIV-010`. | All `ECON-*` requirements; `FeeTaker` coverage in Phases 4, 5, 6 | 2026-08-03 | |
 | OQ-4 | Who holds the owner key on each deployment, and is pausing an intended operational control? See `DIV-004`. Widened in Phase 4: there are **three** independent `Ownable` instances — `LimitOrderProtocol`, `FeeTaker`, `NativeOrderFactory` — and nothing in the code links them. | `OPS-*`, owner-related `ACC-*`, and Phase 11 | 2026-08-03 | Partially answered: `DIV-004` accepted the mechanism as intended. Key holders still unknown |
 | OQ-5 | Why is `test/examples/LimitOrderProtocol-example.js` permanently disabled with `describe.skip`? 283 lines, 11 assertions, never run in CI. Nothing in the repository records a reason. | Proposal `P-04` in `06-existing-test-audit.md` | 2026-08-03 | |
-| OQ-6 | Which property-testing approach is authorised? No tool is installed, and the Hardhat 2 policy forbids adding one without approval. See `07-test-strategy.md`. | **Phase 9 entirely**; 13 of 16 `INV-*` are `BLOCKED` | 2026-08-03 | |
+| OQ-6 | Which property-testing approach is authorised? No tool is installed, and the Hardhat 2 policy forbids adding one without approval. See `07-test-strategy.md`. | **Phase 9 entirely**; 13 of 16 `INV-*` were `BLOCKED` | 2026-08-03 | **Answered 2026-08-03:** add `fast-check` as a devDependency. Installed at 3.23.2 |
+| OQ-7 | Is the `RangeAmountCalculator` inverse defect (`REG-001`/`REG-002`/`REG-003`) accepted, or should the contract be fixed? | Gate C; a severity ruling in Phase 11 | 2026-08-03 | **Answered 2026-08-03:** "Treat as a confirmed bug — draft a write-up I can take to the protocol team." Written to `BUG-REPORT-range-calculator.md`. Also carried into Phase 11 as `SEC-F-001`. Contract **not** changed |
+| OQ-8 | May a new mock contract be added under `contracts/mocks/`? | `GAP-013`, `GAP-016` | 2026-08-03 | **Answered 2026-08-03:** authorised. Two test-only mocks added; both gaps closed |
+| OQ-9 | Should Slither be installed so Phase 11 Step 1 (automated static analysis) can run? It was skipped, and it is the largest gap in the security review itself. | A productive audit engagement | 2026-08-03 | Deferred by decision: "Run Phase 11 manually without Slither and record the gap." Phase 11 recommends installing it before any audit |
 
 ## Deviations
 
@@ -164,4 +172,9 @@ authorized it.
 
 | What | Why | Authorized by |
 |---|---|---|
+| **`fast-check` added as a devDependency.** The stack-preservation rule forbids installing dependencies without approval; this is that approval. Nothing else in the dependency set changes — no version bumps, no lockfile churn beyond the single addition | `OQ-6`: no property or fuzzing tool was installed, and 13 of 16 invariants need randomized input generation. `fast-check` gives shrinking and seed replay without making the repository hybrid, which a Foundry sidecar would | User, 2026-08-03, selected "Add fast-check as a devDependency — real shrinking and seed replay, no stack change" |
+| **Four Phase 6A proposals applied to existing tests** (`P-01`, `P-02`, `P-03`, `P-05`). The test-audit policy forbids modifying an existing test without recorded approval; this is that approval. All four are additive — assertions added, nothing relaxed, removed or renamed | Three test files had zero assertions (`GAP-Q01`) and `SafeOrderBuilder.js` had one across six cases (`GAP-Q04`) | User, 2026-08-03, selected "Approve P-01, P-02, P-03, P-05 now; hold P-04 and P-06 pending OQ-5" |
+| `P-04` and `P-06` **not** applied | Held pending `OQ-5`. The disabled example suite stays disabled and `MeasureGas.js` keeps no assertions | Same statement as above |
+| **Two test-only mock contracts added** under `contracts/mocks/`: `ReentrantPermitMock.sol` and `ReturningTakerInteractionMock.sol`. The `contracts/` tree is therefore no longer byte-identical to `origin/master`; **no production contract changed** — verified by diffing `contracts/*.sol`, `extensions/`, `helpers/`, `libraries/`, `interfaces/` and `utils/` separately, all empty | `GAP-013` and `GAP-016` cannot be closed without them: reaching `ReentrancyDetected` needs a token whose `permit` re-enters, and showing the taker-interaction return value is ignored needs a contract that returns data on that selector | User, 2026-08-03, `OQ-8`: "Authorise adding a mock contract so I can close GAP-013 and GAP-016" |
+| **`deploy/deploy-Permit2Proxy.js` modified** — added the missing `getNamedAccounts` to the handler's destructured argument | `GAP-Q06` / `SEC-F-002`. Not merely a lint failure: the script would have thrown `ReferenceError` on any real deployment, and `yarn lint` was already red on `master` because of it. Every other deploy script destructures it | User, 2026-08-03: "Fix the pre-existing yarn lint failure on master (GAP-Q06) — separate from this workflow" |
 | Artifacts written to `.protocol-reconstruction/` instead of the skill's default `docs/protocol-reconstruction/` | `docs/` is the `solidity-docgen` `outputDir` and holds 38 committed generated files; mixing hand-written workflow output into a generated, committed tree risks collision and confusion. `references/artifacts.md` anticipates this case. Filenames within the directory are unchanged. | User, 2026-08-03, selected "Outside docs/, e.g. `.protocol-reconstruction/` at the repo root, keeping generated and hand-written docs separate" |
