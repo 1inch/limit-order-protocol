@@ -92,7 +92,7 @@ describe('SafeOrderBuilder', function () {
     for (const [makerOracleResult, takerOracleResult, numerator, denominator] of testCases) {
         const testName = `price change ${Number(100n * ether('0.00025') / makerOracleResult) / 100} ${Number(100n * ether('0.00025') / takerOracleResult) / 100}`;
         it(testName, async function () {
-            const { swap, safe, registrator, safeOrderBuilder, usdcOracle, usdtOracle, order } = await loadFixture(deployAndInit);
+            const { swap, usdc, usdt, safe, registrator, safeOrderBuilder, usdcOracle, usdtOracle, order } = await loadFixture(deployAndInit);
 
             const tx = await executeContractCallWithSigners(
                 safe,
@@ -113,7 +113,29 @@ describe('SafeOrderBuilder', function () {
                 threshold: 1000,
             });
 
-            await swap.fillContractOrder(order, '0x', order.makingAmount, takerTraits.traits);
+            // Proposal P-05, approved at Gate B on 2026-08-03 (GAP-Q04).
+            //
+            // Correcting the proposal's own premise: the OrderRegistered
+            // assertion above does already check the oracle-derived taking
+            // amount, because orderTuple carries it. What was unasserted is
+            // the fill itself - the call below previously ended the test with
+            // no check on the outcome, so a registered order that could not
+            // actually settle at the recomputed price would still pass.
+            const fillTx = swap.fillContractOrder(order, '0x', order.makingAmount, takerTraits.traits);
+
+            // FR-FILL-001: the maker asset leaves the Safe for the taker.
+            await expect(fillTx).to.changeTokenBalances(
+                usdc,
+                [addr, safe],
+                [order.makingAmount, -order.makingAmount],
+            );
+            // FR-ORDER-003: no receiver is named, so the Safe is paid the
+            // oracle-derived taking amount asserted in the event above.
+            await expect(fillTx).to.changeTokenBalances(
+                usdt,
+                [addr, safe],
+                [-order.takingAmount, order.takingAmount],
+            );
         });
     }
 });

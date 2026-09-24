@@ -1,4 +1,4 @@
-const { constants, permit2Contract } = require('@1inch/solidity-utils');
+const { constants, expect, permit2Contract } = require('@1inch/solidity-utils');
 const { SignatureTransfer, PERMIT2_ADDRESS } = require('@uniswap/permit2-sdk');
 const { ether } = require('./helpers/utils');
 const { signOrder, buildOrder, buildTakerTraits, buildMakerTraitsRFQ } = require('./helpers/orderUtils');
@@ -90,6 +90,28 @@ describe('WitnessProxyExample', function () {
             threshold: order.takingAmount,
         });
 
-        await swap.fillOrderArgs(order, r, vs, order.makingAmount, takerTraits.traits, takerTraits.args);
+        // Proposal P-02, approved at Gate B on 2026-08-03 (GAP-Q01).
+        // This test previously ended on the bare call above, asserting only
+        // that the transaction did not revert. It is the sole coverage of
+        // Permit2WitnessProxy. Assertions are additive; nothing was relaxed.
+        const fillTx = swap.fillOrderArgs(order, r, vs, order.makingAmount, takerTraits.traits, takerTraits.args);
+
+        // INT-006: the witnessed permit moves the maker's WETH to the taker.
+        await expect(fillTx).to.changeTokenBalances(
+            weth,
+            [addr, addr1],
+            [order.makingAmount, -order.makingAmount],
+        );
+        // FR-FILL-001: the taker's DAI reaches the maker.
+        await expect(fillTx).to.changeTokenBalances(
+            dai,
+            [addr, addr1],
+            [-order.takingAmount, order.takingAmount],
+        );
+        // The permit2 nonce is consumed, so the same signed permit cannot be
+        // replayed for a second fill.
+        await expect(
+            swap.fillOrderArgs(order, r, vs, order.makingAmount, takerTraits.traits, takerTraits.args),
+        ).to.be.reverted;
     });
 });

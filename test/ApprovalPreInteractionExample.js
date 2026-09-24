@@ -1,3 +1,4 @@
+const { expect } = require('@1inch/solidity-utils');
 const { ether } = require('./helpers/utils');
 const { signOrder, buildOrder, buildTakerTraits, buildMakerTraitsRFQ } = require('./helpers/orderUtils');
 const { deploySwapTokens } = require('./helpers/fixtures');
@@ -44,6 +45,31 @@ describe('ApprovalPreInteractionExample', function () {
             threshold: order.takingAmount,
         });
 
-        await swap.fillContractOrder(order, sig, order.makingAmount, takerTraits.traits);
+        // Proposal P-03, approved at Gate B on 2026-08-03 (GAP-Q01).
+        // This test previously ended on the bare call above, asserting only
+        // that the transaction did not revert. It is the sole coverage of
+        // ApprovalPreInteraction. Assertions are additive; nothing was relaxed.
+        const makerContract = await approvalPreInteraction.getAddress();
+
+        // The pre-interaction has not run yet, so the protocol holds no
+        // allowance over the maker contract's WETH.
+        expect(await weth.allowance(makerContract, await swap.getAddress())).to.equal(0n);
+
+        const fillTx = swap.fillContractOrder(order, sig, order.makingAmount, takerTraits.traits);
+
+        // FR-FILL-002: the pre-interaction grants the approval mid-fill, which
+        // is what allows the maker leg to settle at all.
+        await expect(fillTx).to.changeTokenBalances(
+            weth,
+            [addr, makerContract],
+            [order.makingAmount, -order.makingAmount],
+        );
+        // FR-ORDER-003: the order names no receiver, so the taker's DAI goes
+        // to the maker - here the contract itself.
+        await expect(fillTx).to.changeTokenBalances(
+            dai,
+            [addr, makerContract],
+            [-order.takingAmount, order.takingAmount],
+        );
     });
 });
