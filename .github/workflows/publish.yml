@@ -27,4 +27,10 @@ jobs:
         env:
           TAG: ${{ inputs.tag }}
         run: test "$(node -p "require('./package.json').version")" = "$TAG"
-      - run: npm publish --access public
+      - name: Publish
+        run: |
+          if [ "$(git rev-parse HEAD)" = "$GITHUB_SHA" ]; then
+            npm publish --access public
+          else
+            npm publish --access public --provenance=false
+          fi
