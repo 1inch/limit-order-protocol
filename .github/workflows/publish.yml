@@ -1,0 +1,36 @@
+name: PUBLISH
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to publish (e.g. 4.3.4)'
+        required: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish-npmjs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ inputs.tag }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: 'https://registry.npmjs.org'
+      - name: Check package version matches tag
+        env:
+          TAG: ${{ inputs.tag }}
+        run: test "$(node -p "require('./package.json').version")" = "$TAG"
+      - name: Publish
+        run: |
+          if [ "$(git rev-parse HEAD)" = "$GITHUB_SHA" ]; then
+            npm publish --access public
+          else
+            npm publish --access public --provenance=false
+          fi
