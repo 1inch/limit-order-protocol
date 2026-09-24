@@ -174,6 +174,10 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
         (bool isWhitelisted, uint256 integratorFee, uint256 integratorShare, uint256 resolverFee, bytes calldata parsedTail) = _parseFeeData(extraData, taker, orderHash, _isWhitelistedPostInteractionImpl);
         tail = parsedTail;
         if (!isWhitelisted && _ACCESS_TOKEN.balanceOf(taker) == 0) revert OnlyWhitelistOrAccessToken();
+        // Note: whitelist/access-token checks are based on instantaneous balance, which
+        // is flash-borrowable. A sophisticated attacker could temporarily hold 1INCH
+        // via flash loan to bypass these checks. This is an accepted design trade-off
+        // in the 1inch protocol and does not result in fund loss for liquidity providers.
 
         uint256 denominator = _BASE_1E5 + integratorFee + resolverFee;
         uint256 integratorFeeTotal = takingAmount.mulDiv(integratorFee, denominator);
@@ -193,6 +197,16 @@ contract FeeTaker is IPostInteraction, AmountGetterWithFee, Ownable {
         (bool success, ) = target.call{value: amount}("");
         if (!success) {
             revert EthTransferFailed();
+        }
+    }
+
+    /// @notice Rescue native ETH accidentally sent to this contract.
+    /// @dev ETH can be sent via receive() but has no withdrawal path except as fee payouts.
+    /// This allows the owner to recover any accidentally sent ETH.
+    function rescueEth(address to, uint256 amount) external onlyOwner {
+        if (address(this).balance >= amount) {
+            (bool success, ) = to.call{value: amount}("");
+            if (!success) revert EthTransferFailed();
         }
     }
 }
