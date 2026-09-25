@@ -38,7 +38,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     IWETH private immutable _WETH;
     address private immutable _LOP;
     address private immutable _IMPLEMENTATION = address(this);
-    address private immutable _FACTORY;
+    address internal immutable _FACTORY;
     IERC20 private immutable _ACCESS_TOKEN;
     uint256 private immutable _CANCELLATION_DELAY;
 
@@ -167,7 +167,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         return order.hashMemory(_domainSeparatorV4());
     }
 
-    function _calcCloneAddress(IOrderMixin.Order calldata makerOrder) private view returns(address) {
+    function _calcCloneAddress(IOrderMixin.Order calldata makerOrder) internal virtual view returns(address) {
         bytes32 makerOrderHash = makerOrder.hash(_domainSeparatorV4());
         return _IMPLEMENTATION.predictDeterministicAddress(makerOrderHash, _FACTORY);
     }
