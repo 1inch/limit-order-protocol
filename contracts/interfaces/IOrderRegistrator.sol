@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity 0.8.30;
 
 import { IOrderMixin } from "./IOrderMixin.sol";
 
@@ -10,12 +10,6 @@ import { IOrderMixin } from "./IOrderMixin.sol";
  * The registrator is responsible for registering orders and emitting an event when an order is registered.
  */
 interface IOrderRegistrator {
-
-    /**
-     * @notice Error thrown when an order is already registered.
-     * @param orderHash The hash of the order.
-     */
-    error OrderAlreadyRegistered(bytes32 orderHash);
     /**
      * @notice Emitted when an order is registered.
      * @param order The order that was registered.
@@ -31,11 +25,4 @@ interface IOrderRegistrator {
      * @param signature The signature of the order.
      */
     function registerOrder(IOrderMixin.Order calldata order, bytes calldata extension, bytes calldata signature) external;
-
-    /**
-     * @notice Returns the time an order was first registered, or zero when it never was.
-     * @param orderHash The hash of the order.
-     * @return timestamp The block timestamp of the first registration.
-     */
-    function announcedAt(bytes32 orderHash) external view returns (uint256 timestamp);
 }
