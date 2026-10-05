@@ -5,7 +5,7 @@ const { ethers, getChainId } = hre;
 const { permit2Address } = require('@uniswap/permit2-sdk');
 const constants = require('../config/constants');
 
-module.exports = async ({ deployments, getNamedAccounts }) => {
+module.exports = async ({ deployments }) => {
     const networkName = hre.network.name;
     console.log(`running ${networkName} deploy script`);
     const chainId = await getChainId();
