@@ -12,7 +12,7 @@
 
 The `master` branch contains the latest work-in-progress version of limit orders. It hasn't been audited and may contain severe security issues or may not work at all.
 
-Please, use the commit tagged version to get the latest production version that has passed through a series of security audits:
+Please, use the commit tagged version to get the latest production version that has passed through a series of security audits:
 
 - tag `4.3.2` [Fee Flow in Limit order protocol v4](https://github.com/1inch/limit-order-protocol/tree/4.3.2) / [secure audits](https://github.com/1inch/1inch-audits/tree/master/Fees%20for%20LO%20and%20Fusion%20V1)
 - tag `4.0.0` [Limit order protocol v4](https://github.com/1inch/limit-order-protocol/tree/4.0.0) / [security audits](https://github.com/1inch/1inch-audits/tree/master/Aggregation%20Pr.%20V6%20and%20Limit%20Order%20Pr.V4)
@@ -59,33 +59,32 @@ Separate RFQ order are deprecated in v4. To create the most gas efficient order 
 
 ### Deployments & audits (Limit Orders Protocol v4):
 
-You can find 1inch Router v6 and 1inch Limit Order protocol v4 deployments here:
+The protocol ships as part of the 1inch Router v6 contract, so 1inch Router v6 and 1inch Limit Order protocol v4 share a single address on each network:
 
-**Ethereum mainnet:** [0x111111125421ca6dc452d289314280a0f8842a65](https://etherscan.io/address/0x111111125421ca6dc452d289314280a0f8842a65)
+| Network          | Contract Address |
+|------------------|------------------|
+| Ethereum mainnet | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://etherscan.io/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| BSC mainnet      | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://bscscan.com/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| Polygon mainnet  | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://polygonscan.com/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| Optimism mainnet | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://optimistic.etherscan.io/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| Arbitrum One     | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://arbiscan.io/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| Gnosis Chain     | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://gnosisscan.io/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| Avalanche        | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://snowtrace.io/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| Fantom           | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://explorer.fantom.network/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| Aurora           | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://explorer.aurora.dev/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| Kaia             | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://kaiascan.io/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| Base             | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://basescan.org/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| Linea            | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://lineascan.build/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| Sonic            | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://sonicscan.org/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| Unichain         | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://uniscan.xyz/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| Cronos           | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://cronoscan.com/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| Monad            | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://monadscan.com/address/0x111111125421cA6dc452d289314280a0f8842A65) |
+| HyperEVM         | [`0x5281602aDc446A94eb48D055f514A6d8D5bee176`](https://hyperevmscan.io/address/0x5281602aDc446A94eb48D055f514A6d8D5bee176) |
+| zkSync Era       | [`0x6fd4383cB451173D5f9304F041C7BCBf27d561fF`](https://explorer.zksync.io/address/0x6fd4383cB451173D5f9304F041C7BCBf27d561fF) |
 
-**BSC mainnet:** [0x111111125421ca6dc452d289314280a0f8842a65](https://bscscan.com/address/0x111111125421ca6dc452d289314280a0f8842a65#code)
+> **Note**: HyperEVM and zkSync Era do not use the shared address. The verifying contract is part of the EIP-712 domain an order is signed against, so always take the address of the network you are signing for.
 
-**Polygon mainnet:** [0x111111125421ca6dc452d289314280a0f8842a65](https://polygonscan.com/address/0x111111125421ca6dc452d289314280a0f8842a65#code)
-
-**Optimism Mainnet:** [0x111111125421ca6dc452d289314280a0f8842a65](https://optimistic.etherscan.io/address/0x111111125421ca6dc452d289314280a0f8842a65#code)
-
-**Arbitrum One:** [0x111111125421ca6dc452d289314280a0f8842a65](https://arbiscan.io/address/0x111111125421ca6dc452d289314280a0f8842a65#code)
-
-**Gnosis Chain:** [0x111111125421ca6dc452d289314280a0f8842a65](https://blockscout.com/xdai/mainnet/address/0x111111125421ca6dc452d289314280a0f8842a65/transactions)
-
-**Avalanche:** [0x111111125421ca6dc452d289314280a0f8842a65](https://snowtrace.io/address/0x111111125421ca6dc452d289314280a0f8842a65#code)
-
-**Fantom:** [0x111111125421ca6dc452d289314280a0f8842a65](https://ftmscan.com/address/0x111111125421ca6dc452d289314280a0f8842a65#code)
-
-**Aurora:** [0x111111125421ca6dc452d289314280a0f8842a65](https://aurorascan.dev/address/0x111111125421ca6dc452d289314280a0f8842a65)
-
-**Kaia:** [0x111111125421ca6dc452d289314280a0f8842a65](https://kaiascan.io/address/0x111111125421ca6dc452d289314280a0f8842a65)
-
-**Base:** [0x111111125421ca6dc452d289314280a0f8842a65](https://basescan.org/address/0x111111125421ca6dc452d289314280a0f8842a65#code)
-
-**zkSync Era:** [0x6fd4383cb451173d5f9304f041c7bcbf27d561ff](https://era.zksync.network/address/0x6fd4383cb451173d5f9304f041c7bcbf27d561ff#code)
-
-You can find audit reports on etherscan and in the separate [audit repository](https://github.com/1inch/1inch-audits/tree/master/Limit%20Order%20Protocol).
+You can find audit reports on etherscan and in the separate [audit repository](https://github.com/1inch/1inch-audits/tree/master/Limit%20Order%20Protocol).
 
 ### Utils library (Limit Orders Protocol v4)
 Plenty of utils that helps create & sign orders are available in our typescript utils library:

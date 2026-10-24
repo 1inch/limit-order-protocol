@@ -10,7 +10,9 @@ require('dotenv').config();
 const { oneInchTemplates } = require('@1inch/solidity-utils/docgen');
 const { Networks, getNetwork } = require('@1inch/solidity-utils/hardhat-setup');
 
-const { networks, etherscan } = (new Networks()).registerAll();
+const n = new Networks();
+const { networks } = n.registerAll();
+const etherscan = n.getEtherscanConfig(getNetwork());
 
 module.exports = {
     etherscan,
@@ -43,6 +45,8 @@ module.exports = {
             '@1inch/solidity-utils/contracts/mocks/TokenCustomDecimalsMock.sol',
             '@1inch/solidity-utils/contracts/mocks/TokenMock.sol',
             '@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol',
+            '@gnosis.pm/safe-contracts/contracts/libraries/MultiSend.sol',
+            '@gnosis.pm/safe-contracts/contracts/examples/libraries/SignMessage.sol',
         ],
     },
     docgen: {
@@ -50,5 +54,9 @@ module.exports = {
         templates: oneInchTemplates(),
         pages: 'files',
         exclude: ['mocks'],
+    },
+    deployOpts: {
+        lopHelperConfigs: process.env.OPS_LOP_HELPER_CONFIGS ? JSON.parse(process.env.OPS_LOP_HELPER_CONFIGS) : [],
+        deploymentMethod: process.env.OPS_DEPLOYMENT_METHOD,
     },
 };

@@ -1,46 +1,49 @@
+const { deployAndGetContractWithCreate3, deployAndGetContract } = require('@1inch/solidity-utils');
+
 const hre = require('hardhat');
-const { ethers } = hre;
-const { getChainId } = hre;
+const { ethers, getChainId, network } = hre;
+const constants = require('../config/constants');
 
-const ROUTER_V6_ADDR = '0x111111125421ca6dc452d289314280a0f8842a65';
-
-const PERMIT2_WITNESS_PROXY_SALT = ethers.keccak256(ethers.toUtf8Bytes('Permit2WitnessProxy'));
-
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-module.exports = async ({ deployments }) => {
-    const networkName = hre.network.name;
+module.exports = async ({ deployments, getNamedAccounts }) => {
+    const networkName = network.name;
     console.log(`running ${networkName} deploy script`);
     const chainId = await getChainId();
     console.log('network id ', chainId);
+
     if (
-        networkName in hre.config.networks[networkName] &&
-        chainId !== hre.config.networks[networkName].chainId.toString()
+        networkName in hre.config.networks &&
+        chainId !== hre.config.networks[networkName].chainId?.toString()
     ) {
         console.log(`network chain id: ${hre.config.networks[networkName].chainId}, your chain id ${chainId}`);
         console.log('skipping wrong chain id deployment');
         return;
     }
 
-    const create3Deployer = await ethers.getContractAt('ICreate3Deployer', (await deployments.get('Create3Deployer')).address);
+    if (networkName.indexOf('zksync') !== -1) {
+        const { deployer } = await getNamedAccounts();
 
-    const Permit2WitnessProxyFactory = await ethers.getContractFactory('Permit2WitnessProxy');
+        // Deploy on zkSync-like networks without create3
+        await deployAndGetContract({
+            contractName: 'Permit2WitnessProxy',
+            constructorArgs: [constants.ROUTER_V6[chainId]],
+            deployments,
+            deployer,
+            skipVerify: process.env.OPS_SKIP_VERIFY === 'true',
+        });
+    } else {
+        const salt = constants.PERMIT2_WITNESS_PROXY_SALT[chainId].startsWith('0x')
+            ? constants.PERMIT2_WITNESS_PROXY_SALT[chainId]
+            : ethers.keccak256(ethers.toUtf8Bytes(constants.PERMIT2_WITNESS_PROXY_SALT[chainId]));
 
-    const deployData = (await Permit2WitnessProxyFactory.getDeployTransaction(ROUTER_V6_ADDR)).data;
+        console.log(`Using salt: ${salt}`);
 
-    const txn = create3Deployer.deploy(PERMIT2_WITNESS_PROXY_SALT, deployData, { gasLimit: 5000000 });
-    await (await txn).wait();
-
-    const permit2WitnessProxyAddr = await create3Deployer.addressOf(PERMIT2_WITNESS_PROXY_SALT);
-
-    console.log('Permit2WitnessProxy deployed to:', permit2WitnessProxyAddr);
-
-    await sleep(5000); // wait for etherscan to index contract
-
-    if (chainId !== '31337') {
-        await hre.run('verify:verify', {
-            address: permit2WitnessProxyAddr,
-            constructorArguments: [ROUTER_V6_ADDR],
+        await deployAndGetContractWithCreate3({
+            contractName: 'Permit2WitnessProxy',
+            constructorArgs: [constants.ROUTER_V6[chainId]],
+            create3Deployer: constants.CREATE3_DEPLOYER[chainId],
+            salt,
+            deployments,
+            skipVerify: process.env.OPS_SKIP_VERIFY === 'true',
         });
     }
 };
