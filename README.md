@@ -59,28 +59,7 @@ Separate RFQ order are deprecated in v4. To create the most gas efficient order 
 
 ### Deployments & audits (Limit Orders Protocol v4):
 
-The protocol ships as part of the 1inch Router v6 contract, so 1inch Router v6 and 1inch Limit Order protocol v4 share a single address on each network:
-
-| Network          | Contract Address |
-|------------------|------------------|
-| Ethereum mainnet | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://etherscan.io/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| BSC mainnet      | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://bscscan.com/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| Polygon mainnet  | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://polygonscan.com/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| Optimism mainnet | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://optimistic.etherscan.io/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| Arbitrum One     | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://arbiscan.io/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| Gnosis Chain     | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://gnosisscan.io/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| Avalanche        | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://snowtrace.io/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| Fantom           | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://explorer.fantom.network/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| Aurora           | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://explorer.aurora.dev/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| Kaia             | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://kaiascan.io/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| Base             | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://basescan.org/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| Linea            | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://lineascan.build/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| Sonic            | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://sonicscan.org/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| Unichain         | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://uniscan.xyz/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| Cronos           | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://cronoscan.com/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| Monad            | [`0x111111125421cA6dc452d289314280a0f8842A65`](https://monadscan.com/address/0x111111125421cA6dc452d289314280a0f8842A65) |
-| HyperEVM         | [`0x5281602aDc446A94eb48D055f514A6d8D5bee176`](https://hyperevmscan.io/address/0x5281602aDc446A94eb48D055f514A6d8D5bee176) |
-| zkSync Era       | [`0x6fd4383cB451173D5f9304F041C7BCBf27d561fF`](https://explorer.zksync.io/address/0x6fd4383cB451173D5f9304F041C7BCBf27d561fF) |
+The protocol ships as part of the 1inch Router v6 contract, so 1inch Router v6 and 1inch Limit Order protocol v4 share a single address on each network. Addresses per network, together with the helper and extension contracts, are listed in [deployments.md](deployments.md).
 
 > **Note**: HyperEVM and zkSync Era do not use the shared address. The verifying contract is part of the EIP-712 domain an order is signed against, so always take the address of the network you are signing for.
 
