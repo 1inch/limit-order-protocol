@@ -32,6 +32,7 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
         address limitOrderProtocol,
         IERC20 accessToken,
         uint256 cancellationDelay, // Recommended 60 seconds delay after order expiration for rewardable cancellation
+        uint256 cancelGasEstimate, // Max Gas refund for cancellation, canonically 77k
         string memory name,
         string memory version
     )
@@ -44,6 +45,7 @@ contract NativeOrderFactory is Ownable, EIP712Alien {
             limitOrderProtocol,
             accessToken,
             cancellationDelay,
+            cancelGasEstimate,
             name,
             version
         ));

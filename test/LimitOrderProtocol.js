@@ -38,7 +38,7 @@ describe('LimitOrderProtocol', function () {
         await tokens.accessToken.mint(addr2, 1);
 
         const NativeOrderFactory = await ethers.getContractFactory('NativeOrderFactory');
-        contracts.nativeOrderFactory = await NativeOrderFactory.deploy(weth, swap, tokens.accessToken, 60, '1inch Limit Order Protocol', '4');
+        contracts.nativeOrderFactory = await NativeOrderFactory.deploy(weth, swap, tokens.accessToken, 60, 77_000, '1inch Limit Order Protocol', '4');
         await contracts.nativeOrderFactory.waitForDeployment();
         const orderLibFactory = await ethers.getContractFactory('OrderLib');
 
