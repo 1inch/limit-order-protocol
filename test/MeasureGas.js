@@ -1,8 +1,8 @@
 const hre = require('hardhat');
 const { ethers } = hre;
-const { loadFixture } = require('@nomicfoundation/hardhat-network-helpers');
+const { loadFixture, time } = require('@nomicfoundation/hardhat-network-helpers');
 const { deploySwapTokens } = require('./helpers/fixtures');
-const { ether } = require('./helpers/utils');
+const { ether, getEventArgs } = require('./helpers/utils');
 const { fillWithMakingAmount, signOrder, buildOrder, buildMakerTraits } = require('./helpers/orderUtils');
 
 describe('MeasureGas', function () {
@@ -125,5 +125,47 @@ describe('MeasureGas', function () {
         const orderHash = await swap.hashOrder(order);
         const tx = await swap.cancelOrder(order.makerTraits, orderHash); ;
         console.log(`invalidate order gasUsed: ${(await tx.wait()).gasUsed}`);
+    });
+
+    it('cancel expired native order by resolver', async function () {
+        const { addrs, dai, weth, swap } = await loadFixture(deployContractsAndInit);
+
+        const TokenMock = await ethers.getContractFactory('TokenMock');
+        const accessToken = await TokenMock.deploy('Access Token', 'ACCESS');
+        await accessToken.waitForDeployment();
+        await accessToken.mint(addrs[2], 1);
+
+        const NativeOrderFactory = await ethers.getContractFactory('NativeOrderFactory');
+        const nativeOrderFactory = await NativeOrderFactory.deploy(
+            weth,
+            swap,
+            accessToken,
+            60,
+            77_000,
+            '1inch Limit Order Protocol',
+            '4',
+        );
+        await nativeOrderFactory.waitForDeployment();
+
+        const expirationTime = await time.latest() + time.duration.hours(1);
+        const order = buildOrder({
+            maker: addrs[1].address,
+            receiver: addrs[1].address,
+            makerAsset: await weth.getAddress(),
+            takerAsset: await dai.getAddress(),
+            makingAmount: ether('0.3'),
+            takingAmount: ether('300'),
+            makerTraits: buildMakerTraits({ expiry: expirationTime }),
+        });
+
+        const createTx = await nativeOrderFactory.connect(addrs[1]).create(order, { value: order.makingAmount });
+        const createReceipt = await createTx.wait();
+        const cloneAddress = getEventArgs(createReceipt, nativeOrderFactory.interface, 'NativeOrderCreated')[2];
+        const clone = await ethers.getContractAt('NativeOrderImpl', cloneAddress);
+
+        await time.increaseTo(expirationTime + 60);
+
+        const cancelTx = await clone.connect(addrs[2]).cancelExpiredOrderByResolver(order, order.makingAmount);
+        console.log(`cancel expired native order by resolver gasUsed: ${(await cancelTx.wait()).gasUsed}`);
     });
 });

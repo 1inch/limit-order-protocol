@@ -26,7 +26,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         // Deploy on zkSync-like networks without create3
         nativeOrderFactory = await deployAndGetContract({
             contractName: 'NativeOrderFactory',
-            constructorArgs: [constants.WETH[chainId], constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], 60, '1inch Aggregation Router', '6'],
+            constructorArgs: [constants.WETH[chainId], constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], 60, 77_000, '1inch Aggregation Router', '6'],
             deployments,
             deployer,
             skipVerify: process.env.OPS_SKIP_VERIFY === 'true',
@@ -40,7 +40,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
         nativeOrderFactory = await deployAndGetContractWithCreate3({
             contractName: 'NativeOrderFactory',
-            constructorArgs: [constants.WETH[chainId], constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], 60, '1inch Aggregation Router', '6'],
+            constructorArgs: [constants.WETH[chainId], constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], 60, 77_000, '1inch Aggregation Router', '6'],
             create3Deployer: constants.CREATE3_DEPLOYER[chainId],
             salt,
             deployments,
@@ -54,7 +54,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
         await hre.run('verify:verify', {
             address: implementationAddress,
-            constructorArguments: [constants.WETH[chainId], await nativeOrderFactory.getAddress(), constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], 60, '1inch Aggregation Router', '6'],
+            constructorArguments: [constants.WETH[chainId], await nativeOrderFactory.getAddress(), constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], 60, 77_000, '1inch Aggregation Router', '6'],
         });
     }
 };

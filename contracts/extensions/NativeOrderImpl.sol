@@ -33,14 +33,13 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
     error CanNotCancelForZeroBalance();
     error CancellationDelayViolation(uint256 timePassedSinceExpiration, uint256 requiredDelay);
 
-    uint256 private constant _CANCEL_GAS_LOWER_BOUND = 70_000;
-
     IWETH private immutable _WETH;
     address private immutable _LOP;
     address private immutable _IMPLEMENTATION = address(this);
     address private immutable _FACTORY;
     IERC20 private immutable _ACCESS_TOKEN;
     uint256 private immutable _CANCELLATION_DELAY;
+    uint256 private immutable _CANCEL_GAS_ESTIMATE;
 
     modifier onlyFactory {
         if (msg.sender != _FACTORY) revert OnlyFactoryViolation(msg.sender, _FACTORY);
@@ -69,6 +68,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         address limitOrderProtocol,
         IERC20 accessToken,
         uint256 cancellationDelay, // Recommended 60 seconds delay after order expiration for rewardable cancellation
+        uint256 cancelGasEstimate, // Max Gas refund for cancellation, canonically 77k
         string memory name,
         string memory version
     )
@@ -80,6 +80,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         _FACTORY = nativeOrderFactory;
         _ACCESS_TOKEN = accessToken;
         _CANCELLATION_DELAY = cancellationDelay;
+        _CANCEL_GAS_ESTIMATE = cancelGasEstimate;
     }
 
     function depositAndApprove() external payable onlyFactory {
@@ -130,7 +131,7 @@ contract NativeOrderImpl is IERC1271, EIP712Alien, OnlyWethReceiver {
         uint256 resolverReward = 0;
         if (rewardLimit > 0) {
             if (block.timestamp - orderExpiration < _CANCELLATION_DELAY) revert CancellationDelayViolation(block.timestamp - orderExpiration, _CANCELLATION_DELAY);
-            resolverReward = Math.min(rewardLimit, block.basefee * _CANCEL_GAS_LOWER_BOUND * 1.1e18 / 1e18);
+            resolverReward = Math.min(rewardLimit, block.basefee * _CANCEL_GAS_ESTIMATE);
         }
         uint256 balance = _cancelOrder(makerOrder, resolverReward);
         bytes32 orderHash = _patchOrderMakerAndHash(makerOrder);
