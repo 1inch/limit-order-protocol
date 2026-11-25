@@ -54,7 +54,16 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
         await hre.run('verify:verify', {
             address: implementationAddress,
-            constructorArguments: [constants.WETH[chainId], await nativeOrderFactory.getAddress(), constants.ROUTER_V6[chainId], constants.ACCESS_TOKEN[chainId], 60, 77_000, '1inch Aggregation Router', '6'],
+            constructorArguments: [
+                constants.WETH[chainId],
+                await nativeOrderFactory.getAddress(),
+                constants.ROUTER_V6[chainId],
+                constants.ACCESS_TOKEN[chainId],
+                60,
+                77_000,
+                '1inch Aggregation Router',
+                '6',
+            ],
         });
     }
 };
